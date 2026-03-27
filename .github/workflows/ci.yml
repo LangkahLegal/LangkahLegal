@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: ${{ hashFiles('**/package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install deps (root)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Lint/Test/Build (root)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          npm run lint --if-present
+          npm run test --if-present
+          npm run build --if-present
+
+      - name: Install deps (frontend)
+        if: ${{ hashFiles('frontend/langkahlegal-frontend/package.json') != '' }}
+        working-directory: frontend/langkahlegal-frontend
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Lint/Test/Build (frontend)
+        if: ${{ hashFiles('frontend/langkahlegal-frontend/package.json') != '' }}
+        working-directory: frontend/langkahlegal-frontend
+        run: |
+          npm run lint --if-present
+          npm run test --if-present
+          npm run build --if-present
+
+      - name: Install deps (backend)
+        if: ${{ hashFiles('backend/package.json') != '' }}
+        working-directory: backend
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Lint/Test/Build (backend)
+        if: ${{ hashFiles('backend/package.json') != '' }}
+        working-directory: backend
+        run: |
+          npm run lint --if-present
+          npm run test --if-present
+          npm run build --if-present
+
+      - name: Set up Python
+        if: ${{ hashFiles('backend/requirements.txt') != '' || hashFiles('backend/pyproject.toml') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        if: ${{ hashFiles('backend/requirements.txt') != '' }}
+        run: pip install -r backend/requirements.txt
+
+      - name: Run Python tests
+        if: ${{ hashFiles('backend/tests/**') != '' }}
+        working-directory: backend
+        run: python -m pytest -q
