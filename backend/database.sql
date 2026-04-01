@@ -234,7 +234,7 @@ CREATE INDEX ON ai.dokumen_hukum USING hnsw (embedding vector_cosine_ops);
 */
 CREATE OR REPLACE FUNCTION ai.cari_pasal_relevan (
   query_embedding vector(768), -- Vektor keluhan klien dari Backend
-  match_threshold float,       -- Batas minimal kemiripan (misal: 0.6)
+  match_threshold,       -- Batas minimal kemiripan (misal: 0.6)
   match_count int              -- Jumlah pasal yang ditarik (Top-K)
 )
 RETURNS TABLE (
@@ -284,3 +284,31 @@ CREATE TRIGGER update_jadwal_modtime BEFORE UPDATE ON jadwal_ketersediaan FOR EA
 CREATE TRIGGER update_pengajuan_modtime BEFORE UPDATE ON pengajuan_konsultasi FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_transaksi_modtime BEFORE UPDATE ON transaksi FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_dokumen_hukum_modtime BEFORE UPDATE ON ai.dokumen_hukum FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================================================================
+-- 8. PERBAIKAN RELASI & INTEGRASI ALUR (SPRINT 2 & 3)
+-- =========================================================================
+
+-- A. Menghubungkan Bursa Kasus ke Pengajuan Konsultasi
+-- Memungkinkan sistem melacak pengajuan mana yang berasal dari lelang/bursa.
+ALTER TABLE pengajuan_konsultasi 
+ADD COLUMN IF NOT EXISTS id_bursa INT;
+
+ALTER TABLE pengajuan_konsultasi
+ADD CONSTRAINT fk_pengajuan_bursa 
+FOREIGN KEY (id_bursa) REFERENCES bursa_kasus(id_bursa) ON DELETE SET NULL;
+
+-- B. Fleksibilitas Jadwal (Nullable)
+-- Pada alur bursa, id_jadwal dikosongkan dulu saat 'Accept' penawaran.
+-- Jadwal baru diisi setelah klien memilih slot di tahap berikutnya.
+ALTER TABLE pengajuan_konsultasi 
+ALTER COLUMN id_jadwal DROP NOT NULL;
+
+-- C. Perbaikan Nama Tabel & Foreign Key (Pencegah Error PGRST200)
+-- Memastikan Supabase mengenali relasi pengajuan -> konsultan untuk JOIN otomatis.
+ALTER TABLE pengajuan_konsultasi
+ADD COLUMN IF NOT EXISTS id_konsultan INT; -- Tambahkan jika belum ada di tabel utama
+
+ALTER TABLE pengajuan_konsultasi
+ADD CONSTRAINT fk_pengajuan_konsultan 
+FOREIGN KEY (id_konsultan) REFERENCES konsultan(id_konsultan) ON DELETE CASCADE;
