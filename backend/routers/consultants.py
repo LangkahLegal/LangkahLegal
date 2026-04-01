@@ -39,7 +39,7 @@ def get_all_consultants(
         # Jika data kosong, berikan pesan informatif
         if not response.data:
             return {
-                "message": "Katalog kosong. Pastikan data sudah diinput dan RLS dimatikan.",
+                "message": "Katalog kosong. Pastikan data sudah diinput.",
                 "data": []
             }
 

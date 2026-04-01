@@ -24,6 +24,7 @@ def buat_pengajuan_konsultasi(
         raise HTTPException(status_code=403, detail="Hanya klien yang dapat membuat pengajuan")
 
     # 1. Validasi ketersediaan jadwal 
+    #! ============ POTENSI RACE CONDITION =====================
     jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", request.id_jadwal).execute()
     
     if not jadwal.data:
@@ -81,10 +82,10 @@ def respond_konsultasi(
     id_jadwal = pengajuan.data[0]["id_jadwal"]
 
     # 2. Logika Keputusan
-    if request.keputusan.lower() == "disetujui":
-        new_status = "menunggu_pembayaran" [cite: 196]
+    if request.status_persetujuan.lower() == "disetujui":
+        new_status = "menunggu_pembayaran"
         message = "Pengajuan disetujui. Menunggu pembayaran klien."
-    elif request.keputusan.lower() == "ditolak":
+    elif request.status_persetujuan.lower() == "ditolak":
         new_status = "ditolak"
         message = "Pengajuan ditolak. Slot jadwal telah dibuka kembali."
         # Kembalikan status jadwal menjadi TRUE 
@@ -137,13 +138,30 @@ def get_my_consultations(
 @router.get("/{id_pengajuan}", status_code=status.HTTP_200_OK)
 def get_detail_pengajuan(
     id_pengajuan: int,
+    current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    # JOIN ke jadwal dan konsultan/users untuk info lengkap
-    response = db.table("pengajuan_konsultasi")\
+    # Bangun query dasar dengan filter id_pengajuan
+    query = db.table("pengajuan_konsultasi")\
         .select("*, jadwal_ketersediaan(*), users(nama, email)")\
-        .eq("id_pengajuan", id_pengajuan)\
-        .execute()
+        .eq("id_pengajuan", id_pengajuan)
+
+    # Batasi akses berdasarkan peran pengguna
+    if current_user.get("role") == "client":
+        # Hanya pemilik pengajuan (klien) yang boleh melihat
+        query = query.eq("id_user", current_user["id_user"])
+    elif current_user.get("role") == "konsultan":
+        # Ambil id_konsultan milik user yang login
+        kons_profile = db.table("konsultan").select("id_konsultan")\
+            .eq("id_user", current_user["id_user"]).single().execute()
+        if not kons_profile.data:
+            raise HTTPException(status_code=403, detail="Akses ditolak")
+        query = query.eq("id_konsultan", kons_profile.data["id_konsultan"])
+    else:
+        # Role lain tidak diizinkan mengakses detail pengajuan
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    response = query.execute()
 
     if not response.data:
         raise HTTPException(status_code=404, detail="Detail tidak ditemukan")
@@ -160,16 +178,34 @@ def beri_rating_konsultasi(
     if current_user.get("role") != "client":
         raise HTTPException(status_code=403, detail="Hanya klien yang bisa memberi rating")
 
-    # Pastikan konsultasi sudah selesai
-    cek = db.table("pengajuan_konsultasi").select("status_pengajuan").eq("id_pengajuan", id_pengajuan).single().execute()
-    
+    # Pastikan konsultasi sudah selesai dan milik current_user
+    cek = (
+        db.table("pengajuan_konsultasi")
+        .select("status_pengajuan")
+        .eq("id_pengajuan", id_pengajuan)
+        .eq("id_user", current_user["id_user"])
+        .single()
+        .execute()
+    )
+
+    if not cek.data:
+        # Pengajuan tidak ditemukan atau tidak dimiliki oleh user saat ini
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
+
     if cek.data["status_pengajuan"] != "completed":
         raise HTTPException(status_code=400, detail="Rating hanya bisa diberikan setelah konsultasi selesai")
 
-    response = db.table("pengajuan_konsultasi")\
-        .update({"rating": request.skor, "ulasan": request.ulasan})\
-        .eq("id_pengajuan", id_pengajuan)\
+    response = (
+        db.table("pengajuan_konsultasi")
+        .update({"rating": request.skor, "ulasan": request.ulasan})
+        .eq("id_pengajuan", id_pengajuan)
+        .eq("id_user", current_user["id_user"])
         .execute()
+    )
+
+    if not response.data:
+        # Tidak ada baris yang terupdate (mis. bukan milik user ini)
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
 
     return {"message": "Terima kasih atas penilaian Anda!"}
 
@@ -184,7 +220,7 @@ def update_consultation_status(
         raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status")
 
     response = db.table("pengajuan_konsultasi")\
-        .update({"status": new_status})\
+        .update({"status_pengajuan": new_status})\
         .eq("id_pengajuan", id_pengajuan)\
         .execute()
 
