@@ -48,7 +48,7 @@ def register_user(request: RegisterRequest, db: Client = Depends(get_supabase_cl
 
     # 4. Jika role 'konsultan', buat baris default di tabel konsultan
     # Mengisi default value karena ada constraint NOT NULL di skema database
-    if request.role == "konsultan":
+    if request.role.value == "konsultan":
         default_konsultan_data = {
             "id_user": inserted_id,
             "nama_lengkap": request.nama,
