@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { label: "Konsultasi", icon: "gavel", path: "/dashboard" },
+  { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
   { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
   { label: "Riwayat", icon: "history", path: "/dashboard/history" },
   { label: "Berkas", icon: "folder", path: "/dashboard/documents" },

@@ -4,7 +4,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import FeaturedServices from "@/components/dashboard/FeaturedServices";
 import CategoryList from "@/components/dashboard/CategoryList";
-import BottomNav from "@/components/dashboard/BottomNav";
+import BottomNav from "@/components/layout/BottomNav";
 import Sidebar from "@/components/layout/Sidebar";
 
 const USER_DATA = {
