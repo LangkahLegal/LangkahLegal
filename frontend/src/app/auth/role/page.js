@@ -26,18 +26,13 @@ const ROLES_DATA = [
 export default function RolePage() {
   const [selectedRole, setSelectedRole] = useState("client");
   const router = useRouter();
-
   const handleContinue = () => {
-    const path =
-      selectedRole === "client"
-        ? "/auth/signup-client"
-        : "/auth/signup-consultant";
-    router.push(path);
+  
+    router.push(`/auth/login?role=${selectedRole}`);
   };
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col selection:bg-[#6D57FC]/30">
-      {/* Background Decor */}
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 
@@ -65,10 +60,10 @@ export default function RolePage() {
         </div>
       </main>
 
-      <footer className="bottom-nav p-6 fixed bottom-0 left-0 right-0 bg-[#0e0c1e]/80 backdrop-blur-md">
+      <footer className="bottom-nav p-6 fixed bottom-0 left-0 right-0 bg-[#0e0c1e]/80 backdrop-blur-md z-20">
         <div className="max-w-md mx-auto w-full">
           <Button onClick={handleContinue} className="w-full">
-            Lanjutkan
+            Lanjutkan ke Login
           </Button>
         </div>
       </footer>
