@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, InputField, PasswordField, GoogleIcon } from "../../../components/ui";
+import {
+  Button,
+  InputField,
+  PasswordField,
+  GoogleIcon,
+} from "../../../components/ui";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -25,12 +30,13 @@ export default function LoginPage() {
       <main className="auth-container">
         <header className="mb-10 text-center md:text-left">
           <h1 className="auth-title">Selamat Datang Kembali</h1>
-          <p className="auth-subtitle">Masuk untuk melanjutkan konsultasi hukum Anda.</p>
+          <p className="auth-subtitle">
+            Masuk untuk melanjutkan konsultasi hukum Anda.
+          </p>
         </header>
 
         <section className="space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
-            
             <InputField
               label="Email"
               name="email"
@@ -50,14 +56,15 @@ export default function LoginPage() {
             />
 
             <div className="flex justify-end">
-              <Link href="/auth/forgot-password" className="link-primary text-sm">
+              <Link
+                href="/auth/forgot-password"
+                className="link-primary text-sm"
+              >
                 Lupa password?
               </Link>
             </div>
 
-            <Button type="submit">
-              Masuk
-            </Button>
+            <Button type="submit">Masuk</Button>
           </form>
 
           <div className="auth-divider">
@@ -75,7 +82,9 @@ export default function LoginPage() {
         <footer className="mt-12 text-center">
           <p className="text-[#aca8c1] font-medium">
             Belum punya akun?{" "}
-            <Link href="/auth/role" className="link-primary ml-1">Daftar</Link>
+            <Link href="/auth/role" className="link-primary ml-1">
+              Daftar
+            </Link>
           </p>
         </footer>
       </main>
