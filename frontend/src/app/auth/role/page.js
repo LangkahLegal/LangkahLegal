@@ -63,7 +63,7 @@ export default function RolePage() {
       <footer className="bottom-nav p-6 fixed bottom-0 left-0 right-0 bg-[#0e0c1e]/80 backdrop-blur-md z-20">
         <div className="max-w-md mx-auto w-full">
           <Button onClick={handleContinue} className="w-full">
-            Lanjutkan ke Login
+            Lanjutkan
           </Button>
         </div>
       </footer>
