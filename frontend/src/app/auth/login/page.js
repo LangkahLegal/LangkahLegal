@@ -47,6 +47,16 @@ export default function LoginPage() {
               required
             />
 
+            {/* REVISI: Lupa password dipindah ke atas PasswordField */}
+            <div className="flex justify-end -mb-2">
+              <Link
+                href="/auth/forgot-password"
+                className="link-primary text-sm hover:underline"
+              >
+                Lupa password?
+              </Link>
+            </div>
+
             <PasswordField
               name="password"
               placeholder="••••••••"
@@ -55,16 +65,9 @@ export default function LoginPage() {
               required
             />
 
-            <div className="flex justify-end">
-              <Link
-                href="/auth/forgot-password"
-                className="link-primary text-sm"
-              >
-                Lupa password?
-              </Link>
-            </div>
-
-            <Button type="submit">Masuk</Button>
+            <Button type="submit" className="mt-2">
+              Masuk
+            </Button>
           </form>
 
           <div className="auth-divider">
@@ -82,7 +85,7 @@ export default function LoginPage() {
         <footer className="mt-12 text-center">
           <p className="text-[#aca8c1] font-medium">
             Belum punya akun?{" "}
-            <Link href="/auth/role" className="link-primary ml-1">
+            <Link href="/auth/signup" className="link-primary ml-1">
               Daftar
             </Link>
           </p>
