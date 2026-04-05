@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { authService } from "@/services/auth.service"; // Import service
 import {
   Button,
   InputField,
@@ -12,14 +13,40 @@ import {
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setIsLoading(true);
+    setErrorMsg("");
+
+    try {
+      const result = await authService.login(formData.email, formData.password);
+
+      if (result.success) {
+        // LOGIKA REDIRECT BERDASARKAN ROLE
+        if (result.role === "konsultan") {
+          router.push("/dashboard/consultan");
+        } else {
+          router.push("/dashboard/client");
+        }
+
+        // Refresh router agar komponen layout (Sidebar/Header) sadar user sudah login
+        router.refresh();
+      }
+    } catch (err) {
+      // Tangkap pesan error dari FastAPI detail
+      const message =
+        err.response?.data?.detail || "Email atau password salah.";
+      setErrorMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,6 +63,13 @@ export default function LoginPage() {
         </header>
 
         <section className="space-y-5">
+          {/* Tampilkan Pesan Error */}
+          {errorMsg && (
+            <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+              {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <InputField
               label="Email"
@@ -47,7 +81,6 @@ export default function LoginPage() {
               required
             />
 
-            {/* REVISI: Lupa password dipindah ke atas PasswordField */}
             <div className="flex justify-end -mb-2">
               <Link
                 href="/auth/forgot-password"
@@ -65,8 +98,8 @@ export default function LoginPage() {
               required
             />
 
-            <Button type="submit" className="mt-2">
-              Masuk
+            <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+              {isLoading ? "Memverifikasi..." : "Masuk"}
             </Button>
           </form>
 
@@ -76,7 +109,7 @@ export default function LoginPage() {
             <div className="auth-divider-line" />
           </div>
 
-          <Button variant="social" type="button">
+          <Button variant="social" type="button" className="w-full">
             <GoogleIcon />
             Masuk dengan Google
           </Button>
