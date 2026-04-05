@@ -4,16 +4,16 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, InputField, PasswordField, GoogleIcon, MaterialIcon } from "../../../components/ui";
+import { authService } from "../../../services/auth";
 
 const SPECIALIZATIONS_LIST = [
-  "Perdata", "Pidana", "Bisnis", "Keluarga", "Ketenagakerjaan"
+  "Perdata", "Pidana", "Korporasi", "Keuangan", "Pasar Modal", "Properti"
 ];
 
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // 1. Cek role dari URL (default ke 'client' kalau kosong)
   const currentRole = searchParams.get("role") || "client";
   const isConsultant = currentRole === "konsultan";
 
@@ -21,6 +21,9 @@ export default function SignupPage() {
     name: "", email: "", password: "",
     city: "", specialization: [], experience: "", rate: ""
   });
+
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -36,14 +39,30 @@ export default function SignupPage() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isConsultant && formData.specialization.length === 0) {
-      alert("Mohon pilih minimal satu spesialisasi.");
+      setErrorMessage("Pilih minimal satu spesialisasi!");
       return;
     }
-    // console.log("Data:", { role: currentRole, ...formData });
-    router.push("/auth/verify");
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      if (isConsultant) {
+        await authService.registerConsultant(formData);
+      } else {
+        await authService.registerClient(formData);
+      }
+      
+      router.push(`/auth/role`);
+      
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,7 +76,6 @@ export default function SignupPage() {
 
       <main className="auth-container space-y-8">
         <header className="text-center space-y-3">
-          {/* 3. Teks Header Berubah Dinamis */}
           <h1 className="auth-title text-4xl">
             {isConsultant ? "Daftar sebagai Konsultan" : "Buat Akun Baru"}
           </h1>
@@ -69,13 +87,18 @@ export default function SignupPage() {
         </header>
 
         <section className="space-y-6">
+          {/* Pesan error */}
+          {errorMessage && (
+            <div className="bg-[#ff6e84]/10 border border-[#ff6e84] text-[#ffb2b9] px-4 py-3 rounded-xl text-sm text-center">
+              {errorMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Input Dasar (Semua Role Pakai Ini) */}
             <InputField label="Nama Lengkap" name="name" type="text" placeholder="John Doe" value={formData.name} onChange={handleChange} required />
             <InputField label="Email" name="email" type="email" placeholder="example@langkahlegal.id" value={formData.email} onChange={handleChange} required />
             <PasswordField name="password" placeholder="••••••••" value={formData.password} onChange={handleChange} required />
 
-            {/* 4. Input Khusus Konsultan (Hanya muncul jika isConsultant == true) */}
             {isConsultant && (
               <>
                 <InputField label="Kota Praktik" name="city" type="text" placeholder="Bandung" value={formData.city} onChange={handleChange} required />
@@ -103,15 +126,24 @@ export default function SignupPage() {
                   <label htmlFor="rate" className="form-label">Tarif Konsultasi per Sesi</label>
                   <div className="relative flex items-center">
                     <span className="absolute left-5 text-[#aca8c1] pointer-events-none font-semibold select-none">Rp</span>
-                    <input id="rate" name="rate" type="number" placeholder="250.000" value={formData.rate} onChange={handleChange} required className="form-input w-full !pl-14" />
+                    <input 
+                      id="rate" 
+                      name="rate" 
+                      type="number" 
+                      placeholder="250.000" 
+                      value={formData.rate} 
+                      onChange={handleChange} 
+                      required 
+                      className="form-input w-full"
+                      style={{ paddingLeft: "3.5rem" }} 
+                    />
                   </div>
                 </div>
               </>
             )}
 
-            <Button type="submit" className="mt-4 w-full">
-              {/* Teks Tombol Berubah Dinamis */}
-              {isConsultant ? "Daftar sebagai Konsultan" : "Daftar Sekarang"}
+            <Button type="submit" className="mt-4 w-full" disabled={isLoading}>
+              {isLoading ? "Memproses..." : (isConsultant ? "Daftar sebagai Konsultan" : "Daftar Sekarang")}
             </Button>
           </form>
 
@@ -130,7 +162,6 @@ export default function SignupPage() {
         <footer className="text-center pt-4">
           <p className="text-[#aca8c1] text-sm font-medium">
             Sudah memiliki akun?{" "}
-            {/* Link kembali ke login sambil bawa parameter role */}
             <Link href={`/auth/role`} className="link-accent ml-1">Masuk Sekarang</Link>
           </p>
         </footer>

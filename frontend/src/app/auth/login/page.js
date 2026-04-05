@@ -4,9 +4,14 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, InputField, PasswordField, GoogleIcon } from "../../../components/ui";
+import { authService } from "../../../services/auth";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentRole = searchParams.get("role") || "client";
@@ -14,9 +19,25 @@ export default function LoginPage() {
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setIsLoading(true);
+    setErrorMessage(""); 
+
+    try {
+      const data = await authService.login(formData.email, formData.password);
+
+      // Simpan token JWT ke localStorage browser
+      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("role", currentRole); 
+
+      router.push("/dashboard/client");
+
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,6 +54,12 @@ export default function LoginPage() {
         </header>
 
         <section className="space-y-5">
+          {errorMessage && (
+            <div className="bg-[#ff6e84]/10 border border-[#ff6e84] text-[#ffb2b9] px-4 py-3 rounded-xl text-sm text-center">
+              {errorMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <InputField
               label="Email"
@@ -61,7 +88,9 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit">Masuk</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Memproses..." : "Masuk"}
+            </Button>
           </form>
 
           <div className="auth-divider">
