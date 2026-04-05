@@ -43,7 +43,7 @@ export default function DashboardHeader({
       <div className="flex items-center gap-3">
         <button
           aria-label="Settings"
-          className="bg-white/5 hover:bg-white/10 p-2 lg:p-3 rounded-full transition-all group active:scale-95 border border-white/5"
+          className=" hover:bg-white/10 p-2 lg:p-3 rounded-full transition-all group active:scale-95 "
         >
           <MaterialIcon
             name="settings"
