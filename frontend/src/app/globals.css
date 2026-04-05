@@ -461,3 +461,16 @@ body {
   border-color: #ada3ff;
   box-shadow: 0 0 0 2px rgba(173, 163, 255, 0.2);
 }
+
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Sembunyikan ikon mata bawaan di Chrome/Safari (jika muncul) */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
