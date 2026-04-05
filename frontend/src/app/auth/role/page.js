@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../../components/ui";
+import { authService } from "@/services/auth.service"; // Pastikan path benar
 import RoleHeader from "../../../components/role/RoleHeader";
 import RoleCard from "../../../components/role/RoleCard";
 
@@ -25,10 +26,45 @@ const ROLES_DATA = [
 
 export default function RolePage() {
   const [selectedRole, setSelectedRole] = useState("client");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
-  const handleContinue = () => {
-  
-    router.push(`/auth/login?role=${selectedRole}`);
+
+  const handleContinue = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // 1. Ambil data identitas dari sessionStorage
+      const savedData = sessionStorage.getItem("pending_signup");
+
+      if (!savedData) {
+        // Jika data tidak ada (user lsg ke /auth/role), balikkan ke signup
+        router.push("/auth/signup");
+        return;
+      }
+
+      const userData = JSON.parse(savedData);
+
+      // 2. Kirim ke API dengan gabungan data
+      await authService.register({
+        ...userData,
+        role: selectedRole,
+      });
+
+      // 3. Bersihkan storage jika sukses
+      sessionStorage.removeItem("pending_signup");
+
+      // 4. Redirect ke login dengan info sukses
+      router.push("/auth/login?status=registered");
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          "Gagal melakukan registrasi. Silakan coba lagi.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,6 +79,14 @@ export default function RolePage() {
           <h2 className="page-title mb-4 text-3xl font-bold">
             Pilih Peran Anda
           </h2>
+
+          {/* Tampilkan error jika registrasi gagal */}
+          {error && (
+            <div className="mb-4 p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+              {error}
+            </div>
+          )}
+
           <p className="page-subtitle text-[#aca8c1]">
             Tentukan bagaimana Anda ingin menggunakan LangkahLegal
           </p>
@@ -62,8 +106,12 @@ export default function RolePage() {
 
       <footer className="bottom-nav p-6 fixed bottom-0 left-0 right-0 bg-[#0e0c1e]/80 backdrop-blur-md z-20">
         <div className="max-w-md mx-auto w-full">
-          <Button onClick={handleContinue} className="w-full">
-            Lanjutkan
+          <Button
+            onClick={handleContinue}
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? "Memproses..." : "Selesaikan Pendaftaran"}
           </Button>
         </div>
       </footer>

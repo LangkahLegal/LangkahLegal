@@ -46,7 +46,7 @@ export default function EmailVerificationPage() {
   const handleSubmit = () => {
     const fullCode = code.join("");
     if (fullCode.length < 6) return;
-    // Handle verification logic here
+
     router.push("/auth/role");
   };
 
