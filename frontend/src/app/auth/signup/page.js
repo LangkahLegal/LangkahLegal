@@ -3,10 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, InputField, PasswordField, GoogleIcon } from "../../../components/ui";
+import {
+  Button,
+  InputField,
+  PasswordField,
+  GoogleIcon,
+} from "../../../components/ui";
 
 export default function SignupClientPage() {
-  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
   const router = useRouter();
 
   const handleChange = (e) =>
@@ -14,6 +23,12 @@ export default function SignupClientPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Simpan data sementara ke sessionStorage
+    // Password aman di sini karena hanya di level browser sesi saat ini
+    sessionStorage.setItem("pending_signup", JSON.stringify(formData));
+
+    // Lanjut ke pemilihan peran
     router.push("/auth/verify");
   };
 
@@ -31,7 +46,8 @@ export default function SignupClientPage() {
         <header className="text-center space-y-3">
           <h1 className="auth-title text-4xl">Buat Akun Baru</h1>
           <p className="text-[#aca8c1] text-base px-4">
-            Daftar sekarang untuk mulai mengelola dokumen hukum Anda dengan mudah.
+            Daftar sekarang untuk mulai mengelola dokumen hukum Anda dengan
+            mudah.
           </p>
         </header>
 
@@ -76,7 +92,10 @@ export default function SignupClientPage() {
             <div className="auth-divider-line" />
           </div>
 
-          <button className="btn-social">
+          <button
+            type="button"
+            className="btn-social w-full flex items-center justify-center gap-3"
+          >
             <GoogleIcon />
             Daftar dengan Google
           </button>
@@ -85,7 +104,9 @@ export default function SignupClientPage() {
         <footer className="text-center pt-4">
           <p className="text-[#aca8c1] text-sm font-medium">
             Sudah memiliki akun?{" "}
-            <Link href="/auth/login" className="link-accent ml-1">Masuk Sekarang</Link>
+            <Link href="/auth/login" className="link-accent ml-1">
+              Masuk Sekarang
+            </Link>
           </p>
         </footer>
       </main>
