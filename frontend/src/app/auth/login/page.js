@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  Button,
-  InputField,
-  PasswordField,
-  GoogleIcon,
-} from "../../../components/ui";
+import { Button, InputField, PasswordField, GoogleIcon } from "../../../components/ui";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentRole = searchParams.get("role") || "client";
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -82,7 +79,7 @@ export default function LoginPage() {
         <footer className="mt-12 text-center">
           <p className="text-[#aca8c1] font-medium">
             Belum punya akun?{" "}
-            <Link href="/auth/role" className="link-primary ml-1">
+            <Link href={`/auth/signup?role=${currentRole}`} className="link-primary ml-1">
               Daftar
             </Link>
           </p>
