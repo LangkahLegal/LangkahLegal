@@ -54,15 +54,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Sidebar / Profile Switcher Lite */}
-      <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/5">
-        <p className="text-[10px] uppercase tracking-widest text-[#aca8c1] mb-1">
-          PRO VERSION
-        </p>
-        <button className="text-sm font-bold text-[#ada3ff] hover:text-white transition-colors">
-          Upgrade Sekarang
-        </button>
-      </div>
     </aside>
   );
 }
