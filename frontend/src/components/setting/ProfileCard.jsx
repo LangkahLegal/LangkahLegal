@@ -1,5 +1,5 @@
 export default function ProfileCard({ user }) {
-  const { name, email, avatar, isPremium } = user;
+  const { name, email, avatar } = user;
 
   return (
     <section>
@@ -25,11 +25,6 @@ export default function ProfileCard({ user }) {
               {name}
             </h2>
             <p className="text-[#aca8c1] text-sm font-medium">{email}</p>
-            {isPremium && (
-              <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ada3ff]/10 text-[#ada3ff] uppercase tracking-wider">
-                Premium Member
-              </div>
-            )}
           </div>
         </div>
       </div>
