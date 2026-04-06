@@ -20,32 +20,56 @@ export default function LoginPage() {
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (e) => {
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
+    if (!formData.password) {
+      setErrorMsg("Password wajib diisi.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg("");
 
     try {
-      const result = await authService.login(formData.email, formData.password);
+      const session = await authService.loginWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (result.success) {
-        // LOGIKA REDIRECT BERDASARKAN ROLE
-        if (result.role === "konsultan") {
-          router.push("/dashboard/consultan");
-        } else {
-          router.push("/dashboard/client");
-        }
-
-        // Refresh router agar komponen layout (Sidebar/Header) sadar user sudah login
-        router.refresh();
+      if (!session) {
+        setErrorMsg("Email atau password salah.");
+        return;
       }
+
+      const profile = await authService.getProfile();
+      const role = profile?.role;
+
+      if (!role) {
+        router.push("/auth/role");
+        return;
+      }
+
+      router.push(
+        role === "konsultan" ? "/dashboard/consultan" : "/dashboard/client",
+      );
+      router.refresh();
     } catch (err) {
-      // Tangkap pesan error dari FastAPI detail
-      const message =
-        err.response?.data?.detail || "Email atau password salah.";
+      const message = err?.message || "Gagal login. Coba lagi.";
       setErrorMsg(message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMsg("");
+    try {
+      await authService.signInWithGoogle({
+        redirectTo: `${window.location.origin}/auth/callback`,
+      });
+    } catch (err) {
+      const message = err?.message || "Gagal login dengan Google.";
+      setErrorMsg(message);
     }
   };
 
@@ -56,9 +80,9 @@ export default function LoginPage() {
 
       <main className="auth-container">
         <header className="mb-10 text-center md:text-left">
-          <h1 className="auth-title">Selamat Datang Kembali</h1>
+          <h1 className="auth-title">Selamat Datang</h1>
           <p className="auth-subtitle">
-            Masuk untuk melanjutkan konsultasi hukum Anda.
+            Masuk untuk melakukan konsultasi hukum Anda.
           </p>
         </header>
 
@@ -70,7 +94,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
             <InputField
               label="Email"
               name="email"
@@ -81,21 +105,11 @@ export default function LoginPage() {
               required
             />
 
-            <div className="flex justify-end -mb-2">
-              <Link
-                href="/auth/forgot-password"
-                className="link-primary text-sm hover:underline"
-              >
-                Lupa password?
-              </Link>
-            </div>
-
             <PasswordField
               name="password"
               placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
-              required
             />
 
             <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
@@ -109,7 +123,12 @@ export default function LoginPage() {
             <div className="auth-divider-line" />
           </div>
 
-          <Button variant="social" type="button" className="w-full">
+          <Button
+            variant="social"
+            type="button"
+            className="w-full"
+            onClick={handleGoogleLogin}
+          >
             <GoogleIcon />
             Masuk dengan Google
           </Button>
@@ -118,7 +137,7 @@ export default function LoginPage() {
         <footer className="mt-12 text-center">
           <p className="text-[#aca8c1] font-medium">
             Belum punya akun?{" "}
-            <Link href="/auth/signup" className="link-primary ml-1">
+            <Link href="/auth/role" className="link-primary ml-1">
               Daftar
             </Link>
           </p>

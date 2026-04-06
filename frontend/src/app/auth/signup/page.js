@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,6 +9,7 @@ import {
   PasswordField,
   GoogleIcon,
 } from "../../../components/ui";
+import { authService } from "@/services/auth.service";
 
 export default function SignupClientPage() {
   const [formData, setFormData] = useState({
@@ -16,20 +17,59 @@ export default function SignupClientPage() {
     email: "",
     password: "",
   });
+  const [selectedRole, setSelectedRole] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    const pendingRole = sessionStorage.getItem("pending_role");
+    if (!pendingRole) {
+      router.replace("/auth/role");
+      return;
+    }
+    setSelectedRole(pendingRole);
+  }, [router]);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg("");
 
-    // Simpan data sementara ke sessionStorage
-    // Password aman di sini karena hanya di level browser sesi saat ini
-    sessionStorage.setItem("pending_signup", JSON.stringify(formData));
+    try {
+      if (!selectedRole) {
+        setErrorMsg("Silakan pilih role terlebih dahulu.");
+        return;
+      }
 
-    // Lanjut ke pemilihan peran
-    router.push("/auth/verify");
+      await authService.signUpWithPassword({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        role: selectedRole,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      });
+
+      sessionStorage.setItem(
+        "pending_auth",
+        JSON.stringify({
+          email: formData.email,
+          role: selectedRole,
+          flow: "signup",
+        }),
+      );
+      sessionStorage.removeItem("pending_role");
+
+      router.push("/auth/verify");
+    } catch (err) {
+      const message = err?.message || "Gagal mengirim OTP. Coba lagi.";
+      setErrorMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,6 +92,12 @@ export default function SignupClientPage() {
         </header>
 
         <section className="space-y-6">
+          {errorMsg && (
+            <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+              {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <InputField
               label="Nama Lengkap"
@@ -81,8 +127,18 @@ export default function SignupClientPage() {
               required
             />
 
-            <Button type="submit" className="mt-4 w-full">
-              Daftar
+            {selectedRole && (
+              <div className="text-sm text-[#aca8c1]">
+                Role dipilih:{" "}
+                <span className="text-[#e8e2fc]">{selectedRole}</span>{" "}
+                <Link href="/auth/role" className="link-primary ml-1">
+                  Ubah
+                </Link>
+              </div>
+            )}
+
+            <Button type="submit" className="mt-4 w-full" disabled={isLoading}>
+              {isLoading ? "Mengirim OTP..." : "Daftar"}
             </Button>
           </form>
 
@@ -95,6 +151,25 @@ export default function SignupClientPage() {
           <button
             type="button"
             className="btn-social w-full flex items-center justify-center gap-3"
+            onClick={async () => {
+              try {
+                if (selectedRole) {
+                  sessionStorage.setItem(
+                    "pending_auth",
+                    JSON.stringify({
+                      role: selectedRole,
+                      flow: "oauth_signup",
+                    }),
+                  );
+                }
+                await authService.signInWithGoogle({
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                });
+              } catch (err) {
+                const message = err?.message || "Gagal login dengan Google.";
+                setErrorMsg(message);
+              }
+            }}
           >
             <GoogleIcon />
             Daftar dengan Google

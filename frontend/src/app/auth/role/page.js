@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../../components/ui";
-import { authService } from "@/services/auth.service"; // Pastikan path benar
 import RoleHeader from "../../../components/role/RoleHeader";
 import RoleCard from "../../../components/role/RoleCard";
 
@@ -35,33 +34,10 @@ export default function RolePage() {
     setError("");
 
     try {
-      // 1. Ambil data identitas dari sessionStorage
-      const savedData = sessionStorage.getItem("pending_signup");
-
-      if (!savedData) {
-        // Jika data tidak ada (user lsg ke /auth/role), balikkan ke signup
-        router.push("/auth/signup");
-        return;
-      }
-
-      const userData = JSON.parse(savedData);
-
-      // 2. Kirim ke API dengan gabungan data
-      await authService.register({
-        ...userData,
-        role: selectedRole,
-      });
-
-      // 3. Bersihkan storage jika sukses
-      sessionStorage.removeItem("pending_signup");
-
-      // 4. Redirect ke login dengan info sukses
-      router.push("/auth/login?status=registered");
+      sessionStorage.setItem("pending_role", selectedRole);
+      router.push("/auth/signup");
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          "Gagal melakukan registrasi. Silakan coba lagi.",
-      );
+      setError(err?.message || "Gagal menyimpan peran. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
