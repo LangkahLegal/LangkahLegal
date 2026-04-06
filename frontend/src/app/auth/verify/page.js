@@ -2,10 +2,13 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Button, MaterialIcon } from "../../../components/ui";
+import { MaterialIcon } from "../../../components/ui";
+import { authService } from "@/services/auth.service";
 
 export default function EmailVerificationPage() {
   const [code, setCode] = useState(Array(6).fill(""));
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const inputs = useRef([]);
   const router = useRouter();
 
@@ -31,7 +34,10 @@ export default function EmailVerificationPage() {
 
   const handlePaste = (e) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\s/g, "").slice(0, 6);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\s/g, "")
+      .slice(0, 6);
     const newCode = [...code];
     pasted.split("").forEach((char, i) => {
       newCode[i] = char;
@@ -43,36 +49,104 @@ export default function EmailVerificationPage() {
     inputs.current[focusIndex]?.focus();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const fullCode = code.join("");
     if (fullCode.length < 6) return;
+    setIsLoading(true);
+    setErrorMsg("");
 
-    router.push("/auth/role");
+    try {
+      const pending = sessionStorage.getItem("pending_auth");
+      if (!pending) {
+        router.push("/auth/login");
+        return;
+      }
+
+      const { email, flow, role } = JSON.parse(pending);
+
+      await authService.verifyOtp({
+        email,
+        token: fullCode,
+        type: flow === "signup" ? "signup" : "email",
+      });
+
+      sessionStorage.removeItem("pending_auth");
+
+      if (flow === "signup") {
+        const resolvedRole = role || "client";
+        await authService.updateRole(resolvedRole);
+        router.push(
+          resolvedRole === "konsultan"
+            ? "/dashboard/consultan"
+            : "/dashboard/client",
+        );
+        router.refresh();
+        return;
+      }
+
+      const profile = await authService.getProfile();
+      let resolvedRole = profile?.role;
+      if (!resolvedRole) {
+        resolvedRole = "client";
+        await authService.updateRole(resolvedRole);
+      }
+      router.push(
+        resolvedRole === "konsultan"
+          ? "/dashboard/consultan"
+          : "/dashboard/client",
+      );
+      router.refresh();
+    } catch (err) {
+      const message = err?.message || "Kode OTP tidak valid.";
+      setErrorMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    // Handle resend logic here
-    setCode(Array(6).fill(""));
-    inputs.current[0]?.focus();
+  const handleResend = async () => {
+    setErrorMsg("");
+    try {
+      const pending = sessionStorage.getItem("pending_auth");
+      if (!pending) {
+        router.push("/auth/login");
+        return;
+      }
+
+      const { email, flow } = JSON.parse(pending);
+
+      if (flow === "signup") {
+        await authService.resendSignupOtp({
+          email,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        });
+      } else {
+        await authService.sendOtpLogin({
+          email,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        });
+      }
+
+      setCode(Array(6).fill(""));
+      inputs.current[0]?.focus();
+    } catch (err) {
+      const message = err?.message || "Gagal mengirim ulang OTP.";
+      setErrorMsg(message);
+    }
   };
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col items-center font-['Inter',sans-serif]">
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
-      
+
       {/* Top App Bar */}
       <header className="top-nav">
         <div className="flex items-center w-full max-w-md mx-auto">
-          <button
-            onClick={() => router.back()}
-            className="btn-icon"
-          >
+          <button onClick={() => router.back()} className="btn-icon">
             <MaterialIcon name="arrow_back" />
           </button>
-          <h1 className="top-nav-title">
-            Verifikasi Email
-          </h1>
+          <h1 className="top-nav-title">Verifikasi Email</h1>
         </div>
       </header>
 
@@ -86,10 +160,13 @@ export default function EmailVerificationPage() {
           <div className="relative z-10 flex flex-col items-center">
             <div className="relative">
               <div className="absolute inset-0 bg-[#ada3ff] blur-2xl opacity-40 rounded-full scale-75" />
-              <MaterialIcon 
+              <MaterialIcon
                 name="mark_email_unread"
                 className="relative z-20 text-[#ada3ff]"
-                style={{ fontSize: "80px", filter: "drop-shadow(0 0 15px rgba(173,163,255,0.8))" }}
+                style={{
+                  fontSize: "80px",
+                  filter: "drop-shadow(0 0 15px rgba(173,163,255,0.8))",
+                }}
               />
             </div>
             <div className="mt-2 w-12 h-1 bg-gradient-to-r from-transparent via-[#ada3ff]/30 to-transparent rounded-full" />
@@ -98,7 +175,10 @@ export default function EmailVerificationPage() {
 
         {/* Text Content */}
         <div className="text-center space-y-3 mb-10">
-          <h2 className="text-3xl font-bold tracking-tight text-[#e8e2fc]" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+          <h2
+            className="text-3xl font-bold tracking-tight text-[#e8e2fc]"
+            style={{ fontFamily: "Urbanist, sans-serif" }}
+          >
             LangkahLegal
           </h2>
           <p className="text-[#aca8c1] text-base leading-relaxed max-w-[280px] mx-auto">
@@ -106,8 +186,17 @@ export default function EmailVerificationPage() {
           </p>
         </div>
 
+        {errorMsg && (
+          <div className="w-full mb-6 p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl text-center">
+            {errorMsg}
+          </div>
+        )}
+
         {/* OTP Input Grid */}
-        <div className="grid grid-cols-6 gap-3 mb-12 w-full" onPaste={handlePaste}>
+        <div
+          className="grid grid-cols-6 gap-3 mb-12 w-full"
+          onPaste={handlePaste}
+        >
           {code.map((digit, index) => (
             <input
               key={index}
@@ -128,10 +217,10 @@ export default function EmailVerificationPage() {
         <div className="w-full space-y-6">
           <button
             onClick={handleSubmit}
-            disabled={code.join("").length < 6}
+            disabled={code.join("").length < 6 || isLoading}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            Verifikasi
+            {isLoading ? "Memverifikasi..." : "Verifikasi"}
           </button>
 
           <div className="flex flex-col items-center gap-2">
