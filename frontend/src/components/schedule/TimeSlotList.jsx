@@ -40,7 +40,7 @@ const STATUS_CONFIG = {
   },
 };
 
-function TimeSlotItem({ slot, onSlotChange, onDeleteSlot }) {
+function TimeSlotItem({ slot, onSlotChange, onUpdateSlot, onDeleteSlot }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false); 
 
@@ -107,13 +107,12 @@ function TimeSlotItem({ slot, onSlotChange, onDeleteSlot }) {
       </div>
 
       {/* Panggil Modal Edit Eksternal di Sini */}
-      <EditSlotModal 
-        isOpen={showEditModal} 
+      <EditSlotModal
+        isOpen={showEditModal}
         slot={slot}
         onClose={() => setShowEditModal(false)}
         onSave={(newTime, newStatus) => {
-          slot.time = newTime;
-          onSlotChange(slot.id, newStatus);
+          onUpdateSlot(slot.id, newTime, newStatus);
           setShowEditModal(false);
         }}
         onDelete={() => {
@@ -148,6 +147,7 @@ export default function TimeSlotList({ slots, onSlotChange, onAddSlot, onDeleteS
             key={slot.id} 
             slot={slot} 
             onSlotChange={onSlotChange} 
+            onUpdateSlot={onUpdateSlot}
             onDeleteSlot={onDeleteSlot} 
           />
         ))}

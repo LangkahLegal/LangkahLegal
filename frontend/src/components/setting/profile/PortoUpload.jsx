@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-export default function CVUpload({ file, onChange }) {
+export default function PortoUpload({ file, onChange }) {
   const inputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -17,7 +17,7 @@ export default function CVUpload({ file, onChange }) {
   return (
     <div className="space-y-2">
       <label className="block font-['Inter',sans-serif] text-[10px] font-bold text-[#aca8c1] px-1 uppercase tracking-[0.15em]">
-        Unggah CV
+        Unggah Portofolio
       </label>
       <div
         onClick={() => inputRef.current?.click()}
