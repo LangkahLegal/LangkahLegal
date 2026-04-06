@@ -23,7 +23,7 @@ export default function KonsultasiPage() {
     { id: "semua", label: "Semua" },
     { id: "pidana", label: "Pidana" },
     { id: "perdata", label: "Perdata" },
-    { id: "korporat", label: "Korporat" },
+    { id: "umum", label: "Umum" },
   ];
 
   /**
