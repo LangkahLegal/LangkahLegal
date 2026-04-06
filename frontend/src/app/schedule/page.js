@@ -6,35 +6,40 @@ import WeeklyCalendar from "@/components/schedule/WeeklyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
 import TimeSlotList from "@/components/schedule/TimeSlotList";
 
-// Kita bikin tanggal hari ini dan besok otomatis menyesuaikan kalender
-const today = new Date().getDate();
-const tomorrow = new Date(Date.now() + 86400000).getDate();
+const formatDate = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-// DATABASE MINI: Pisahkan jadwal berdasarkan tanggal
+const todayDate = formatDate(new Date());
+const tomorrowDate = formatDate(new Date(Date.now() + 86400000));
+
 const DUMMY_DB = {
-  [today]: [
-    { id: "1", time: "08:00 - 09:00", status: "off" },
-    { id: "2", time: "09:00 - 10:00", status: "available" },
-    { id: "3", time: "10:00 - 11:00", status: "booked", client: "Bapak Ahmad" },
-    { id: "4", time: "11:00 - 12:00", status: "booked", client: "Ibu Siti (Gugat Cerai)" },
-    { id: "5", time: "13:00 - 14:00", status: "available" },
+  [todayDate]: [
+    { id_jadwal: 1, id_konsultan: 1, tanggal: todayDate, jam_mulai: "08:00:00", jam_selesai: "09:00:00", status_tersedia: false },
+    { id_jadwal: 2, id_konsultan: 1, tanggal: todayDate, jam_mulai: "09:00:00", jam_selesai: "10:00:00", status_tersedia: true },
+    { id_jadwal: 3, id_konsultan: 1, tanggal: todayDate, jam_mulai: "13:00:00", jam_selesai: "14:00:00", status_tersedia: true },
   ],
-  [tomorrow]: [
-    { id: "6", time: "09:00 - 10:30", status: "booked", client: "Bapak Budi (Konsultasi Bisnis)" },
-    { id: "7", time: "10:30 - 12:00", status: "available" },
-    { id: "8", time: "13:00 - 15:00", status: "off" },
+  [tomorrowDate]: [
+    { id_jadwal: 4, id_konsultan: 1, tanggal: tomorrowDate, jam_mulai: "10:30:00", jam_selesai: "12:00:00", status_tersedia: true },
+    { id_jadwal: 5, id_konsultan: 1, tanggal: tomorrowDate, jam_mulai: "13:00:00", jam_selesai: "15:00:00", status_tersedia: false },
   ]
 };
 
 export default function SchedulePage() {
   const [isAvailable, setIsAvailable] = useState(true);
-  
-  // State Utama: Simpan seluruh database mini
   const [allSlots, setAllSlots] = useState(DUMMY_DB);
-
-  // --- LOGIKA KALENDER ---
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(today);
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+
+  const activeDateString = useMemo(() => {
+    const d = new Date(currentDate);
+    d.setDate(selectedDay);
+    return formatDate(d);
+  }, [currentDate, selectedDay]);
 
   const weekDays = useMemo(() => {
     const days = [];
@@ -57,48 +62,53 @@ export default function SchedulePage() {
   }, [currentDate]);
 
   const monthLabel = currentDate.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  
   const handlePrevWeek = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7));
   const handleNextWeek = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 7));
-  // -----------------------
 
+  const rawSlots = allSlots[activeDateString] || [];
+  
+  const currentSlots = rawSlots.map(slot => ({
+    id: String(slot.id_jadwal),
+    time: `${slot.jam_mulai.substring(0, 5)} - ${slot.jam_selesai.substring(0, 5)}`,
+    status: slot.status_tersedia ? "available" : "off"
+  }));
 
-  // AMBIL JADWAL HANYA UNTUK HARI YANG DIPILIH
-  // Kalau di tanggal itu belum ada jadwal, tampilkan array kosong []
-  const currentSlots = allSlots[selectedDay] || [];
-
-
-  // FUNGSI UBAH STATUS
   const handleSlotChange = (id, newStatus) => {
     setAllSlots((prev) => ({
       ...prev,
-      [selectedDay]: (prev[selectedDay] || []).map((s) => 
-        s.id === id ? { ...s, status: newStatus } : s
+      [activeDateString]: (prev[activeDateString] || []).map((s) => 
+        String(s.id_jadwal) === String(id) ? { ...s, status_tersedia: newStatus === "available" } : s
       )
     }));
   };
 
-  // FUNGSI TAMBAH JADWAL BARU (DENGAN AUTO-SORT WAKTU)
   const handleAddSlot = (newSlotData) => {
-    const newId = Date.now().toString();
+    const newId = Date.now();
+    const [jam_mulai, jam_selesai] = newSlotData.time.split(" - ");
+    
     setAllSlots((prev) => {
-      const daySlots = prev[selectedDay] || [];
-      // Tambah slot baru, lalu urutkan (sort) berdasarkan jam dari pagi ke sore
-      const updatedDaySlots = [...daySlots, { id: newId, ...newSlotData }].sort(
-        (a, b) => a.time.localeCompare(b.time)
-      );
+      const daySlots = prev[activeDateString] || [];
+      const updatedDaySlots = [...daySlots, { 
+        id_jadwal: newId, 
+        id_konsultan: 1,
+        tanggal: activeDateString,
+        jam_mulai: `${jam_mulai}:00`,
+        jam_selesai: `${jam_selesai}:00`,
+        status_tersedia: true
+      }].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
       
       return {
         ...prev,
-        [selectedDay]: updatedDaySlots
+        [activeDateString]: updatedDaySlots
       };
     });
   };
 
-  // FUNGSI HAPUS JADWAL
   const handleDeleteSlot = (id) => {
     setAllSlots((prev) => ({
       ...prev,
-      [selectedDay]: (prev[selectedDay] || []).filter(s => s.id !== id)
+      [activeDateString]: (prev[activeDateString] || []).filter(s => String(s.id_jadwal) !== String(id))
     }));
   };
 
@@ -120,14 +130,13 @@ export default function SchedulePage() {
         <WeeklyCalendar
           days={weekDays}
           selectedDay={selectedDay}
-          onSelectDay={setSelectedDay} // Saat kalender diklik, selectedDay berubah
+          onSelectDay={setSelectedDay}
           monthLabel={monthLabel}
           onPrev={handlePrevWeek}
           onNext={handleNextWeek}
         />
         <AvailabilityToggle isAvailable={isAvailable} onChange={setIsAvailable} />
         
-        {/* Lempar currentSlots (bukan slots global) ke komponen List */}
         <TimeSlotList 
           slots={currentSlots} 
           onSlotChange={handleSlotChange} 
