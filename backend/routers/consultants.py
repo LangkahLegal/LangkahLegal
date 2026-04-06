@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from supabase import Client
 from database import get_supabase_client
 from dependencies import get_current_user
-from schemas.consultants import ScheduleCreate, ScheduleToggle, ConsultantActiveToggle
-from pydantic import BaseModel
+# Tambahkan ScheduleUpdate di baris import
+from schemas.consultants import ScheduleCreate, ScheduleToggle, ConsultantActiveToggle, ScheduleUpdate
 from typing import List, Optional
 
 router = APIRouter()
@@ -11,7 +11,6 @@ router = APIRouter()
 # ==========================================
 # 1. MODUL KATALOG (PUBLIK / CLIENT)
 # ==========================================
-
 
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_all_consultants(
@@ -167,34 +166,6 @@ def upload_jadwal_konsultan(
 
     return {"message": "Jadwal berhasil ditambahkan", "data": response.data[0]}
 
-@router.patch("/me/status", status_code=status.HTTP_200_OK)
-def toggle_consultant_active_status(
-    is_active: bool = Body(..., embed=True),
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client),
-):
-    """
-    (Khusus Konsultan) Mengubah status apakah ingin menerima konsultasi (is_active).
-    """
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(
-            status_code=403, detail="Hanya konsultan yang bisa mengubah status aktif"
-        )
-
-    response = (
-        db.table("konsultan")
-        .update({"is_active": is_active})
-        .eq("id_user", current_user["id_user"])
-        .execute()
-    )
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-
-    return {
-        "message": f"Status aktif berhasil diubah menjadi {is_active}",
-        "data": {"is_active": is_active},
-    }
 
 # ==========================================
 # 3. MODUL MANAJEMEN JADWAL (EDIT & DELETE)
@@ -259,10 +230,9 @@ def get_consultant_dashboard_stats(
 
     # 2. Total Income (Nominal Konsultan dari transaksi yang 'settlement')
     # Hak bersih konsultan sudah dihitung di 'nominal_konsultan'
-    transaksi = db.table("transaksi").select("nominal_konsultan")\
-        .join("pengajuan_konsultasi", "id_pengajuan")\
-        .eq("pengajuan_konsultasi.id_konsultan", id_kons)\
-        .eq("status_pembayaran", "settlement").execute()
+    transaksi = db.table("transaksi").select("nominal_konsultan, pengajuan_konsultasi!inner(id_konsultan)")\
+    .eq("pengajuan_konsultasi.id_konsultan", id_kons)\
+    .eq("status_pembayaran", "settlement").execute()
     total_income = sum([t["nominal_konsultan"] for t in transaksi.data])
 
     # 3. Total Klien (Status 'terjadwal' + 'selesai')
