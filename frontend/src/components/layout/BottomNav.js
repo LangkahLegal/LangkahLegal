@@ -12,13 +12,13 @@ const CLIENT_NAV = [
 ];
 
 const CONSULTANT_NAV = [
-  { label: "Klien", icon: "group", path: "/dashboard/consultant/clients" },
-  { label: "Tanya AI", icon: "psychology", path: "/dashboard/consultant/ai" },
-  { label: "Riwayat", icon: "history", path: "/dashboard/consultant/history" },
+  { label: "Klien", icon: "group", path: "/dashboard/consultan/clients" },
+  { label: "Tanya AI", icon: "psychology", path: "/dashboard/consultan/ai" },
+  { label: "Riwayat", icon: "history", path: "/dashboard/consultan/history" },
   {
     label: "Jadwal",
     icon: "calendar_today",
-    path: "/dashboard/consultant/schedule",
+    path: "/dashboard/consultan/schedule",
   },
 ];
 

@@ -1,20 +1,22 @@
 "use client";
 
-import { useState } from "react";
-
-const TIME_OPTIONS = Array.from({ length: 33 }).map((_, i) => {
-  const hr = Math.floor(i / 2) + 6;
-  const min = i % 2 === 0 ? "00" : "30";
-  return `${hr.toString().padStart(2, "0")}:${min}`;
-});
+import { useState, useEffect } from "react"; // tambah useEffect
 
 export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot }) {
-  const [initialStart, initialEnd] = slot?.time?.split(" - ") || ["09:00", "10:00"];
-  
-  const [editStartTime, setEditStartTime] = useState(initialStart);
-  const [editEndTime, setEditEndTime] = useState(initialEnd);
-  const [editStatus, setEditStatus] = useState(slot?.status || "available");
+  const [editStartTime, setEditStartTime] = useState("09:00");
+  const [editEndTime, setEditEndTime] = useState("10:00");
+  const [editStatus, setEditStatus] = useState("available");
   const [openDropdown, setOpenDropdown] = useState(null);
+
+  useEffect(() => {
+      if (slot && isOpen) {
+        const [start, end] = slot.time?.split(" - ") || ["09:00", "10:00"];
+        setEditStartTime(start);
+        setEditEndTime(end);
+        setEditStatus(slot.status || "available");
+        setOpenDropdown(null);
+      }
+    }, [slot, isOpen]);
 
   if (!isOpen || !slot) return null;
 
