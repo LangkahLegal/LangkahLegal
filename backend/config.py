@@ -11,15 +11,22 @@ class Settings:
 	app_name: str
 	supabase_url: str
 	supabase_key: str
+	imgbb_api_key: str
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
 	supabase_url = os.getenv("SUPABASE_URL", "").strip()
 	supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or os.getenv("SUPABASE_KEY", "").strip()
+	imgbb_api_key = os.getenv("IMGBB_API_KEY", "").strip()
 
 	if not supabase_url or not supabase_key:
 		raise RuntimeError(
 			"Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY)."
+		)
+	
+	if not imgbb_api_key:
+		raise RuntimeError(
+			"Missing required environment variable: IMGBB_API_KEY"
 		)
 
 	return Settings(
@@ -27,4 +34,5 @@ def get_settings() -> Settings:
 		app_name=os.getenv("APP_NAME", "LangkahLegal Backend").strip(),
 		supabase_url=supabase_url,
 		supabase_key=supabase_key,
+		imgbb_api_key=imgbb_api_key,
 	)

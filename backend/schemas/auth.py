@@ -38,3 +38,18 @@ class ConsultantRegisterRequest(BaseModel):
     spesialisasi: str
     pengalaman_tahun: int
     tarif_per_sesi: float
+
+class ProfilePhotoResponse(BaseModel):
+    message: str
+    foto_profil_url: str
+    id_user: int
+    email: str
+
+class UserProfileResponse(BaseModel):
+    id_user: int
+    nama: str
+    email: str
+    role: str
+    foto_profil: Optional[str] = None
+    created_at: str
+    updated_at: str
