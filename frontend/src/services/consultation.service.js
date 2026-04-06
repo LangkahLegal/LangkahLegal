@@ -1,7 +1,28 @@
 import supabase from "@/lib/supabase";
+import api from "@/lib/axios";
 
+// REVISI: Nama variabel disamakan dengan yang di-import Dashboard (consultationService)
 export const consultationService = {
-    
+  /**
+   * 1. DOMAIN: KATALOG (FastAPI via Axios)
+   * Digunakan untuk halaman 'Cari Konsultan'
+   */
+  getConsultantCatalog: async (spesialisasi = null) => {
+    try {
+      const params =
+        spesialisasi && spesialisasi !== "semua" ? { spesialisasi } : {};
+      const response = await api.get("/consultants", { params });
+      return response.data.data;
+    } catch (error) {
+      console.error("Gagal memuat katalog:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * 2. DOMAIN: PENGAJUAN (Supabase SDK)
+   * Digunakan untuk 'ConsultationCard' di Dashboard
+   */
   getConsultations: async () => {
     const { data, error } = await supabase
       .from("pengajuan_konsultasi")
@@ -33,11 +54,11 @@ export const consultationService = {
   },
 
   /**
-   * Mengupdate status (Khusus Konsultan)
+   * Mengupdate status pengajuan
    */
   updateStatus: async (id, newStatus) => {
     const { data, error } = await supabase
-      .from("pengajuan_konsultasi") // <-- Ubah ke nama tabel asli
+      .from("pengajuan_konsultasi")
       .update({ status_pengajuan: newStatus })
       .eq("id_pengajuan", id)
       .select()
