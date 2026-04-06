@@ -87,7 +87,7 @@ export default function RolePage() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Memproses..." : "Selesaikan Pendaftaran"}
+            {isLoading ? "Memproses..." : "Lanjutkan"}
           </Button>
         </div>
       </footer>

@@ -31,6 +31,15 @@ export default function SignupClientPage() {
     setSelectedRole(pendingRole);
   }, [router]);
 
+  // Logika Konten Header Dinamis
+  const isConsultant = selectedRole === "konsultan";
+  const headerTitle = isConsultant
+    ? "Daftar sebagai Konsultan"
+    : "Daftar sebagai Client";
+  const headerSubtitle = isConsultant
+    ? "Bergabunglah dengan jaringan pakar hukum kami dan mulai berikan konsultasi profesional."
+    : "Daftar sekarang dan cari konsultan hukum terbaik untuk kebutuhan Anda.";
+
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -72,6 +81,25 @@ export default function SignupClientPage() {
     }
   };
 
+  const handleGoogleSignup = async () => {
+    try {
+      if (selectedRole) {
+        sessionStorage.setItem(
+          "pending_auth",
+          JSON.stringify({
+            role: selectedRole,
+            flow: "oauth_signup",
+          }),
+        );
+      }
+      await authService.signInWithGoogle({
+        redirectTo: `${window.location.origin}/auth/callback`,
+      });
+    } catch (err) {
+      setErrorMsg(err?.message || "Gagal login dengan Google.");
+    }
+  };
+
   return (
     <div className="auth-screen">
       <div className="glow-top-left" />
@@ -84,11 +112,8 @@ export default function SignupClientPage() {
 
       <main className="auth-container space-y-8">
         <header className="text-center space-y-3">
-          <h1 className="auth-title text-4xl">Buat Akun Baru</h1>
-          <p className="text-[#aca8c1] text-base px-4">
-            Daftar sekarang untuk mulai mengelola dokumen hukum Anda dengan
-            mudah.
-          </p>
+          <h1 className="auth-title text-4xl">{headerTitle}</h1>
+          <p className="text-[#aca8c1] text-base px-4">{headerSubtitle}</p>
         </header>
 
         <section className="space-y-6">
@@ -127,16 +152,6 @@ export default function SignupClientPage() {
               required
             />
 
-            {selectedRole && (
-              <div className="text-sm text-[#aca8c1]">
-                Role dipilih:{" "}
-                <span className="text-[#e8e2fc]">{selectedRole}</span>{" "}
-                <Link href="/auth/role" className="link-primary ml-1">
-                  Ubah
-                </Link>
-              </div>
-            )}
-
             <Button type="submit" className="mt-4 w-full" disabled={isLoading}>
               {isLoading ? "Mengirim OTP..." : "Daftar"}
             </Button>
@@ -151,25 +166,7 @@ export default function SignupClientPage() {
           <button
             type="button"
             className="btn-social w-full flex items-center justify-center gap-3"
-            onClick={async () => {
-              try {
-                if (selectedRole) {
-                  sessionStorage.setItem(
-                    "pending_auth",
-                    JSON.stringify({
-                      role: selectedRole,
-                      flow: "oauth_signup",
-                    }),
-                  );
-                }
-                await authService.signInWithGoogle({
-                  redirectTo: `${window.location.origin}/auth/callback`,
-                });
-              } catch (err) {
-                const message = err?.message || "Gagal login dengan Google.";
-                setErrorMsg(message);
-              }
-            }}
+            onClick={handleGoogleSignup}
           >
             <GoogleIcon />
             Daftar dengan Google
