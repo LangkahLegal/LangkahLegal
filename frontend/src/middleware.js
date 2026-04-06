@@ -1,57 +1,44 @@
 import { NextResponse } from "next/server";
 
-const PROTECTED_PREFIXES = [
-  "/dashboard",
-  "/konsultasi",
-  "/schedule",
-  "/setting",
-];
-
-const isProtectedPath = (pathname) =>
-  PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+// Daftar path yang butuh login
+const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  if (!isProtectedPath(pathname)) {
-    return NextResponse.next();
-  }
+  // 1. Cek apakah path saat ini masuk dalam daftar proteksi
+  const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  if (!isProtected) return NextResponse.next();
 
+  // 2. Ambil token & role dari cookies
   const token = request.cookies.get("ll_token")?.value;
-  if (!token) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
-  }
-
   const role = request.cookies.get("ll_role")?.value;
 
-  if (
-    pathname.startsWith("/dashboard/consultan") &&
-    role &&
-    role !== "konsultan"
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard/client";
-    return NextResponse.redirect(url);
+  // 3. Jika tidak ada token, tendang ke login
+  if (!token) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
+  // 4. Role Guard: Cegah Client masuk ke dashboard Konsultan
+  if (pathname.startsWith("/dashboard/consultan") && role !== "konsultan") {
+    return NextResponse.redirect(new URL("/dashboard/client", request.url));
+  }
+
+  // 5. Role Guard: Cegah Konsultan masuk ke dashboard Client
   if (pathname.startsWith("/dashboard/client") && role === "konsultan") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard/consultan";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/dashboard/consultan", request.url));
   }
 
+  // 6. Jika di /dashboard tapi belum pilih role (kasus langka)
   if (pathname.startsWith("/dashboard") && !role) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/role";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/auth/role", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
+  // Matcher yang lebih clean
   matcher: [
     "/dashboard/:path*",
     "/konsultasi/:path*",
