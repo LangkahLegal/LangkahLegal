@@ -71,7 +71,7 @@ export default function DashboardPage() {
           setActiveConsultation(null);
         }
       } catch (error) {
-        console.error("Error loading dashboard:", error);
+        console.error("Error loading dashboard:", error.message || error);
       } finally {
         setIsLoading(false);
       }
