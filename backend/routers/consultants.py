@@ -70,7 +70,10 @@ def get_all_consultants(
         return formatted_data # Return list murni agar Next.js bisa .map()
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memuat katalog: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal memuat katalog: {str(e)}"
+        )
 
 @router.get("/{id_konsultan}", status_code=status.HTTP_200_OK)
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
