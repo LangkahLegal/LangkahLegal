@@ -24,55 +24,53 @@ def get_all_consultants(
     db: Client = Depends(get_supabase_client)
 ):
     """
-    Mengambil daftar katalog konsultan untuk Client.
-    Menampilkan profil dan nama user hasil JOIN.
+    Mengambil daftar katalog konsultan yang AKTIF.
+    Format output disesuaikan dengan props ConsultantCard di Next.js:
+    (name, spec, rating, reviews, status)
     """
     try:
-        # Gunakan '!' dan nama FK jika ada ambiguitas di DB kamu
-        query = db.table("konsultan").select("*, users!fk_konsultan_user(nama)")
+        # Join ke pengajuan_konsultasi -> rating_ulasan untuk hitung rating
+        # Sesuai database.sql: rating ada di tabel 'rating_ulasan' kolom 'skor_rating'
+        query = db.table("konsultan").select("""
+            id_konsultan,
+            nama_lengkap,
+            spesialisasi,
+            is_active,
+            rating_ulasan (skor_rating)
+        """).eq("is_active", True) # Instruksi PM: Hanya return yang aktif
 
         if spesialisasi:
             query = query.ilike("spesialisasi", f"%{spesialisasi}%")
 
         response = query.execute()
 
-        # Jika data kosong, berikan pesan informatif
-        if not response.data:
-            return {
-                "message": "Katalog kosong. Pastikan data sudah diinput.",
-                "data": []
-            }
-
-        # Transformasi data agar JSON lebih 'flat' untuk Frontend Aziz/Zachra
         formatted_data = []
         for item in response.data:
-            user_info = item.get("users")
-            
-            # Handle respons join (bisa dict atau list tergantung versi postgrest)
-            if isinstance(user_info, list) and len(user_info) > 0:
-                nama_akun = user_info[0].get("nama", "User")
-            elif isinstance(user_info, dict):
-                nama_akun = user_info.get("nama", "User")
-            else:
-                nama_akun = "User"
+            # Ambil semua skor_rating dari hasil join
+            ratings = [
+                r['skor_rating'] for r in item.get('rating_ulasan', []) 
+                if r.get('skor_rating') is not None
+            ]
+            #rating_avg
+            total_reviews = len(ratings)
+            rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
 
-            item["nama_akun"] = nama_akun
-            if "users" in item:
-                del item["users"]
-            
-            formatted_data.append(item)
+            # MAPPING KE FRONTEND (id, name, spec, rating, reviews, status)
+            formatted_item = {
+                "id": item["id_konsultan"],
+                "name": item["nama_lengkap"],
+                "spec": item["spesialisasi"],
+                "rating": rating_avg,
+                "reviews": total_reviews,
+                "status": "online", # Default online jika is_active true
+                "avatar": None      # Diabaikan sesuai instruksi
+            }
+            formatted_data.append(formatted_item)
 
-        return {
-            "status": "success",
-            "total": len(formatted_data),
-            "data": formatted_data
-        }
+        return formatted_data # Return list murni agar Next.js bisa .map()
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Gagal memuat katalog: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Gagal memuat katalog: {str(e)}")
 
 @router.get("/{id_konsultan}", status_code=status.HTTP_200_OK)
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
@@ -150,4 +148,34 @@ def upload_jadwal_konsultan(
     return {
         "message": "Jadwal berhasil ditambahkan", 
         "data": response.data[0]
+    }
+
+# ==========================================
+# 2. MODUL PENGATURAN STATUS (NEW)
+# ==========================================
+
+#is_active
+@router.patch("/me/status", status_code=status.HTTP_200_OK)
+def toggle_consultant_active_status(
+    is_active: bool,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client)
+):
+    """
+    (Khusus Konsultan) Mengubah status apakah ingin menerima konsultasi (is_active).
+    """
+    if current_user.get("role") != "konsultan":
+        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status aktif")
+
+    response = db.table("konsultan")\
+        .update({"is_active": is_active})\
+        .eq("id_user", current_user["id_user"])\
+        .execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
+
+    return {
+        "message": f"Status aktif berhasil diubah menjadi {is_active}",
+        "data": {"is_active": is_active}
     }

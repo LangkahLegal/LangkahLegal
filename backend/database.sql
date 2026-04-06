@@ -44,7 +44,7 @@ CREATE TABLE konsultan (
     
     -- Status & Operasional
     status_verifikasi status_verifikasi_enum DEFAULT 'pending', -- Tujuan: Keamanan platform. Sumber: Input Admin (Melalui Dashboard Admin)
-    spesialisasi VARCHAR(100) NOT NULL DEFAULT 'Umum',   -- Tujuan: Filter direktori (UI). Sumber: Input User (Konsultan)
+    is_active BOOLEAN DEFAULT TRUE,                      -- Tujuan: Saklar visibilitas di katalog publik. Sumber: Input User (Toggle oleh Konsultan)    spesialisasi VARCHAR(100) NOT NULL DEFAULT 'Umum',   -- Tujuan: Filter direktori (UI). Sumber: Input User (Konsultan)
     pengalaman_tahun INT NOT NULL,                       -- Tujuan: Metrik senioritas. Sumber: Input User (Konsultan)
     tarif_per_sesi DECIMAL(12,2) NOT NULL,               -- Tujuan: Harga dasar jasa. Sumber: Input User (Konsultan)
     
