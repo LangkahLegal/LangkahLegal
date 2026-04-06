@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
-import EmptyConsultationCard from "@/components/dashboard/EmptyConsultationCard"; // Pastikan sudah dibuat
+import EmptyConsultationCard from "@/components/dashboard/EmptyConsultationCard";
 import FeaturedServices from "@/components/dashboard/FeaturedServices";
 import CategoryList from "@/components/dashboard/CategoryList";
 import BottomNav from "@/components/layout/BottomNav";
@@ -18,7 +18,14 @@ export default function DashboardPage() {
   const [activeConsultation, setActiveConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Data Statis untuk FeaturedServices
+  // Data Kategori Statis (Hanya untuk tampilan)
+  const DASHBOARD_CATEGORIES = [
+    { id: "semua", label: "Semua" },
+    { id: "pidana", label: "Pidana" },
+    { id: "perdata", label: "Perdata" },
+    { id: "umum", label: "Umum" },
+  ];
+
   const SERVICES_DATA = {
     ai_service: {
       title: "Tanya AI Langkah",
@@ -39,8 +46,7 @@ export default function DashboardPage() {
     async function loadDashboardData() {
       try {
         setIsLoading(true);
-
-        // 1. Fetch data secara paralel agar lebih cepat
+        // Fetch data profil dan konsultasi secara paralel
         const [profile, consultations] = await Promise.all([
           authService.getProfile(),
           consultationService.getConsultations(),
@@ -48,11 +54,9 @@ export default function DashboardPage() {
 
         setUser(profile);
 
-        // 2. Cek apakah ada pengajuan konsultasi
+        // Cek data konsultasi terbaru
         if (consultations && consultations.length > 0) {
-          const raw = consultations[0]; // Ambil data terbaru
-
-          // Mapping ke format yang dibutuhkan ConsultationCard
+          const raw = consultations[0];
           const mappedData = {
             status_pengajuan: raw.status_pengajuan,
             jadwal_ketersediaan: {
@@ -93,10 +97,8 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
-      {/* 1. SIDEBAR */}
       <Sidebar />
 
-      {/* 2. WRAPPER UTAMA */}
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <header className="sticky top-0 z-40 w-full">
           <DashboardHeader
@@ -105,10 +107,9 @@ export default function DashboardPage() {
           />
         </header>
 
-        {/* 3. MAIN CONTENT */}
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
-            {/* Bagian Konsultasi: Conditional Rendering */}
+            {/* Bagian Konsultasi Aktif */}
             <div className="w-full">
               {activeConsultation ? (
                 <ConsultationCard data={activeConsultation} />
@@ -117,24 +118,31 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Kategori Desktop */}
+            {/* Kategori Hukum (Pajangan Desktop) */}
             <div className="hidden lg:block w-full">
-              <CategoryList />
+              <CategoryList
+                categories={DASHBOARD_CATEGORIES}
+                activeCategory="semua" // Dipasang statis di 'semua'
+                onCategoryChange={() => {}} // Fungsi kosong agar tidak bisa diklik
+              />
             </div>
 
-            {/* Layanan Unggulan */}
+            {/* Layanan Unggulan AI & Small Services */}
             <div className="w-full">
               <FeaturedServices services={SERVICES_DATA} />
             </div>
 
-            {/* Kategori Mobile */}
+            {/* Kategori Hukum (Pajangan Mobile) */}
             <div className="lg:hidden w-full">
-              <CategoryList />
+              <CategoryList
+                categories={DASHBOARD_CATEGORIES}
+                activeCategory="semua"
+                onCategoryChange={() => {}}
+              />
             </div>
           </div>
         </main>
 
-        {/* 4. BOTTOM NAV MOBILE */}
         <div className="lg:hidden">
           <BottomNav />
         </div>
