@@ -27,7 +27,7 @@ def get_full_profile(current_user: dict = Depends(get_current_user), db: Client 
         return {
             **user,
             "avatar": user["foto_profil"],
-            "portofolio": kons["portofolio"], # <--- Langsung return portofolio
+            "portofolio": kons["portofolio"], 
             **kons
         }
     return user
