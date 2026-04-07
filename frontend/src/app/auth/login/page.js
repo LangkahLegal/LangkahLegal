@@ -50,7 +50,7 @@ export default function LoginPage() {
       }
 
       router.push(
-        role === "konsultan" ? "/dashboard/consultan" : "/dashboard/client",
+        role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client",
       );
       router.refresh();
     } catch (err) {

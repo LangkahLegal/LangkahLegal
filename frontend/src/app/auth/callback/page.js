@@ -36,7 +36,7 @@ export default function AuthCallbackPage() {
         }
 
         router.replace(
-          role === "konsultan" ? "/dashboard/consultan" : "/dashboard/client",
+          role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client",
         );
       } catch (err) {
         const message = err?.message || "Gagal memproses login.";

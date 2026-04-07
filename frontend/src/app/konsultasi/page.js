@@ -62,8 +62,6 @@ export default function KonsultasiPage() {
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader
           title="Cari Konsultan"
-          icon="gavel"
-          onSettingsClick={() => console.log("Open Settings")}
         />
 
         <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-8 lg:px-12 space-y-10 pb-32 lg:pb-12">

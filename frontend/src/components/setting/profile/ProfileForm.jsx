@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import CVUpload from "@/components/setting/profile/CVUpload"; 
+import PortoUpload from "@/components/setting/profile/PortoUpload"; 
 import LinkedInField from "@/components/setting/profile/LinkedInField"; 
 import { InputField } from "@/components/ui";
 
@@ -50,9 +50,9 @@ export default function ProfileForm({ data, onChange, role }) {
             value={data.tarif_per_sesi || ""}
             onChange={(val) => onChange("tarif_per_sesi", val)}
           />
-          <CVUpload
-            file={data.cv}
-            onChange={(val) => onChange("cv", val)}
+          <PortoUpload
+            file={data.porto}
+            onChange={(val) => onChange("porto", val)}
           />
           <LinkedInField
             value={data.linkedin}

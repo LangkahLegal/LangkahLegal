@@ -1,17 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { authService } from "@/services/auth.service";
+import { userService } from "@/services/user.service";
 import ProfileCard from "@/components/setting/ProfileCard";
 import SettingsGroup from "@/components/setting/SettingsGroup";
 import BottomNav from "@/components/layout/BottomNav";
 import SettingHeader from "@/components/setting/SettingHeader";
-
-const USER_DATA = {
-  name: "User Pengguna",
-  email: "user@email.com",
-  avatar: "/api/placeholder/80/80",
-  isPremium: true,
-};
 
 const ACCOUNT_SETTINGS = [
   {
@@ -44,26 +40,51 @@ const ACCOUNT_SETTINGS = [
   },
 ];
 
-const INFO_SETTINGS = [
-  {
-    id: "about",
-    icon: "info",
-    label: "Tentang LangkahLegal",
-    description: "Versi 2.4.0 (Stable)",
-    path: "/setting/about",
-  },
-  {
-    id: "logout",
-    icon: "logout",
-    label: "Keluar",
-    description: "Hapus sesi dari perangkat ini",
-    variant: "danger",
-    onClick: () => console.log("logout"),
-  },
-];
-
 export default function SettingPage() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  const INFO_SETTINGS = [
+    {
+      id: "about",
+      icon: "info",
+      label: "Tentang LangkahLegal",
+      description: "Versi 2.4.0 (Stable)",
+      path: "/setting/about",
+    },
+    {
+      id: "logout",
+      icon: "logout",
+      label: "Keluar",
+      description: "Hapus sesi dari perangkat ini",
+      variant: "danger",
+      onClick: async () => {
+        try {
+          await authService.logout();
+        } catch (err) {
+          console.error("Gagal logout:", err);
+          router.push("/auth/login");
+        }
+      },
+    },
+  ];
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const data = await userService.getSettings();
+        setUser({
+          name: data.nama,
+          email: data.email,
+          avatar: data.avatar,
+        });
+      } catch (err) {
+        console.error("Gagal ambil settings:", err);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen pb-32 font-['Inter',sans-serif]">
@@ -72,14 +93,19 @@ export default function SettingPage() {
         title="Pengaturan"
         icon="gavel"
         onSettingsClick={() => console.log("Open Settings")}
-        />
+      />
 
       <main className="px-6 mt-8 space-y-8">
-        <ProfileCard user={USER_DATA} />
+        {user ? (
+          <ProfileCard user={user} />
+        ) : (
+          <div className="text-center text-sm text-gray-400">
+            Loading profile...
+          </div>
+        )}
 
         <SettingsGroup title="Akun & Preferensi" items={ACCOUNT_SETTINGS} />
         <SettingsGroup title="Informasi" items={INFO_SETTINGS} />
-
       </main>
 
       <BottomNav />
