@@ -50,7 +50,10 @@ const formatRequestTime = (request) => {
 };
 
 export default function ConsultantDashboardPage() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({
+    name: "",
+    foto_profil: "", // Menggunakan foto_profil
+  });
   const [stats, setStats] = useState({
     income: 0,
     activeConsultations: 0,
@@ -62,33 +65,29 @@ export default function ConsultantDashboardPage() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      try {
-        setIsLoading(true);
-        const [userResponse, statsResponse, pendingResponse, activeResponse] =
-          await Promise.all([
-            userService.getSettings(),
-            consultantService.getDashboardStats(),
-            consultantService.getPendingRequests(),
-            consultantService.getActiveRequests(),
-          ]);
+      // Menggunakan getFullProfile agar lebih konsisten mengambil foto_profil
+      const [userResponse, statsResponse, pendingResponse, activeResponse] =
+        await Promise.all([
+          userService.getFullProfile(),
+          consultantService.getDashboardStats(),
+          consultantService.getPendingRequests(),
+          consultantService.getActiveRequests(),
+        ]);
 
-        setUser({
-          name: userResponse?.nama,
-          avatar: userResponse?.avatar,
-        });
+      setUser({
+        name: userResponse?.nama || userResponse?.nama_lengkap,
+        // Mapping fix: prioritaskan foto_profil
+        foto_profil: userResponse?.foto_profil || userResponse?.avatar,
+      });
 
-        setStats({
-          income: statsResponse?.total_income || 0,
-          activeConsultations: statsResponse?.total_klien_aktif || 0,
-          totalClients: statsResponse?.total_klien || 0,
-        });
-        setPendingRequests(pendingResponse || []);
-        setActiveRequests(activeResponse || []);
-      } catch (error) {
-        console.error("Gagal memuat dashboard konsultan:", error);
-      } finally {
-        setIsLoading(false);
-      }
+      setStats({
+        income: statsResponse?.total_income || 0,
+        activeConsultations: statsResponse?.total_klien_aktif || 0,
+        totalClients: statsResponse?.total_klien || 0,
+      });
+      setPendingRequests(pendingResponse || []);
+      setActiveRequests(activeResponse || []);
+      setIsLoading(false);
     };
 
     fetchDashboard();
@@ -110,13 +109,13 @@ export default function ConsultantDashboardPage() {
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
-      {/* REVISI: Tambahkan prop role="konsultan" di sini */}
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <DashboardHeader
           userName={user?.name || "Konsultan"}
-          avatarUrl={user?.avatar || "/api/placeholder/40/40"}
+          // Mengirim prop foto_profil sesuai DashboardHeader terbaru
+          foto_profil={user?.foto_profil}
         />
 
         <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-8 lg:px-12 space-y-10 pb-32 lg:pb-12">

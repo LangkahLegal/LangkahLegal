@@ -43,6 +43,7 @@ const ACCOUNT_SETTINGS = [
 export default function SettingPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState("client"); // Tambahkan state role
 
   const INFO_SETTINGS = [
     {
@@ -61,6 +62,7 @@ export default function SettingPage() {
       onClick: async () => {
         try {
           await authService.logout();
+          router.push("/auth/login");
         } catch (err) {
           console.error("Gagal logout:", err);
           router.push("/auth/login");
@@ -72,14 +74,19 @@ export default function SettingPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const data = await userService.getSettings();
+        // Menggunakan getFullProfile sebagai source of truth tunggal
+        const data = await userService.getFullProfile();
+
         setUser({
-          name: data.nama,
+          name: data.nama || data.nama_lengkap,
           email: data.email,
-          avatar: data.avatar,
+          // FIX: Gunakan foto_profil sesuai standarisasi database
+          foto_profil: data.foto_profil || data.avatar || "",
         });
+
+        setUserRole(data.role || "client");
       } catch (err) {
-        console.error("Gagal ambil settings:", err);
+        console.error("Gagal ambil data profil:", err);
       }
     };
 
@@ -88,19 +95,21 @@ export default function SettingPage() {
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen pb-32 font-['Inter',sans-serif]">
-      {/* Header */}
       <SettingHeader
         title="Pengaturan"
         icon="gavel"
-        onSettingsClick={() => console.log("Open Settings")}
+        onSettingsClick={() => router.push("/setting")}
       />
 
       <main className="px-6 mt-8 space-y-8">
         {user ? (
           <ProfileCard user={user} />
         ) : (
-          <div className="text-center text-sm text-gray-400">
-            Loading profile...
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="w-8 h-8 border-2 border-[#ada3ff]/30 border-t-[#ada3ff] rounded-full animate-spin"></div>
+            <p className="text-[10px] font-bold tracking-widest text-[#aca8c1] uppercase">
+              Loading Profile...
+            </p>
           </div>
         )}
 
@@ -108,7 +117,8 @@ export default function SettingPage() {
         <SettingsGroup title="Informasi" items={INFO_SETTINGS} />
       </main>
 
-      <BottomNav />
+      {/* Kirim userRole agar navigasi bawah tetap konsisten */}
+      <BottomNav role={userRole} />
     </div>
   );
 }
