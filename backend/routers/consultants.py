@@ -21,73 +21,58 @@ router = APIRouter()
 
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_all_consultants(
-    spesialisasi: Optional[str] = None, db: Client = Depends(get_supabase_client)
+    spesialisasi: Optional[str] = None, 
+    db: Client = Depends(get_supabase_client)
 ):
-    """
-    Mengambil daftar katalog konsultan yang AKTIF.
-    Format output disesuaikan dengan props ConsultantCard di Next.js:
-    (name, spec, rating, reviews, status)
-    """
     try:
-        # Join ke pengajuan_konsultasi -> rating_ulasan untuk hitung rating
-        # Sesuai database.sql: rating ada di tabel 'rating_ulasan' kolom 'skor_rating'
+        # add join 'users(foto_profil)' ke dalam select
         query = (
             db.table("konsultan")
-            .select(
-                """
-            id_konsultan,
-            nama_lengkap,
-            spesialisasi,
-            is_active,
-            rating_ulasan (skor_rating)
-        """
-            )
+            .select("""
+                id_konsultan,
+                nama_lengkap,
+                spesialisasi,
+                is_active,
+                users (foto_profil),
+                rating_ulasan (skor_rating)
+            """)
             .eq("is_active", True)
-        )  # Instruksi PM: Hanya return yang aktif
+        )
 
-        if spesialisasi:
+        if spesialisasi and spesialisasi != "semua":
             query = query.ilike("spesialisasi", f"%{spesialisasi}%")
 
         response = query.execute()
 
         formatted_data = []
         for item in response.data:
-            # Ambil semua skor_rating dari hasil join
-            ratings = [
-                r["skor_rating"]
-                for r in item.get("rating_ulasan", [])
-                if r.get("skor_rating") is not None
-            ]
-            # rating_avg
+            # Hitung Rating
+            ratings = [r["skor_rating"] for r in item.get("rating_ulasan", []) if r.get("skor_rating")]
             total_reviews = len(ratings)
-            rating_avg = (
-                round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-            )
+            rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
 
-            # MAPPING KE FRONTEND (id, name, spec, rating, reviews, status)
+            # Ambil foto_profil dari join users
+            # Skenario: item["users"] akan berupa dict { "foto_profil": "..." }
+            user_data = item.get("users") or {}
+            
             formatted_item = {
                 "id": item["id_konsultan"],
                 "name": item["nama_lengkap"],
                 "spec": item["spesialisasi"],
                 "rating": rating_avg,
                 "reviews": total_reviews,
-                "status": "online",  # Default online jika is_active true
-                "avatar": None,  # Diabaikan sesuai instruksi
+                "status": "online",
+                "foto_profil": user_data.get("foto_profil") # Ganti 'avatar' jadi 'foto_profil'
             }
             formatted_data.append(formatted_item)
 
         return {
             "message": "Katalog konsultan berhasil dimuat",
-            "total": len(formatted_data),
             "data": formatted_data,
         }
-
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Gagal memuat katalog: {str(e)}",
-        )
-    
+        print(f"Backend Error: {e}")
+        return {"data": [], "message": str(e)}
 
 
 @router.get("/me/schedules")

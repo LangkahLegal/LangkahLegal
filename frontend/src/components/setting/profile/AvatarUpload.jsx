@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
+import { userService } from "@/services/user.service";
 
 export default function AvatarUpload({
-  avatar,
+  foto_profil,
   name,
   onChange,
   onUploadStart,
@@ -12,90 +13,66 @@ export default function AvatarUpload({
   const inputRef = useRef(null);
   const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Luthfi")}&background=1f1d35&color=ada3ff&size=128`;
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || file.size > 2 * 1024 * 1024)
+      return file && alert("File terlalu besar (max 2MB)");
 
-    // Proteksi size: Jangan biarkan user upload file terlalu besar (> 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File terlalu besar. Maksimal 2MB.");
-      return;
-    }
+    if (onUploadStart) onUploadStart();
+    const formData = new FormData();
+    formData.append("image", file);
 
     try {
-      if (onUploadStart) onUploadStart();
-
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch(
+      // 1. Upload ke IMGBB
+      const res = await fetch(
         `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
-        {
-          method: "POST",
-          body: formData,
-        },
+        { method: "POST", body: formData },
       );
+      const { success, data } = await res.json();
+      if (!success) throw new Error();
 
-      const result = await response.json();
+      // 2. Sync ke DB & Fetch Fresh Data
+      await userService.updateProfile({ foto_profil: data.url });
+      const freshData = await userService.getFullProfile();
 
-      if (result.success) {
-        // Menggunakan url direct link dari IMGBB
-        const imageUrl = result.data.url;
-        onChange(imageUrl);
-      } else {
-        throw new Error(result.error.message);
-      }
-    } catch (error) {
-      console.error("Upload Error:", error);
-      alert("Gagal upload foto. Periksa koneksi internet Anda.");
-      if (onChange) onChange(avatar);
+      // 3. Update UI dengan prioritas data dari DB
+      onChange(freshData.foto_profil || freshData.avatar || data.url);
+    } catch (err) {
+      alert("Gagal sinkronisasi foto.");
+      onChange(foto_profil);
     }
   };
-
-  // Helper untuk fallback UI-Avatars
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&background=1f1d35&color=ada3ff&size=128`;
 
   return (
     <div className="flex flex-col items-center mb-10">
       <div className="relative group">
         <div
-          className={`w-32 h-32 rounded-full border-4 border-[#1f1d35] overflow-hidden shadow-2xl relative transition-all ${
-            isUploading ? "opacity-50 scale-95" : "hover:border-[#6f59fe]/50"
-          }`}
+          className={`w-32 h-32 rounded-full border-4 border-[#1f1d35] overflow-hidden shadow-2xl relative ${isUploading ? "opacity-50 scale-95" : ""}`}
         >
           <img
-            // SENIOR TIP: Gunakan key={avatar} untuk memaksa re-render saat URL ganti
-            key={avatar}
-            src={avatar && avatar !== "" ? avatar : fallbackUrl}
-            alt={name || "Avatar"}
+            key={foto_profil}
+            src={foto_profil || fallbackUrl}
+            alt="Profile"
             className="w-full h-full object-cover"
-            onError={(e) => {
-              // Jika link IMGBB pecah/404, lari ke fallback
-              e.target.src = fallbackUrl;
-            }}
+            onError={(e) => (e.target.src = fallbackUrl)}
           />
-
           {isUploading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
               <div className="w-8 h-8 border-3 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
         </div>
-
         <button
           type="button"
-          disabled={isUploading}
-          onClick={() => inputRef.current?.click()}
-          className="absolute bottom-1 right-1 bg-[#6f59fe] p-2.5 rounded-full border-2 border-[#0e0c1e] shadow-xl hover:bg-[#5b46e0] active:scale-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => !isUploading && inputRef.current.click()}
+          className="absolute bottom-1 right-1 bg-[#6f59fe] p-2.5 rounded-full border-2 border-[#0e0c1e] shadow-xl active:scale-90 transition-all"
         >
-          <span
-            className="material-symbols-outlined text-white text-sm"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            {isUploading ? "sync" : "edit"}
+          <span className="material-symbols-outlined text-white text-sm">
+            edit
           </span>
         </button>
-
         <input
           ref={inputRef}
           type="file"
@@ -104,12 +81,6 @@ export default function AvatarUpload({
           onChange={handleFileChange}
         />
       </div>
-
-      {isUploading && (
-        <p className="text-[10px] text-[#ada3ff] mt-3 font-bold uppercase tracking-[0.2em] animate-pulse">
-          Uploading...
-        </p>
-      )}
     </div>
   );
 }

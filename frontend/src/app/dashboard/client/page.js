@@ -10,7 +10,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import Sidebar from "@/components/layout/Sidebar";
 
 // Import Services
-import { authService } from "@/services/auth.service";
+import { userService } from "@/services/user.service"; // Ganti ke userService
 import { consultationService } from "@/services/consultation.service";
 
 export default function DashboardPage() {
@@ -18,7 +18,6 @@ export default function DashboardPage() {
   const [activeConsultation, setActiveConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Data Kategori Statis (Hanya untuk tampilan)
   const DASHBOARD_CATEGORIES = [
     { id: "semua", label: "Semua" },
     { id: "pidana", label: "Pidana" },
@@ -44,41 +43,40 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadDashboardData() {
-      try {
-        setIsLoading(true);
-        // Fetch data profil dan konsultasi secara paralel
-        const [profile, consultations] = await Promise.all([
-          authService.getProfile(),
-          consultationService.getConsultations(),
-        ]);
+      // Tanpa try-catch sesuai request refactor yang simpel
+      setIsLoading(true);
 
-        setUser(profile);
+      const [profile, consultations] = await Promise.all([
+        userService.getFullProfile(), // Panggilan API utama untuk Profile
+        consultationService.getConsultations(),
+      ]);
 
-        // Cek data konsultasi terbaru
-        if (consultations && consultations.length > 0) {
-          const raw = consultations[0];
-          const mappedData = {
-            status_pengajuan: raw.status_pengajuan,
-            jadwal_ketersediaan: {
-              tanggal: raw.jadwal_ketersediaan?.tanggal,
-              jam_mulai: raw.jadwal_ketersediaan?.jam_mulai,
-              jam_selesai: raw.jadwal_ketersediaan?.jam_selesai,
-              konsultan: {
-                nama_lengkap: raw.jadwal_ketersediaan?.konsultan?.nama_lengkap,
-                spesialisasi: raw.jadwal_ketersediaan?.konsultan?.spesialisasi,
-                foto_profile: raw.jadwal_ketersediaan?.konsultan?.foto_profile,
-              },
+      // Mapping Profil Client
+      setUser({
+        nama: profile?.nama || "User",
+        // Konsisten menggunakan 'foto_profil'
+        foto_profil: profile?.foto_profil || profile?.avatar || "",
+      });
+
+      // Mapping Konsultasi Aktif
+      if (consultations && consultations.length > 0) {
+        const raw = consultations[0];
+        setActiveConsultation({
+          status_pengajuan: raw.status_pengajuan,
+          jadwal_ketersediaan: {
+            tanggal: raw.jadwal_ketersediaan?.tanggal,
+            jam_mulai: raw.jadwal_ketersediaan?.jam_mulai,
+            jam_selesai: raw.jadwal_ketersediaan?.jam_selesai,
+            konsultan: {
+              nama_lengkap: raw.jadwal_ketersediaan?.konsultan?.nama_lengkap,
+              spesialisasi: raw.jadwal_ketersediaan?.konsultan?.spesialisasi,
+              foto_profil: raw.jadwal_ketersediaan?.konsultan?.foto_profil,
             },
-          };
-          setActiveConsultation(mappedData);
-        } else {
-          setActiveConsultation(null);
-        }
-      } catch (error) {
-        console.error("Error loading dashboard:", error.message || error);
-      } finally {
-        setIsLoading(false);
+          },
+        });
       }
+
+      setIsLoading(false);
     }
 
     loadDashboardData();
@@ -89,7 +87,9 @@ export default function DashboardPage() {
       <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center text-[#ada3ff]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-          <p className="animate-pulse font-medium">Memuat data...</p>
+          <p className="animate-pulse font-bold text-[10px] tracking-widest uppercase">
+            Synchronizing Dashboard...
+          </p>
         </div>
       </div>
     );
@@ -102,14 +102,13 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <header className="sticky top-0 z-40 w-full">
           <DashboardHeader
-            userName={user?.nama || "User"}
-            avatarUrl={user?.avatar_url || "/api/placeholder/48/48"}
+            userName={user?.nama}
+            foto_profil={user?.foto_profil}
           />
         </header>
 
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
-            {/* Bagian Konsultasi Aktif */}
             <div className="w-full">
               {activeConsultation ? (
                 <ConsultationCard data={activeConsultation} />
@@ -118,21 +117,18 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Kategori Hukum (Pajangan Desktop) */}
             <div className="hidden lg:block w-full">
               <CategoryList
                 categories={DASHBOARD_CATEGORIES}
-                activeCategory="semua" // Dipasang statis di 'semua'
-                onCategoryChange={() => {}} // Fungsi kosong agar tidak bisa diklik
+                activeCategory="semua"
+                onCategoryChange={() => {}}
               />
             </div>
 
-            {/* Layanan Unggulan AI & Small Services */}
             <div className="w-full">
               <FeaturedServices services={SERVICES_DATA} />
             </div>
 
-            {/* Kategori Hukum (Pajangan Mobile) */}
             <div className="lg:hidden w-full">
               <CategoryList
                 categories={DASHBOARD_CATEGORIES}

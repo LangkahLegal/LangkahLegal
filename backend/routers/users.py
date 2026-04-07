@@ -13,7 +13,7 @@ def get_settings_info(current_user: dict = Depends(get_current_user), db: Client
     return {
         "nama": user.data["nama"],
         "email": user.data["email"],
-        "avatar": user.data.get("foto_profil")
+        "foto_profil": user.data.get("foto_profil")
     }
 
 @router.get("/me/profile/full")
@@ -26,35 +26,46 @@ def get_full_profile(current_user: dict = Depends(get_current_user), db: Client 
         kons = db.table("konsultan").select("*").eq("id_user", current_user["id_user"]).single().execute().data
         return {
             **user,
-            "avatar": user["foto_profil"],
+            "foto_profil": user["foto_profil"],
             "portofolio": kons["portofolio"], 
             **kons
         }
     return user
-
 @router.put("/me/profile/update")
-def update_profile(payload: ProfileUpdatePayload, current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
-    # 1. Update tabel users (Kolom: nama)
-    if payload.nama or payload.avatar:
-        u_data = {}
-        if payload.nama: u_data["nama"] = payload.nama
-        if payload.avatar: u_data["foto_profil"] = payload.avatar
+def update_profile(
+    payload: ProfileUpdatePayload, 
+    current_user: dict = Depends(get_current_user), 
+    db: Client = Depends(get_supabase_client)
+):
+    # 1. Update tabel 'users' (Source of Truth untuk Nama dan Foto)
+    u_data = {}
+    if payload.nama: 
+        u_data["nama"] = payload.nama
+    
+    # Pastikan menggunakan ejaan 'foto_profil' sesuai database.sql
+    if payload.foto_profil: 
+        u_data["foto_profil"] = payload.foto_profil
+
+    if u_data:
         db.table("users").update(u_data).eq("id_user", current_user["id_user"]).execute()
 
-    # 2. Update tabel konsultan
+    # 2. Update tabel 'konsultan'
     if current_user["role"] == "konsultan":
+        # Convert payload ke dictionary, buang nilai None agar tidak menimpa data lama dengan NULL
         k_data = payload.dict(exclude_none=True)
         
-        # FIX: Petakan 'nama' ke 'nama_lengkap' khusus untuk tabel konsultan
+        # Mapping khusus: 'nama' di payload dipetakan ke 'nama_lengkap' di tabel konsultan
         if "nama" in k_data:
             k_data["nama_lengkap"] = k_data["nama"]
         
-        # Buang field yang tidak ada di kolom tabel konsultan
-        for key in ["nama", "avatar"]:
+        # PENTING: Buang field yang HANYA milik tabel 'users'
+        # Agar tidak menyebabkan error 'column does not exist' di tabel konsultan
+        keys_for_users_only = ["nama", "foto_profil", "email"]
+        for key in keys_for_users_only:
             k_data.pop(key, None)
             
+        # Jika masih ada data tersisa (seperti bio, gelar, deskripsi, dll), eksekusi update
         if k_data:
-            # Sekarang k_data berisi 'nama_lengkap' dan field lainnya
             db.table("konsultan").update(k_data).eq("id_user", current_user["id_user"]).execute()
             
-    return {"message": "Profil berhasil diperbarui"}
+    return {"message": "Profil dan kredensial berhasil diperbarui"}
