@@ -1,0 +1,476 @@
+@import "tailwindcss";
+
+/* ============================================================
+   LANGKAHLEGAL — GLOBAL STYLES
+   ============================================================ */
+
+   
+/* ===== BASE ===== */
+body {
+  background-color: #0e0c1e;
+  color: #e8e2fc;
+  min-height: 100dvh;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ===== MATERIAL SYMBOLS ===== */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+.auth-screen {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 28rem;
+  position: relative;
+  z-index: 10;
+}
+
+/* ============================================================
+   BACKGROUND DECORATIONS
+   ============================================================ */
+
+.glow-top-left {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  border-radius: 9999px;
+  pointer-events: none;
+  background-color: rgba(173, 163, 255, 0.1);
+  filter: blur(120px);
+}
+
+.glow-bottom-right {
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  border-radius: 9999px;
+  pointer-events: none;
+  background-color: rgba(180, 171, 239, 0.05);
+  filter: blur(150px);
+}
+
+.glow-top-left-purple {
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 50%;
+  height: 40%;
+  border-radius: 9999px;
+  pointer-events: none;
+  background-color: rgba(109, 87, 252, 0.1);
+  filter: blur(120px);
+}
+
+.glow-bottom-right-secondary {
+  position: fixed;
+  bottom: 10%;
+  right: -10%;
+  width: 40%;
+  height: 30%;
+  border-radius: 9999px;
+  pointer-events: none;
+  background-color: rgba(70, 63, 122, 0.2);
+  filter: blur(100px);
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+.auth-title {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 700;
+  font-size: 1.875rem;
+  letter-spacing: -0.025em;
+  color: #e8e2fc;
+}
+
+@media (min-width: 768px) {
+  .auth-title {
+    font-size: 2.25rem;
+  }
+}
+
+.auth-subtitle {
+  margin-top: 0.5rem;
+  color: #aca8c1;
+  font-weight: 500;
+}
+
+.page-title {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 800;
+  font-size: 2.25rem;
+  line-height: 1.2;
+  color: #e8e2fc;
+  margin-bottom: 1rem;
+}
+
+.page-subtitle {
+  font-size: 1.125rem;
+  color: #aca8c1;
+  max-width: 20rem;
+}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #aca8c1;
+  margin-left: 0.25rem;
+}
+
+.form-input {
+  width: 100%;
+  background-color: #1f1d35;
+  box-shadow: 0 0 0 1px rgba(72, 69, 90, 0.3);
+  border: none;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: #e8e2fc;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-input::placeholder {
+  color: rgba(118, 115, 138, 0.6);
+}
+
+.form-input:focus {
+  box-shadow: 0 0 0 2px #ada3ff;
+  background-color: #2c2945;
+}
+
+.form-input-password {
+  width: 100%;
+  background-color: #1f1d35;
+  box-shadow: 0 0 0 1px rgba(72, 69, 90, 0.3);
+  border: none;
+  border-radius: 0.5rem;
+  padding: 1rem 3rem 1rem 1rem;
+  color: #e8e2fc;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-input-password::placeholder {
+  color: rgba(118, 115, 138, 0.6);
+}
+
+.form-input-password:focus {
+  box-shadow: 0 0 0 2px #ada3ff;
+  background-color: #2c2945;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(118, 115, 138, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.password-toggle:hover {
+  color: #6f59fe;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn-primary {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background-image: linear-gradient(to bottom right, #6f59fe, #ada3ff);
+  color: #000000;
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 700;
+  font-size: 1.125rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 25px -5px rgba(111, 89, 254, 0.4);
+  transition: transform 0.2s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-social {
+  width: 100%;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background-color: #131125;
+  border: 1px solid rgba(72, 69, 90, 0.2);
+  color: #e8e2fc;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn-social:hover {
+  background-color: #25233d;
+}
+
+.btn-social:active {
+  transform: scale(0.98);
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: #2c2945;
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.auth-divider-line {
+  flex-grow: 1;
+  height: 1px;
+  background-color: rgba(72, 69, 90, 0.2);
+}
+
+.auth-divider-text {
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #aca8c1;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+
+.link-primary {
+  color: #ada3ff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-primary:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.link-accent {
+  color: #6f59fe;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-accent:hover {
+  color: #ada3ff;
+}
+
+/* ============================================================
+   GLASS CARD & ROLE CARDS
+   ============================================================ */
+
+.glass-card {
+  background: rgba(31, 29, 53, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(173, 163, 255, 0.1);
+}
+
+.role-card {
+  background: rgba(31, 29, 53, 0.4);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 2rem;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-width: 2px;
+  border-style: solid;
+}
+
+.role-card-inactive {
+  border-color: rgba(72, 69, 90, 0.2);
+}
+
+.role-card-active {
+  border-color: #6D57FC;
+  background: rgba(109, 87, 252, 0.08);
+  box-shadow: 0 0 25px rgba(109, 87, 252, 0.25);
+}
+
+.role-card-icon {
+  flex-shrink: 0;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1rem;
+  background-color: rgba(109, 87, 252, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6D57FC;
+  transition: transform 0.3s;
+}
+
+.role-radio {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.role-radio-inactive {
+  border-color: #76738a;
+}
+
+.role-radio-active {
+  background-color: #6D57FC;
+  border-color: #6D57FC;
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+
+.top-nav {
+  background-color: #0e0c1e;
+  color: #ada3ff;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.top-nav-title {
+  color: #e8e2fc;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-family: 'Urbanist', sans-serif;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1.5rem;
+  background: linear-gradient(to top, #0e0c1e, rgba(14, 12, 30, 0.9), transparent);
+}
+
+/* ============================================================
+   OTP INPUT
+   ============================================================ */
+
+.otp-input {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: #1f1d35;
+  border: 2px solid #48455a;
+  border-radius: 0.75rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Urbanist', sans-serif;
+  color: #e8e2fc;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.otp-input::placeholder {
+  color: rgba(118, 115, 138, 0.4);
+}
+
+.otp-input:focus {
+  border-color: #ada3ff;
+  box-shadow: 0 0 0 2px rgba(173, 163, 255, 0.2);
+}
+
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Sembunyikan ikon mata bawaan di Chrome/Safari (jika muncul) */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}

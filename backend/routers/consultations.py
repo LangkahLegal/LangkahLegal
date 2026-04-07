@@ -1,15 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import Client
 from database import get_supabase_client
-from schemas.consultations import ConsultationCreate, ConsultationRespond, ConsultationRating
+from schemas.consultations import ConsultationCreate, ConsultationRespond, RatingCreate
 from dependencies import get_current_user
 from pydantic import BaseModel # Tambahkan ini
 
 router = APIRouter()
-
-class RatingCreate(BaseModel):
-    skor: int # 1-5
-    ulasan: str
     
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def buat_pengajuan_konsultasi(
