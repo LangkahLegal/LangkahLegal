@@ -25,4 +25,15 @@ export const consultantService = {
     const response = await api.get("/consultants/me/requests/active");
     return response.data;
   },
+
+  getDashboardStats: async () => {
+    try {
+      const response = await api.get("/consultants/me/dashboard-stats");
+      // Menghasilkan: { total_income, total_klien, total_klien_aktif }
+      return response.data;
+    } catch (error) {
+      console.error("Gagal load statistik dashboard:", error);
+      throw error;
+    }
+  },
 };

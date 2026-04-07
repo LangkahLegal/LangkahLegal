@@ -5,15 +5,28 @@ import { MaterialIcon } from "@/components/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV_ITEMS = [
-  { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
-  { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
-  { label: "Riwayat", icon: "history", path: "/dashboard/history" },
-  { label: "Berkas", icon: "folder", path: "/dashboard/documents" },
-];
-
-export default function Sidebar() {
+export default function Sidebar({ role = "client" }) {
   const pathname = usePathname();
+
+  // Mapping Navigation Items berdasarkan Role
+  const NAV_ITEMS =
+    role === "konsultan"
+      ? [
+          {
+            label: "Klien",
+            icon: "group",
+            path: "/dashboard/consultant/clients",
+          },
+          { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
+          { label: "Riwayat", icon: "history", path: "/dashboard/history" },
+          { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
+        ]
+      : [
+          { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
+          { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
+          { label: "Riwayat", icon: "history", path: "/dashboard/history" },
+          { label: "Berkas", icon: "folder", path: "/dashboard/documents" },
+        ];
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0e0c1e] border-r border-white/5 p-6 z-50 hidden lg:flex flex-col">
@@ -41,11 +54,17 @@ export default function Sidebar() {
             >
               <MaterialIcon
                 name={item.icon}
-                className={`text-2xl transition-colors ${isActive ? "text-[#ada3ff]" : "opacity-70 group-hover:opacity-100"}`}
+                className={`text-2xl transition-colors ${
+                  isActive
+                    ? "text-[#ada3ff]"
+                    : "opacity-70 group-hover:opacity-100"
+                }`}
                 style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
               />
               <span
-                className={`font-medium transition-colors ${isActive ? "text-white" : ""}`}
+                className={`font-medium transition-colors ${
+                  isActive ? "text-white" : ""
+                }`}
               >
                 {item.label}
               </span>
