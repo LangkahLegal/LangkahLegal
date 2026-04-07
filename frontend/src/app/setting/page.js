@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { authService } from "@/services/auth.service";
 import { userService } from "@/services/user.service";
 import ProfileCard from "@/components/setting/ProfileCard";
 import SettingsGroup from "@/components/setting/SettingsGroup";
@@ -39,30 +40,34 @@ const ACCOUNT_SETTINGS = [
   },
 ];
 
-const INFO_SETTINGS = [
-  {
-    id: "about",
-    icon: "info",
-    label: "Tentang LangkahLegal",
-    description: "Versi 2.4.0 (Stable)",
-    path: "/setting/about",
-  },
-  {
-    id: "logout",
-    icon: "logout",
-    label: "Keluar",
-    description: "Hapus sesi dari perangkat ini",
-    variant: "danger",
-    onClick: () => {
-      localStorage.removeItem("token");
-      router.push("/auth/login");
-    },
-  },
-];
-
 export default function SettingPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+
+  const INFO_SETTINGS = [
+    {
+      id: "about",
+      icon: "info",
+      label: "Tentang LangkahLegal",
+      description: "Versi 2.4.0 (Stable)",
+      path: "/setting/about",
+    },
+    {
+      id: "logout",
+      icon: "logout",
+      label: "Keluar",
+      description: "Hapus sesi dari perangkat ini",
+      variant: "danger",
+      onClick: async () => {
+        try {
+          await authService.logout();
+        } catch (err) {
+          console.error("Gagal logout:", err);
+          router.push("/auth/login");
+        }
+      },
+    },
+  ];
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -88,7 +93,7 @@ export default function SettingPage() {
         title="Pengaturan"
         icon="gavel"
         onSettingsClick={() => console.log("Open Settings")}
-        />
+      />
 
       <main className="px-6 mt-8 space-y-8">
         {user ? (
@@ -101,7 +106,6 @@ export default function SettingPage() {
 
         <SettingsGroup title="Akun & Preferensi" items={ACCOUNT_SETTINGS} />
         <SettingsGroup title="Informasi" items={INFO_SETTINGS} />
-
       </main>
 
       <BottomNav />

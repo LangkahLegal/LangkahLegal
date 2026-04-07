@@ -2,18 +2,22 @@
 
 import { MaterialIcon } from "@/components/ui";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function PageHeader({ title, onSettingsClick }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Logika Senior: Deteksi rute secara dinamis
-  // Jika path mengandung 'consultan', arahkan balik ke dashboard konsultan,
+  // Jika path mengandung 'consultant', arahkan balik ke dashboard konsultan,
   // jika tidak, default ke dashboard client.
-  const isConsultanPage = pathname.includes("/dashboard/consultan");
-  const backHref = isConsultanPage
-    ? "/dashboard/consultan"
+  const isConsultantPage = pathname.includes("/dashboard/consultant");
+  const backHref = isConsultantPage
+    ? "/dashboard/consultant"
     : "/dashboard/client";
+
+  const handleSettingsClick =
+    onSettingsClick || (() => router.push("/setting"));
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#0e0c1e]/80 backdrop-blur-md border-b border-white/5 px-6 py-5 lg:px-12 transition-all duration-300">
@@ -36,7 +40,8 @@ export default function PageHeader({ title, onSettingsClick }) {
         </div>
 
         <button
-          onClick={onSettingsClick}
+          type="button"
+          onClick={handleSettingsClick}
           className="btn-icon p-2 hover:bg-white/5 rounded-full transition-colors group"
         >
           <MaterialIcon
