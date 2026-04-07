@@ -34,7 +34,7 @@ def get_full_profile(current_user: dict = Depends(get_current_user), db: Client 
 
 @router.put("/me/profile/update")
 def update_profile(payload: ProfileUpdatePayload, current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
-    # 1. Update tabel users
+    # 1. Update tabel users (Kolom: nama)
     if payload.nama or payload.avatar:
         u_data = {}
         if payload.nama: u_data["nama"] = payload.nama
@@ -43,16 +43,18 @@ def update_profile(payload: ProfileUpdatePayload, current_user: dict = Depends(g
 
     # 2. Update tabel konsultan
     if current_user["role"] == "konsultan":
-        # Gunakan exclude_none agar data yang tidak dikirim tidak tertimpa
         k_data = payload.dict(exclude_none=True)
         
-        # Buang field yang milik tabel users
+        # FIX: Petakan 'nama' ke 'nama_lengkap' khusus untuk tabel konsultan
+        if "nama" in k_data:
+            k_data["nama_lengkap"] = k_data["nama"]
+        
+        # Buang field yang tidak ada di kolom tabel konsultan
         for key in ["nama", "avatar"]:
             k_data.pop(key, None)
             
         if k_data:
-            # Karena payload.portofolio sudah sama dengan nama kolom di DB, 
-            # kita tidak perlu mapping lagi.
+            # Sekarang k_data berisi 'nama_lengkap' dan field lainnya
             db.table("konsultan").update(k_data).eq("id_user", current_user["id_user"]).execute()
             
     return {"message": "Profil berhasil diperbarui"}

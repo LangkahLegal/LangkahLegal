@@ -110,7 +110,8 @@ export default function ConsultantDashboardPage() {
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
-      <Sidebar />
+      {/* REVISI: Tambahkan prop role="konsultan" di sini */}
+      <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <DashboardHeader
@@ -119,10 +120,8 @@ export default function ConsultantDashboardPage() {
         />
 
         <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-8 lg:px-12 space-y-10 pb-32 lg:pb-12">
-          {/* Income Section */}
           <IncomeCard amount={formatCurrency(stats.income)} />
 
-          {/* Stats Section */}
           <section className="grid grid-cols-2 gap-4 lg:gap-8">
             <StatCard
               label="Konsultasi Aktif"
@@ -136,7 +135,6 @@ export default function ConsultantDashboardPage() {
             />
           </section>
 
-          {/* Schedule Section */}
           <section className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-headline font-bold text-white">
@@ -170,7 +168,6 @@ export default function ConsultantDashboardPage() {
             )}
           </section>
 
-          {/* New Requests Section */}
           <section className="space-y-6">
             <h2 className="text-xl font-headline font-bold text-white">
               Permintaan Baru
@@ -194,14 +191,7 @@ export default function ConsultantDashboardPage() {
         </main>
 
         <div className="lg:hidden">
-          <BottomNav
-            role="konsultan"
-            customItems={
-              [
-                /* Custom Pro Items */
-              ]
-            }
-          />
+          <BottomNav role="konsultan" customItems={[]} />
         </div>
       </div>
     </div>

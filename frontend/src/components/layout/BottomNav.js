@@ -18,7 +18,7 @@ const CONSULTANT_NAV = [
   {
     label: "Jadwal",
     icon: "calendar_today",
-    path: "/dashboard/consultant/schedule",
+    path: "/schedule",
   },
 ];
 

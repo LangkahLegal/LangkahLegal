@@ -2,10 +2,7 @@ import api from "@/lib/axios";
 
 // REVISI: Nama variabel disamakan dengan yang di-import Dashboard (consultationService)
 export const consultationService = {
-  /**
-   * 1. DOMAIN: KATALOG (FastAPI via Axios)
-   * Digunakan untuk halaman 'Cari Konsultan'
-   */
+ 
   getConsultantCatalog: async (spesialisasi = null) => {
     try {
       const params =
@@ -18,10 +15,6 @@ export const consultationService = {
     }
   },
 
-  /**
-   * 2. DOMAIN: PENGAJUAN (FastAPI via Axios)
-   * Digunakan untuk 'ConsultationCard' di Dashboard
-   */
   getConsultations: async () => {
     const response = await api.get("/consultations");
     return response.data.data;
