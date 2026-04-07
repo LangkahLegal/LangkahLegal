@@ -1,7 +1,11 @@
-import { Button, MaterialIcon } from "@/components/ui";
+import { MaterialIcon } from "@/components/ui";
+import Link from "next/link";
 
 export default function ConsultantCard({ consultant }) {
   const { name, spec, rating, reviews, status, avatar } = consultant;
+  const detailHref = consultant?.id
+    ? `/konsultasi/${consultant.id}`
+    : "/konsultasi";
 
   return (
     <div className="glass-card bg-[#1f1d35]/60 border border-[#48455a]/30 p-5 rounded-3xl flex items-center justify-between group hover:border-[#ada3ff]/40 transition-all duration-300 shadow-lg">
@@ -44,12 +48,12 @@ export default function ConsultantCard({ consultant }) {
         </div>
       </div>
 
-      <Button
-        variant="outline"
-        className="!px-6 !py-2.5 text-sm !rounded-xl !bg-white/5 border-white/10 hover:!bg-[#6f59fe] hover:!text-white transition-all"
+      <Link
+        href={detailHref}
+        className="btn-outline !px-6 !py-2.5 text-sm !rounded-xl !bg-white/5 border-white/10 hover:!bg-[#6f59fe] hover:!text-white transition-all"
       >
         Lihat
-      </Button>
+      </Link>
     </div>
   );
 }

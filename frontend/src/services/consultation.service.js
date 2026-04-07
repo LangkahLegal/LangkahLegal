@@ -1,4 +1,3 @@
-import supabase from "@/lib/supabase";
 import api from "@/lib/axios";
 
 // REVISI: Nama variabel disamakan dengan yang di-import Dashboard (consultationService)
@@ -20,51 +19,40 @@ export const consultationService = {
   },
 
   /**
-   * 2. DOMAIN: PENGAJUAN (Supabase SDK)
+   * 2. DOMAIN: PENGAJUAN (FastAPI via Axios)
    * Digunakan untuk 'ConsultationCard' di Dashboard
    */
   getConsultations: async () => {
-    const { data, error } = await supabase
-      .from("pengajuan_konsultasi")
-      .select(
-        `
-        id_pengajuan,
-        status_pengajuan,
-        deskripsi_kasus,
-        created_at,
-        jadwal_ketersediaan:id_jadwal (
-          tanggal,
-          jam_mulai,
-          jam_selesai,
-          konsultan:id_konsultan (
-            nama_lengkap,
-            spesialisasi,
-            foto_profile
-          )
-        )
-      `,
-      )
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching consultations:", error.message);
-      throw error;
-    }
-    return data;
+    const response = await api.get("/consultations");
+    return response.data.data;
   },
 
-  /**
-   * Mengupdate status pengajuan
-   */
-  updateStatus: async (id, newStatus) => {
-    const { data, error } = await supabase
-      .from("pengajuan_konsultasi")
-      .update({ status_pengajuan: newStatus })
-      .eq("id_pengajuan", id)
-      .select()
-      .single();
+  createConsultation: async (payload) => {
+    const response = await api.post("/consultations", payload);
+    return response.data;
+  },
 
-    if (error) throw error;
-    return data;
+  getConsultationDetail: async (id) => {
+    const response = await api.get(`/consultations/${id}`);
+    return response.data.data;
+  },
+
+  respondToConsultation: async (id, statusPersetujuan) => {
+    const response = await api.put(`/consultations/${id}/respond`, {
+      status_persetujuan: statusPersetujuan,
+    });
+    return response.data;
+  },
+
+  rateConsultation: async (id, payload) => {
+    const response = await api.post(`/consultations/${id}/rating`, payload);
+    return response.data;
+  },
+
+  updateStatus: async (id, newStatus) => {
+    const response = await api.put(`/consultations/${id}/status`, null, {
+      params: { new_status: newStatus },
+    });
+    return response.data;
   },
 };

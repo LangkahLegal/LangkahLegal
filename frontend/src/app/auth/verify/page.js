@@ -77,7 +77,7 @@ export default function EmailVerificationPage() {
         await authService.updateRole(resolvedRole);
         router.push(
           resolvedRole === "konsultan"
-            ? "/dashboard/consultan"
+            ? "/dashboard/consultant"
             : "/dashboard/client",
         );
         router.refresh();
@@ -92,7 +92,7 @@ export default function EmailVerificationPage() {
       }
       router.push(
         resolvedRole === "konsultan"
-          ? "/dashboard/consultan"
+          ? "/dashboard/consultant"
           : "/dashboard/client",
       );
       router.refresh();
