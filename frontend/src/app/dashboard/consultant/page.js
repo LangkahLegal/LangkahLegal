@@ -12,6 +12,7 @@ import LiveSessionCard from "@/components/dashboard/LiveSessionCard";
 import UpcomingSessionCard from "@/components/dashboard/UpcomingSessionCard";
 import RequestCard from "@/components/dashboard/RequestCard";
 import { consultantService } from "@/services/consultant.service";
+import { userService } from "@/services/user.service";
 
 const formatCurrency = (value) => {
   const parsedValue = Number(value);
@@ -49,6 +50,7 @@ const formatRequestTime = (request) => {
 };
 
 export default function ConsultantDashboardPage() {
+  const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     income: 0,
     activeConsultations: 0,
@@ -62,12 +64,18 @@ export default function ConsultantDashboardPage() {
     const fetchDashboard = async () => {
       try {
         setIsLoading(true);
-        const [statsResponse, pendingResponse, activeResponse] =
+        const [userResponse, statsResponse, pendingResponse, activeResponse] =
           await Promise.all([
+            userService.getSettings(),
             consultantService.getDashboardStats(),
             consultantService.getPendingRequests(),
             consultantService.getActiveRequests(),
           ]);
+
+        setUser({
+          name: userResponse?.nama,
+          avatar: userResponse?.avatar,
+        });
 
         setStats({
           income: statsResponse?.total_income || 0,
@@ -105,7 +113,10 @@ export default function ConsultantDashboardPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
-        <DashboardHeader userName="Adv. Ahmad" />
+        <DashboardHeader
+          userName={user?.name || "Konsultan"}
+          avatarUrl={user?.avatar || "/api/placeholder/40/40"}
+        />
 
         <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-8 lg:px-12 space-y-10 pb-32 lg:pb-12">
           {/* Income Section */}
@@ -184,6 +195,7 @@ export default function ConsultantDashboardPage() {
 
         <div className="lg:hidden">
           <BottomNav
+            role="konsultan"
             customItems={
               [
                 /* Custom Pro Items */

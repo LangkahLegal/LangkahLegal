@@ -1,6 +1,7 @@
 "use client";
 
 import { MaterialIcon } from "@/components/ui";
+import { useRouter } from "next/navigation";
 
 /**
  * DashboardHeader Component
@@ -10,7 +11,11 @@ import { MaterialIcon } from "@/components/ui";
 export default function DashboardHeader({
   userName = "Pengguna",
   avatarUrl = "/api/placeholder/40/40",
+  onSettingsClick,
 }) {
+  const router = useRouter();
+  const handleSettingsClick =
+    onSettingsClick || (() => router.push("/setting"));
   return (
     <section className="sticky top-0 z-50 flex justify-between items-center w-full transition-all duration-300 px-6 py-4 lg:px-10 lg:py-6 border-b border-white/5 bg-[#0e0c1e]/40 backdrop-blur-md shadow-[0_15px_40px_-20px_rgba(255,255,255,0.1)]">
       {/* Group Kiri: Avatar & Identitas */}
@@ -43,6 +48,8 @@ export default function DashboardHeader({
       <div className="flex items-center gap-3">
         <button
           aria-label="Settings"
+          type="button"
+          onClick={handleSettingsClick}
           className=" hover:bg-white/10 p-2 lg:p-3 rounded-full transition-all group active:scale-95 "
         >
           <MaterialIcon

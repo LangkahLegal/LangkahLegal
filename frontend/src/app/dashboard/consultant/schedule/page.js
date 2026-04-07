@@ -25,13 +25,6 @@ export default function SchedulePage() {
   // --- 1. FETCH DATA DARI BACKEND ---
   const fetchSchedules = async () => {
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        alert("Harus login dulu");
-        return;
-      }
-
       setIsLoading(true);
       const data = await scheduleService.getSchedules();
       
@@ -48,7 +41,15 @@ export default function SchedulePage() {
       setAllSlots(groupedSlots);
     } catch (error) {
       console.error("Gagal mengambil jadwal:", error);
-      alert("Gagal memuat jadwal. Pastikan Anda sudah login.");
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail;
+      if (status === 401 || status === 403) {
+        alert("Gagal memuat jadwal. Silakan login ulang.");
+      } else if (detail) {
+        alert(`Gagal memuat jadwal: ${detail}`);
+      } else {
+        alert("Gagal memuat jadwal.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -218,7 +219,7 @@ export default function SchedulePage() {
         )}
       </main>
 
-      <BottomNav role={'konsultan'} />
+      <BottomNav role="konsultan" />
     </div>
   );
 }
