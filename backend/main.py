@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, cases, consultations, consultants
+from routers import auth, cases, consultations, consultants, users
 from dependencies import get_current_user
 
 # Mengambil fungsi dari file yang sudah ada
@@ -45,3 +45,4 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(consultants.router, prefix="/api/v1/consultants", tags=["Direktori Konsultan"])
 app.include_router(cases.router, prefix="/api/v1/cases", tags=["Bursa Kasus"])
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Konsultasi"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users / Profile"])
