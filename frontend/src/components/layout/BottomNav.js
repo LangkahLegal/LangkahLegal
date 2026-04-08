@@ -6,15 +6,15 @@ import Link from "next/link"; // Gunakan Link agar navigasi cepat
 
 const CLIENT_NAV = [
   { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
-  { label: "Tanya AI", icon: "psychology", path: "/dashboard/client/ai" },
-  { label: "Riwayat", icon: "history", path: "/dashboard/client/history" },
-  { label: "Berkas", icon: "folder", path: "/dashboard/client/documents" },
+  { label: "Tanya AI", icon: "psychology", path: "/ai" },
+  { label: "Riwayat", icon: "history", path: "/history/client" },
+  { label: "Berkas", icon: "folder", path: "/documents" },
 ];
 
 const CONSULTANT_NAV = [
   { label: "Klien", icon: "group", path: "/dashboard/consultant/clients" },
-  { label: "Tanya AI", icon: "psychology", path: "/dashboard/consultant/ai" },
-  { label: "Riwayat", icon: "history", path: "/dashboard/consultant/history" },
+  { label: "Tanya AI", icon: "psychology", path: "/ai" },
+  { label: "Riwayat", icon: "history", path: "/history/consultant" },
   {
     label: "Jadwal",
     icon: "calendar_today",
