@@ -17,15 +17,15 @@ export default function Sidebar({ role = "client" }) {
             icon: "group",
             path: "/dashboard/consultant/clients",
           },
-          { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
-          { label: "Riwayat", icon: "history", path: "/dashboard/history" },
+          { label: "Tanya AI", icon: "psychology", path: "/ai" },
+          { label: "Riwayat", icon: "history", path: "/history/consultant" },
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
       : [
           { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
-          { label: "Tanya AI", icon: "psychology", path: "/dashboard/ai" },
-          { label: "Riwayat", icon: "history", path: "/dashboard/history" },
-          { label: "Berkas", icon: "folder", path: "/dashboard/documents" },
+          { label: "Tanya AI", icon: "psychology", path: "/ai" },
+          { label: "Riwayat", icon: "history", path: "/history/client" },
+          { label: "Berkas", icon: "folder", path: "/documents" },
         ];
 
   return (

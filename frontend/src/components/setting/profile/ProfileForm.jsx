@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import PortoUpload from "@/components/setting/profile/PortoUpload";
+import FileUpload from "@/components/layout/FileUpload";
 import LinkedInField from "@/components/setting/profile/LinkedInField";
 import { InputField } from "@/components/ui";
 
@@ -145,7 +145,6 @@ export default function ProfileForm({ data, onChange, role }) {
             />
           </div>
 
-          {/* TEXTAREA UNTUK DESKRIPSI LENGKAP */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-[#aca8c1] ml-2">
               Deskripsi Lengkap
@@ -159,9 +158,14 @@ export default function ProfileForm({ data, onChange, role }) {
             />
           </div>
 
-          <PortoUpload
+          {/* Menggunakan FileUpload Global */}
+          <FileUpload
+            label="Unggah Portofolio"
             file={data.porto}
             onChange={(val) => onChange("porto", val)}
+            accept=".pdf,.doc,.docx"
+            maxSizeMB={5}
+            helperText="PDF, DOC (Maks. 5MB)"
           />
 
           <LinkedInField

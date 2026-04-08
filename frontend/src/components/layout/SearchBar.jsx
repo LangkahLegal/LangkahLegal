@@ -12,10 +12,7 @@ export default function SearchBar({
   placeholder = "Cari keahlian atau nama...",
 }) {
   return (
-    /* SENIOR FIX: 
-       Menghapus 'lg:max-w-3xl' agar input mengikuti lebar parent (1600px).
-       Kita gunakan 'w-full' agar fluid.
-    */
+  
     <section className="w-full transition-all duration-300">
       <div className="relative group">
         {/* Search Icon Overlay */}
@@ -46,12 +43,6 @@ export default function SearchBar({
           "
         />
 
-        {/* Shortcut Hint (Kiri samping kanan agar tidak tertutup teks panjang) */}
-        <div className="hidden lg:flex absolute inset-y-0 right-5 items-center pointer-events-none">
-          <kbd className="bg-[#0e0c1e] border border-[#48455a]/50 px-2.5 py-1 rounded text-[10px] text-[#aca8c1] font-sans font-bold shadow-sm">
-            /
-          </kbd>
-        </div>
       </div>
     </section>
   );
