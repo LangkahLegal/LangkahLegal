@@ -4,13 +4,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
 from database import get_supabase_client
+from config import get_settings
 
 # Skema otorisasi standar (Bearer Token)
 security = HTTPBearer()
 
-# Secret key untuk JWT (HARUS SAMA dengan yang ada di routers/auth.py)
-# gaperlu llagi karena pindah ke supabase(ga berani hapus)
-SECRET_KEY = "supersecretkey_langkahlegal"
+SECRET_KEY = get_settings().JWT_SECRET_KEY
 ALGORITHM = "HS256"
 
 

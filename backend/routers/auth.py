@@ -17,8 +17,7 @@ import datetime
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Secret key untuk JWT (Nanti pindahkan ke file .env / config.py ya)
-SECRET_KEY = "supersecretkey_langkahlegal"
+SECRET_KEY = get_settings().JWT_SECRET_KEY
 ALGORITHM = "HS256"
 DEFAULT_PROFILE_PHOTO_URL = "https://i.ibb.co.com/2184x6g3/default-picture.jpg"
 
