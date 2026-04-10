@@ -1,202 +1,390 @@
-from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File, Form
+import base64
+import hashlib
+import secrets
+from typing import Optional
+from urllib.parse import urlencode
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from supabase import Client
 
-from schemas.auth import RegisterRequest, RegisterResponse, LoginRequest, TokenResponse
-from schemas.auth import ConsultantRegisterRequest, ProfilePhotoResponse, UserProfileResponse, RoleEnum
-from database import get_supabase_client
 from config import get_settings
-from dependencies import get_current_user
-from services import upload_to_imgbb, update_user_profile_photo
-
-# TODO: Kamu perlu menginstal 'passlib' dan 'pyjwt' untuk hashing dan token
-# pip install passlib[bcrypt] pyjwt
-from passlib.context import CryptContext
+from database import get_supabase_client
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
-DEFAULT_PROFILE_PHOTO_URL = "https://i.ibb.co.com/2184x6g3/default-picture.jpg"
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(
-    nama: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    role: RoleEnum = Form(...),
-    file: UploadFile | None = File(None),
-    db: Client = Depends(get_supabase_client)
-):
-    """
-    Refactor: Register ke Supabase Auth + Simpan Profile Lokal.
-    """
-    # 1. Register ke Supabase Auth
-    auth_res = db.auth.sign_up({"email": email, "password": password})
-    if not auth_res.user:
-        raise HTTPException(status_code=400, detail="Gagal mendaftar di Supabase")
+class SignUpPayload(BaseModel):
+    email: str
+    password: str
+    name: str
+    role: str
+    emailRedirectTo: Optional[str] = None
 
-    # 2. Upload foto (tetap pakai logic ImgBB kamu)
-    foto_profil_url = DEFAULT_PROFILE_PHOTO_URL
-    if file:
-        foto_profil_url = await upload_to_imgbb(file, get_settings().imgbb_api_key)
 
-    # 3. Simpan ke tabel users lokal menggunakan UUID Supabase
-    user_data = {
-        "auth_user_id": auth_res.user.id, # UUID dari Supabase
-        "nama": nama,
-        "email": email,
-        "role": role.value,
-        "foto_profil": foto_profil_url,
+class OtpLoginPayload(BaseModel):
+    email: str
+    emailRedirectTo: Optional[str] = None
+
+
+class ResendOtpPayload(BaseModel):
+    email: str
+    emailRedirectTo: Optional[str] = None
+
+
+class VerifyOtpPayload(BaseModel):
+    email: str
+    token: str
+    type: Optional[str] = "email"
+
+
+class PasswordLoginPayload(BaseModel):
+    email: str
+    password: str
+
+
+class RefreshTokenPayload(BaseModel):
+    refresh_token: str
+
+
+class OAuthPayload(BaseModel):
+    redirectTo: str
+    provider: Optional[str] = "google"
+
+
+class RolePayload(BaseModel):
+    role: str
+
+
+def _get_service_headers() -> dict:
+    settings = get_settings()
+    return {
+        "apikey": settings.supabase_key,
+        "Authorization": f"Bearer {settings.supabase_key}",
+        "Content-Type": "application/json",
     }
-    db.table("users").insert(user_data).execute()
-    return {"message": "Registrasi berhasil"}
 
-@router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-def login_user(request: LoginRequest, db: Client = Depends(get_supabase_client)):
-    """
-    Refactor: Login via Supabase Auth.
-    """
+
+def _get_user_headers(access_token: str) -> dict:
+    settings = get_settings()
+    return {
+        "apikey": settings.supabase_key,
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+
+def _raise_auth_error(response: httpx.Response) -> None:
+    detail = "Gagal memproses permintaan auth."
     try:
-        res = db.auth.sign_in_with_password({
-            "email": request.email,
-            "password": request.password
-        })
-        return {
-            "access_token": res.session.access_token,
-            "token_type": "bearer"
-        }
-    except Exception:
-        raise HTTPException(status_code=401, detail="Email atau password salah")
-    
-@router.post("/consultant/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register_consultant(
-    nama: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    kota_praktik: str = Form(...),
-    spesialisasi: str = Form(...),
-    pengalaman_tahun: int = Form(...),
-    tarif_per_sesi: float = Form(...),
-    file: UploadFile | None = File(None),
-    db: Client = Depends(get_supabase_client)
-):
-    """
-    Endpoint khusus untuk registrasi akun Konsultan Hukum.
-    """
-    # 1. Cek apakah email sudah terdaftar
-    existing_user = db.table("users").select("*").eq("email", email).execute()
-    if existing_user.data:
-        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+        payload = response.json()
+        detail = (
+            payload.get("msg")
+            or payload.get("message")
+            or payload.get("error_description")
+            or payload.get("error")
+            or detail
+        )
+    except ValueError:
+        pass
 
-    # 2. Hash password
-    hashed_password = pwd_context.hash(password)
+    raise HTTPException(status_code=response.status_code, detail=detail)
 
-    foto_profil_url = DEFAULT_PROFILE_PHOTO_URL
-    if file is not None:
-        foto_profil_url = await upload_to_imgbb(file, get_settings().imgbb_api_key)
 
-    # 3. Insert ke tabel users (Otomatis role di-set 'konsultan')
-    user_data = {
-        "nama": nama,
-        "email": email,
-        "password": hashed_password,
-        "role": "konsultan",
-        "foto_profil": foto_profil_url,
-    }
-    new_user = db.table("users").insert(user_data).execute()
-    
-    if not new_user.data:
-        raise HTTPException(status_code=500, detail="Gagal mendaftarkan user")
-        
-    inserted_id = new_user.data[0]["id_user"]
+def _generate_pkce_pair() -> tuple[str, str]:
+    code_verifier = (
+        base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode("ascii")
+    )
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return code_verifier, code_challenge
 
-    # 4. Insert ke tabel konsultan dengan data spesifik dari request
-    konsultan_data = {
-        "id_user": inserted_id,
-        "nama_lengkap": nama, # Bisa disesuaikan dengan gelar nanti
-        "kota_praktik": kota_praktik,
-        "spesialisasi": spesialisasi,
-        "pengalaman_tahun": pengalaman_tahun,
-        "tarif_per_sesi": tarif_per_sesi,
-        "status_verifikasi": "pending" # Default dari database
-    }
-    
-    db.table("konsultan").insert(konsultan_data).execute()
 
-    return {
-        "message": "Registrasi konsultan berhasil. Menunggu verifikasi admin.",
+async def _post_auth(
+    path: str, payload: Optional[dict] = None, params: Optional[dict] = None
+) -> dict:
+    settings = get_settings()
+    url = f"{settings.supabase_url}{path}"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            url, json=payload, params=params, headers=_get_service_headers()
+        )
+
+    if response.status_code >= 400:
+        _raise_auth_error(response)
+
+    if response.content:
+        return response.json()
+    return {}
+
+
+@router.post("/signup")
+async def sign_up(payload: SignUpPayload):
+    options = {
         "data": {
-            "id_user": inserted_id,
-            "role": "konsultan"
+            "full_name": payload.name,
+            "role": payload.role,
+        }
+    }
+    if payload.emailRedirectTo:
+        options["email_redirect_to"] = payload.emailRedirectTo
+
+    data = await _post_auth(
+        "/auth/v1/signup",
+        {
+            "email": payload.email,
+            "password": payload.password,
+            "options": options,
+        },
+    )
+
+    return {
+        "data": {
+            "session": data.get("session"),
+            "user": data.get("user"),
         }
     }
 
-@router.post("/upload-profile-photo", response_model=ProfilePhotoResponse, status_code=status.HTTP_200_OK)
-async def upload_profile_photo(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client)
-):
-    """
-    Endpoint untuk upload foto profil. 
-    - File diunggah ke ImgBB
-    - URL disimpan ke database users.foto_profil
-    - Hanya user yang login bisa upload foto mereka sendiri
-    
-    Args:
-        file: File gambar (format: jpg, png, gif, webp, max size: 5MB)
-        current_user: User yang sudah di-authorize via JWT token
-        db: Database client (Supabase)
-        
-    Returns:
-        ProfilePhotoResponse dengan URL foto
-    """
-    user_id = current_user["id_user"]
-    
-    result = await update_user_profile_photo(user_id, file, db)
-    
-    user_data = db.table("users").select("*").eq("id_user", user_id).execute()
-    if not user_data.data:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    
-    user = user_data.data[0]
-    
+
+@router.post("/login-otp")
+async def send_otp_login(payload: OtpLoginPayload):
+    options = {
+        "should_create_user": False,
+    }
+    if payload.emailRedirectTo:
+        options["email_redirect_to"] = payload.emailRedirectTo
+
+    await _post_auth(
+        "/auth/v1/otp",
+        {
+            "email": payload.email,
+            "options": options,
+        },
+    )
+
+    return {"data": {"sent": True}}
+
+
+@router.post("/resend-signup-otp")
+async def resend_signup_otp(payload: ResendOtpPayload):
+    options = {}
+    if payload.emailRedirectTo:
+        options["email_redirect_to"] = payload.emailRedirectTo
+
+    await _post_auth(
+        "/auth/v1/resend",
+        {
+            "type": "signup",
+            "email": payload.email,
+            "options": options,
+        },
+    )
+
+    return {"data": {"sent": True}}
+
+
+@router.post("/verify-otp")
+async def verify_otp(payload: VerifyOtpPayload):
+    data = await _post_auth(
+        "/auth/v1/verify",
+        {
+            "email": payload.email,
+            "token": payload.token,
+            "type": payload.type or "email",
+        },
+    )
+
+    session_payload = data.get("session") or data
+
     return {
-        "message": result["message"],
-        "foto_profil_url": result["foto_profil_url"],
-        "id_user": user["id_user"],
-        "email": user["email"]
+        "data": {
+            "session": session_payload,
+            "user": session_payload.get("user") if isinstance(session_payload, dict) else None,
+        }
     }
 
 
-@router.get("/profile", response_model=UserProfileResponse, status_code=status.HTTP_200_OK)
-def get_user_profile(
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client)
-):
-    """
-    Endpoint untuk GET profile user (dengan foto profil).
-    - Hanya user yang login bisa akses profile mereka
-    - Return data user + foto_profil URL dari database
-    
-    Returns:
-        UserProfileResponse dengan semua data user + foto
-    """
-    user_id = current_user["id_user"]
-    
-    # Query user dari database
-    user_data = db.table("users").select("*").eq("id_user", user_id).execute()
-    
-    if not user_data.data:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    
-    user = user_data.data[0]
-    
+@router.post("/login-password")
+async def login_with_password(payload: PasswordLoginPayload):
+    data = await _post_auth(
+        "/auth/v1/token",
+        {
+            "email": payload.email,
+            "password": payload.password,
+        },
+        params={"grant_type": "password"},
+    )
+
     return {
-        "id_user": user["id_user"],
-        "nama": user["nama"],
-        "email": user["email"],
-        "role": user["role"],
-        "foto_profil": user.get("foto_profil"), 
-        "created_at": user["created_at"],
-        "updated_at": user["updated_at"]
+        "data": {
+            "session": data,
+            "user": data.get("user"),
+        }
     }
+
+
+@router.post("/oauth/google")
+async def sign_in_with_google(payload: OAuthPayload):
+    code_verifier, code_challenge = _generate_pkce_pair()
+    params = {
+        "provider": payload.provider or "google",
+        "redirect_to": payload.redirectTo,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "s256",
+    }
+    settings = get_settings()
+    url = f"{settings.supabase_url}/auth/v1/authorize?{urlencode(params)}"
+
+    return {
+        "data": {
+            "url": url,
+            "code_verifier": code_verifier,
+        }
+    }
+
+
+@router.get("/session")
+async def exchange_oauth_session(code: str, code_verifier: str):
+    if not code or not code_verifier:
+        raise HTTPException(status_code=400, detail="Kode OAuth tidak lengkap.")
+
+    data = await _post_auth(
+        "/auth/v1/token",
+        {
+            "auth_code": code,
+            "code_verifier": code_verifier,
+        },
+        params={"grant_type": "pkce"},
+    )
+
+    return {
+        "data": {
+            "session": data,
+            "user": data.get("user"),
+        }
+    }
+
+
+@router.post("/refresh")
+async def refresh_session(payload: RefreshTokenPayload):
+    if not payload.refresh_token:
+        raise HTTPException(status_code=400, detail="Refresh token tidak tersedia.")
+
+    data = await _post_auth(
+        "/auth/v1/token",
+        {
+            "refresh_token": payload.refresh_token,
+        },
+        params={"grant_type": "refresh_token"},
+    )
+
+    return {
+        "data": {
+            "session": data,
+            "user": data.get("user"),
+        }
+    }
+
+
+def _get_auth_user(token: str, db: Client) -> dict:
+    try:
+        user_res = db.auth.get_user(token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Token tidak valid: {str(exc)}")
+
+    if not user_res.user:
+        raise HTTPException(
+            status_code=401, detail="Token tidak valid atau kedaluwarsa"
+        )
+
+    return user_res.user
+
+
+@router.get("/profile")
+def get_profile(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Client = Depends(get_supabase_client),
+):
+    token = credentials.credentials
+    user = _get_auth_user(token, db)
+
+    result = (
+        db.table("users")
+        .select("id_user, nama, email, role, auth_user_id")
+        .eq("auth_user_id", user.id)
+        .execute()
+    )
+
+    if not result.data:
+        if user.email:
+            email_result = (
+                db.table("users")
+                .select("id_user, nama, email, role, auth_user_id")
+                .eq("email", user.email)
+                .execute()
+            )
+            if email_result.data:
+                db.table("users").update({"auth_user_id": user.id}).eq(
+                    "email", user.email
+                ).execute()
+                profile = email_result.data[0]
+                profile["auth_user_id"] = user.id
+                return {"data": profile}
+
+        return {"data": None}
+
+    profile = result.data[0]
+    return {"data": profile}
+
+
+@router.post("/role")
+def update_role(
+    payload: RolePayload,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Client = Depends(get_supabase_client),
+):
+    token = credentials.credentials
+    user = _get_auth_user(token, db)
+
+    metadata = user.user_metadata or {}
+    display_name = (
+        metadata.get("full_name")
+        or metadata.get("name")
+        or (user.email.split("@")[0] if user.email else None)
+        or "User"
+    )
+
+    payload_data = {
+        "auth_user_id": user.id,
+        "email": user.email,
+        "nama": display_name,
+        "role": payload.role,
+    }
+
+    db.table("users").upsert(payload_data, on_conflict="email").execute()
+
+    result = db.table("users").select("role").eq("auth_user_id", user.id).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Gagal memperbarui role.")
+
+    return {"data": result.data[0]}
+
+
+@router.post("/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    settings = get_settings()
+    url = f"{settings.supabase_url}/auth/v1/logout"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(url, headers=_get_user_headers(token))
+
+    if response.status_code >= 400:
+        _raise_auth_error(response)
+
+    return {"data": {"logout": True}}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, MaterialIcon } from "../ui";
 
@@ -13,6 +14,36 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const router = useRouter();
+  const [session, setSession] = useState({ isLoggedIn: false, role: null });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const matchToken = document.cookie.match(/(^|; )ll_token=([^;]*)/);
+    const matchRole = document.cookie.match(/(^|; )ll_role=([^;]*)/);
+    const token = localStorage.getItem("token") || matchToken?.[2];
+    const role = matchRole ? decodeURIComponent(matchRole[2]) : null;
+
+    setSession({ isLoggedIn: Boolean(token), role });
+  }, []);
+
+  const handleCtaClick = () => {
+    if (!session.isLoggedIn) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (session.role === "konsultan" || session.role === "consultant") {
+      router.push("/dashboard/consultant");
+      return;
+    }
+
+    if (session.role === "client") {
+      router.push("/dashboard/client");
+      return;
+    }
+
+    router.push("/auth/role");
+  };
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#0e0c1e]/70 backdrop-blur-xl border-b border-[#48455a]/30">
@@ -48,10 +79,10 @@ export default function Navbar() {
         {/* Action Button: Login / Get Started */}
         <div className="flex items-center">
           <Button
-            onClick={() => router.push("/auth/login")}
+            onClick={handleCtaClick}
             className="!w-auto !py-2.5 !px-6 text-sm font-bold"
           >
-            Get Started
+            {session.isLoggedIn ? "Dashboard" : "Get Started"}
           </Button>
         </div>
       </div>
