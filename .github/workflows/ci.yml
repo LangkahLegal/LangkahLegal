@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js (cached)
-        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/langkahlegal-frontend/package-lock.json','frontend/langkahlegal-frontend/npm-shrinkwrap.json','frontend/langkahlegal-frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') != '' }}
+        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/package-lock.json','frontend/npm-shrinkwrap.json','frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -23,15 +23,15 @@ jobs:
             package-lock.json
             npm-shrinkwrap.json
             yarn.lock
-            frontend/langkahlegal-frontend/package-lock.json
-            frontend/langkahlegal-frontend/npm-shrinkwrap.json
-            frontend/langkahlegal-frontend/yarn.lock
+            frontend/package-lock.json
+            frontend/npm-shrinkwrap.json
+            frontend/yarn.lock
             backend/package-lock.json
             backend/npm-shrinkwrap.json
             backend/yarn.lock
 
       - name: Set up Node.js
-        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/langkahlegal-frontend/package-lock.json','frontend/langkahlegal-frontend/npm-shrinkwrap.json','frontend/langkahlegal-frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') == '' && hashFiles('**/package.json') != '' }}
+        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/package-lock.json','frontend/npm-shrinkwrap.json','frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') == '' && hashFiles('**/package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -53,8 +53,8 @@ jobs:
           npm run build --if-present
 
       - name: Install deps (frontend)
-        if: ${{ hashFiles('frontend/langkahlegal-frontend/package.json') != '' }}
-        working-directory: frontend/langkahlegal-frontend
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend/
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -63,8 +63,8 @@ jobs:
           fi
 
       - name: Lint/Test/Build (frontend)
-        if: ${{ hashFiles('frontend/langkahlegal-frontend/package.json') != '' }}
-        working-directory: frontend/langkahlegal-frontend
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend/
         run: |
           npm run lint --if-present
           npm run test --if-present
