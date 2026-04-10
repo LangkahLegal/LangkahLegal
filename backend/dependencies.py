@@ -96,18 +96,40 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         user_profile = (
             db.table("users")
             .select("id_user, role, nama")
-            .eq("auth_user_id", auth_user_id) # Pastikan kolom ini ada di DB!
-            .single()
+            .eq("auth_user_id", auth_user_id)
             .execute()
         )
 
         if not user_profile.data:
-            raise HTTPException(status_code=401, detail="Profil user belum sinkron dengan database lokal.")
+            email = user_res.user.email
+            if email:
+                email_profile = (
+                    db.table("users")
+                    .select("id_user, role, nama")
+                    .eq("email", email)
+                    .execute()
+                )
+                if email_profile.data:
+                    db.table("users").update({"auth_user_id": auth_user_id}).eq(
+                        "email", email
+                    ).execute()
+                    profile = email_profile.data[0]
+                    return {
+                        "id_user": profile["id_user"],
+                        "role": profile["role"],
+                        "nama": profile["nama"],
+                    }
 
+            raise HTTPException(
+                status_code=401,
+                detail="Profil user belum sinkron dengan database lokal.",
+            )
+
+        profile = user_profile.data[0]
         return {
-            "id_user": user_profile.data["id_user"],
-            "role": user_profile.data["role"],
-            "nama": user_profile.data["nama"]
+            "id_user": profile["id_user"],
+            "role": profile["role"],
+            "nama": profile["nama"],
         }
 
     except Exception as e:

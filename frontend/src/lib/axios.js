@@ -1,16 +1,32 @@
 import axios from "axios";
-import supabase from "@/lib/supabase";
 
 /**
  * Konfigurasi Dasar Axios
  * Mengambil base URL dari environment variable (.env.local)
  */
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+const getCookieBase = (maxAgeSeconds) => {
+  const parts = [`max-age=${maxAgeSeconds}`, "path=/", "samesite=lax"];
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    parts.push("secure");
+  }
+  return parts.join("; ");
+};
+
+const setCookieValue = (name, value, maxAgeSeconds = 60 * 60 * 24 * 7) => {
+  if (typeof document === "undefined") return;
+  const encodedValue = encodeURIComponent(value || "");
+  document.cookie = `${name}=${encodedValue}; ${getCookieBase(maxAgeSeconds)}`;
+};
 
 const getCookieValue = (name) => {
   if (typeof document === "undefined") return null;
@@ -18,47 +34,67 @@ const getCookieValue = (name) => {
   return match ? decodeURIComponent(match[2]) : null;
 };
 
-const setCookieValue = (name, value, maxAgeSeconds = 60 * 60 * 24 * 7) => {
-  if (typeof document === "undefined") return;
-  const parts = [
-    `${name}=${encodeURIComponent(value || "")}`,
-    `max-age=${maxAgeSeconds}`,
-    "path=/",
-    "samesite=lax",
-  ];
-  if (window.location.protocol === "https:") {
-    parts.push("secure");
-  }
-  document.cookie = parts.join("; ");
-};
-
 const clearCookieValue = (name) => {
   if (typeof document === "undefined") return;
   document.cookie = `${name}=; max-age=0; path=/; samesite=lax`;
 };
 
-const syncSessionToken = async () => {
+const getAuthToken = () => {
   if (typeof window === "undefined") return null;
-  const { data } = await supabase.auth.getSession();
-  const sessionToken = data?.session?.access_token;
-
-  if (!sessionToken) return null;
-
-  if (localStorage.getItem("token") !== sessionToken) {
-    localStorage.setItem("token", sessionToken);
-  }
-
-  if (getCookieValue("ll_token") !== sessionToken) {
-    setCookieValue("ll_token", sessionToken);
-  }
-
-  return sessionToken;
+  return localStorage.getItem("token") || getCookieValue("ll_token");
 };
 
-const getAuthToken = async () => {
+const getRefreshToken = () => {
   if (typeof window === "undefined") return null;
-  const sessionToken = await syncSessionToken();
-  return sessionToken || localStorage.getItem("token") || getCookieValue("ll_token");
+  return localStorage.getItem("refresh_token") || getCookieValue("ll_refresh");
+};
+
+let refreshPromise = null;
+
+const refreshSession = async () => {
+  if (typeof window === "undefined") return null;
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  refreshPromise = (async () => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        { refresh_token: refreshToken },
+        { headers: { "Content-Type": "application/json" } },
+      );
+
+      const session = response?.data?.data?.session;
+      if (session?.access_token) {
+        localStorage.setItem("token", session.access_token);
+        setCookieValue(
+          "ll_token",
+          session.access_token,
+          session.expires_in || 60 * 60,
+        );
+      }
+      if (session?.refresh_token) {
+        localStorage.setItem("refresh_token", session.refresh_token);
+        setCookieValue("ll_refresh", session.refresh_token, 60 * 60 * 24 * 30);
+      }
+
+      return session || null;
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      clearCookieValue("ll_token");
+      clearCookieValue("ll_refresh");
+      return null;
+    }
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
 };
 
 /**
@@ -70,7 +106,7 @@ const getAuthToken = async () => {
 api.interceptors.request.use(
   async (config) => {
     if (typeof window !== "undefined") {
-      const token = await getAuthToken();
+      const token = getAuthToken();
       if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
@@ -87,14 +123,30 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     // Jika server merespon dengan 401 (Unauthorized),
     // biasanya kita ingin paksa user logout atau refresh token.
+    if (
+      error.response?.status === 401 &&
+      !error.config?._retry &&
+      !error.config?.url?.includes("/auth/refresh")
+    ) {
+      error.config._retry = true;
+      const session = await refreshSession();
+      if (session?.access_token) {
+        error.config.headers = error.config.headers || {};
+        error.config.headers.Authorization = `Bearer ${session.access_token}`;
+        return api(error.config);
+      }
+    }
+
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         console.warn("Sesi berakhir atau tidak valid. Mengarahkan ke Login...");
         localStorage.removeItem("token");
+        localStorage.removeItem("refresh_token");
         clearCookieValue("ll_token");
+        clearCookieValue("ll_refresh");
         // window.location.href = "/auth/login"; // Opsional: Auto-redirect
       }
     }
