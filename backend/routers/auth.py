@@ -32,84 +32,45 @@ async def register_user(
     db: Client = Depends(get_supabase_client)
 ):
     """
-    Endpoint untuk registrasi akun baru (Client / Konsultan).
+    Refactor: Register ke Supabase Auth + Simpan Profile Lokal.
     """
-    # 1. Cek apakah email sudah terdaftar
-    existing_user = db.table("users").select("*").eq("email", email).execute()
-    if existing_user.data:
-        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    # 1. Register ke Supabase Auth
+    auth_res = db.auth.sign_up({"email": email, "password": password})
+    if not auth_res.user:
+        raise HTTPException(status_code=400, detail="Gagal mendaftar di Supabase")
 
-    # 2. Hash password sebelum disimpan
-    hashed_password = pwd_context.hash(password)
-
+    # 2. Upload foto (tetap pakai logic ImgBB kamu)
     foto_profil_url = DEFAULT_PROFILE_PHOTO_URL
-    if file is not None:
+    if file:
         foto_profil_url = await upload_to_imgbb(file, get_settings().imgbb_api_key)
 
-    # 3. Insert ke tabel users
+    # 3. Simpan ke tabel users lokal menggunakan UUID Supabase
     user_data = {
+        "auth_user_id": auth_res.user.id, # UUID dari Supabase
         "nama": nama,
         "email": email,
-        "password": hashed_password,
         "role": role.value,
         "foto_profil": foto_profil_url,
     }
-    new_user = db.table("users").insert(user_data).execute()
-    
-    if not new_user.data:
-        raise HTTPException(status_code=500, detail="Gagal mendaftarkan user")
-        
-    inserted_id = new_user.data[0]["id_user"]
-
-    # 4. Jika role 'konsultan', buat baris default di tabel konsultan
-    # Mengisi default value karena ada constraint NOT NULL di skema database
-    if role.value == "konsultan":
-        default_konsultan_data = {
-            "id_user": inserted_id,
-            "nama_lengkap": nama,
-            "kota_praktik": "Belum diatur",
-            "pengalaman_tahun": 0,
-            "tarif_per_sesi": 0.00,
-            "spesialisasi": "Umum"
-        }
-        db.table("konsultan").insert(default_konsultan_data).execute()
-
-    return {
-        "message": "Registrasi berhasil",
-        "data": {
-            "id_user": inserted_id,
-            "role": role.value
-        }
-    }
+    db.table("users").insert(user_data).execute()
+    return {"message": "Registrasi berhasil"}
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 def login_user(request: LoginRequest, db: Client = Depends(get_supabase_client)):
     """
-    Endpoint untuk login dan mendapatkan JWT Token.
+    Refactor: Login via Supabase Auth.
     """
-    # 1. Cari user berdasarkan email
-    user_response = db.table("users").select("*").eq("email", request.email).execute()
-    if not user_response.data:
+    try:
+        res = db.auth.sign_in_with_password({
+            "email": request.email,
+            "password": request.password
+        })
+        return {
+            "access_token": res.session.access_token,
+            "token_type": "bearer"
+        }
+    except Exception:
         raise HTTPException(status_code=401, detail="Email atau password salah")
-        
-    user = user_response.data[0]
-
-    # 2. Verifikasi hash password
-    if not pwd_context.verify(request.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Email atau password salah")
-
-    # 3. Generate JWT Token
-    payload = {
-        "id_user": user["id_user"],
-        "role": user["role"],
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24) # Token expired dalam 24 jam
-    }
-    access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
     
 @router.post("/consultant/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register_consultant(
