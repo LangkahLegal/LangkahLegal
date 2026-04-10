@@ -11,14 +11,10 @@ from services import upload_to_imgbb, update_user_profile_photo
 # TODO: Kamu perlu menginstal 'passlib' dan 'pyjwt' untuk hashing dan token
 # pip install passlib[bcrypt] pyjwt
 from passlib.context import CryptContext
-import jwt
-import datetime
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-SECRET_KEY = get_settings().JWT_SECRET_KEY
-ALGORITHM = "HS256"
 DEFAULT_PROFILE_PHOTO_URL = "https://i.ibb.co.com/2184x6g3/default-picture.jpg"
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)

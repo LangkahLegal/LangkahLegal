@@ -4,14 +4,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
 from database import get_supabase_client
-from config import get_settings
 
 # Skema otorisasi standar (Bearer Token)
 security = HTTPBearer()
-
-SECRET_KEY = get_settings().JWT_SECRET_KEY
-ALGORITHM = "HS256"
-
 
 def _get_supabase_config() -> tuple[str, str]:
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
