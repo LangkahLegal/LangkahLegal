@@ -16,8 +16,8 @@ export default function Filter({ onClick, isActive = false }) {
         rounded-2xl border transition-all duration-300 group
         ${
           isActive
-            ? "bg-[#6f59fe]/20 border-[#6f59fe] shadow-[0_0_15px_rgba(111,89,254,0.2)]"
-            : "bg-[#1f1d35] border-[#48455a]/50 hover:bg-[#2a2745] hover:border-[#48455a]"
+            ? "bg-primary/20 border-primary shadow-lg shadow-primary/20"
+            : "bg-input border-muted/30 hover:bg-card hover:border-muted/50"
         }
       `}
     >
@@ -27,8 +27,8 @@ export default function Filter({ onClick, isActive = false }) {
           text-2xl transition-colors duration-300
           ${
             isActive
-              ? "text-[#6f59fe]"
-              : "text-[#aca8c1] group-hover:text-[#ada3ff]"
+              ? "text-primary"
+              : "text-muted group-hover:text-primary-light"
           }
         `}
         style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
