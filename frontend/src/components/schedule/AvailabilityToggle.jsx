@@ -1,3 +1,5 @@
+import { Toggle } from "@/components/ui/Toggle";
+
 export default function AvailabilityToggle({ isAvailable, onChange }) {
   return (
     <section>
@@ -12,16 +14,7 @@ export default function AvailabilityToggle({ isAvailable, onChange }) {
         </div>
 
         {/* Toggle switch */}
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isAvailable}
-            onChange={(e) => onChange(e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className="w-14 h-8 bg-[#25233d] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border after:border-gray-300 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-br peer-checked:from-[#6f59fe] peer-checked:to-[#ada3ff]"
-          />
-        </label>
+        <Toggle enabled={isAvailable} onChange={onChange} />
       </div>
     </section>
   );

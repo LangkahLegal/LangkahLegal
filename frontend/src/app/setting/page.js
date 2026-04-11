@@ -67,10 +67,8 @@ export default function SettingPage() {
       onClick: async () => {
         try {
           await authService.logout();
-          router.push("/auth/login");
         } catch (err) {
           console.error("Gagal logout:", err);
-          router.push("/auth/login");
         }
       },
     },
