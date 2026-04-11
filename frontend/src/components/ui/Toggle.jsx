@@ -8,7 +8,7 @@ export function Toggle({ enabled, onChange, className = "" }) {
       type="button"
       onClick={() => onChange(!enabled)}
       className={`w-14 h-7 rounded-full transition-all duration-300 flex items-center px-1 flex-shrink-0 outline-none ${
-        enabled ? "bg-[#6f59fe]" : "bg-white/20"
+        enabled ? "bg-primary" : "bg-white/20"
       } ${className}`.trim()}
     >
       <div

@@ -1,30 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import FileUpload from "@/components/layout/FileUpload";
 import LinkedInField from "@/components/setting/profile/LinkedInField";
-import { InputField } from "@/components/ui";
+import { InputField, Dropdown, FileUpload } from "@/components/ui"; 
 
 export default function ProfileForm({ data, onChange, role }) {
   const isConsultant = role === "konsultan";
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  const OPTIONS = ["Umum", "Pidana", "Perdata"];
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  
+  const SPESIALISASI_OPTIONS = ["Umum", "Pidana", "Perdata"];
 
   return (
     <div className="space-y-6">
-      {/* SEKSI DASAR (Client & Konsultan) */}
+      {/* DASAR (Client & Konsultan) */}
       <InputField
         label="Nama Lengkap"
         type="text"
@@ -38,7 +24,7 @@ export default function ProfileForm({ data, onChange, role }) {
         onChange={(e) => onChange("email", e.target.value)}
       />
 
-      {/* SEKSI KHUSUS KONSULTAN */}
+      {/* KHUSUS KONSULTAN */}
       {isConsultant && (
         <>
           <div className="pt-4 border-t border-white/5">
@@ -87,48 +73,13 @@ export default function ProfileForm({ data, onChange, role }) {
             onChange={(e) => onChange("nomor_izin_praktik", e.target.value)}
           />
 
-          {/* CUSTOM ROUNDED DROPDOWN SPESIALISASI */}
-          <div className="space-y-2 relative" ref={dropdownRef}>
-            <label className="text-sm font-medium text-[#aca8c1] ml-2">
-              Spesialisasi
-            </label>
-            <div
-              onClick={() => setIsOpen(!isOpen)}
-              className={`w-full bg-[#1f1d35] border cursor-pointer ${isOpen ? "border-[#6f59fe] ring-2 ring-[#6f59fe]/20" : "border-[#48455a]/50"} rounded-2xl py-4 px-6 flex justify-between items-center transition-all duration-300`}
-            >
-              <span className="text-[#e8e2fc]">
-                {data.spesialisasi || "Umum"}
-              </span>
-              <span
-                className={`material-symbols-outlined text-[#aca8c1] transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-              >
-                expand_more
-              </span>
-            </div>
-            {isOpen && (
-              <div className="absolute z-50 w-full mt-2 bg-[#1f1d35] border border-[#48455a]/50 rounded-[2rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-2 space-y-1">
-                  {OPTIONS.map((opt) => (
-                    <div
-                      key={opt}
-                      onClick={() => {
-                        onChange("spesialisasi", opt);
-                        setIsOpen(false);
-                      }}
-                      className={`px-5 py-3 rounded-2xl cursor-pointer transition-all duration-200 flex justify-between items-center ${data.spesialisasi === opt ? "bg-[#6f59fe] text-white" : "text-[#aca8c1] hover:bg-[#6f59fe]/10 hover:text-[#ada3ff]"}`}
-                    >
-                      <span className="font-medium">{opt}</span>
-                      {data.spesialisasi === opt && (
-                        <span className="material-symbols-outlined text-sm">
-                          check
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <Dropdown
+            label="Spesialisasi"
+            value={data.spesialisasi || "Umum"}
+            options={SPESIALISASI_OPTIONS}
+            onChange={(val) => onChange("spesialisasi", val)}
+            className="w-full"
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField
@@ -146,7 +97,7 @@ export default function ProfileForm({ data, onChange, role }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-[#aca8c1] ml-2">
+            <label className="form-label">
               Deskripsi Lengkap
             </label>
             <textarea
@@ -158,7 +109,6 @@ export default function ProfileForm({ data, onChange, role }) {
             />
           </div>
 
-          {/* Menggunakan FileUpload Global */}
           <FileUpload
             label="Unggah Portofolio"
             file={data.porto}

@@ -44,7 +44,7 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
         
         {/* Header Modal */}
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-[#e8e2fc] font-['Urbanist',sans-serif]">Ubah Jadwal</h3>
+          <h3 className="text-lg font-bold text-[#e8e2fc]">Ubah Jadwal</h3>
           <button onClick={onClose} className="text-[#aca8c1] hover:text-[#ff6e84] transition-colors cursor-pointer">
             <span className="material-symbols-outlined">close</span>
           </button>

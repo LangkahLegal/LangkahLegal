@@ -5,12 +5,11 @@ import { Button } from "@/components/ui";
 export default function WeeklyCalendar({ days, selectedDay, onSelectDay, monthLabel, onPrev, onNext }) {
   return (
     <section>
-      {/* Background utama dibuat lebih gelap agar kartu tidak terlalu dominan */}
-      <div className="bg-[#131125] rounded-[2rem] p-6 shadow-2xl border border-white/5">
+      <div className="bg-[#131125] rounded-3xl p-6 shadow-2xl border border-white/5">
         
         {/* Navigasi Bulan */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold text-[#e8e2fc] font-['Urbanist',sans-serif]">
+          <h2 className="text-xl font-bold text-white">
             {monthLabel}
           </h2>
           <div className="flex gap-2">
@@ -39,7 +38,7 @@ export default function WeeklyCalendar({ days, selectedDay, onSelectDay, monthLa
             return (
               <div key={day.date} className="flex flex-col items-center gap-2">
                 {/* Nama Hari */}
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#ada3ff]' : 'text-[#48455a]'}`}>
+                <span className={`text-xs font-bold uppercase tracking-widest ${isSelected ? 'text-[#ada3ff]' : 'text-[#48455a]'}`}>
                   {day.label}
                 </span>
                 

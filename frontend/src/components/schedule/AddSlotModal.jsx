@@ -48,7 +48,7 @@ export default function AddSlotModal({ isOpen, onClose, onSave }) {
         
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-[#e8e2fc] font-['Urbanist',sans-serif]">
+          <h3 className="text-lg font-bold text-[#e8e2fc]">
             Tambah Jadwal Baru
           </h3>
           <button onClick={onClose} className="text-[#aca8c1] hover:text-[#ff6e84] transition-colors cursor-pointer">

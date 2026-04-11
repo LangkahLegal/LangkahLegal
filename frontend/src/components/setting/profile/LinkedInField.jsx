@@ -1,7 +1,7 @@
 export default function LinkedInField({ value, onChange }) {
   return (
     <div className="space-y-2">
-      <label className="block font-['Inter',sans-serif] text-[10px] font-bold text-[#aca8c1] px-1 uppercase tracking-[0.15em]">
+      <label className="form-label">
         Link LinkedIn
       </label>
       <div className="relative flex items-center">
@@ -22,7 +22,7 @@ export default function LinkedInField({ value, onChange }) {
           // Parent yang akan menangani e.target.value
           onChange={onChange}
           placeholder="https://linkedin.com/in/username"
-          className="w-full bg-white/5 backdrop-blur-md text-[#e8e2fc] border border-[#6D57FC]/20 rounded-xl pl-12 pr-4 py-3.5 font-['Inter',sans-serif] outline-none transition-all focus:ring-1 focus:ring-[#6D57FC] focus:border-[#6D57FC]/50 focus:shadow-[0_0_15px_rgba(109,87,252,0.3)] placeholder:text-[#aca8c1]/40"
+          className="w-full bg-white/5 backdrop-blur-md text-[#e8e2fc] border border-[#6D57FC]/20 rounded-xl pl-12 pr-4 py-3.5 outline-none transition-all focus:ring-1 focus:ring-[#6D57FC] focus:border-[#6D57FC]/50 focus:shadow-[0_0_15px_rgba(109,87,252,0.3)] placeholder:text-[#aca8c1]/40"
         />
       </div>
     </div>

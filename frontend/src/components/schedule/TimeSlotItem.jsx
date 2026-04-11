@@ -64,7 +64,7 @@ export default function TimeSlotItem({ slot, onSlotChange, onUpdateSlot, onDelet
           </div>
           <div>
             <p className="text-base font-bold text-[#e8e2fc]">{slot.time}</p>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase mt-1 ${cfg.badgeBg} ${cfg.badgeText}`}>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase mt-1 ${cfg.badgeBg} ${cfg.badgeText}`}>
               {badgeLabel}
             </span>
           </div>

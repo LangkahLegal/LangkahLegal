@@ -24,7 +24,6 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(new Date()); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- 1. FETCH DATA DARI BACKEND ---
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
@@ -53,20 +52,15 @@ export default function SchedulePage() {
     loadInitialData();
   }, []);
 
-  // --- 2. LOGIC KALENDER ---
-
-  // Format tanggal aktif untuk filter slots
   const activeDateString = useMemo(
     () => formatDate(selectedDate),
     [selectedDate],
   );
 
-  // Generate 7 hari dalam seminggu berdasarkan selectedDate
   const weekDays = useMemo(() => {
     const days = [];
     const labels = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-    // Cari hari Minggu terdekat sebagai awal minggu
     const startOfWeek = new Date(selectedDate);
     const dayIndex = startOfWeek.getDay();
     startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
@@ -77,7 +71,7 @@ export default function SchedulePage() {
       days.push({
         label: labels[date.getDay()],
         date: date.getDate(),
-        fullDate: new Date(date), // Simpan objek tanggal penuh
+        fullDate: new Date(date),
         isWeekend: date.getDay() === 0 || date.getDay() === 6,
       });
     }
@@ -101,7 +95,6 @@ export default function SchedulePage() {
     setSelectedDate(newDate);
   };
 
-  // --- 3. MAPPING DATA UNTUK UI ---
   const currentSlots = useMemo(() => {
     const rawSlots = allSlots[activeDateString] || [];
     return rawSlots.map((slot) => {
@@ -116,8 +109,6 @@ export default function SchedulePage() {
       };
     });
   }, [allSlots, activeDateString]);
-
-  // --- 4. HANDLERS CRUD ---
 
   const handleGlobalAvailability = async (newStatus) => {
     try {
