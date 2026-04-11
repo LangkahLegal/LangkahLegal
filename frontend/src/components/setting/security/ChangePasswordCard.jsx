@@ -20,7 +20,7 @@ export default function ChangePasswordCard() {
     setIsSaving(true);
     try {
       // Logic API Update Password
-      console.log("Saving passwords...", passwords);
+      console.log("Saving passwords...");
     } finally {
       setIsSaving(false);
     }
