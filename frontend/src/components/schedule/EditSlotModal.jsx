@@ -33,8 +33,8 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
         });
       });
     }
-  }, [isOpen, slot?.time, slot?.status]);
-  
+  }, [isOpen, slot?.time, slot?.status, slot]);
+
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
