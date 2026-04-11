@@ -25,14 +25,16 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
     if (isOpen && slot) {
       const [start, end] = slot.time?.split(" - ") || ["09:00", "10:00"];
       
-      setFormData({
-        start: start,
-        end: end,
-        status: slot.status || "available",
+      requestAnimationFrame(() => {
+        setFormData({
+          start,
+          end,
+          status: slot.status || "available",
+        });
       });
     }
-  }, [isOpen, slot?.time, slot?.status]); // Gunakan properti spesifik sebagai dependensi
-
+  }, [isOpen, slot?.time, slot?.status]);
+  
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
