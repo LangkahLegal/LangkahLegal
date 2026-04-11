@@ -30,7 +30,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative selection:bg-primary-light/30 bg-dark min-h-screen">
+    <div className="relative selection:bg-[#ada3ff]/30 bg-[#0f0e1c] min-h-screen">
       {/* Layout: Top */}
       <Navbar />
 
