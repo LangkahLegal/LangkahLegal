@@ -12,17 +12,13 @@ export default function SearchBar({
   placeholder = "Cari keahlian atau nama...",
 }) {
   return (
-    /* SENIOR FIX: 
-       Menghapus 'lg:max-w-3xl' agar input mengikuti lebar parent (1600px).
-       Kita gunakan 'w-full' agar fluid.
-    */
     <section className="w-full transition-all duration-300">
       <div className="relative group">
         {/* Search Icon Overlay */}
         <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
           <MaterialIcon
             name="search"
-            className="text-[#aca8c1] group-focus-within:text-[#6f59fe] group-hover:text-[#ada3ff] transition-colors duration-300 text-2xl"
+            className="text-muted group-focus-within:text-primary group-hover:text-primary-light transition-colors duration-300 text-2xl"
           />
         </div>
 
@@ -33,25 +29,18 @@ export default function SearchBar({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="
-            w-full bg-[#1f1d35] 
-            border border-[#48455a]/50 
+            w-full bg-input 
+            border border-muted/30 
             rounded-2xl py-4 pl-14 pr-16 
-            text-[#e8e2fc] placeholder:text-[#aca8c1]/60
+            text-main placeholder:text-muted/60
             focus:outline-none 
-            focus:border-[#6f59fe] 
-            focus:ring-2 focus:ring-[#6f59fe]/20 
-            hover:border-[#48455a]
+            focus:border-primary 
+            focus:ring-2 focus:ring-primary/20 
+            hover:border-muted/50
             transition-all duration-300
             shadow-inner
           "
         />
-
-        {/* Shortcut Hint (Kiri samping kanan agar tidak tertutup teks panjang) */}
-        <div className="hidden lg:flex absolute inset-y-0 right-5 items-center pointer-events-none">
-          <kbd className="bg-[#0e0c1e] border border-[#48455a]/50 px-2.5 py-1 rounded text-[10px] text-[#aca8c1] font-sans font-bold shadow-sm">
-            /
-          </kbd>
-        </div>
       </div>
     </section>
   );

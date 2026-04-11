@@ -11,11 +11,6 @@ export const consultantService = {
     return response.data.data;
   },
 
-  getDashboardStats: async () => {
-    const response = await api.get("/consultants/me/dashboard-stats");
-    return response.data;
-  },
-
   getPendingRequests: async () => {
     const response = await api.get("/consultants/me/requests/pending");
     return response.data;

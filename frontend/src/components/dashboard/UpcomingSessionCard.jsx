@@ -1,7 +1,6 @@
-// UpcomingSessionCard.jsx
 export default function UpcomingSessionCard({ name, caseType, dateLabel, time }) {
   return (
-    <div className="glass-card bg-[#1f1d35] border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:bg-white/5 transition-colors">
+    <div className="glass-card bg-input border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:bg-white/5 transition-colors">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-zinc-800 grayscale">
           <img
@@ -11,15 +10,15 @@ export default function UpcomingSessionCard({ name, caseType, dateLabel, time })
           />
         </div>
         <div>
-          <h4 className="font-bold text-white text-sm">{name}</h4>
-          <p className="text-xs text-[#aca8c1]">{caseType}</p>
+          <h4 className="font-bold text-main text-sm">{name}</h4>
+          <p className="text-xs text-muted">{caseType}</p>
         </div>
       </div>
       <div className="text-right">
-        <div className="px-2 py-1 rounded-md bg-white/5 text-[10px] font-bold text-[#aca8c1] mb-1 uppercase tracking-wider">
+        <div className="px-2 py-1 rounded-md bg-white/5 text-xs font-bold text-muted mb-1 uppercase tracking-wider">
           {dateLabel}
         </div>
-        <p className="text-xs font-bold text-white">{time}</p>
+        <p className="text-xs font-bold text-main">{time}</p>
       </div>
     </div>
   );

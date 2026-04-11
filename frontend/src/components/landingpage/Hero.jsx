@@ -7,13 +7,13 @@ export default function Hero({ onGetStarted, onLearnMore }) {
       <div className="glow-bottom-right-secondary" />
 
       <div className="relative z-10 space-y-8 max-w-4xl">
-        <h1 className="text-5xl md:text-7xl font-urbanist font-extrabold text-[#e8e2fc] leading-[1.1] tracking-tight">
+        <h1 className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.1] tracking-tight">
           Solusi Hukum{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ada3ff] to-[#6f59fe]">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-light to-primary">
             Digital & Terpercaya
           </span>
         </h1>
-        <p className="text-lg md:text-xl text-[#aca8c1] max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto leading-relaxed">
           Akses bantuan hukum profesional dengan satu sentuhan. Cepat,
           transparan, dan terjangkau untuk kebutuhan personal maupun bisnis
           Anda.
@@ -36,7 +36,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
         </div>
       </div>
 
-      <div className="mt-20 w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-[#ada3ff]/10 bg-[#1f1d35] p-2 relative z-10">
+      <div className="mt-20 w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-primary-light/10 bg-input p-2 relative z-10">
         <img
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEvueWKSnGkuhnVc-MbIOKmCpZ-4RcnjrRD9ObtzCKnRpLMnIjKW089uwG7-PIWBot5tZHBTGhDZuCu2j1qZ5aKireqEUDaDvGRq6SrK8lYIuzpoToD7aDOWPC-d6_eTb9KsFfBklx1bH6-qfVJN3usA8XYUsgQ1DM8Gv9yH1IPICTOIgR1Isd62iqwJJH_ks0cLit7eZf72RJGn4BNC9xDTfc6LUfSvryO1Qd3_tsx1qtel3DVl57bcw1-eTFITzlvNxTYfty4yKg"
           alt="Legal workspace"

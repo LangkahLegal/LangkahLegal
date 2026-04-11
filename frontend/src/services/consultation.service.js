@@ -16,12 +16,12 @@ export const consultationService = {
   },
 
   getConsultations: async () => {
-    const response = await api.get("/consultations");
+    const response = await api.get("/consultations/");
     return response.data.data;
   },
 
   createConsultation: async (payload) => {
-    const response = await api.post("/consultations", payload);
+    const response = await api.post("/consultations/", payload);
     return response.data;
   },
 

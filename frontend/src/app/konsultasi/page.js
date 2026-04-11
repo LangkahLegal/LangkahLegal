@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import CategoryList from "@/components/dashboard/CategoryList";
 import PageHeader from "@/components/layout/PageHeader";
-import SearchBar from "@/components/konsultasi/SearchBar";
+import SearchBar from "@/components/layout/SearchBar";
 import ConsultantCard from "@/components/konsultasi/ConsultantCard";
 import AIBanner from "@/components/konsultasi/AIBanner";
 
