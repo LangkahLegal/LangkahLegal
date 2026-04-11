@@ -1,28 +1,116 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
-import ChangePasswordCard from "@/components/setting/security/ChangePasswordCard";
-import TwoFactorCard from "@/components/setting/security/TwoFactorCard";
+import { Button } from "@/components/ui";
+import { PasswordField } from "@/components/ui/PasswordField"; // Pastikan path ini sesuai
 
-export default function SecurityPage() {
+export default function ChangePasswordPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.newPassword !== formData.confirmPassword) {
+      alert("Konfirmasi password baru tidak cocok.");
+      return;
+    }
+
+    setIsLoading(true);
+    // Simulasi API call
+    setTimeout(() => {
+      setIsLoading(false);
+      alert("Kata sandi berhasil diperbarui!");
+      router.back();
+    }, 2000);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex font-['Inter']">
-      <Sidebar />
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+      <Sidebar role="client" />
 
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Keamanan & Sandi" />
 
-        <main className="flex-1 px-6 pt-8 pb-32">
-          <div className="max-w-2xl mx-auto space-y-6">
-            <ChangePasswordCard />
-            <TwoFactorCard />
+        <main className="flex-1 overflow-y-auto px-6 pb-40 pt-10 scroll-smooth relative z-10">
+          <div className="max-w-md mx-auto w-full space-y-10">
+            {/* Header Section */}
+            <div className="space-y-3">
+              <h2 className="text-3xl font-extrabold text-white tracking-tight">
+                Ubah Kata Sandi
+              </h2>
+              <p className="text-sm leading-relaxed text-[#aca8c1]">
+                Pastikan kata sandi Anda kuat dan unik untuk menjaga keamanan
+                akun Anda.
+              </p>
+            </div>
+
+            {/* Form Section */}
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-6">
+                <PasswordField
+                  label="Kata Sandi Saat Ini"
+                  id="currentPassword"
+                  name="currentPassword"
+                  value={formData.currentPassword}
+                  onChange={handleInputChange}
+                  placeholder="••••••••"
+                  required
+                />
+
+                <PasswordField
+                  label="Kata Sandi Baru"
+                  id="newPassword"
+                  name="newPassword"
+                  value={formData.newPassword}
+                  onChange={handleInputChange}
+                  placeholder="Min. 8 karakter"
+                  required
+                  minLength={8}
+                />
+
+                <PasswordField
+                  label="Konfirmasi Kata Sandi Baru"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Ulangi kata sandi baru"
+                  required
+                />
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-4">
+                <Button
+                  fullWidth
+                  type="submit"
+                  isLoading={isLoading}
+                  className="py-6 rounded-2xl shadow-[0_10px_30px_rgba(111,89,254,0.3)] font-bold"
+                >
+                  Simpan Kata Sandi
+                </Button>
+              </div>
+            </form>
           </div>
         </main>
 
         <div className="lg:hidden">
-          <BottomNav />
+          <BottomNav role="client" />
         </div>
       </div>
     </div>
