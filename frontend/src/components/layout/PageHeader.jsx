@@ -3,25 +3,28 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function PageHeader({ title, backHref, onSettingsClick }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 1. Logika Deteksi Sub-halaman Pengaturan
-  const isSettingSubPage = pathname.startsWith("/setting/");
-  const isConsultantPage = pathname.includes("/dashboard/consultant");
+  // DEBUGGING: Cek di console browser (F12) path aslinya apa
+  // useEffect(() => { console.log("Path saat ini:", pathname) }, [pathname]);
 
-  // 2. Tentukan Default Back Href
+  // DETEKSI LEBIH SAKTI: Cek apakah ada kata "setting" di dalam URL
+  const isSettingArea = pathname.toLowerCase().includes("/setting");
+  const isConsultantPage = pathname.toLowerCase().includes("/dashboard/consultant");
+
   let dynamicBack = isConsultantPage
     ? "/dashboard/consultant"
     : "/dashboard/client";
 
-  if (isSettingSubPage) {
+  // Jika ada di sub-page setting, back ke induk setting
+  if (isSettingArea && pathname !== "/setting" && pathname !== "/settings") {
     dynamicBack = "/setting";
   }
 
-  // 3. Gunakan prop backHref jika dikirim dari parent, jika tidak gunakan dynamicBack
   const finalBackHref = backHref || dynamicBack;
 
   const handleSettingsClick =
@@ -46,16 +49,21 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
           </h1>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSettingsClick}
-          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
-        >
-          <MaterialIcon
-            name="settings"
-            className="text-[#aca8c1] group-hover:text-white group-hover:rotate-45 transition-all duration-500 text-xl lg:text-2xl"
-          />
-        </button>
+        {/* Render Kondisional: Sembunyikan jika di area setting */}
+        {!isSettingArea ? (
+          <button
+            type="button"
+            onClick={handleSettingsClick}
+            className="p-2 hover:bg-white/5 rounded-full transition-colors group cursor-pointer"
+          >
+            <MaterialIcon
+              name="settings"
+              className="text-[#aca8c1] group-hover:text-white group-hover:rotate-45 transition-all duration-500 text-xl lg:text-2xl"
+            />
+          </button>
+        ) : (
+          <div className="w-10 h-10" /> 
+        )}
       </div>
     </header>
   );

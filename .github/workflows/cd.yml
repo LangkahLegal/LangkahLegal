@@ -33,7 +33,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta (frontend)
-        if: ${{ hashFiles('frontend/langkahlegal-frontend/Dockerfile') != '' }}
+        if: ${{ hashFiles('frontend/Dockerfile') != '' }}
         id: meta_frontend
         uses: docker/metadata-action@v5
         with:
@@ -44,11 +44,11 @@ jobs:
             type=raw,value=dev
 
       - name: Build and push (frontend)
-        if: ${{ hashFiles('frontend/langkahlegal-frontend/Dockerfile') != '' }}
+        if: ${{ hashFiles('frontend/Dockerfile') != '' }}
         uses: docker/build-push-action@v5
         with:
-          context: frontend/langkahlegal-frontend
-          file: frontend/langkahlegal-frontend/Dockerfile
+          context: frontend/
+          file: frontend/Dockerfile
           push: true
           tags: ${{ steps.meta_frontend.outputs.tags }}
           labels: ${{ steps.meta_frontend.outputs.labels }}

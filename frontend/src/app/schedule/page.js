@@ -5,11 +5,11 @@ import BottomNav from "@/components/layout/BottomNav";
 import WeeklyCalendar from "@/components/schedule/WeeklyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
 import TimeSlotList from "@/components/schedule/TimeSlotList";
+import PageHeader from "@/components/layout/PageHeader";
 
 import { scheduleService } from "@/services/schedule.service";
 import { consultantService } from "@/services/consultant.service";
 
-// Helper untuk format YYYY-MM-DD tanpa masalah timezone
 const formatDate = (date) => {
   const d = new Date(date);
   const year = d.getFullYear();
@@ -21,24 +21,17 @@ const formatDate = (date) => {
 export default function SchedulePage() {
   const [isAvailable, setIsAvailable] = useState(true);
   const [allSlots, setAllSlots] = useState({});
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Simpan full Date object, bukan cuma angka
+  const [selectedDate, setSelectedDate] = useState(new Date()); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- 1. FETCH DATA DARI BACKEND ---
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
+      const scheduleData = await scheduleService.getMySchedules();
+      const stats = await consultantService.getDashboardStats();
 
-      // Ambil jadwal dan stats (untuk is_active global) secara paralel
-      const [scheduleData, stats] = await Promise.all([
-        scheduleService.getMySchedules(),
-        consultantService.getDashboardStats(),
-      ]);
-
-      // Set status ketersediaan global dari backend
       setIsAvailable(stats.is_active ?? true);
 
-      // Grouping data jadwal berdasarkan tanggal
       const groupedSlots = {};
       scheduleData.forEach((slot) => {
         if (!groupedSlots[slot.tanggal]) {
@@ -50,7 +43,6 @@ export default function SchedulePage() {
       setAllSlots(groupedSlots);
     } catch (error) {
       console.error("Gagal memuat data jadwal:", error);
-      alert("Terjadi kesalahan saat memuat jadwal.");
     } finally {
       setIsLoading(false);
     }
@@ -60,20 +52,15 @@ export default function SchedulePage() {
     loadInitialData();
   }, []);
 
-  // --- 2. LOGIC KALENDER ---
-
-  // Format tanggal aktif untuk filter slots
   const activeDateString = useMemo(
     () => formatDate(selectedDate),
     [selectedDate],
   );
 
-  // Generate 7 hari dalam seminggu berdasarkan selectedDate
   const weekDays = useMemo(() => {
     const days = [];
     const labels = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-    // Cari hari Minggu terdekat sebagai awal minggu
     const startOfWeek = new Date(selectedDate);
     const dayIndex = startOfWeek.getDay();
     startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
@@ -84,7 +71,7 @@ export default function SchedulePage() {
       days.push({
         label: labels[date.getDay()],
         date: date.getDate(),
-        fullDate: new Date(date), // Simpan objek tanggal penuh
+        fullDate: new Date(date),
         isWeekend: date.getDay() === 0 || date.getDay() === 6,
       });
     }
@@ -108,7 +95,6 @@ export default function SchedulePage() {
     setSelectedDate(newDate);
   };
 
-  // --- 3. MAPPING DATA UNTUK UI ---
   const currentSlots = useMemo(() => {
     const rawSlots = allSlots[activeDateString] || [];
     return rawSlots.map((slot) => {
@@ -123,8 +109,6 @@ export default function SchedulePage() {
       };
     });
   }, [allSlots, activeDateString]);
-
-  // --- 4. HANDLERS CRUD ---
 
   const handleGlobalAvailability = async (newStatus) => {
     try {
@@ -144,7 +128,7 @@ export default function SchedulePage() {
         jam_mulai: `${jam_mulai}:00`,
         jam_selesai: `${jam_selesai}:00`,
       });
-      loadInitialData(); // Refresh
+      loadInitialData(); 
     } catch (error) {
       alert("Gagal menambah slot. Pastikan format jam benar.");
     }
@@ -157,6 +141,25 @@ export default function SchedulePage() {
       loadInitialData();
     } catch (error) {
       alert("Gagal update status slot.");
+    }
+  };
+
+  const handleUpdateSlot = async (id, newTime, newStatusString) => {
+    try {
+      const [jam_mulai, jam_selesai] = newTime.split(" - ");
+      const isTersedia = newStatusString === "available";
+
+      await scheduleService.updateSchedule(id, {
+        jam_mulai: `${jam_mulai}:00`,
+        jam_selesai: `${jam_selesai}:00`,
+      });
+
+      await scheduleService.toggleScheduleSlot(id, isTersedia);
+
+      loadInitialData(); 
+    } catch (error) {
+      console.error("Error update slot:", error);
+      alert("Gagal memperbarui jadwal.");
     }
   };
 
@@ -175,16 +178,10 @@ export default function SchedulePage() {
       {/* Background Decor */}
       <div className="fixed top-[-20%] left-[-10%] w-[80%] h-[60%] bg-[#6D57FC]/10 blur-[120px] -z-10 rounded-full" />
 
-      <header className="bg-[#0e0c1e]/80 backdrop-blur-md sticky top-0 z-50 border-b border-white/5">
-        <div className="px-6 py-5 flex items-center gap-3">
-          <span className="material-symbols-outlined text-[#ada3ff]">
-            calendar_month
-          </span>
-          <h1 className="text-xl font-bold font-['Urbanist',sans-serif]">
-            Manajemen Jadwal
-          </h1>
-        </div>
-      </header>
+      <PageHeader 
+        title="Manajemen Jadwal"
+        backHref="/dashboard/consultant"
+      />
 
       <main className="flex-grow px-6 pb-32 pt-6 space-y-8 max-w-4xl mx-auto w-full">
         <WeeklyCalendar
@@ -217,6 +214,7 @@ export default function SchedulePage() {
             slots={currentSlots}
             onSlotChange={handleSlotChange}
             onAddSlot={handleAddSlot}
+            onUpdateSlot={handleUpdateSlot}
             onDeleteSlot={handleDeleteSlot}
           />
         )}

@@ -8,7 +8,6 @@ router = APIRouter()
 
 @router.get("/me/settings")
 def get_settings_info(current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
-    # Return nama, email, avatar (foto_profil dari tabel users)
     user = db.table("users").select("nama, email, foto_profil").eq("id_user", current_user["id_user"]).single().execute()
     return {
         "nama": user.data["nama"],
@@ -51,20 +50,16 @@ def update_profile(
 
     # 2. Update tabel 'konsultan'
     if current_user["role"] == "konsultan":
-        # Convert payload ke dictionary, buang nilai None agar tidak menimpa data lama dengan NULL
         k_data = payload.dict(exclude_none=True)
         
-        # Mapping khusus: 'nama' di payload dipetakan ke 'nama_lengkap' di tabel konsultan
         if "nama" in k_data:
             k_data["nama_lengkap"] = k_data["nama"]
+
+        keys_for_users_only = ["nama", "email"] 
         
-        # PENTING: Buang field yang HANYA milik tabel 'users'
-        # Agar tidak menyebabkan error 'column does not exist' di tabel konsultan
-        keys_for_users_only = ["nama", "foto_profil", "email"]
         for key in keys_for_users_only:
             k_data.pop(key, None)
             
-        # Jika masih ada data tersisa (seperti bio, gelar, deskripsi, dll), eksekusi update
         if k_data:
             db.table("konsultan").update(k_data).eq("id_user", current_user["id_user"]).execute()
             

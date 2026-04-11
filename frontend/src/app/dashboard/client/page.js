@@ -43,40 +43,44 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadDashboardData() {
-      // Tanpa try-catch sesuai request refactor yang simpel
       setIsLoading(true);
 
-      const [profile, consultations] = await Promise.all([
-        userService.getFullProfile(), // Panggilan API utama untuk Profile
-        consultationService.getConsultations(),
-      ]);
+      try {
+        const [profile, consultations] = await Promise.all([
+          userService.getFullProfile(), 
+          consultationService.getConsultations(),
+        ]);
 
-      // Mapping Profil Client
-      setUser({
-        nama: profile?.nama || "User",
-        // Konsisten menggunakan 'foto_profil'
-        foto_profil: profile?.foto_profil || profile?.avatar || "",
-      });
-
-      // Mapping Konsultasi Aktif
-      if (consultations && consultations.length > 0) {
-        const raw = consultations[0];
-        setActiveConsultation({
-          status_pengajuan: raw.status_pengajuan,
-          jadwal_ketersediaan: {
-            tanggal: raw.jadwal_ketersediaan?.tanggal,
-            jam_mulai: raw.jadwal_ketersediaan?.jam_mulai,
-            jam_selesai: raw.jadwal_ketersediaan?.jam_selesai,
-            konsultan: {
-              nama_lengkap: raw.jadwal_ketersediaan?.konsultan?.nama_lengkap,
-              spesialisasi: raw.jadwal_ketersediaan?.konsultan?.spesialisasi,
-              foto_profil: raw.jadwal_ketersediaan?.konsultan?.foto_profil,
-            },
-          },
+        // Mapping Profil Client
+        setUser({
+          nama: profile?.nama || "User",
+          foto_profil: profile?.foto_profil || profile?.avatar || "",
         });
-      }
 
-      setIsLoading(false);
+        // Mapping Konsultasi Aktif
+        if (consultations && consultations.length > 0) {
+          const raw = consultations[0];
+          setActiveConsultation({
+            status_pengajuan: raw.status_pengajuan,
+            jadwal_ketersediaan: {
+              tanggal: raw.jadwal_ketersediaan?.tanggal,
+              jam_mulai: raw.jadwal_ketersediaan?.jam_mulai,
+              jam_selesai: raw.jadwal_ketersediaan?.jam_selesai,
+              konsultan: {
+                nama_lengkap: raw.jadwal_ketersediaan?.konsultan?.nama_lengkap,
+                spesialisasi: raw.jadwal_ketersediaan?.konsultan?.spesialisasi,
+                foto_profil: raw.jadwal_ketersediaan?.konsultan?.foto_profil,
+              },
+            },
+          });
+        }
+      } catch (error) {
+        // Kalau gagal, error-nya bakal muncul merah-merah di Console
+        console.error("Gagal memuat data dashboard client:", error);
+      } finally {
+        // Berhasil ataupun gagal, loading HARUS dimatikan
+        setIsLoading(false);
+      }
     }
 
     loadDashboardData();

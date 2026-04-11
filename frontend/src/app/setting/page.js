@@ -67,10 +67,10 @@ export default function SettingPage() {
       onClick: async () => {
         try {
           await authService.logout();
-          router.push("/auth/login");
         } catch (err) {
           console.error("Gagal logout:", err);
-          router.push("/auth/login");
+        } finally {
+          router.replace("/auth/login");
         }
       },
     },
@@ -95,7 +95,7 @@ export default function SettingPage() {
   }, []);
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden">
       {/* Sidebar untuk Desktop */}
       <Sidebar role={userRole} />
 
