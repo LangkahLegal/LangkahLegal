@@ -30,7 +30,7 @@ export default function EmptyConsultationCard() {
 
       {/* Search Button - Lebar penuh di mobile, Otomatis di desktop */}
       <Link
-        href="/dashboard/client/cari"
+        href="/konsultasi"
         className="w-full md:w-auto md:min-w-[180px] bg-[#ada3ff] hover:bg-[#9e93ff] text-[#0e0c1e] py-3.5 lg:py-4 px-8 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
       >
         <MaterialIcon name="search" className="text-2xl" />
