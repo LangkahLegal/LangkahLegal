@@ -69,6 +69,8 @@ export default function SettingPage() {
           await authService.logout();
         } catch (err) {
           console.error("Gagal logout:", err);
+        } finally {
+          router.replace("/auth/login");
         }
       },
     },

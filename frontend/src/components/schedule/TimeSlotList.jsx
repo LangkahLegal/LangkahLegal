@@ -11,9 +11,9 @@ export default function TimeSlotList({ slots, onSlotChange, onAddSlot, onUpdateS
   return (
     <section>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-[#e8e2fc] font-['Urbanist',sans-serif]">
+        <h2 className="text-xl font-headline font-bold text-white">
           Kelola Slot Waktu
-        </h3>
+        </h2>
         {/* Menggunakan variant icon atau primary custom */}
         <Button 
           variant="primary"
