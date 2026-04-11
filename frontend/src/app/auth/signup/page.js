@@ -110,8 +110,8 @@ export default function SignupClientPage() {
         <div className="w-full h-full rounded-[4rem] border-[40px] border-[#9e93ff] blur-sm" />
       </div>
 
-      <main className="auth-container space-y-8">
-        <header className="text-center space-y-3">
+      <main className="auth-container my-auto py-10">
+        <header className="mb-6 text-center space-y-3">
           <h1 className="auth-title text-4xl">{headerTitle}</h1>
           <p className="text-[#aca8c1] text-base px-4">{headerSubtitle}</p>
         </header>

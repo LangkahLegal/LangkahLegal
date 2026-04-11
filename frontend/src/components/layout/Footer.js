@@ -1,46 +1,45 @@
 import Link from "next/link";
-import { MaterialIcon } from "@/components/ui";
+import { MaterialIcon, BrandLogo } from "@/components/ui";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0e0c1e] w-full py-12 px-6 border-t border-outline-variant/5">
+    <footer className="bg-dark w-full py-12 px-6 border-t border-muted/10">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
         <div className="space-y-6">
           <div className="flex items-center gap-2">
-            <MaterialIcon name="gavel" className="text-[#6D57FC] text-2xl" />
-            <span className="text-xl font-bold text-[#e8e2fc] font-headline">LangkahLegal</span>
+            <BrandLogo iconSize="text-2xl" textSize="text-xl" />
           </div>
-          <p className="text-[#aca8c1] text-sm leading-relaxed font-body">
+          <p className="text-muted text-sm leading-relaxed">
             Platform legal-tech terdepan di Indonesia yang menghadirkan akses hukum yang mudah, transparan, dan terpercaya bagi semua kalangan.
           </p>
         </div>
         
         <div className="flex flex-col gap-4">
-          <h4 className="text-[#e8e2fc] font-bold font-headline">Company</h4>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">About</Link>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">Contact Us</Link>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">Careers</Link>
+          <h4 className="text-main font-bold font-headline">Company</h4>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">About</Link>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">Contact Us</Link>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">Careers</Link>
         </div>
         
         <div className="flex flex-col gap-4">
-          <h4 className="text-[#e8e2fc] font-bold font-headline">Legal</h4>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">Terms of Service</Link>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">Privacy Policy</Link>
-          <Link href="#" className="text-[#aca8c1] hover:text-[#6D57FC] transition-colors text-sm font-body">Compliance</Link>
+          <h4 className="text-main font-bold font-headline">Legal</h4>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">Terms of Service</Link>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">Privacy Policy</Link>
+          <Link href="#" className="text-muted hover:text-primary transition-colors text-sm">Compliance</Link>
         </div>
         
         <div className="space-y-6">
-          <h4 className="text-[#e8e2fc] font-bold font-headline">Connect</h4>
+          <h4 className="text-main font-bold font-headline">Connect</h4>
           <div className="flex gap-4">
-            <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer">
-              <MaterialIcon name="share" className="text-[#ada3ff] text-xl" />
+            <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer">
+              <MaterialIcon name="share" className="text-primary-light text-xl" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer">
-              <MaterialIcon name="public" className="text-[#ada3ff] text-xl" />
+            <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer">
+              <MaterialIcon name="public" className="text-primary-light text-xl" />
             </div>
           </div>
-          <p className="text-[#aca8c1] text-xs font-body">
-            © 2024 LangkahLegal. All rights reserved.
+          <p className="text-muted text-xs">
+            © 2026 LangkahLegal. All rights reserved.
           </p>
         </div>
       </div>

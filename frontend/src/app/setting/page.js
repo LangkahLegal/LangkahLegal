@@ -95,7 +95,7 @@ export default function SettingPage() {
   }, []);
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden">
       {/* Sidebar untuk Desktop */}
       <Sidebar role={userRole} />
 

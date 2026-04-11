@@ -6,7 +6,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import SearchBar from "@/components/layout/SearchBar";
 import Filter from "@/components/layout/Filter";
-import FileUpload from "@/components/layout/FileUpload";
+import { FileUpload } from "@/components/ui";
 
 import FileItem from "@/components/documents/FileItem";
 import SecurityNotice from "@/components/documents/SecurityNotice";

@@ -8,6 +8,7 @@ import Sidebar from "@/components/layout/Sidebar"; // Tambahkan Sidebar
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader"; // Ganti ke PageHeader
 import { userService } from "@/services/user.service";
+import { Button } from "@/components/ui";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function EditProfilePage() {
     );
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden">
       {/* Sidebar untuk Desktop */}
       <Sidebar role={userRole} />
 
@@ -155,24 +156,18 @@ export default function EditProfilePage() {
             />
 
             <div className="mt-12">
-              <button
+              <Button
                 onClick={handleSave}
+                isLoading={isUploading || isSaving}
                 disabled={isUploading || isSaving}
-                className={`w-full font-bold py-4 rounded-2xl transition-all active:scale-[0.98] shadow-lg flex justify-center items-center gap-3 ${
-                  isUploading || isSaving
-                    ? "bg-white/5 text-[#aca8c1] cursor-not-allowed opacity-50 border border-white/5"
-                    : "bg-[#6f59fe] hover:bg-[#5b46e0] text-white shadow-[#6f59fe]/20"
-                }`}
+                fullWidth
               >
-                {(isUploading || isSaving) && (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                )}
                 {isUploading
                   ? "Uploading..."
                   : isSaving
-                    ? "Saving..."
-                    : "Simpan Perubahan"}
-              </button>
+                  ? "Saving..."
+                  : "Simpan Perubahan"}
+              </Button>
             </div>
           </div>
         </main>

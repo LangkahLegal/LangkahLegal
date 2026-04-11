@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   reactCompiler: true,
+  reactStrictMode: false,
+  serverExternalPackages: ['lightningcss', '@tailwindcss/oxide'],
 };
 
 export default nextConfig;
