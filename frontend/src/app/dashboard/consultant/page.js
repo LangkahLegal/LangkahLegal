@@ -65,7 +65,8 @@ export default function ConsultantDashboardPage() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      // Menggunakan getFullProfile agar lebih konsisten mengambil foto_profil
+    setIsLoading(true);
+    try {
       const [userResponse, statsResponse, pendingResponse, activeResponse] =
         await Promise.all([
           userService.getFullProfile(),
@@ -75,20 +76,25 @@ export default function ConsultantDashboardPage() {
         ]);
 
       setUser({
-        name: userResponse?.nama || userResponse?.nama_lengkap,
-        // Mapping fix: prioritaskan foto_profil
+        name: userResponse?.nama || userResponse?.nama_lengkap || "Konsultan",
         foto_profil: userResponse?.foto_profil || userResponse?.avatar,
       });
 
       setStats({
-        income: statsResponse?.total_income || 0,
-        activeConsultations: statsResponse?.total_klien_aktif || 0,
-        totalClients: statsResponse?.total_klien || 0,
+        income: statsResponse?.total_income ?? 0,
+        activeConsultations: statsResponse?.total_klien_aktif ?? 0,
+        totalClients: statsResponse?.total_klien ?? 0,
       });
+
       setPendingRequests(pendingResponse || []);
       setActiveRequests(activeResponse || []);
-      setIsLoading(false);
-    };
+
+    } catch (error) {
+      console.error("Gagal memuat data dashboard konsultan:", error);
+    } finally {
+      setIsLoading(false); 
+    }
+  };
 
     fetchDashboard();
   }, []);

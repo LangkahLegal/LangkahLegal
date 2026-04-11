@@ -1,4 +1,4 @@
-import supabase from "@/lib/supabase";
+import api from "@/lib/axios";
 
 const getCookieBase = (maxAgeSeconds) => {
   const parts = [`max-age=${maxAgeSeconds}`, "path=/", "samesite=lax"];
@@ -14,17 +14,41 @@ const setCookie = (name, value, maxAgeSeconds = 60 * 60 * 24 * 7) => {
   document.cookie = `${name}=${encodedValue}; ${getCookieBase(maxAgeSeconds)}`;
 };
 
+const getCookieValue = (name) => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
 const clearCookie = (name) => {
   if (typeof document === "undefined") return;
   document.cookie = `${name}=; max-age=0; path=/; samesite=lax`;
 };
 
-const saveAccessToken = (session) => {
+const saveSessionTokens = (session) => {
   if (typeof window === "undefined") return;
   if (session?.access_token) {
     localStorage.setItem("token", session.access_token);
-    setCookie("ll_token", session.access_token);
+    setCookie("ll_token", session.access_token, session.expires_in || 60 * 60);
   }
+  if (session?.refresh_token) {
+    localStorage.setItem("refresh_token", session.refresh_token);
+    setCookie("ll_refresh", session.refresh_token, 60 * 60 * 24 * 30);
+  }
+};
+
+const getRefreshToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("refresh_token") || getCookieValue("ll_refresh");
+};
+
+const clearAuthStorage = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("token");
+  localStorage.removeItem("refresh_token");
+  clearCookie("ll_token");
+  clearCookie("ll_role");
+  clearCookie("ll_refresh");
 };
 
 const saveRoleCookie = (role) => {
@@ -43,143 +67,177 @@ export const authService = {
     role,
     emailRedirectTo,
   }) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
-          role,
-        },
+    try {
+      const response = await api.post("/auth/signup", {
+        email,
+        password,
+        name,
+        role,
         emailRedirectTo,
-      },
-    });
+      });
 
-    if (error) throw error;
-
-    saveAccessToken(data.session);
-    return data;
+      const data = response?.data?.data;
+      saveSessionTokens(data?.session);
+      return data;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mendaftar.");
+    }
   },
 
   sendOtpLogin: async ({ email, emailRedirectTo }) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
+    try {
+      await api.post("/auth/login-otp", {
+        email,
         emailRedirectTo,
-      },
-    });
-
-    if (error) throw error;
+      });
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mengirim OTP.");
+    }
   },
 
   resendSignupOtp: async ({ email, emailRedirectTo }) => {
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: {
+    try {
+      await api.post("/auth/resend-signup-otp", {
+        email,
         emailRedirectTo,
-      },
-    });
-
-    if (error) throw error;
+      });
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mengirim ulang OTP.");
+    }
   },
 
   verifyOtp: async ({ email, token, type = "email" }) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type,
-    });
+    try {
+      const response = await api.post("/auth/verify-otp", {
+        email,
+        token,
+        type,
+      });
 
-    if (error) throw error;
-
-    saveAccessToken(data.session);
-    return data;
+      const data = response?.data?.data;
+      saveSessionTokens(data?.session);
+      return data;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Kode OTP tidak valid.");
+    }
   },
 
   loginWithPassword: async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const response = await api.post("/auth/login-password", {
+        email,
+        password,
+      });
 
-    if (error) throw error;
-
-    saveAccessToken(data.session);
-    return data.session;
+      const data = response?.data?.data;
+      saveSessionTokens(data?.session);
+      return data?.session;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal login.");
+    }
   },
 
   signInWithGoogle: async ({ redirectTo }) => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
+    try {
+      const response = await api.post("/auth/oauth/google", {
         redirectTo,
-      },
-    });
-
-    if (error) throw error;
+      });
+      const data = response?.data?.data;
+      if (!data?.url) {
+        throw new Error("Gagal menyiapkan login Google.");
+      }
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("ll_oauth_verifier", data.code_verifier || "");
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal login dengan Google.");
+    }
   },
 
   getSession: async () => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    saveAccessToken(data.session);
-    return data.session;
+    try {
+      if (typeof window === "undefined") return null;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code") || "";
+      const codeVerifier = sessionStorage.getItem("ll_oauth_verifier") || "";
+
+      if (!code || !codeVerifier) return null;
+
+      const response = await api.get("/auth/session", {
+        params: {
+          code,
+          code_verifier: codeVerifier,
+        },
+      });
+
+      sessionStorage.removeItem("ll_oauth_verifier");
+
+      const data = response?.data?.data;
+      saveSessionTokens(data?.session);
+      return data?.session;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mengambil sesi.");
+    }
   },
 
   getProfile: async () => {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!userData.user) return null;
+    try {
+      const response = await api.get("/auth/profile");
+      const data = response?.data?.data || null;
+      saveRoleCookie(data?.role);
+      return data;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mengambil profil.");
+    }
+  },
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("id_user, nama, email, role, auth_user_id")
-      .eq("auth_user_id", userData.user.id)
-      .maybeSingle();
+  refreshSession: async () => {
+    try {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return null;
 
-    if (error) throw error;
-    saveRoleCookie(data?.role);
-    return data;
+      const response = await api.post("/auth/refresh", {
+        refresh_token: refreshToken,
+      });
+
+      const data = response?.data?.data;
+      saveSessionTokens(data?.session);
+      return data?.session;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal memperbarui sesi.");
+    }
   },
 
   updateRole: async (role) => {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!userData.user) throw new Error("Not authenticated");
-
-    const displayName =
-      userData.user.user_metadata?.full_name ||
-      userData.user.user_metadata?.name ||
-      (userData.user.email ? userData.user.email.split("@")[0] : null) ||
-      "User";
-
-    const payload = {
-      auth_user_id: userData.user.id,
-      email: userData.user.email,
-      nama: displayName,
-      role,
-    };
-
-    const { data, error } = await supabase
-      .from("users")
-      .upsert(payload, { onConflict: "auth_user_id" })
-      .select("role")
-      .maybeSingle();
-
-    if (error) throw error;
-    saveRoleCookie(role);
-    return data;
+    try {
+      const response = await api.post("/auth/role", { role });
+      const data = response?.data?.data || null;
+      saveRoleCookie(role);
+      return data;
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal memperbarui role.");
+    }
   },
 
   logout: async () => {
-    await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      clearCookie("ll_token");
-      clearCookie("ll_role");
-      window.location.href = "/auth/login";
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal logout.");
+    } finally {
+      clearAuthStorage();
     }
   },
 };
