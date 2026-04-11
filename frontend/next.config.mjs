@@ -2,7 +2,7 @@
 const nextConfig = {
   reactCompiler: true,
   reactStrictMode: false,
-  serverExternalPackages: ['lightningcss'],
+  serverExternalPackages: ['lightningcss', '@tailwindcss/oxide'],
 };
 
 export default nextConfig;
