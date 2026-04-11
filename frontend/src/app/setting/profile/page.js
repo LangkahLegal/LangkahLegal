@@ -50,7 +50,7 @@ export default function EditProfilePage() {
           tarif_per_sesi: data.tarif_per_sesi || "",
           linkedin: data.linkedin || "",
           portofolio: data.portofolio || "",
-          foto_profil: data.foto_profil || data.avatar || "",
+          foto_profil: data.foto_profil || "",
           bio_singkat: data.bio_singkat || "",
           deskripsi_lengkap: data.deskripsi_lengkap || "",
           nomor_izin_praktik: data.nomor_izin_praktik || "",
