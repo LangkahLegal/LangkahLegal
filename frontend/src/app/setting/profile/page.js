@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
 import ProfileForm from "@/components/setting/profile/ProfileForm";
+import Sidebar from "@/components/layout/Sidebar"; // Tambahkan Sidebar
 import BottomNav from "@/components/layout/BottomNav";
-import SettingHeader from "@/components/setting/SettingHeader";
+import PageHeader from "@/components/layout/PageHeader"; // Ganti ke PageHeader
 import { userService } from "@/services/user.service";
+import { Button } from "@/components/ui";
 
 export default function EditProfilePage() {
   const router = useRouter();
 
-  // State dengan tambahan field kredensial konsultan
   const [formData, setFormData] = useState({
     name: "",
     nama_lengkap: "",
@@ -23,7 +24,6 @@ export default function EditProfilePage() {
     linkedin: "",
     portofolio: "",
     foto_profil: "",
-    // Field Baru
     bio_singkat: "",
     deskripsi_lengkap: "",
     nomor_izin_praktik: "",
@@ -38,29 +38,31 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const data = await userService.getFullProfile();
-
-      setFormData({
-        name: data.nama || "",
-        nama_lengkap: data.nama_lengkap || "",
-        email: data.email || "",
-        kota_praktik: data.kota_praktik || "",
-        spesialisasi: data.spesialisasi || "",
-        pengalaman_tahun: data.pengalaman_tahun || "",
-        tarif_per_sesi: data.tarif_per_sesi || "",
-        linkedin: data.linkedin || "",
-        portofolio: data.portofolio || "",
-        foto_profil: data.foto_profil || data.avatar || "",
-        // Mapping Field Baru
-        bio_singkat: data.bio_singkat || "",
-        deskripsi_lengkap: data.deskripsi_lengkap || "",
-        nomor_izin_praktik: data.nomor_izin_praktik || "",
-        gelar_akademik: data.gelar_akademik || "",
-        pendidikan_terakhir: data.pendidikan_terakhir || "",
-      });
-
-      setUserRole(data.role || "client");
-      setLoading(false);
+      try {
+        const data = await userService.getFullProfile();
+        setFormData({
+          name: data.nama || "",
+          nama_lengkap: data.nama_lengkap || "",
+          email: data.email || "",
+          kota_praktik: data.kota_praktik || "",
+          spesialisasi: data.spesialisasi || "",
+          pengalaman_tahun: data.pengalaman_tahun || "",
+          tarif_per_sesi: data.tarif_per_sesi || "",
+          linkedin: data.linkedin || "",
+          portofolio: data.portofolio || "",
+          foto_profil: data.foto_profil || "",
+          bio_singkat: data.bio_singkat || "",
+          deskripsi_lengkap: data.deskripsi_lengkap || "",
+          nomor_izin_praktik: data.nomor_izin_praktik || "",
+          gelar_akademik: data.gelar_akademik || "",
+          pendidikan_terakhir: data.pendidikan_terakhir || "",
+        });
+        setUserRole(data.role || "client");
+        setLoading(false);
+      } catch (err) {
+        console.error("Gagal fetch profil:", err);
+        setLoading(false);
+      }
     };
     fetchProfile();
   }, []);
@@ -92,7 +94,6 @@ export default function EditProfilePage() {
         : null,
       linkedin: formData.linkedin,
       portofolio: formData.portofolio,
-      // Include Field Baru ke Payload
       bio_singkat: formData.bio_singkat,
       deskripsi_lengkap: formData.deskripsi_lengkap,
       nomor_izin_praktik: formData.nomor_izin_praktik,
@@ -100,18 +101,21 @@ export default function EditProfilePage() {
       pendidikan_terakhir: formData.pendidikan_terakhir,
     };
 
-    // Membersihkan field kosong agar tidak mengirim string kosong ke DB yang mengharapkan NULL
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(
         ([_, v]) => v !== "" && v !== null && v !== undefined,
       ),
     );
 
-    await userService.updateProfile(cleanPayload);
-
-    router.refresh();
-    router.push("/setting");
-    setIsSaving(false);
+    try {
+      await userService.updateProfile(cleanPayload);
+      router.refresh();
+      router.push("/setting");
+    } catch (err) {
+      console.error("Gagal update profil:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loading)
@@ -125,50 +129,53 @@ export default function EditProfilePage() {
     );
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col font-['Inter',sans-serif]">
-      <SettingHeader
-        title="Edit Profil"
-        icon="gavel"
-        onSettingsClick={() => router.push("/setting")}
-      />
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden">
+      {/* Sidebar untuk Desktop */}
+      <Sidebar role={userRole} />
 
-      <main className="flex-grow px-6 pt-8 pb-32 max-w-2xl mx-auto w-full">
-        <div className="relative mb-12">
-          <AvatarUpload
-            foto_profil={formData.foto_profil}
-            name={formData.name || formData.nama_lengkap}
-            isUploading={isUploading}
-            onUploadStart={() => setIsUploading(true)}
-            onChange={handlePhotoChange}
-          />
+      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
+        {/* PageHeader Standar Layout menggantikan SettingHeader */}
+        <PageHeader title="Edit Profil" />
+
+        <main className="flex-1 overflow-y-auto px-6 pt-8 pb-32 scroll-smooth">
+          <div className="max-w-2xl mx-auto w-full">
+            <div className="relative mb-12">
+              <AvatarUpload
+                foto_profil={formData.foto_profil}
+                name={formData.name || formData.nama_lengkap}
+                isUploading={isUploading}
+                onUploadStart={() => setIsUploading(true)}
+                onChange={handlePhotoChange}
+              />
+            </div>
+
+            <ProfileForm
+              data={formData}
+              onChange={handleChange}
+              role={userRole}
+            />
+
+            <div className="mt-12">
+              <Button
+                onClick={handleSave}
+                isLoading={isUploading || isSaving}
+                disabled={isUploading || isSaving}
+                fullWidth
+              >
+                {isUploading
+                  ? "Uploading..."
+                  : isSaving
+                  ? "Saving..."
+                  : "Simpan Perubahan"}
+              </Button>
+            </div>
+          </div>
+        </main>
+
+        <div className="lg:hidden">
+          <BottomNav role={userRole} />
         </div>
-
-        {/* Form akan secara otomatis menerima field baru melalui prop data */}
-        <ProfileForm data={formData} onChange={handleChange} role={userRole} />
-
-        <div className="mt-12">
-          <button
-            onClick={handleSave}
-            disabled={isUploading || isSaving}
-            className={`w-full font-bold py-4 rounded-2xl transition-all active:scale-[0.98] shadow-lg flex justify-center items-center gap-3 ${
-              isUploading || isSaving
-                ? "bg-gray-600 cursor-not-allowed opacity-50"
-                : "bg-[#6f59fe] hover:bg-[#5b46e0] text-white shadow-[#6f59fe]/20"
-            }`}
-          >
-            {(isUploading || isSaving) && (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            )}
-            {isUploading
-              ? "Uploading..."
-              : isSaving
-                ? "Saving..."
-                : "Simpan Perubahan"}
-          </button>
-        </div>
-      </main>
-
-      <BottomNav role={userRole} />
+      </div>
     </div>
   );
 }

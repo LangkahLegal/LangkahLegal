@@ -38,7 +38,7 @@ export default function AvatarUpload({
       const freshData = await userService.getFullProfile();
 
       // 3. Update UI dengan prioritas data dari DB
-      onChange(freshData.foto_profil || freshData.avatar || data.url);
+      onChange(freshData.foto_profil || data.url);
     } catch (err) {
       alert("Gagal sinkronisasi foto.");
       onChange(foto_profil);
