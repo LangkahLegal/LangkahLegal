@@ -22,15 +22,16 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
   });
 
   useEffect(() => {
-    if (slot && isOpen) {
+    if (isOpen && slot) {
       const [start, end] = slot.time?.split(" - ") || ["09:00", "10:00"];
+      
       setFormData({
-        start,
-        end,
+        start: start,
+        end: end,
         status: slot.status || "available",
       });
     }
-  }, [slot, isOpen]);
+  }, [isOpen, slot?.time, slot?.status]); // Gunakan properti spesifik sebagai dependensi
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -89,7 +90,6 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
 
         <div className="flex flex-col gap-3 mt-8">
           <div className="flex gap-3">
-            {/* Tombol Batal pake variant Ghost biar makin stunning */}
             <Button 
               variant="ghost" 
               onClick={onClose} 
@@ -98,7 +98,6 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
               Batal
             </Button>
             
-            {/* Tombol Simpan */}
             <Button 
               variant="primary" 
               onClick={() => onSave(`${formData.start} - ${formData.end}`, formData.status)}
@@ -108,7 +107,6 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
             </Button>
           </div>
 
-          {/* Tombol Hapus pake variant Danger */}
           <Button 
             variant="danger" 
             onClick={onDelete}
