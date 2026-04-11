@@ -25,8 +25,8 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
     if (slot && isOpen) {
       const [start, end] = slot.time?.split(" - ") || ["09:00", "10:00"];
       setFormData({
-        start: start,
-        end: end,
+        start,
+        end,
         status: slot.status || "available",
       });
     }

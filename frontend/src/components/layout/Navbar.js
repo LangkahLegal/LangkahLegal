@@ -16,13 +16,16 @@ export default function Navbar() {
   const [session, setSession] = useState({ isLoggedIn: false, role: null });
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const matchToken = document.cookie.match(/(^|; )ll_token=([^;]*)/);
-    const matchRole = document.cookie.match(/(^|; )ll_role=([^;]*)/);
-    const token = localStorage.getItem("token") || matchToken?.[2];
-    const role = matchRole ? decodeURIComponent(matchRole[2]) : null;
+    const checkSession = () => {
+      const matchToken = document.cookie.match(/(^|; )ll_token=([^;]*)/);
+      const matchRole = document.cookie.match(/(^|; )ll_role=([^;]*)/);
+      const token = localStorage.getItem("token") || matchToken?.[2];
+      const role = matchRole ? decodeURIComponent(matchRole[2]) : null;
 
-    setSession({ isLoggedIn: Boolean(token), role });
+      setSession({ isLoggedIn: Boolean(token), role });
+    };
+
+    checkSession();
   }, []);
 
   const handleCtaClick = () => {
