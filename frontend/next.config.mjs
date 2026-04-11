@@ -3,6 +3,7 @@ const nextConfig = {
   /* config options here */
   reactCompiler: true,
   reactStrictMode: false,
+  transpilePackages: ['lightningcss'],
 };
 
 export default nextConfig;
