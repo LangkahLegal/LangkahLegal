@@ -6,7 +6,6 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { consultantService } from "@/services/consultant.service";
-import Image from 'next/image';
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -80,7 +79,7 @@ export default function ConsultantDetailPage() {
             <>
               <section className="glass-card bg-[#1f1d35]/70 border border-white/5 p-6 rounded-3xl flex flex-col lg:flex-row gap-6">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden border border-white/10 bg-[#0e0c1e]">
-                  <Image
+                  <img
                     src={detail?.foto_profil || "/api/placeholder/80/80"}
                     alt={detail?.nama_lengkap || "Konsultan"}
                     className="w-full h-full object-cover"

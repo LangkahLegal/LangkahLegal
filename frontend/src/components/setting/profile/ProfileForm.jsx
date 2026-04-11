@@ -14,12 +14,14 @@ export default function ProfileForm({ data, onChange, role }) {
       <InputField
         label="Nama Lengkap"
         type="text"
+        placeholder="John Doe"
         value={data.name || data.nama_lengkap}
         onChange={(e) => onChange("name", e.target.value)}
       />
       <InputField
         label="Email"
         type="email"
+        placeholder="example@langkahlegal.id"
         value={data.email}
         onChange={(e) => onChange("email", e.target.value)}
       />
@@ -85,12 +87,16 @@ export default function ProfileForm({ data, onChange, role }) {
             <InputField
               label="Pengalaman Praktik (Tahun)"
               type="number"
+              placeholder="Contoh: 5"
               value={data.pengalaman_tahun || ""}
               onChange={(e) => onChange("pengalaman_tahun", e.target.value)}
             />
             <InputField
               label="Tarif Konsultasi (Rp)"
               type="number"
+              step={50000} 
+              min={0}
+              placeholder="Rp 150.000"
               value={data.tarif_per_sesi || ""}
               onChange={(e) => onChange("tarif_per_sesi", e.target.value)}
             />
@@ -120,6 +126,7 @@ export default function ProfileForm({ data, onChange, role }) {
 
           <LinkedInField
             value={data.linkedin}
+            placeholder="https://www.linkedin.com/in/nama-anda"
             onChange={(e) => onChange("linkedin", e.target.value)}
           />
         </>
