@@ -93,7 +93,7 @@ export default function ClientDetailPage({ params }) {
                 {MOCK_DETAIL.caseDescription}
               </p>
               <div className="bg-[#2c2945]/50 p-4 rounded-2xl border border-white/5 italic text-[#ada3ff] text-sm">
-                "{MOCK_DETAIL.clientNote}"
+                &quot;{MOCK_DETAIL.clientNote}&quot;
               </div>
             </div>
 
