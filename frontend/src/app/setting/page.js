@@ -40,7 +40,7 @@ const ACCOUNT_SETTINGS = [
     id: "security",
     icon: "lock",
     label: "Keamanan & Sandi",
-    description: "2FA Aktif • Terakhir diubah 2 bln lalu",
+    description: "Perbarui sandi anda",
     path: "/setting/security",
   },
 ];
@@ -84,6 +84,8 @@ export default function SettingPage() {
           name: data.nama || data.nama_lengkap,
           email: data.email,
           foto_profil: data.foto_profil || data.avatar || "",
+          role: data.role,
+          status_verifikasi: data.status_verifikasi,
         });
         setUserRole(data.role || "client");
       } catch (err) {
@@ -106,8 +108,8 @@ export default function SettingPage() {
           onSettingsClick={() => router.push("/setting")}
         />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 space-y-8 scroll-smooth">
-          <div className="max-w-3xl mx-auto space-y-8">
+        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
             {user ? (
               <ProfileCard user={user} />
             ) : (

@@ -46,8 +46,8 @@ export default function ChangePasswordPage() {
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Keamanan & Sandi" />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-40 pt-10 scroll-smooth relative z-10">
-          <div className="max-w-md mx-auto w-full space-y-10">
+        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
             {/* Header Section */}
             <div className="space-y-3">
               <h2 className="text-3xl font-extrabold text-white tracking-tight">
