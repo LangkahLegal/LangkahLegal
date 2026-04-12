@@ -31,28 +31,41 @@ export function Dropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="form-input dropdown-trigger"
-      >
-        <span className="truncate">{value || placeholder}</span>
-        <span className={`material-symbols-outlined text-[18px] transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }}>
+        className="form-input dropdown-trigger flex items-center justify-between w-full">
+        <span className="truncate text-left flex-1">
+          {value || placeholder}
+        </span>
+        
+        <span 
+          className={`material-symbols-outlined text-[18px] transition-transform shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} 
+          style={{ color: 'var(--text-muted)' }}>
           expand_more
         </span>
       </button>
 
       {isOpen && (
-        <div className="dropdown-menu custom-scrollbar animate-fade-in">
+        <div className="dropdown-menu custom-scrollbar animate-fade-in absolute w-full z-50">
           {options.map((opt) => {
-            const isSelected = (opt.value || opt) === value;
+            const optValue = opt.value || opt;
+            const isSelected = optValue === value;
+            
             return (
               <div
-                key={opt.value || opt}
+                key={optValue}
                 onClick={() => {
-                  onChange(opt.value || opt);
+                  onChange(optValue);
                   setIsOpen(false);
                 }}
-                className={`dropdown-item ${isSelected ? "active" : ""}`}
-              >
-                {renderItem ? renderItem(opt) : (opt.label || opt)}
+                className={`dropdown-item flex items-center justify-between ${isSelected ? "active" : ""}`}>
+                <div className="text-left flex-1">
+                  {renderItem ? renderItem(opt) : (opt.label || opt)}
+                </div>
+                
+                {isSelected && (
+                  <span className="material-symbols-outlined text-[16px] shrink-0 ml-2">
+                    check
+                  </span>
+                )}
               </div>
             );
           })}
