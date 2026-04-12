@@ -4,6 +4,7 @@ from typing import Optional
 class ConsultationCreate(BaseModel):
     id_jadwal: int
     deskripsi_kasus: str
+    dokumen_pendukung: Optional[str] = None
     
 class ConsultationRespond(BaseModel):
     status_persetujuan: str = Field(..., description="Isi dengan 'disetujui' atau 'ditolak'")
