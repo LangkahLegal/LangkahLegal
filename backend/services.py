@@ -2,6 +2,10 @@ import httpx
 from fastapi import UploadFile, HTTPException
 from config import get_settings
 import io
+from uuid import uuid4
+
+
+MAX_PORTFOLIO_SIZE_MB = 10
 
 
 async def upload_to_imgbb(file: UploadFile, api_key: str) -> str:
@@ -88,3 +92,61 @@ async def update_user_profile_photo(
         "foto_profil_url": photo_url,
         "data": updated_user.data[0]
     }
+
+
+async def upload_portfolio_pdf_to_supabase(
+    file: UploadFile,
+    user_id: int,
+    db_client,
+    bucket_name: str,
+) -> str:
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="File portofolio tidak ditemukan")
+
+    filename = file.filename.lower()
+    if not filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Portofolio wajib berformat PDF")
+
+    if file.content_type and file.content_type.lower() not in {
+        "application/pdf",
+        "application/x-pdf",
+    }:
+        raise HTTPException(status_code=400, detail="Content-Type file harus application/pdf")
+
+    await file.seek(0)
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="File portofolio kosong")
+
+    max_size_bytes = MAX_PORTFOLIO_SIZE_MB * 1024 * 1024
+    if len(file_bytes) > max_size_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ukuran file portofolio melebihi {MAX_PORTFOLIO_SIZE_MB}MB",
+        )
+
+    # Validasi sederhana header PDF
+    if not file_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="File tidak valid sebagai PDF")
+
+    storage_path = f"konsultan/{user_id}/{uuid4().hex}.pdf"
+
+    try:
+        storage = db_client.storage.from_(bucket_name)
+        storage.upload(
+            storage_path,
+            file_bytes,
+            {
+                "content-type": "application/pdf",
+                "upsert": "true",
+            },
+        )
+        public_url = storage.get_public_url(storage_path)
+        return public_url
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal upload portofolio ke Supabase Storage: {str(exc)}",
+        )
