@@ -15,14 +15,13 @@ export default function LiveSessionCard({
             LIVE
           </span>
         </div>
-        <MaterialIcon
-          name="more_vert"
-          className="text-muted cursor-pointer"
-        />
+        <MaterialIcon name="more_vert" className="text-muted cursor-pointer" />
       </div>
 
       <div className="space-y-4 relative z-10">
-        <h3 className="text-lg font-headline font-bold text-main">Konsultasi Berlangsung</h3>
+        <h3 className="text-lg font-headline font-bold text-main">
+          Konsultasi Berlangsung
+        </h3>
         <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 border border-white/5 group-hover:bg-white/10 transition-colors">
           <img
             src={avatar || "/api/placeholder/48/48"}

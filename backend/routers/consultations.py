@@ -34,130 +34,66 @@ Upload dokumen:
 """,
     response_description="ID pengajuan, status pengajuan, dan list metadata dokumen pendukung yang berhasil disimpan.",
 )
+@router.post("/")
 async def buat_pengajuan_konsultasi(
-    request: Request,
-    id_jadwal: int | None = Form(default=None),
-    deskripsi_kasus: str | None = Form(default=None),
-    jam_mulai: str | None = Form(default=None),
-    jam_selesai: str | None = Form(default=None),
+    id_jadwal: int = Form(...), 
+    deskripsi_kasus: str = Form(...),
+    jam_mulai: str = Form(...),
+    jam_selesai: str = Form(...),
     dokumen_pendukung_files: list[UploadFile] | None = File(default=None),
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    """
-    (Khusus Client) Membuat pengajuan konsultasi dengan mengunci slot jadwal. 
-    """
+    print(f"DEBUG DATA: {id_jadwal}")
+    # Security check: Hanya client yang boleh submit
     if current_user.get("role") != "client":
         raise HTTPException(status_code=403, detail="Hanya klien yang dapat membuat pengajuan")
 
-    try:
-        if request.headers.get("content-type", "").startswith("application/json"):
-            body = await request.json()
-            payload = ConsultationCreate(**body)
-            id_jadwal = payload.id_jadwal
-            deskripsi_kasus = payload.deskripsi_kasus
-            jam_mulai_dt = payload.jam_mulai
-            jam_selesai_dt = payload.jam_selesai
-        else:
-            if not jam_mulai or not jam_selesai:
-                raise HTTPException(status_code=400, detail="jam_mulai dan jam_selesai wajib diisi (ISO 8601)")
-            try:
-                jam_mulai_dt = datetime.fromisoformat(jam_mulai.replace("Z", "+00:00"))
-                jam_selesai_dt = datetime.fromisoformat(jam_selesai.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Format jam_mulai/jam_selesai tidak valid. Gunakan ISO 8601, contoh: 2026-04-13T09:00:00+07:00",
-                )
-
-        if id_jadwal is None or not deskripsi_kasus:
-            raise HTTPException(status_code=400, detail="id_jadwal dan deskripsi_kasus wajib diisi")
-        if jam_selesai_dt <= jam_mulai_dt:
-            raise HTTPException(status_code=400, detail="jam_selesai harus lebih besar dari jam_mulai")
-
-        # Gunakan format timestamp yang kompatibel untuk kolom SQL timestamp.
-        jam_mulai_db = jam_mulai_dt.replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
-        jam_selesai_db = jam_selesai_dt.replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
-
-        # 1. Validasi ketersediaan jadwal
-        jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
-
-        if not jadwal.data:
-            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
-
-        if not jadwal.data[0]["status_tersedia"]:
-            raise HTTPException(status_code=400, detail="Jadwal sudah tidak tersedia atau telah dipesan")
-
-        id_konsultan = jadwal.data[0]["id_konsultan"]
-
-        # 2. Buat record pengajuan
-        new_pengajuan = {
-            "id_user": current_user["id_user"],
-            "id_konsultan": id_konsultan,
-            "id_jadwal": id_jadwal,
-            "deskripsi_kasus": deskripsi_kasus,
-            "jam_mulai": jam_mulai_db,
-            "jam_selesai": jam_selesai_db,
-            "status_pengajuan": "pending",
-        }
-
-        res_pengajuan = db.table("pengajuan_konsultasi").insert(new_pengajuan).execute()
-
-        if not res_pengajuan.data:
-            raise HTTPException(status_code=500, detail="Gagal membuat pengajuan")
-
-        id_pengajuan = res_pengajuan.data[0]["id_pengajuan"]
-
-        dokumen_data = []
-        if dokumen_pendukung_files:
-            settings = get_settings()
-            for doc_file in dokumen_pendukung_files:
-                doc_meta = await upload_supporting_document_to_supabase(
-                    file=doc_file,
-                    id_pengajuan=id_pengajuan,
-                    id_user=current_user["id_user"],
-                    db_client=db,
-                    bucket_name=settings.supabase_berkas_pendukung_bucket,
-                )
-                dokumen_data.append({
-                    "id_pengajuan": id_pengajuan,
-                    **doc_meta,
-                })
-
-        if dokumen_data:
-            insert_dokumen = db.table("dokumen_pendukung").insert(dokumen_data).execute()
-            if not insert_dokumen.data:
-                raise HTTPException(status_code=500, detail="Gagal menyimpan metadata dokumen pendukung")
-
-        # 3. Update status jadwal menjadi FALSE (dikunci)
-        db.table("jadwal_ketersediaan").update({"status_tersedia": False}).eq("id_jadwal", id_jadwal).execute()
-
-        return {
-            "message": "Pengajuan dibuat, menunggu persetujuan konsultan.",
-            "data": {
-                "id_pengajuan": id_pengajuan,
-                "status_pengajuan": "pending",
-                "dokumen_pendukung": dokumen_data,
-            },
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Gagal membuat pengajuan konsultasi: {str(exc)}",
-        )
+    # 1. READ ONLY: Ambil data jadwal ketersediaan untuk validasi range jam
+    # Kita butuh ini cuma buat mastiin jam yang di-input client nggak ngaco (di luar jam kerja konsultan)
+    jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
     
-@router.put(
-    "/{id_pengajuan}/respond",
-    status_code=status.HTTP_200_OK,
-    summary="Konsultan merespons pengajuan (setujui/tolak)",
-    description="""
-Khusus role konsultan untuk mengubah keputusan pengajuan:
-- `disetujui` -> status menjadi `menunggu_pembayaran`.
-- `ditolak` -> status menjadi `ditolak` dan slot jadwal dibuka kembali.
-""",
-)
+    if not jadwal.data:
+        raise HTTPException(status_code=404, detail="Jadwal ketersediaan tidak ditemukan")
+    
+    data_jadwal = jadwal.data[0]
+    
+    # 2. Validasi Jam (Bandingkan jam_mulai/selesai dari Frontend vs Master Jadwal)
+    # Kita tetap validasi agar tidak ada pengajuan di luar jam operasional konsultan
+    if jam_mulai < data_jadwal["jam_mulai"] or jam_selesai > data_jadwal["jam_selesai"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})"
+        )
+
+    # 3. Buat record pengajuan di tabel pengajuan_konsultasi
+    new_pengajuan = {
+        "id_user": current_user["id_user"],
+        "id_konsultan": data_jadwal["id_konsultan"],
+        "id_jadwal": id_jadwal,
+        "jam_mulai": jam_mulai, 
+        "jam_selesai": jam_selesai, 
+        "deskripsi_kasus": deskripsi_kasus,
+        "status_pengajuan": "pending" 
+    }
+    
+    res_pengajuan = db.table("pengajuan_konsultasi").insert(new_pengajuan).execute()
+    
+    if not res_pengajuan.data:
+        raise HTTPException(status_code=500, detail="Gagal menyimpan data pengajuan")
+
+    # --- TABEL JADWAL_KETERSEDIAAN TIDAK DISENTUH SAMA SEKALI (TIDAK ADA UPDATE) ---
+
+    return {
+        "message": "Pengajuan berhasil dikirim.",
+        "data": {
+            "id_pengajuan": res_pengajuan.data[0]["id_pengajuan"],
+            "jam_diajukan": f"{jam_mulai} - {jam_selesai}",
+            "status": "pending"
+        }
+    }
+
+@router.put("/{id_pengajuan}/respond", status_code=status.HTTP_200_OK)
 def respond_konsultasi(
     id_pengajuan: int,
     request: ConsultationRespond,
@@ -376,3 +312,28 @@ def update_consultation_status(
         raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
 
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
+
+
+@router.get("/{id_konsultan}/booked-slots", status_code=status.HTTP_200_OK)
+def get_booked_slots(
+    id_konsultan: int, 
+    db: Client = Depends(get_supabase_client)
+):
+    """
+    Mengambil daftar jam yang sudah terisi (booked) untuk konsultan tertentu.
+    Digunakan oleh frontend untuk menonaktifkan pilihan jam di Schedule Picker.
+    """
+    # Ambil jam mulai, jam selesai, dan tanggal langsung dari satu tabel
+    # Filter status_pengajuan = 'terjadwal' agar hanya yang fix saja yang memblokir
+    response = (
+        db.table("pengajuan_konsultasi")
+        .select("jam_mulai, jam_selesai, tanggal_pengajuan")
+        .eq("id_konsultan", id_konsultan)
+        .eq("status_pengajuan", "terjadwal") 
+        .execute()
+    )
+
+    return {
+        "message": "Data jadwal terisi ditemukan",
+        "data": response.data
+    }
