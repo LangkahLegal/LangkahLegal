@@ -8,7 +8,17 @@ from dependencies import get_current_user
 router = APIRouter()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    summary="Client posting kasus anonim ke bursa",
+    description="""
+Membuat kasus baru pada bursa kasus.
+
+Khusus role client. Kasus yang berhasil diposting akan berstatus `open`
+dan dapat dilihat oleh konsultan untuk melakukan bidding.
+""",
+)
 def posting_kasus_anonim(
     request: CaseCreate,
     current_user: dict = Depends(get_current_user),
@@ -38,7 +48,11 @@ def posting_kasus_anonim(
     }
 
 
-@router.get("/")
+@router.get(
+    "/",
+    summary="Konsultan melihat daftar bursa kasus open",
+    description="Khusus role konsultan. Mengambil semua kasus bursa dengan status `open`.",
+)
 def lihat_bursa_kasus(
     current_user: dict = Depends(get_current_user),  # Tambahkan pengunci JWT
     db: Client = Depends(get_supabase_client),
@@ -55,7 +69,12 @@ def lihat_bursa_kasus(
     return {"message": "Berhasil mengambil data bursa kasus", "data": response.data}
 
 
-@router.post("/{id_bursa}/bids", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{id_bursa}/bids",
+    status_code=status.HTTP_201_CREATED,
+    summary="Konsultan kirim penawaran bidding",
+    description="Khusus role konsultan. Mengirim penawaran biaya dan pesan untuk satu kasus bursa.",
+)
 def kirim_penawaran_bidding(
     id_bursa: int,
     request: BidCreate,
@@ -111,7 +130,16 @@ def kirim_penawaran_bidding(
 #! ================= BOOKMARK ======================
 
 
-@router.put("/bids/{id_penawaran}/accept")
+@router.put(
+    "/bids/{id_penawaran}/accept",
+    summary="Client menerima penawaran konsultan",
+    description="""
+Saat client menerima satu penawaran:
+- status bursa ditutup,
+- status penawaran menjadi diterima,
+- dibuat draf pengajuan konsultasi.
+""",
+)
 def terima_penawaran(
     id_penawaran: int,
     current_user: dict = Depends(get_current_user),
@@ -156,7 +184,11 @@ def terima_penawaran(
     }
 
 
-@router.get("/{id_bursa}/bids")
+@router.get(
+    "/{id_bursa}/bids",
+    summary="Client melihat daftar penawaran untuk kasusnya",
+    description="Menampilkan semua bid dari konsultan untuk kasus bursa tertentu milik client.",
+)
 def lihat_penawaran_masuk(
     id_bursa: int,
     current_user: dict = Depends(get_current_user),
