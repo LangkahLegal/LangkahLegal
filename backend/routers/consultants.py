@@ -14,10 +14,6 @@ from typing import List, Optional
 
 router = APIRouter()
 
-# ==========================================
-# 1. MODUL KATALOG (PUBLIK / CLIENT)
-# ==========================================
-
 
 @router.get(
     "/",
@@ -199,6 +195,7 @@ def get_pending_requests(
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
+    # 1. Ambil ID Konsultan berdasarkan ID User yang login
     kons_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -206,22 +203,34 @@ def get_pending_requests(
         .single()
         .execute()
     )
+    
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
+    # 2. Ambil data pengajuan (Langsung dari tabel pengajuan_konsultasi)
     response = (
         db.table("pengajuan_konsultasi")
         .select(
             """
-            id_pengajuan, deskripsi_kasus, status_pengajuan, created_at,
-            users ( nama, foto_profil ),
-            jadwal_ketersediaan ( tanggal, jam_mulai, jam_selesai )
+            id_pengajuan, 
+            deskripsi_kasus, 
+            status_pengajuan, 
+            created_at,
+            tanggal_pengajuan, 
+            jam_mulai, 
+            jam_selesai,
+            users ( 
+                nama, 
+                foto_profil 
+            )
         """
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
         .eq("status_pengajuan", "pending")
+        .order("created_at", desc=True) # Senior tip: Biasakan kasih order biar rapi di UI
         .execute()
     )
+    
     return response.data
 
 
@@ -282,7 +291,8 @@ Response mencakup:
 )
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
     """
-    Mengambil profil detail satu konsultan beserta jadwal ketersediaannya.
+    Mengambil profil detail satu konsultan beserta jadwal ketersediaannya 
+    (sebagai jam buka/tutup).
     """
     response = (
         db.table("konsultan")
@@ -296,7 +306,7 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
 
     konsultan_data = response.data[0]
 
-    # Hitung rating
+    # 1. Hitung rating
     ratings = [r["skor_rating"] for r in konsultan_data.get("rating_ulasan", []) if r.get("skor_rating")]
     total_reviews = len(ratings)
     rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
@@ -305,15 +315,18 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
     konsultan_data["rating"] = rating_avg
     konsultan_data["reviews"] = total_reviews
 
-    # Fetch jadwal aktif yang bisa diajukan
+    # 2. Fetch jadwal ketersediaan (Jam Buka & Jam Tutup per Tanggal)
+    # Kita ambil data spesifik agar frontend mudah memprosesnya
     jadwal_response = (
         db.table("jadwal_ketersediaan")
-        .select("*")
+        .select("id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia")
         .eq("id_konsultan", id_konsultan)
         .eq("status_tersedia", True)
+        .order("tanggal")
         .execute()
     )
     
+    # Kita format agar jam_mulai/selesai bertindak sebagai range operasional
     konsultan_data["jadwal_ketersediaan"] = jadwal_response.data
 
     return {"message": "Detail profil ditemukan", "data": konsultan_data}

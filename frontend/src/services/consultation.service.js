@@ -2,7 +2,13 @@ import api from "@/lib/axios";
 
 // REVISI: Nama variabel disamakan dengan yang di-import Dashboard (consultationService)
 export const consultationService = {
- 
+  /**
+   * Mengirim pengajuan konsultasi baru.
+   * Mendukung upload file dokumen pendukung secara otomatis.
+   * @param {Object} payload - Data pengajuan (id_jadwal, deskripsi, jam_mulai, jam_selesai, link_drive)
+   * @param {File[]} files - Array of File objects (opsional)
+   */
+
   getConsultantCatalog: async (spesialisasi = null) => {
     try {
       const params =
@@ -20,9 +26,35 @@ export const consultationService = {
     return response.data.data;
   },
 
-  createConsultation: async (payload) => {
-    const response = await api.post("/consultations/", payload);
-    return response.data;
+  createConsultation: async (payload, files = []) => {
+    try {
+      const formData = new FormData();
+
+      // 1. Append Text Fields dari payload
+      formData.append("id_jadwal", payload.id_jadwal);
+      formData.append("deskripsi_kasus", payload.deskripsi_kasus);
+      formData.append("jam_mulai", payload.jam_mulai);
+      formData.append("jam_selesai", payload.jam_selesai);
+
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+      // 2. Append Multiple Files (jika ada)
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append("dokumen_pendukung_files", file);
+        });
+      }
+
+      // 3. Eksekusi Post
+      // Axios akan otomatis mengatur 'Content-Type': 'multipart/form-data'
+      const response = await api.post("/consultations/", formData);
+
+      return response.data;
+    } catch (error) {
+      console.error("Gagal mengirim pengajuan konsultasi:", error);
+      throw error;
+    }
   },
 
   getConsultationDetail: async (id) => {
@@ -47,5 +79,18 @@ export const consultationService = {
       params: { new_status: newStatus },
     });
     return response.data;
+  },
+
+  getBookedSlots: async (id_konsultan) => {
+    try {
+      const response = await api.get(
+        // Ubah dari 'consultants' menjadi 'consultations' agar sesuai prefix backend
+        `/consultations/${id_konsultan}/booked-slots`,
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Gagal mengambil data jadwal terisi:", error);
+      throw error;
+    }
   },
 };

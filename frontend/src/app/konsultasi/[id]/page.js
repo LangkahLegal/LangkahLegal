@@ -1,11 +1,16 @@
+// app/consultant/[id]/page.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
+
+import { consultantService } from "@/services/consultant.service";
+import { consultationService } from "@/services/consultation.service";
 
 import ConsultantHero from "@/components/konsultasi/pengajuan/ConsultantHero";
 import PriceCard from "@/components/konsultasi/pengajuan/PriceCard";
@@ -13,72 +18,150 @@ import AboutSection from "@/components/konsultasi/pengajuan/AboutSection";
 import SchedulePicker from "@/components/konsultasi/pengajuan/SchedulePicker";
 import ConsultationForm from "@/components/konsultasi/pengajuan/ConsultationForm";
 
-const MOCK_CONSULTANT = {
-  name: "Adv. Ahmad Sudirman, S.H., M.H.",
-  rating: "4.9 (120+)",
-  price: "150.000",
-  bio: "Adv. Ahmad Sudirman memiliki pengalaman lebih dari 15 tahun dalam menangani berbagai kasus hukum di Indonesia. Spesialisasi beliau mencakup Hukum Perdata (sengketa kontrak, keluarga) dan Hukum Pidana (korporasi & umum).",
-  tags: ["Litigasi", "Somasi", "Legal Opinion"],
-  avatar: "https://i.pravatar.cc/150?u=ahmad",
-};
-
-const DATES = [
-  { day: "SEN", date: "12" },
-  { day: "SEL", date: "13" },
-  { day: "RAB", date: "14" },
-  { day: "KAM", date: "15" },
-  { day: "JUM", date: "16" },
-  { day: "SAB", date: "17" },
-];
-
 export default function ConsultantDetailPage() {
-  const [selectedDate, setSelectedDate] = useState("13");
+  const { id } = useParams();
+  const router = useRouter();
+
+  const [consultant, setConsultant] = useState(null);
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [dates, setDates] = useState([]);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
+
+  // --- LIFTING STATE ---
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [startTime, setStartTime] = useState("08:00"); // Default sesuai jam buka terkecil
+  const [endTime, setEndTime] = useState("09:00");
   const [description, setDescription] = useState("");
-  const [driveLink, setDriveLink] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setIsLoadingPage(true);
+        const consultantId = parseInt(id);
+
+        const [profileData, bookedData] = await Promise.all([
+          consultantService.getConsultantDetail(consultantId),
+          consultationService.getBookedSlots(consultantId).catch(() => []),
+        ]);
+
+        setConsultant(profileData);
+        setBookedSlots(bookedData);
+
+        if (profileData.jadwal_ketersediaan?.length > 0) {
+          const formattedDates = profileData.jadwal_ketersediaan.map((j) => {
+            const d = new Date(j.tanggal);
+            return {
+              day: d
+                .toLocaleDateString("id-ID", { weekday: "short" })
+                .toUpperCase(),
+              date: d.getDate().toString(),
+              fullDate: j.tanggal,
+            };
+          });
+
+          setDates(formattedDates);
+          setSelectedDate(formattedDates[0].fullDate);
+          // Inisialisasi jam awal sesuai jam_mulai di DB
+          setStartTime(
+            profileData.jadwal_ketersediaan[0].jam_mulai.substring(0, 5),
+          );
+        }
+      } catch (error) {
+        console.error("Gagal memuat profil:", error);
+      } finally {
+        setIsLoadingPage(false);
+      }
+    };
+
+    if (id) fetchAllData();
+  }, [id]);
 
   const handleBooking = async () => {
-    setIsLoading(true);
-    // Simulasi API Call
-    console.log("Submit:", { selectedDate, description, driveLink });
-    setTimeout(() => setIsLoading(false), 2000);
+    if (!description.trim()) return alert("Mohon isi deskripsi kasus Anda");
+
+    try {
+      setIsSubmitting(true);
+      const currentSchedule = consultant?.jadwal_ketersediaan?.find(
+        (s) => s.tanggal === selectedDate,
+      );
+
+      if (!currentSchedule) return alert("Jadwal tidak tersedia");
+
+      const formatISO = (time) => `${selectedDate}T${time}:00+07:00`;
+
+      const payload = {
+        id_jadwal: currentSchedule.id_jadwal,
+        deskripsi_kasus: description,
+        jam_mulai: `${startTime}:00`, // Hasil: "08:00:00"
+        jam_selesai: `${endTime}:00`,
+      };
+
+      await consultationService.createConsultation(payload, files);
+      alert("Pengajuan berhasil dikirim!");
+      router.push("/client/history");
+    } catch (error) {
+      alert(error.response?.data?.detail || "Gagal mengirim pengajuan");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoadingPage)
+    return (
+      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6f59fe]"></div>
+      </div>
+    );
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full overflow-x-hidden font-['Inter',sans-serif]">
       <Sidebar role="client" />
-
-      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64">
         <PageHeader title="Profil Konsultan" />
-
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10">
-            <ConsultantHero {...MOCK_CONSULTANT} />
-
-            <PriceCard price={MOCK_CONSULTANT.price} />
-
+            <ConsultantHero
+              {...consultant}
+              name={consultant.nama_lengkap || consultant.users?.nama}
+              avatar={consultant.users?.foto_profil}
+              rating={`${consultant.rating || "0.0"} (${consultant.reviews}+)`}
+            />
+            <PriceCard
+              price={consultant.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
+            />
             <AboutSection
-              bio={MOCK_CONSULTANT.bio}
-              tags={MOCK_CONSULTANT.tags}
+              bio={consultant.deskripsi_lengkap}
+              tags={
+                consultant.spesialisasi?.split(",").map((s) => s.trim()) || []
+              }
             />
 
             <SchedulePicker
-              dates={DATES}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
+              startTime={startTime}
+              onStartTimeChange={setStartTime}
+              endTime={endTime}
+              onEndTimeChange={setEndTime}
+              rawSchedules={consultant.jadwal_ketersediaan || []}
+              bookedSlots={bookedSlots}
             />
 
             <ConsultationForm
               description={description}
               onDescriptionChange={setDescription}
-              driveLink={driveLink}
-              onDriveLinkChange={setDriveLink}
+              files={files}
+              onFilesChange={setFiles}
             />
-
             <div className="pt-2">
               <Button
                 fullWidth
-                isLoading={isLoading}
+                isLoading={isSubmitting}
                 onClick={handleBooking}
                 className="py-5 rounded-xl shadow-[0_10px_30px_rgba(111,89,254,0.3)]"
               >
@@ -92,10 +175,7 @@ export default function ConsultantDetailPage() {
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
+        <BottomNav role="client" className="lg:hidden" />
       </div>
     </div>
   );
