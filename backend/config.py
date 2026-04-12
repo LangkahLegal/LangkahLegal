@@ -11,6 +11,7 @@ class Settings:
 	app_name: str
 	supabase_url: str
 	supabase_key: str
+	supabase_portofolio_bucket: str
 	imgbb_api_key: str
 
 @lru_cache(maxsize=1)
@@ -18,6 +19,7 @@ def get_settings() -> Settings:
 	supabase_url = os.getenv("SUPABASE_URL", "").strip()
 	supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or os.getenv("SUPABASE_KEY", "").strip()
 	imgbb_api_key = os.getenv("IMGBB_API_KEY", "").strip()
+	portofolio_bucket = os.getenv("SUPABASE_PORTOFOLIO_BUCKET", "portofolio").strip() or "portofolio"
 
 	if not supabase_url or not supabase_key:
 		raise RuntimeError(
@@ -34,5 +36,6 @@ def get_settings() -> Settings:
 		app_name=os.getenv("APP_NAME", "LangkahLegal Backend").strip(),
 		supabase_url=supabase_url,
 		supabase_key=supabase_key,
+		supabase_portofolio_bucket=portofolio_bucket,
 		imgbb_api_key=imgbb_api_key,
 	)
