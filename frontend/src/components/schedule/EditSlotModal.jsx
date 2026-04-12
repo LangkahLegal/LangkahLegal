@@ -55,23 +55,32 @@ export default function EditSlotModal({ isOpen, onClose, onSave, onDelete, slot 
 
         <div className="space-y-5">
           {/* Group Input Waktu */}
-          <div className="flex items-center gap-3">
-            <Dropdown
-              label="Mulai"
-              value={formData.start}
-              options={TIME_OPTIONS}
-              onChange={(val) => handleChange("start", val)}
-            />
+          <div className="flex items-center justify-between w-full gap-2">
+            <div className="flex-1">
+              <Dropdown
+                label="Mulai"
+                value={formData.start}
+                options={TIME_OPTIONS}
+                onChange={(val) => handleChange("start", val)}
+              className="w-full"
+              />
+            </div>
 
-            <span className="text-[#aca8c1] mt-5 font-bold">-</span>
+            <div className="flex items-center justify-center pt-5">
+              <span className="text-[#aca8c1] font-bold">−</span>
+            </div>
 
-            <Dropdown
-              label="Selesai"
-              value={formData.end}
-              options={TIME_OPTIONS}
-              onChange={(val) => handleChange("end", val)}
-            />
+            <div className="flex-1">
+              <Dropdown
+                label="Selesai"
+                value={formData.end}
+                options={TIME_OPTIONS}
+                onChange={(val) => handleChange("end", val)}
+                className="w-full"
+              />
+            </div>
           </div>
+
 
           {/* Input Status dengan Icon */}
           <Dropdown
