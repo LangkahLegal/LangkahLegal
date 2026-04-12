@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
 import ProfileForm from "@/components/setting/profile/ProfileForm";
-import Sidebar from "@/components/layout/Sidebar"; // Tambahkan Sidebar
+import Sidebar from "@/components/layout/Sidebar"; 
 import BottomNav from "@/components/layout/BottomNav";
-import PageHeader from "@/components/layout/PageHeader"; // Ganti ke PageHeader
+import PageHeader from "@/components/layout/PageHeader"; 
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
 
@@ -137,8 +137,8 @@ export default function EditProfilePage() {
         {/* PageHeader Standar Layout menggantikan SettingHeader */}
         <PageHeader title="Edit Profil" />
 
-        <main className="flex-1 overflow-y-auto px-6 pt-8 pb-32 scroll-smooth">
-          <div className="max-w-2xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
             <div className="relative mb-12">
               <AvatarUpload
                 foto_profil={formData.foto_profil}

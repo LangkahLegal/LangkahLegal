@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import BottomNav from "@/components/layout/BottomNav";
+import Sidebar from "@/components/layout/Sidebar";
 import WeeklyCalendar from "@/components/schedule/WeeklyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
 import TimeSlotList from "@/components/schedule/TimeSlotList";
@@ -174,53 +175,59 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col overflow-x-hidden">
-      {/* Background Decor */}
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
       <div className="fixed top-[-20%] left-[-10%] w-[80%] h-[60%] bg-[#6D57FC]/10 blur-[120px] -z-10 rounded-full" />
 
-      <PageHeader 
-        title="Manajemen Jadwal"
-        backHref="/dashboard/consultant"
-      />
+      <Sidebar role="konsultan" />
 
-      <main className="flex-grow px-6 pb-32 pt-6 space-y-8 max-w-4xl mx-auto w-full">
-        <WeeklyCalendar
-          days={weekDays}
-          selectedDay={selectedDate.getDate()}
-          onSelectDay={(dayNum) => {
-            // Logic agar pilih hari tetap di minggu yang sama
-            const targetDate = weekDays.find((d) => d.date === dayNum).fullDate;
-            setSelectedDate(targetDate);
-          }}
-          monthLabel={monthLabel}
-          onPrev={handlePrevWeek}
-          onNext={handleNextWeek}
+      <div className="flex-1 flex flex-col relative min-w-0 w-full ml-0 lg:ml-64 transition-all duration-300">
+        <PageHeader 
+          title="Manajemen Jadwal"
+          backHref="/dashboard/consultant"
         />
 
-        <AvailabilityToggle
-          isAvailable={isAvailable}
-          onChange={handleGlobalAvailability}
-        />
+        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-6 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
+            <WeeklyCalendar
+              days={weekDays}
+              selectedDay={selectedDate.getDate()}
+              onSelectDay={(dayNum) => {
+                const targetDate = weekDays.find((d) => d.date === dayNum).fullDate;
+                setSelectedDate(targetDate);
+              }}
+              monthLabel={monthLabel}
+              onPrev={handlePrevWeek}
+              onNext={handleNextWeek}
+            />
 
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-10 h-10 border-4 border-[#6D57FC] border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-[#ada3ff] animate-pulse">
-              Sinkronisasi Kalender...
-            </p>
+            <AvailabilityToggle
+              isAvailable={isAvailable}
+              onChange={handleGlobalAvailability}
+            />
+
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="w-10 h-10 border-4 border-[#6D57FC] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-[#ada3ff] animate-pulse">
+                  Sinkronisasi Kalender...
+                </p>
+              </div>
+            ) : (
+              <TimeSlotList
+                slots={currentSlots}
+                onSlotChange={handleSlotChange}
+                onAddSlot={handleAddSlot}
+                onUpdateSlot={handleUpdateSlot}
+                onDeleteSlot={handleDeleteSlot}
+              />
+            )}
           </div>
-        ) : (
-          <TimeSlotList
-            slots={currentSlots}
-            onSlotChange={handleSlotChange}
-            onAddSlot={handleAddSlot}
-            onUpdateSlot={handleUpdateSlot}
-            onDeleteSlot={handleDeleteSlot}
-          />
-        )}
-      </main>
+        </main>
 
-      <BottomNav role="konsultan" />
+        <div className="lg:hidden">
+          <BottomNav role="konsultan" />
+        </div>
+      </div>
     </div>
   );
 }

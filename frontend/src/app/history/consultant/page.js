@@ -11,7 +11,6 @@ const HISTORY_MOCK = [
   {
     id: 1,
     name: "Aditya Pratama",
-    category: "Hukum Perdata",
     price: 1500000,
     status: "Selesai",
     date: "12 Okt 2023",
@@ -21,7 +20,6 @@ const HISTORY_MOCK = [
   {
     id: 2,
     name: "Siti Maemunah",
-    category: "Konsultasi Bisnis",
     price: 850000,
     status: "Selesai",
     date: "11 Okt 2023",
@@ -31,7 +29,6 @@ const HISTORY_MOCK = [
   {
     id: 3,
     name: "Budi Santoso",
-    category: "Hukum Pidana",
     price: 0,
     status: "Dibatalkan",
     date: "10 Okt 2023",
@@ -41,7 +38,6 @@ const HISTORY_MOCK = [
   {
     id: 4,
     name: "Linda Wijaya",
-    category: "Hukum Keluarga",
     price: 1200000,
     status: "Selesai",
     date: "09 Okt 2023",
@@ -65,8 +61,8 @@ export default function ConsultantHistoryPage() {
           }
         />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8">
-          <div className="max-w-3xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
             
             {/* Header Sesi Terakhir */}
             <div className="flex justify-between items-center px-2">
