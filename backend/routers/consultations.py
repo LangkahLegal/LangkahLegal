@@ -37,6 +37,7 @@ def buat_pengajuan_konsultasi(
         "id_konsultan": id_konsultan,
         "id_jadwal": request.id_jadwal,
         "deskripsi_kasus": request.deskripsi_kasus,
+        "dokumen_pendukung": request.dokumen_pendukung,
         "status_pengajuan": "pending" # Default status awal [cite: 186]
     }
     

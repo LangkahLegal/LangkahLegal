@@ -239,12 +239,11 @@ def get_active_requests(
 @router.get("/{id_konsultan}", status_code=status.HTTP_200_OK)
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
     """
-    Mengambil profil detail satu konsultan berdasarkan ID.
+    Mengambil profil detail satu konsultan beserta jadwal ketersediaannya.
     """
-    # Pastikan .eq() membandingkan dengan kolom 'id_konsultan' (bukan 'id')
     response = (
         db.table("konsultan")
-        .select("*, users(nama, email)")
+        .select("*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
         .eq("id_konsultan", id_konsultan)
         .execute()
     )
@@ -252,7 +251,29 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
     if not response.data:
         raise HTTPException(status_code=404, detail="Konsultan tidak ditemukan")
 
-    return {"message": "Detail profil ditemukan", "data": response.data[0]}
+    konsultan_data = response.data[0]
+
+    # Hitung rating
+    ratings = [r["skor_rating"] for r in konsultan_data.get("rating_ulasan", []) if r.get("skor_rating")]
+    total_reviews = len(ratings)
+    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
+    
+    konsultan_data.pop("rating_ulasan", None)
+    konsultan_data["rating"] = rating_avg
+    konsultan_data["reviews"] = total_reviews
+
+    # Fetch jadwal aktif yang bisa diajukan
+    jadwal_response = (
+        db.table("jadwal_ketersediaan")
+        .select("*")
+        .eq("id_konsultan", id_konsultan)
+        .eq("status_tersedia", True)
+        .execute()
+    )
+    
+    konsultan_data["jadwal_ketersediaan"] = jadwal_response.data
+
+    return {"message": "Detail profil ditemukan", "data": konsultan_data}
 
 
 @router.get("/{id_konsultan}/schedules", status_code=status.HTTP_200_OK)
