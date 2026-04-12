@@ -122,7 +122,11 @@ async def _post_auth(
     return {}
 
 
-@router.post("/signup")
+@router.post(
+    "/signup",
+    summary="Daftar akun baru",
+    description="Mendaftarkan user baru menggunakan email/password. Dapat mengirim metadata role pada proses signup.",
+)
 async def sign_up(payload: SignUpPayload):
     options = {
         "data": {
@@ -150,7 +154,11 @@ async def sign_up(payload: SignUpPayload):
     }
 
 
-@router.post("/login-otp")
+@router.post(
+    "/login-otp",
+    summary="Kirim OTP login ke email",
+    description="Mengirim OTP login ke email yang sudah terdaftar. Endpoint ini tidak membuat user baru.",
+)
 async def send_otp_login(payload: OtpLoginPayload):
     options = {
         "should_create_user": False,
@@ -169,7 +177,11 @@ async def send_otp_login(payload: OtpLoginPayload):
     return {"data": {"sent": True}}
 
 
-@router.post("/resend-signup-otp")
+@router.post(
+    "/resend-signup-otp",
+    summary="Kirim ulang OTP signup",
+    description="Mengirim ulang OTP verifikasi email pada flow signup.",
+)
 async def resend_signup_otp(payload: ResendOtpPayload):
     options = {}
     if payload.emailRedirectTo:
@@ -187,7 +199,11 @@ async def resend_signup_otp(payload: ResendOtpPayload):
     return {"data": {"sent": True}}
 
 
-@router.post("/verify-otp")
+@router.post(
+    "/verify-otp",
+    summary="Verifikasi OTP",
+    description="Memverifikasi token OTP dan mengembalikan session/access token bila berhasil.",
+)
 async def verify_otp(payload: VerifyOtpPayload):
     data = await _post_auth(
         "/auth/v1/verify",
@@ -208,7 +224,11 @@ async def verify_otp(payload: VerifyOtpPayload):
     }
 
 
-@router.post("/login-password")
+@router.post(
+    "/login-password",
+    summary="Login dengan email & password",
+    description="Login standar berbasis password. Mengembalikan session lengkap (access token + refresh token).",
+)
 async def login_with_password(payload: PasswordLoginPayload):
     data = await _post_auth(
         "/auth/v1/token",
@@ -227,7 +247,11 @@ async def login_with_password(payload: PasswordLoginPayload):
     }
 
 
-@router.post("/oauth/google")
+@router.post(
+    "/oauth/google",
+    summary="Generate OAuth URL Google",
+    description="Menghasilkan URL OAuth Google + PKCE verifier untuk flow login social pada frontend.",
+)
 async def sign_in_with_google(payload: OAuthPayload):
     code_verifier, code_challenge = _generate_pkce_pair()
     params = {
@@ -247,7 +271,11 @@ async def sign_in_with_google(payload: OAuthPayload):
     }
 
 
-@router.get("/session")
+@router.get(
+    "/session",
+    summary="Exchange OAuth code ke session",
+    description="Menukar `code` OAuth + `code_verifier` PKCE menjadi session/access token.",
+)
 async def exchange_oauth_session(code: str, code_verifier: str):
     if not code or not code_verifier:
         raise HTTPException(status_code=400, detail="Kode OAuth tidak lengkap.")
@@ -269,7 +297,11 @@ async def exchange_oauth_session(code: str, code_verifier: str):
     }
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    summary="Refresh access token",
+    description="Menukar refresh token untuk mendapatkan session/access token baru.",
+)
 async def refresh_session(payload: RefreshTokenPayload):
     if not payload.refresh_token:
         raise HTTPException(status_code=400, detail="Refresh token tidak tersedia.")
@@ -304,7 +336,11 @@ def _get_auth_user(token: str, db: Client) -> dict:
     return user_res.user
 
 
-@router.get("/profile")
+@router.get(
+    "/profile",
+    summary="Ambil profil user berdasarkan bearer token",
+    description="Validasi access token ke Supabase lalu kembalikan profile user lokal (sinkronisasi auth_user_id jika dibutuhkan).",
+)
 def get_profile(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Client = Depends(get_supabase_client),
@@ -341,7 +377,11 @@ def get_profile(
     return {"data": profile}
 
 
-@router.post("/role")
+@router.post(
+    "/role",
+    summary="Set role user setelah login",
+    description="Menyimpan atau memperbarui role user (`client`/`konsultan`) pada tabel users lokal.",
+)
 def update_role(
     payload: RolePayload,
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -375,7 +415,11 @@ def update_role(
     return {"data": result.data[0]}
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    summary="Logout session user",
+    description="Mencabut session/token aktif user pada Supabase Auth.",
+)
 async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     settings = get_settings()

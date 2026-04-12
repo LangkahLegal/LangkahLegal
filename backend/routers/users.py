@@ -8,7 +8,11 @@ from services import upload_portfolio_pdf_to_supabase
 
 router = APIRouter()
 
-@router.get("/me/settings")
+@router.get(
+    "/me/settings",
+    summary="Ambil data settings dasar user login",
+    description="Mengembalikan data ringkas untuk halaman settings: nama, email, dan foto_profil.",
+)
 def get_settings_info(current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
     user = db.table("users").select("nama, email, foto_profil").eq("id_user", current_user["id_user"]).single().execute()
     return {
@@ -17,7 +21,17 @@ def get_settings_info(current_user: dict = Depends(get_current_user), db: Client
         "foto_profil": user.data.get("foto_profil")
     }
 
-@router.get("/me/profile/full")
+@router.get(
+    "/me/profile/full",
+    summary="Ambil profile lengkap user login",
+    description="""
+Mengembalikan profile lengkap berdasarkan role user.
+
+- Jika role `client`: mengembalikan profile dasar dari tabel users.
+- Jika role `konsultan`: mengembalikan gabungan data users + data profesional dari tabel konsultan,
+  termasuk field `portofolio`.
+""",
+)
 def get_full_profile(current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
     # Ambil data dasar
     user = db.table("users").select("nama, email, foto_profil, role").eq("id_user", current_user["id_user"]).single().execute().data
@@ -33,7 +47,25 @@ def get_full_profile(current_user: dict = Depends(get_current_user), db: Client 
         }
     return user
 
-@router.put("/me/profile/update")
+@router.put(
+    "/me/profile/update",
+    summary="Update profile user / profile profesional konsultan",
+    description="""
+Endpoint update profile dalam satu pintu.
+
+Mendukung:
+1. `application/json` untuk update field teks biasa.
+2. `multipart/form-data` untuk update dengan upload file portofolio.
+
+Khusus konsultan:
+- Upload file portofolio via field `portofolio_file` (PDF only).
+- Hapus portofolio dengan mengirim field `portofolio` sebagai string kosong.
+
+Catatan frontend:
+- Untuk upload file, jangan set header Content-Type manual.
+- Frontend cukup kirim `FormData` lalu browser otomatis menambahkan boundary multipart.
+""",
+)
 async def update_profile(
     request: Request,
     nama: str | None = Form(default=None),
