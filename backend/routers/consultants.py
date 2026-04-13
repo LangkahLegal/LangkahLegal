@@ -521,3 +521,121 @@ def toggle_global_active(
         .eq("id_user", current_user["id_user"])
         .execute()
     )
+
+@router.get(
+    "/me/clients",
+    summary="Daftar Klien (Pending & Belum Lewat)",
+    description="Page Daftar Klien: Menampilkan pengajuan berstatus 'pending' yang jadwalnya belum lewat."
+)
+def get_daftar_klien(
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    if current_user.get("role") != "konsultan":
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
+    if not kons_profile.data:
+        raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
+        
+    id_kons = kons_profile.data["id_konsultan"]
+
+    response = (
+        db.table("pengajuan_konsultasi")
+        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)")
+        .eq("id_konsultan", id_kons)
+        .eq("status_pengajuan", "pending")
+        .execute()
+    )
+    
+    from datetime import datetime
+    now_date_str = datetime.now().strftime("%Y-%m-%d")
+    
+    formatted_data = []
+    
+    for req in response.data:
+        jadwal = req.get("jadwal_ketersediaan") or {}
+        tanggal_konsultasi = jadwal.get("tanggal")
+        
+        # Filter: Jadwal belum lewat (tanggal >= hari ini)
+        if tanggal_konsultasi and tanggal_konsultasi >= now_date_str:
+            formatted_data.append({
+                "id_pengajuan": req["id_pengajuan"],
+                "nama_klien": req.get("users", {}).get("nama"),
+                "foto_profil": req.get("users", {}).get("foto_profil"),
+                "tanggal_konsultasi": tanggal_konsultasi,
+                "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
+                "waktu_selesai": str(req.get("jam_selesai", ""))[:5],
+                "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
+            })
+
+    return {
+        "total_klien_aktif": len(formatted_data),
+        "data": formatted_data
+    }
+
+
+@router.get(
+    "/me/history",
+    summary="Riwayat Konsultan",
+    description="Page Riwayat Konsultan: Pengajuan status completed atau cancelled, disorting berdasarkan terbaru ke terlama."
+)
+def get_riwayat_konsultan(
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    if current_user.get("role") != "konsultan":
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
+    if not kons_profile.data:
+        raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
+        
+    id_kons = kons_profile.data["id_konsultan"]
+
+    # Ambil pengajuan sekaligus payment details transaksi jika ada
+    response = (
+        db.table("pengajuan_konsultasi")
+        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
+        .eq("id_konsultan", id_kons)
+        .in_("status_pengajuan", ["completed", "selesai", "cancelled", "dibatalkan"])
+        .execute()
+    )
+    
+    formatted_data = []
+    
+    for req in response.data:
+        jadwal = req.get("jadwal_ketersediaan") or {}
+        trans = req.get("transaksi") or [] # bisa list
+        
+        nominal = 0
+        if isinstance(trans, list) and len(trans) > 0:
+            nominal = trans[0].get("nominal_konsultan") or 0
+        elif isinstance(trans, dict):
+             nominal = trans.get("nominal_konsultan") or 0
+             
+        # Jika dibatalkan kita bisa force 0 sesuai spesifikasi
+        status_akhir = req.get("status_pengajuan")
+        if status_akhir in ["cancelled", "dibatalkan"]:
+            nominal = 0
+            
+        jm = str(req.get("jam_mulai", ""))[:5]
+        js = str(req.get("jam_selesai", ""))[:5]
+
+        formatted_data.append({
+            "id_pengajuan": req["id_pengajuan"],
+            "nama_klien": req.get("users", {}).get("nama"),
+            "foto_profil": req.get("users", {}).get("foto_profil"),
+            "status_akhir": status_akhir,
+            "tanggal_konsultasi": jadwal.get("tanggal", ""),
+            "rentang_waktu": f"{jm} - {js}" if jm and js else "",
+            "nominal_konsultan": nominal
+        })
+        
+    # Sort DESC by tanggal_konsultasi
+    formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
+
+    return {
+        "total_sesi_selesai": len(formatted_data),
+        "data": formatted_data
+    }
