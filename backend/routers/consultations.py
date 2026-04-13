@@ -34,7 +34,6 @@ Upload dokumen:
 """,
     response_description="ID pengajuan, status pengajuan, dan list metadata dokumen pendukung yang berhasil disimpan.",
 )
-@router.post("/")
 async def buat_pengajuan_konsultasi(
     id_jadwal: int = Form(...), 
     deskripsi_kasus: str = Form(...),
@@ -44,13 +43,19 @@ async def buat_pengajuan_konsultasi(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    print(f"DEBUG DATA: {id_jadwal}")
     # Security check: Hanya client yang boleh submit
     if current_user.get("role") != "client":
         raise HTTPException(status_code=403, detail="Hanya klien yang dapat membuat pengajuan")
 
-    # 1. READ ONLY: Ambil data jadwal ketersediaan untuk validasi range jam
-    # Kita butuh ini cuma buat mastiin jam yang di-input client nggak ngaco (di luar jam kerja konsultan)
+    # Validasi jumlah file (maks 10)
+    if dokumen_pendukung_files:
+        valid_files = [f for f in dokumen_pendukung_files if f.filename]
+        if len(valid_files) > 10:
+            raise HTTPException(status_code=400, detail="Maksimal 10 file dokumen pendukung")
+    else:
+        valid_files = []
+
+    # 1. Ambil data jadwal ketersediaan untuk validasi range jam
     jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
     
     if not jadwal.data:
@@ -58,15 +63,14 @@ async def buat_pengajuan_konsultasi(
     
     data_jadwal = jadwal.data[0]
     
-    # 2. Validasi Jam (Bandingkan jam_mulai/selesai dari Frontend vs Master Jadwal)
-    # Kita tetap validasi agar tidak ada pengajuan di luar jam operasional konsultan
+    # 2. Validasi Jam
     if jam_mulai < data_jadwal["jam_mulai"] or jam_selesai > data_jadwal["jam_selesai"]:
         raise HTTPException(
             status_code=400, 
             detail=f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})"
         )
 
-    # 3. Buat record pengajuan di tabel pengajuan_konsultasi
+    # 3. Buat record pengajuan
     new_pengajuan = {
         "id_user": current_user["id_user"],
         "id_konsultan": data_jadwal["id_konsultan"],
@@ -74,7 +78,7 @@ async def buat_pengajuan_konsultasi(
         "jam_mulai": jam_mulai, 
         "jam_selesai": jam_selesai, 
         "deskripsi_kasus": deskripsi_kasus,
-        "status_pengajuan": "pending" 
+        "status_pengajuan": "pending"
     }
     
     res_pengajuan = db.table("pengajuan_konsultasi").insert(new_pengajuan).execute()
@@ -82,14 +86,52 @@ async def buat_pengajuan_konsultasi(
     if not res_pengajuan.data:
         raise HTTPException(status_code=500, detail="Gagal menyimpan data pengajuan")
 
-    # --- TABEL JADWAL_KETERSEDIAAN TIDAK DISENTUH SAMA SEKALI (TIDAK ADA UPDATE) ---
+    id_pengajuan = res_pengajuan.data[0]["id_pengajuan"]
+
+    # 4. Upload dokumen pendukung ke Supabase bucket (jika ada)
+    settings = get_settings()
+    bucket_name = settings.supabase_berkas_pendukung_bucket
+    uploaded_docs = []
+    failed_docs = []
+
+    print(f"[DEBUG] Total valid_files untuk upload: {len(valid_files)}")
+    print(f"[DEBUG] Bucket target: {bucket_name}")
+
+    for file in valid_files:
+        print(f"[DEBUG] Mencoba upload: {file.filename} ({file.content_type})")
+        try:
+            doc_meta = await upload_supporting_document_to_supabase(
+                file=file,
+                id_pengajuan=id_pengajuan,
+                id_user=current_user["id_user"],
+                db_client=db,
+                bucket_name=bucket_name,
+            )
+            # Simpan metadata dokumen ke tabel dokumen_pendukung
+            db.table("dokumen_pendukung").insert({
+                "id_pengajuan": id_pengajuan,
+                "nama_dokumen": doc_meta["nama_dokumen"],
+                "file_url": doc_meta["file_url"],
+                "tipe_file": doc_meta["tipe_file"],
+                "ukuran_kb": doc_meta["ukuran_kb"],
+            }).execute()
+            uploaded_docs.append(doc_meta["nama_dokumen"])
+            print(f"[DEBUG] Berhasil upload: {file.filename}")
+        except HTTPException as e:
+            print(f"[ERROR] Gagal upload {file.filename}: {e.detail}")
+            failed_docs.append({"nama": file.filename, "alasan": e.detail})
+        except Exception as e:
+            print(f"[ERROR] Exception tak terduga saat upload {file.filename}: {str(e)}")
+            failed_docs.append({"nama": file.filename, "alasan": str(e)})
 
     return {
         "message": "Pengajuan berhasil dikirim.",
         "data": {
-            "id_pengajuan": res_pengajuan.data[0]["id_pengajuan"],
+            "id_pengajuan": id_pengajuan,
             "jam_diajukan": f"{jam_mulai} - {jam_selesai}",
-            "status": "pending"
+            "status": "pending",
+            "dokumen_terupload": uploaded_docs,
+            "dokumen_gagal": failed_docs,
         }
     }
 
@@ -209,7 +251,7 @@ def get_detail_pengajuan(
         .select("""
             *,
             jadwal_ketersediaan(*),
-            users(nama, email),
+            users(nama, email, foto_profil),
             dokumen_pendukung(id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at)
         """)\
         .eq("id_pengajuan", id_pengajuan)
@@ -234,7 +276,39 @@ def get_detail_pengajuan(
     if not response.data:
         raise HTTPException(status_code=404, detail="Detail tidak ditemukan")
 
-    return {"data": response.data[0]}
+    data = response.data[0]
+    
+    # Ekstraksi field agar sesuai dengan kebutuhan response UI Permintaan Baru
+    jadwal = data.get("jadwal_ketersediaan") or {}
+    user_info = data.get("users") or {}
+    docs = data.get("dokumen_pendukung") or []
+    
+    data["nama_klien"] = user_info.get("nama")
+    data["foto_profil"] = user_info.get("foto_profil")
+    data["tanggal_pengajuan"] = data.get("tanggal_pengajuan") or data.get("created_at")
+    data["tanggal_konsultasi"] = jadwal.get("tanggal")
+    
+    # Format rentang waktu HH:MM - HH:MM jika ada detiknya kita hilangkan biar lebih rapi atau biarkan saja
+    jm = str(data.get("jam_mulai", ""))[:5]
+    js = str(data.get("jam_selesai", ""))[:5]
+    data["rentang_waktu"] = f"{jm} - {js}" if jm and js else ""
+    
+    # link_dokumen: prioritaskan kolom langsung (dari GDrive URL), fallback ke file upload pertama
+    data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
+
+    # Expose array berkas_pendukung lengkap dari tabel dokumen_pendukung (upload ke Supabase bucket)
+    data["berkas_pendukung"] = [
+        {
+            "id_dokumen": d.get("id_dokumen"),
+            "nama_dokumen": d.get("nama_dokumen"),
+            "file_url": d.get("file_url"),
+            "tipe_file": d.get("tipe_file"),
+            "ukuran_kb": d.get("ukuran_kb"),
+        }
+        for d in docs
+    ]
+
+    return {"data": data}
     
 @router.post(
     "/{id_pengajuan}/rating",
@@ -302,6 +376,13 @@ def update_consultation_status(
 ):
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status")
+
+    # Ambil info pengajuan terlebih dahulu jika ditolak
+    if new_status.lower() in ["ditolak", "rejected"]:
+        pengajuan = db.table("pengajuan_konsultasi").select("id_jadwal").eq("id_pengajuan", id_pengajuan).execute()
+        if pengajuan.data and pengajuan.data[0].get("id_jadwal"):
+            # Bebaskan jadwal ketersediaan
+            db.table("jadwal_ketersediaan").update({"status_tersedia": True}).eq("id_jadwal", pengajuan.data[0]["id_jadwal"]).execute()
 
     response = db.table("pengajuan_konsultasi")\
         .update({"status_pengajuan": new_status})\
