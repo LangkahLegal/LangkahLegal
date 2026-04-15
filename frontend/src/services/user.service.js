@@ -12,7 +12,15 @@ export const userService = {
   },
 
   updateProfile: async (payload) => {
-    const res = await api.put("/users/me/profile/update", payload);
+    const formData = new FormData();
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] !== undefined && payload[key] !== null) {
+        formData.append(key, payload[key]);
+      }
+    });
+
+    const res = await api.put("/users/me/profile/update", formData);
     return res.data;
   },
 };
