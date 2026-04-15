@@ -18,12 +18,17 @@ const CONSULTANT_NAV = [
   { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
 ];
 
-export default function BottomNav({ role = "client" }) {
+// Menambahkan prop className agar instruksi dari luar (seperti lg:hidden) bisa masuk
+export default function BottomNav({ role = "client", className = "" }) {
   const pathname = usePathname();
   const navItems = role === "konsultan" ? CONSULTANT_NAV : CLIENT_NAV;
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-dark/90 border-t border-muted/30 z-50 backdrop-blur-xl">
+    // Tambahkan lg:hidden di sini agar secara default hilang di desktop
+    // Dan gabungkan dengan ${className} untuk fleksibilitas
+    <footer
+      className={`fixed bottom-0 left-0 right-0 bg-dark/90 border-t border-muted/30 z-50 backdrop-blur-xl lg:hidden ${className}`}
+    >
       <div className="max-w-md mx-auto flex items-center justify-around w-full px-4 py-4">
         {navItems.map((item, idx) => {
           const isActive = pathname === item.path;
