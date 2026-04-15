@@ -1,9 +1,12 @@
 // components/dashboard/RequestCard.jsx
 import { MaterialIcon } from "@/components/ui";
 
-export default function RequestCard({ name, time }) {
+export default function RequestCard({ name, time, onClick }) {
   return (
-    <div className="glass-card bg-input border border-white/5 p-5 rounded-3xl flex items-center gap-4 hover:bg-white/5 transition-all cursor-pointer group">
+    <div
+      onClick={onClick} // Tambahkan handler klik di sini
+      className="glass-card bg-input border border-white/5 p-5 rounded-3xl flex items-center gap-4 hover:bg-white/5 transition-all cursor-pointer group"
+    >
       {/* Icon Profile Section */}
       <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-primary-light/20 transition-colors">
         <MaterialIcon name="person_add" className="text-primary-light" />

@@ -135,49 +135,37 @@ async def buat_pengajuan_konsultasi(
         }
     }
 
-@router.put("/{id_pengajuan}/respond", status_code=status.HTTP_200_OK)
-def respond_konsultasi(
+@router.put("/{id_pengajuan}/status")
+def update_consultation_status(
     id_pengajuan: int,
-    request: ConsultationRespond,
+    new_status: str, # Harus sesuai ENUM: 'pending', 'menunggu_pembayaran', 'terjadwal', 'selesai', 'dibatalkan', 'ditolak'
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    """
-    (Khusus Konsultan) Menyetujui atau menolak pengajuan jadwal konsultasi. [cite: 190-191]
-    """
+    # 1. Pastikan Role sama dengan yang ada di tabel 'users' (biasanya 'konsultan')
     if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa merespons pengajuan")
+        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status")
 
-    # 1. Ambil data pengajuan
-    pengajuan = db.table("pengajuan_konsultasi").select("*").eq("id_pengajuan", id_pengajuan).execute()
-    
-    if not pengajuan.data:
-        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
-    
-    id_jadwal = pengajuan.data[0]["id_jadwal"]
+    # 2. Jika statusnya 'ditolak', bebaskan jadwalnya
+    if new_status.lower() == "ditolak":
+        # Ambil id_jadwal dari pengajuan ini
+        pengajuan = db.table("pengajuan_konsultasi").select("id_jadwal").eq("id_pengajuan", id_pengajuan).execute()
+        
+        if pengajuan.data and pengajuan.data[0].get("id_jadwal"):
+            # Update status_tersedia di tabel jadwal_ketersediaan menjadi True
+            db.table("jadwal_ketersediaan").update({"status_tersedia": True}).eq("id_jadwal", pengajuan.data[0]["id_jadwal"]).execute()
 
-    # 2. Logika Keputusan
-    if request.status_persetujuan.lower() == "disetujui":
-        new_status = "menunggu_pembayaran"
-        message = "Pengajuan disetujui. Menunggu pembayaran klien."
-    elif request.status_persetujuan.lower() == "ditolak":
-        new_status = "ditolak"
-        message = "Pengajuan ditolak. Slot jadwal telah dibuka kembali."
-        # Kembalikan status jadwal menjadi TRUE 
-        db.table("jadwal_ketersediaan").update({"status_tersedia": True}).eq("id_jadwal", id_jadwal).execute()
-    else:
-        raise HTTPException(status_code=400, detail="Keputusan tidak valid (gunakan 'disetujui' atau 'ditolak')")
-
-    # 3. Update status pengajuan
+    # 3. Update status_pengajuan (PASTIKAN NAMA TABEL: pengajuan_konsultasi)
+    # PostgreSQL akan melempar error jika new_status tidak ada di ENUM ('pending', 'ditolak', dll)
     response = db.table("pengajuan_konsultasi")\
         .update({"status_pengajuan": new_status})\
         .eq("id_pengajuan", id_pengajuan)\
         .execute()
 
-    return {
-        "message": message,
-        "data": response.data[0]
-    }
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Data pengajuan tidak ditemukan")
+
+    return {"message": f"Status berhasil diubah menjadi {new_status}"}
     
 @router.get(
     "/",

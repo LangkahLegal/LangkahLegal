@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [activeConsultation, setActiveConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hideCard, setHideCard] = useState(false);
 
   const DASHBOARD_CATEGORIES = [
     { id: "semua", label: "Semua" },
@@ -86,6 +87,24 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
+  const handleCancelConsultation = async () => {
+    if (!confirm("Apakah Anda yakin ingin membatalkan konsultasi ini?")) return;
+
+    try {
+      // Asumsi kita ambil ID dari activeConsultation yang di-set saat fetch
+      // Kita butuh ID pengajuan yang aslinya disimpan di konsultasi
+      const idPengajuan = activeConsultation?.id_pengajuan;
+
+      await consultationService.updateStatus(idPengajuan, "dibatalkan");
+
+      // Refresh data agar status berubah jadi dibatalkan
+      alert("Konsultasi berhasil dibatalkan.");
+      window.location.reload();
+    } catch (error) {
+      alert("Gagal membatalkan konsultasi.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center text-[#ada3ff]">
@@ -114,8 +133,12 @@ export default function DashboardPage() {
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
             <div className="w-full">
-              {activeConsultation ? (
-                <ConsultationCard data={activeConsultation} />
+              {activeConsultation && !hideCard ? (
+                <ConsultationCard
+                  data={activeConsultation}
+                  onCancel={handleCancelConsultation}
+                  onHide={() => setHideCard(true)}
+                />
               ) : (
                 <EmptyConsultationCard />
               )}
