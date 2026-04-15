@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // 1. Import useRouter
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -12,8 +13,7 @@ import RequestCard from "@/components/dashboard/RequestCard";
 import { consultantService } from "@/services/consultant.service";
 import { userService } from "@/services/user.service";
 
-// --- HELPERS (Sesuai Struktur Flat Baru) ---
-
+// --- HELPERS ---
 const formatCurrency = (value) => {
   const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
   return `Rp ${safeValue.toLocaleString("id-ID")}`;
@@ -27,13 +27,12 @@ const formatDateLabel = (value) => {
 };
 
 const formatTimeRange = (start, end) => {
-  const s = start?.substring(0, 5); // "08:00:00" -> "08:00"
-  const e = end?.substring(0, 5); // "09:00:00" -> "09:00"
+  const s = start?.substring(0, 5);
+  const e = end?.substring(0, 5);
   if (!s || !e) return null;
   return `${s} - ${e}`;
 };
 
-// Helper untuk menggabungkan Tanggal + Jam
 const formatFullSchedule = (item) => {
   const date = formatDateLabel(item?.tanggal_pengajuan);
   const time = formatTimeRange(item?.jam_mulai, item?.jam_selesai);
@@ -42,6 +41,7 @@ const formatFullSchedule = (item) => {
 };
 
 export default function ConsultantDashboardPage() {
+  const router = useRouter(); // 2. Inisialisasi router
   const [user, setUser] = useState({ name: "", foto_profil: "" });
   const [stats, setStats] = useState({
     income: 0,
@@ -86,15 +86,12 @@ export default function ConsultantDashboardPage() {
     fetchDashboard();
   }, []);
 
-  // Data terdekat (Sesi Aktif & Akan Datang)
   const liveSession = activeRequests[0];
   const upcomingSession = activeRequests[1];
 
-  // Mapping Permintaan Baru (Pending)
   const mappedRequests = pendingRequests.map((req) => ({
     id: req.id_pengajuan,
     name: req.users?.nama || "Klien",
-    // deskripsi_kasus tidak lagi dimasukkan ke mapped data
     time: formatFullSchedule(req),
   }));
 
@@ -163,7 +160,13 @@ export default function ConsultantDashboardPage() {
                 </div>
               ) : mappedRequests.length > 0 ? (
                 mappedRequests.map((req) => (
-                  <RequestCard key={req.id} name={req.name} time={req.time} />
+                  // 3. Tambahkan onClick untuk navigasi ke /request/[id]
+                  <RequestCard
+                    key={req.id}
+                    name={req.name}
+                    time={req.time}
+                    onClick={() => router.push(`/request/${req.id}`)}
+                  />
                 ))
               ) : (
                 <div className="text-sm text-[#aca8c1]">
