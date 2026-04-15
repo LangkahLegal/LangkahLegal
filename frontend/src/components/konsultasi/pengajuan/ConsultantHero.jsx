@@ -5,7 +5,19 @@ export default function ConsultantHero({
   specialization,
   rating,
   avatar,
+  portofolioUrl,
+  linkedinUrl,
 }) {
+  // Memastikan URL diawali dengan protokol
+  const handleOpenLink = (url) => {
+    if (!url) return alert("Tautan tidak tersedia");
+
+    // Jika URL tidak dimulai dengan http:// atau https://, tambahkan https://
+    const formattedUrl = url.startsWith("http") ? url : `https://${url}`;
+
+    window.open(formattedUrl, "_blank");
+  };
+
   return (
     <section className="relative flex flex-col items-center text-center w-full pt-4 font-['Inter',sans-serif]">
       {/* 1. Ambient Glow Background */}
@@ -27,16 +39,11 @@ export default function ConsultantHero({
         </div>
       </div>
 
-      {/* 3. Teks Nama */}
       <h1 className="text-xl sm:text-2xl font-extrabold text-white mb-2 leading-tight tracking-tight px-2">
         {name}
       </h1>
 
-      {/* 4. Meta Info Section (Tags & Rating) 
-          REVISI: mb-6 dikurangi menjadi mb-3 untuk merapatkan jarak ke bawah
-      */}
       <div className="flex items-center justify-center gap-3 flex-wrap px-4 mb-3">
-
         <div className="flex items-center gap-1 whitespace-nowrap">
           <MaterialIcon name="star" className="text-amber-400 text-base" />
           <span className="text-[10px] sm:text-xs font-bold text-[#e8e2fc]">
@@ -45,20 +52,23 @@ export default function ConsultantHero({
         </div>
       </div>
 
-      {/* 5. Professional Links Section (CV & LinkedIn)
-          REVISI: Ukuran lebih kecil (px-3 py-1) dan gap rapat (gap-2)
-      */}
       <div className="flex items-center justify-center gap-2">
-        {/* CV Button */}
-        <div className="bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all">
+        {/* Portofolio Button */}
+        <div
+          onClick={() => handleOpenLink(portofolioUrl)}
+          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${!portofolioUrl && "opacity-50 cursor-not-allowed"}`}
+        >
           <MaterialIcon name="description" className="text-xs text-[#aca8c1]" />
           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#aca8c1]">
             portofolio
           </span>
         </div>
 
-        {/* LinkedIn Button */}
-        <div className="bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all">
+        {/* LinkedIn Button - Sekarang sudah aman dari relative path */}
+        <div
+          onClick={() => handleOpenLink(linkedinUrl)}
+          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${!linkedinUrl && "opacity-50 cursor-not-allowed"}`}
+        >
           <MaterialIcon name="language" className="text-xs text-[#aca8c1]" />
           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#aca8c1]">
             LINKEDIN

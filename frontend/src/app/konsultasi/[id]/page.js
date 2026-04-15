@@ -1,4 +1,3 @@
-// app/consultant/[id]/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,7 +6,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
-import { Button } from "@/components/ui";
+import { Button, FileUpload } from "@/components/ui"; // Pastikan FileUpload diimport
+import FileItem from "@/components/ui/FileItem"; // Import FileItem
 
 import { consultantService } from "@/services/consultant.service";
 import { consultationService } from "@/services/consultation.service";
@@ -32,10 +32,10 @@ export default function ConsultantDetailPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
-  const [startTime, setStartTime] = useState("08:00"); // Default sesuai jam buka terkecil
+  const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("09:00");
   const [description, setDescription] = useState("");
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState([]); // Menampung array of File objects
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export default function ConsultantDetailPage() {
 
           setDates(formattedDates);
           setSelectedDate(formattedDates[0].fullDate);
-          // Inisialisasi jam awal sesuai jam_mulai di DB
           setStartTime(
             profileData.jadwal_ketersediaan[0].jam_mulai.substring(0, 5),
           );
@@ -81,31 +80,51 @@ export default function ConsultantDetailPage() {
     if (id) fetchAllData();
   }, [id]);
 
+  // Handler Tambah File
+  const handleFileChange = (newFile) => {
+    if (files.length >= 10) return alert("Maksimal 10 file");
+    setFiles((prev) => [...prev, newFile]);
+  };
+
+  // Handler Hapus File
+  const handleRemoveFile = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleBooking = async () => {
     if (!description.trim()) return alert("Mohon isi deskripsi kasus Anda");
 
     try {
       setIsSubmitting(true);
+
+      // Cari jadwal yang dipilih
       const currentSchedule = consultant?.jadwal_ketersediaan?.find(
         (s) => s.tanggal === selectedDate,
       );
 
       if (!currentSchedule) return alert("Jadwal tidak tersedia");
 
-      const formatISO = (time) => `${selectedDate}T${time}:00+07:00`;
-
+      // REVISI DI SINI:
+      // Kirim jam dalam format "HH:mm:ss" saja, jangan ISO lengkap
+      // agar sinkron dengan tipe data TIME di Database.
       const payload = {
         id_jadwal: currentSchedule.id_jadwal,
         deskripsi_kasus: description,
         jam_mulai: `${startTime}:00`, // Hasil: "08:00:00"
-        jam_selesai: `${endTime}:00`,
+        jam_selesai: `${endTime}:00`, // Hasil: "08:30:00"
       };
 
+      // Pastikan files adalah array (Array.from jika dari FileList)
       await consultationService.createConsultation(payload, files);
+
       alert("Pengajuan berhasil dikirim!");
-      router.push("/client/history");
+      router.push("/konsultasi");
     } catch (error) {
-      alert(error.response?.data?.detail || "Gagal mengirim pengajuan");
+      // Menampilkan pesan error yang lebih spesifik dari backend jika ada
+      const errorMessage =
+        error.response?.data?.detail || "Gagal mengirim pengajuan";
+      alert(errorMessage);
+      console.error("Booking Error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -130,10 +149,14 @@ export default function ConsultantDetailPage() {
               name={consultant.nama_lengkap || consultant.users?.nama}
               avatar={consultant.users?.foto_profil}
               rating={`${consultant.rating || "0.0"} (${consultant.reviews}+)`}
+              portofolioUrl={consultant.portofolio} // Tambahkan ini
+              linkedinUrl={consultant.linkedin} // Tambahkan ini (jika ada di data consultant)
             />
+
             <PriceCard
               price={consultant.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
             />
+
             <AboutSection
               bio={consultant.deskripsi_lengkap}
               tags={
@@ -152,12 +175,51 @@ export default function ConsultantDetailPage() {
               bookedSlots={bookedSlots}
             />
 
-            <ConsultationForm
-              description={description}
-              onDescriptionChange={setDescription}
-              files={files}
-              onFilesChange={setFiles}
-            />
+            {/* Bagian Form & Upload Berkas */}
+            <div className="space-y-6">
+              <ConsultationForm
+                description={description}
+                onDescriptionChange={setDescription}
+                // Props files tidak lagi digunakan di sini karena kita render manual list-nya
+              />
+
+              <div className="space-y-4">
+                <label className="text-sm font-bold text-[#ada3ff] uppercase tracking-widest ml-1">
+                  Dokumen Pendukung
+                </label>
+
+                {/* List File yang sudah dipilih */}
+                <div className="grid grid-cols-1 gap-3">
+                  {files.map((file, index) => (
+                    <FileItem
+                      key={index}
+                      file={{
+                        name: file.name,
+                        size: (file.size / 1024 / 1024).toFixed(2) + " MB",
+                        type: file.type.includes("pdf") ? "pdf" : "image",
+                        date: "Baru ditambahkan",
+                      }}
+                      onDelete={() => handleRemoveFile(index)}
+                      onClick={() =>
+                        window.open(URL.createObjectURL(file), "_blank")
+                      }
+                    />
+                  ))}
+                </div>
+
+                {/* Komponen Upload */}
+                <FileUpload
+                  onChange={handleFileChange}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  maxSizeMB={10}
+                />
+                <p className="text-[10px] text-[#aca8c1] px-2 italic">
+                  * Unggah bukti dokumen, foto TKP, atau berkas pendukung
+                  lainnya (Maks. 10 file).
+                </p>
+              </div>
+            </div>
+
             <div className="pt-2">
               <Button
                 fullWidth
@@ -175,7 +237,10 @@ export default function ConsultantDetailPage() {
             </div>
           </div>
         </main>
-        <BottomNav role="client" className="lg:hidden" />
+
+        <div className="lg:hidden">
+          <BottomNav role="client" />
+        </div>
       </div>
     </div>
   );
