@@ -8,7 +8,7 @@ import SearchBar from "@/components/layout/SearchBar";
 import Filter from "@/components/layout/Filter";
 import { FileUpload } from "@/components/ui";
 
-import FileItem from "@/components/documents/FileItem";
+import FileItem from "@/components/ui/FileItem";
 import SecurityNotice from "@/components/documents/SecurityNotice";
 
 const INITIAL_FILES = [

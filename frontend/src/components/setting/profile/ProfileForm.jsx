@@ -1,12 +1,31 @@
 "use client";
 
 import LinkedInField from "@/components/setting/profile/LinkedInField";
-import { InputField, Dropdown, FileUpload } from "@/components/ui"; 
+import { InputField, Dropdown, FileUpload } from "@/components/ui";
+import FileItem from "@/components/ui/FileItem";
 
-export default function ProfileForm({ data, onChange, role }) {
+export default function ProfileForm({ data, onChange, role, portofolioFile }) {
   const isConsultant = role === "konsultan";
-  
+
   const SPESIALISASI_OPTIONS = ["Umum", "Pidana", "Perdata"];
+
+  // Fungsi pembantu untuk memproses nama file dari URL
+  const getFileNameFromUrl = (url) => {
+    if (!url) return "";
+    return url.split("/").pop().split("?")[0];
+  };
+
+  // FUNGSI UNTUK MELIHAT DOKUMEN
+  const handleViewFile = () => {
+    if (portofolioFile) {
+      // Jika file baru dipilih (Object File), buat URL sementara
+      const localUrl = URL.createObjectURL(portofolioFile);
+      window.open(localUrl, "_blank");
+    } else if (data.portofolio) {
+      // Jika file sudah ada di server (URL String)
+      window.open(data.portofolio, "_blank");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -94,7 +113,7 @@ export default function ProfileForm({ data, onChange, role }) {
             <InputField
               label="Tarif Konsultasi (Rp)"
               type="number"
-              step={50000} 
+              step={50000}
               min={0}
               placeholder="Rp 150.000"
               value={data.tarif_per_sesi || ""}
@@ -103,9 +122,7 @@ export default function ProfileForm({ data, onChange, role }) {
           </div>
 
           <div className="space-y-2">
-            <label className="form-label">
-              Deskripsi Lengkap
-            </label>
+            <label className="form-label">Deskripsi Lengkap</label>
             <textarea
               rows={5}
               placeholder="Ceritakan pengalaman profesional Anda..."
@@ -115,14 +132,47 @@ export default function ProfileForm({ data, onChange, role }) {
             />
           </div>
 
-          <FileUpload
-            label="Unggah Portofolio"
-            file={data.porto}
-            onChange={(val) => onChange("porto", val)}
-            accept=".pdf,.doc,.docx"
-            maxSizeMB={5}
-            helperText="PDF, DOC (Maks. 5MB)"
-          />
+          <div className="space-y-4">
+            <label className="form-label">Portofolio</label>
+
+            {/* Menampilkan FileItem jika ada file baru atau file yang sudah terupload */}
+            {(portofolioFile || data.portofolio) && (
+              <FileItem
+                onClick={handleViewFile}
+                onDelete={() => {
+                  // Hapus file baru (jika ada) dan set portofolio ke "" untuk hapus di DB
+                  onChange("portofolio_file", null);
+                  onChange("portofolio", "");
+                }}
+                file={
+                  portofolioFile
+                    ? {
+                        name: portofolioFile.name,
+                        type: "pdf",
+                        date: "Baru dipilih",
+                        size:
+                          (portofolioFile.size / 1024 / 1024).toFixed(2) +
+                          " MB",
+                      }
+                    : {
+                        name: getFileNameFromUrl(data.portofolio),
+                        type: "pdf",
+                        date: "Sudah terupload",
+                        size: "PDF Dokumen",
+                      }
+                }
+              />
+            )}
+
+            <FileUpload
+              label="Ganti Portofolio"
+              file={portofolioFile}
+              onChange={(val) => onChange("portofolio_file", val)}
+              accept=".pdf"
+              maxSizeMB={5}
+              helperText="PDF (Maks. 5MB)"
+            />
+          </div>
 
           <LinkedInField
             value={data.linkedin}

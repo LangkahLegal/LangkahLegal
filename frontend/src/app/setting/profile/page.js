@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
 import ProfileForm from "@/components/setting/profile/ProfileForm";
-import Sidebar from "@/components/layout/Sidebar"; 
+import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
-import PageHeader from "@/components/layout/PageHeader"; 
+import PageHeader from "@/components/layout/PageHeader";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
 
@@ -31,6 +31,7 @@ export default function EditProfilePage() {
     pendidikan_terakhir: "",
   });
 
+  const [portofolioFile, setPortofolioFile] = useState(null);
   const [userRole, setUserRole] = useState("client");
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,37 +39,40 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      try {
-        const data = await userService.getFullProfile();
-        setFormData({
-          name: data.nama || "",
-          nama_lengkap: data.nama_lengkap || "",
-          email: data.email || "",
-          kota_praktik: data.kota_praktik || "",
-          spesialisasi: data.spesialisasi || "",
-          pengalaman_tahun: data.pengalaman_tahun || "",
-          tarif_per_sesi: data.tarif_per_sesi || "",
-          linkedin: data.linkedin || "",
-          portofolio: data.portofolio || "",
-          foto_profil: data.foto_profil || "",
-          bio_singkat: data.bio_singkat || "",
-          deskripsi_lengkap: data.deskripsi_lengkap || "",
-          nomor_izin_praktik: data.nomor_izin_praktik || "",
-          gelar_akademik: data.gelar_akademik || "",
-          pendidikan_terakhir: data.pendidikan_terakhir || "",
-        });
-        setUserRole(data.role || "client");
-        setLoading(false);
-      } catch (err) {
-        console.error("Gagal fetch profil:", err);
-        setLoading(false);
-      }
+      const data = await userService.getFullProfile();
+      setFormData({
+        name: data.nama || "",
+        nama_lengkap: data.nama_lengkap || "",
+        email: data.email || "",
+        kota_praktik: data.kota_praktik || "",
+        spesialisasi: data.spesialisasi || "",
+        pengalaman_tahun: data.pengalaman_tahun || "",
+        tarif_per_sesi: data.tarif_per_sesi || "",
+        linkedin: data.linkedin || "",
+        portofolio: data.portofolio || "",
+        foto_profil: data.foto_profil || "",
+        bio_singkat: data.bio_singkat || "",
+        deskripsi_lengkap: data.deskripsi_lengkap || "",
+        nomor_izin_praktik: data.nomor_izin_praktik || "",
+        gelar_akademik: data.gelar_akademik || "",
+        pendidikan_terakhir: data.pendidikan_terakhir || "",
+      });
+      setUserRole(data.role || "client");
+      setLoading(false);
     };
     fetchProfile();
   }, []);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "portofolio_file") {
+      setPortofolioFile(value);
+      // Jika user pilih file baru, pastikan status "hapus" (string kosong) dibatalkan
+      if (value !== null) {
+        setFormData((prev) => ({ ...prev, portofolio: "new_upload_pending" }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const handlePhotoChange = (newUrl) => {
@@ -93,26 +97,26 @@ export default function EditProfilePage() {
         ? Number(formData.tarif_per_sesi)
         : null,
       linkedin: formData.linkedin,
-      portofolio: formData.portofolio,
       bio_singkat: formData.bio_singkat,
       deskripsi_lengkap: formData.deskripsi_lengkap,
       nomor_izin_praktik: formData.nomor_izin_praktik,
       gelar_akademik: formData.gelar_akademik,
       pendidikan_terakhir: formData.pendidikan_terakhir,
+      portofolio: formData.portofolio,
+      portofolio_file: portofolioFile,
     };
 
     const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(
-        ([_, v]) => v !== "" && v !== null && v !== undefined,
-      ),
+      Object.entries(payload).filter(([key, v]) => {
+        if (key === "portofolio" && v === "") return true;
+        return v !== "" && v !== null && v !== undefined;
+      }),
     );
 
     try {
       await userService.updateProfile(cleanPayload);
       router.refresh();
       router.push("/setting");
-    } catch (err) {
-      console.error("Gagal update profil:", err);
     } finally {
       setIsSaving(false);
     }
@@ -129,16 +133,17 @@ export default function EditProfilePage() {
     );
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden">
-      {/* Sidebar untuk Desktop */}
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full">
+      {/* Sidebar Desktop */}
       <Sidebar role={userRole} />
 
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
-        {/* PageHeader Standar Layout menggantikan SettingHeader */}
+      {/* Main Wrapper: min-w-0 penting untuk mencegah flex-item overflow */}
+      <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Edit Profil" />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-8">
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8">
             <div className="relative mb-12">
               <AvatarUpload
                 foto_profil={formData.foto_profil}
@@ -153,6 +158,7 @@ export default function EditProfilePage() {
               data={formData}
               onChange={handleChange}
               role={userRole}
+              portofolioFile={portofolioFile}
             />
 
             <div className="mt-12">
@@ -163,15 +169,18 @@ export default function EditProfilePage() {
                 fullWidth
               >
                 {isUploading
-                  ? "Uploading..."
+                  ? "Uploading Photo..."
                   : isSaving
-                  ? "Saving..."
-                  : "Simpan Perubahan"}
+                    ? portofolioFile
+                      ? "Mengunggah Portofolio..."
+                      : "Saving..."
+                    : "Simpan Perubahan"}
               </Button>
             </div>
           </div>
         </main>
 
+        {/* Bottom Nav Mobile */}
         <div className="lg:hidden">
           <BottomNav role={userRole} />
         </div>
