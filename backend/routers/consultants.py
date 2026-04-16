@@ -525,7 +525,10 @@ def toggle_global_active(
 @router.get(
     "/me/clients",
     summary="Daftar Klien (Pending & Belum Lewat)",
-    description="Page Daftar Klien: Menampilkan pengajuan berstatus 'pending' yang jadwalnya belum lewat."
+    description="""
+Page Daftar Klien: Menampilkan pengajuan berstatus 'pending' yang jadwalnya belum lewat.
+Pengajuan yang jadwalnya sudah lewat akan otomatis diubah statusnya menjadi 'kedaluwarsa'.
+"""
 )
 def get_daftar_klien(
     current_user: dict = Depends(get_current_user),
@@ -549,25 +552,63 @@ def get_daftar_klien(
     )
     
     from datetime import datetime
-    now_date_str = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now()
     
     formatted_data = []
+    expired_ids = []  # Kumpulkan ID pengajuan yang sudah lewat waktu
+    expired_jadwal_ids = []  # Kumpulkan ID jadwal untuk dibebaskan
     
     for req in response.data:
         jadwal = req.get("jadwal_ketersediaan") or {}
         tanggal_konsultasi = jadwal.get("tanggal")
+        jam_selesai_str = str(req.get("jam_selesai", ""))[:5]  # "HH:MM"
         
-        # Filter: Jadwal belum lewat (tanggal >= hari ini)
-        if tanggal_konsultasi and tanggal_konsultasi >= now_date_str:
+        if not tanggal_konsultasi:
+            continue
+        
+        # Bangun datetime penuh dari tanggal + jam_selesai untuk perbandingan akurat
+        try:
+            jam_selesai_full = jam_selesai_str if jam_selesai_str else "23:59"
+            deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_full}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            # Fallback: bandingkan tanggal saja
+            deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
+        
+        if now > deadline:
+            # Jadwal sudah lewat → tandai untuk auto-expire
+            expired_ids.append(req["id_pengajuan"])
+            if req.get("id_jadwal"):
+                expired_jadwal_ids.append(req["id_jadwal"])
+        else:
+            # Jadwal belum lewat → tampilkan di daftar klien
             formatted_data.append({
                 "id_pengajuan": req["id_pengajuan"],
                 "nama_klien": req.get("users", {}).get("nama"),
                 "foto_profil": req.get("users", {}).get("foto_profil"),
                 "tanggal_konsultasi": tanggal_konsultasi,
                 "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
-                "waktu_selesai": str(req.get("jam_selesai", ""))[:5],
+                "waktu_selesai": jam_selesai_str,
                 "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
             })
+    
+    # Auto-expire: Update status di database menjadi 'kedaluwarsa' dan bebaskan jadwal
+    for exp_id in expired_ids:
+        try:
+            db.table("pengajuan_konsultasi") \
+                .update({"status_pengajuan": "kedaluwarsa"}) \
+                .eq("id_pengajuan", exp_id) \
+                .execute()
+        except Exception as e:
+            print(f"[WARN] Gagal auto-expire pengajuan {exp_id}: {e}")
+    
+    for jdw_id in expired_jadwal_ids:
+        try:
+            db.table("jadwal_ketersediaan") \
+                .update({"status_tersedia": True}) \
+                .eq("id_jadwal", jdw_id) \
+                .execute()
+        except Exception as e:
+            print(f"[WARN] Gagal bebaskan jadwal {jdw_id}: {e}")
 
     return {
         "total_klien_aktif": len(formatted_data),
@@ -578,7 +619,11 @@ def get_daftar_klien(
 @router.get(
     "/me/history",
     summary="Riwayat Konsultan",
-    description="Page Riwayat Konsultan: Pengajuan status completed atau cancelled, disorting berdasarkan terbaru ke terlama."
+    description="""
+Page Riwayat Konsultan: Semua pengajuan KECUALI yang berstatus 'pending'.
+Menampilkan status: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak, kedaluwarsa.
+Disorting berdasarkan terbaru ke terlama.
+"""
 )
 def get_riwayat_konsultan(
     current_user: dict = Depends(get_current_user),
@@ -593,12 +638,13 @@ def get_riwayat_konsultan(
         
     id_kons = kons_profile.data["id_konsultan"]
 
-    # Ambil pengajuan sekaligus payment details transaksi jika ada
+    # Ambil SEMUA pengajuan kecuali yang pending
+    # Termasuk: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak, kedaluwarsa
     response = (
         db.table("pengajuan_konsultasi")
         .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
         .eq("id_konsultan", id_kons)
-        .in_("status_pengajuan", ["completed", "selesai", "cancelled", "dibatalkan"])
+        .neq("status_pengajuan", "pending")
         .execute()
     )
     
@@ -614,9 +660,9 @@ def get_riwayat_konsultan(
         elif isinstance(trans, dict):
              nominal = trans.get("nominal_konsultan") or 0
              
-        # Jika dibatalkan kita bisa force 0 sesuai spesifikasi
+        # Jika dibatalkan/ditolak/kedaluwarsa → nominal = 0
         status_akhir = req.get("status_pengajuan")
-        if status_akhir in ["cancelled", "dibatalkan"]:
+        if status_akhir in ["cancelled", "dibatalkan", "ditolak", "kedaluwarsa"]:
             nominal = 0
             
         jm = str(req.get("jam_mulai", ""))[:5]
