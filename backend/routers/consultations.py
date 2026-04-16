@@ -134,36 +134,55 @@ async def buat_pengajuan_konsultasi(
             "dokumen_gagal": failed_docs,
         }
     }
-
 @router.put("/{id_pengajuan}/status")
 def update_consultation_status(
     id_pengajuan: int,
-    new_status: str, # Harus sesuai ENUM: 'pending', 'menunggu_pembayaran', 'terjadwal', 'selesai', 'dibatalkan', 'ditolak'
+    new_status: str, # 'pending', 'menunggu_pembayaran', 'terjadwal', 'selesai', 'dibatalkan', 'ditolak'
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    # 1. Pastikan Role sama dengan yang ada di tabel 'users' (biasanya 'konsultan')
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status")
+    # 1. Ambil data pengajuan dulu untuk pengecekan kepemilikan/hak akses
+    pengajuan_res = db.table("pengajuan_konsultasi").select("*").eq("id_pengajuan", id_pengajuan).execute()
+    
+    if not pengajuan_res.data:
+        raise HTTPException(status_code=404, detail="Data pengajuan tidak ditemukan")
+    
+    data_pengajuan = pengajuan_res.data[0]
+    user_role = current_user.get("role")
+    user_id = current_user.get("id_user")
 
-    # 2. Jika statusnya 'ditolak', bebaskan jadwalnya
-    if new_status.lower() == "ditolak":
-        # Ambil id_jadwal dari pengajuan ini
-        pengajuan = db.table("pengajuan_konsultasi").select("id_jadwal").eq("id_pengajuan", id_pengajuan).execute()
-        
-        if pengajuan.data and pengajuan.data[0].get("id_jadwal"):
-            # Update status_tersedia di tabel jadwal_ketersediaan menjadi True
-            db.table("jadwal_ketersediaan").update({"status_tersedia": True}).eq("id_jadwal", pengajuan.data[0]["id_jadwal"]).execute()
+    # 2. Validasi Hak Akses Berdasarkan Role
+    if user_role == "client":
+        # Client HANYA boleh membatalkan
+        if new_status != "dibatalkan":
+            raise HTTPException(status_code=403, detail="Klien hanya diizinkan untuk membatalkan pengajuan")
+        # Client HANYA boleh membatalkan miliknya sendiri
+        if data_pengajuan["id_user"] != user_id:
+            raise HTTPException(status_code=403, detail="Anda tidak diizinkan mengubah pengajuan orang lain")
 
-    # 3. Update status_pengajuan (PASTIKAN NAMA TABEL: pengajuan_konsultasi)
-    # PostgreSQL akan melempar error jika new_status tidak ada di ENUM ('pending', 'ditolak', dll)
+    elif user_role == "konsultan":
+        kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", user_id).single().execute()
+        if not kons_profile.data or data_pengajuan["id_konsultan"] != kons_profile.data["id_konsultan"]:
+             raise HTTPException(status_code=403, detail="Akses ditolak: Pengajuan ini bukan milik Anda")
+    
+    else:
+        raise HTTPException(status_code=403, detail="Role tidak dikenali")
+
+    if new_status.lower() in ["ditolak", "dibatalkan"]:
+        if data_pengajuan.get("id_jadwal"):
+            db.table("jadwal_ketersediaan")\
+                .update({"status_tersedia": True})\
+                .eq("id_jadwal", data_pengajuan["id_jadwal"])\
+                .execute()
+
+    # 4. Update status_pengajuan
     response = db.table("pengajuan_konsultasi")\
         .update({"status_pengajuan": new_status})\
         .eq("id_pengajuan", id_pengajuan)\
         .execute()
 
     if not response.data:
-        raise HTTPException(status_code=404, detail="Data pengajuan tidak ditemukan")
+        raise HTTPException(status_code=500, detail="Gagal memperbarui status")
 
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
     
