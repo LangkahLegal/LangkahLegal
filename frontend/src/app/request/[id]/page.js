@@ -26,8 +26,17 @@ export default function RequestDetailPage() {
 
   // --- HELPER UNTUK FORMAT WAKTU RELATIF (REVISI: SELALU HARI) ---
   const formatRelativeTime = (dateString) => {
+    if (!dateString) return "-";
+
     const now = new Date();
-    const past = new Date(dateString);
+
+    // PAKSA asumsikan string dari database adalah UTC dengan menambahkan 'Z'
+    // 15:13:05 -> 15:13:05Z
+    const standardizedDate = dateString.endsWith("Z")
+      ? dateString
+      : `${dateString}Z`;
+
+    const past = new Date(standardizedDate);
     const diffInMs = now - past;
 
     const diffInSeconds = Math.floor(diffInMs / 1000);
@@ -35,14 +44,15 @@ export default function RequestDetailPage() {
     const diffInHours = Math.floor(diffInMinutes / 60);
     const diffInDays = Math.floor(diffInHours / 24);
 
+    // Jika selisih negatif (karena jam server sedikit lebih cepat), anggap baru saja
+    if (diffInSeconds < 0) return "Baru saja";
+
     if (diffInSeconds < 60) return "Baru saja";
     if (diffInMinutes < 60) return `${diffInMinutes} menit yang lalu`;
     if (diffInHours < 24) return `${diffInHours} jam yang lalu`;
 
-    // Jika lebih dari 24 jam, akan selalu menampilkan jumlah hari tanpa batas
     return `${diffInDays} hari yang lalu`;
   };
-
   useEffect(() => {
     const fetchDetail = async () => {
       try {
@@ -95,7 +105,7 @@ export default function RequestDetailPage() {
       setIsProcessing(false);
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">

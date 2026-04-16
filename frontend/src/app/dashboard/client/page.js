@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [activeConsultation, setActiveConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hiddenCardIds, setHiddenCardIds] = useState([]);
+  const [tempHiddenIds, setTempHiddenIds] = useState([]);
 
   const DASHBOARD_CATEGORIES = [
     { id: "semua", label: "Semua" },
@@ -43,13 +43,14 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // 1. Ambil list ID yang pernah disembunyikan dari LocalStorage saat pertama kali load
-    const storedHidden = JSON.parse(localStorage.getItem("hidden_consultations") || "[]");
-    setHiddenCardIds(storedHidden);
-
     async function loadDashboardData() {
       setIsLoading(true);
       try {
+        // 1. Ambil data rejected yang disembunyikan permanen dari LocalStorage
+        const persistentHidden = JSON.parse(
+          localStorage.getItem("hidden_rejected_ids") || "[]",
+        );
+
         const [profile, consultations] = await Promise.all([
           userService.getFullProfile(),
           consultationService.getConsultations(),
@@ -60,13 +61,22 @@ export default function DashboardPage() {
           foto_profil: profile?.foto_profil || profile?.avatar || "",
         });
 
-        const allowedStatuses = ["pending", "menunggu_pembayaran", "ditolak"];
-        const filteredConsultations = consultations.filter((item) =>
-          allowedStatuses.includes(item.status_pengajuan)
-        );
+        const allowedStatuses = [
+          "pending",
+          "menunggu_pembayaran",
+          "terjadwal",
+          "ditolak",
+        ];
 
-        if (filteredConsultations.length > 0) {
-          const raw = filteredConsultations[0];
+        // 2. Filter data dari API
+        const filtered = consultations
+          .filter((item) => allowedStatuses.includes(item.status_pengajuan))
+          // Buang ID yang sudah ada di LocalStorage (pasti yang statusnya ditolak)
+          .filter((item) => !persistentHidden.includes(item.id_pengajuan))
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        if (filtered.length > 0) {
+          const raw = filtered[0];
           setActiveConsultation({
             id_pengajuan: raw.id_pengajuan,
             status_pengajuan: raw.status_pengajuan,
@@ -85,7 +95,7 @@ export default function DashboardPage() {
           setActiveConsultation(null);
         }
       } catch (error) {
-        console.error("Gagal memuat data dashboard client:", error);
+        console.error("Gagal memuat data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -95,11 +105,32 @@ export default function DashboardPage() {
 
   const handleHideCard = () => {
     if (!activeConsultation) return;
-    
-    const newHiddenList = [...hiddenCardIds, activeConsultation.id_pengajuan];
-    setHiddenCardIds(newHiddenList);
-    localStorage.setItem("hidden_consultations", JSON.stringify(newHiddenList));
+
+    const currentId = activeConsultation.id_pengajuan;
+    const currentStatus = activeConsultation.status_pengajuan;
+
+    if (currentStatus === "ditolak") {
+      // MASUK LOCAL STORAGE (PERMANEN)
+      const persistentHidden = JSON.parse(
+        localStorage.getItem("hidden_rejected_ids") || "[]",
+      );
+      if (!persistentHidden.includes(currentId)) {
+        const updatedList = [...persistentHidden, currentId];
+        localStorage.setItem(
+          "hidden_rejected_ids",
+          JSON.stringify(updatedList),
+        );
+      }
+      setActiveConsultation(null); // Langsung hapus dari layar
+    } else {
+      // MASUK STATE (SEMENTARA / RESET PAS REFRESH)
+      setTempHiddenIds((prev) => [...prev, currentId]);
+    }
   };
+
+  const isTemporarilyHidden =
+    activeConsultation &&
+    tempHiddenIds.includes(activeConsultation.id_pengajuan);
 
   const handleCancelConsultation = async () => {
     if (!confirm("Apakah Anda yakin ingin membatalkan konsultasi ini?")) return;
@@ -113,7 +144,6 @@ export default function DashboardPage() {
     }
   };
 
-  const isCurrentlyHidden = activeConsultation && hiddenCardIds.includes(activeConsultation.id_pengajuan);
 
   
 
@@ -145,7 +175,7 @@ export default function DashboardPage() {
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
             <div className="w-full">
-              {activeConsultation && !isCurrentlyHidden ? (
+              {activeConsultation && !isTemporarilyHidden ? (
                 <ConsultationCard
                   data={activeConsultation}
                   onCancel={handleCancelConsultation}

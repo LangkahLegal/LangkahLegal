@@ -208,7 +208,7 @@ def get_my_consultations(
     """
     Mengambil list konsultasi dengan JOIN ke jadwal dan nama konsultan.
     """
-    # Join bertingkat: pengajuan -> jadwal -> konsultan -> users (untuk ambil nama)
+    # REVISI: Menambahkan foto_profil di dalam select konsultan
     query = db.table("pengajuan_konsultasi").select("""
         *,
         dokumen_pendukung (
@@ -217,7 +217,7 @@ def get_my_consultations(
         jadwal_ketersediaan (
             tanggal, jam_mulai, jam_selesai,
             konsultan (
-                nama_lengkap, spesialisasi
+                nama_lengkap, spesialisasi, foto_profil
             )
         )
     """)
