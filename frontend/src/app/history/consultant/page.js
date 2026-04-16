@@ -33,6 +33,8 @@ const normalizeStatus = (status) => {
       return "Dibatalkan";
     case "ditolak":
       return "Ditolak";
+    case "kedaluwarsa":
+      return "Kedaluwarsa";
     default:
       return status || "Tidak Diketahui";
   }
@@ -48,13 +50,13 @@ export default function ConsultantHistoryPage() {
       try {
         setIsLoading(true);
         const response = await consultantService.getHistory();
-        
+
         setTotalSelesai(response.total_sesi_selesai || 0);
 
         // 2. UPDATE: Filter data yang statusnya BUKAN pending
         const rawData = response.data || [];
         const filteredData = rawData.filter(
-          (req) => 
+          (req) =>
             // Cek status_pengajuan atau status_akhir (sesuaikan dengan nama kolom DB kamu)
             (req.status_pengajuan || req.status_akhir)?.toLowerCase() !== "pending"
         );
@@ -68,7 +70,7 @@ export default function ConsultantHistoryPage() {
           date: formatDateId(req.tanggal_konsultasi),
           time: req.rentang_waktu || "-",
           avatar: req.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.nama_klien || "K")}&background=1f1d35&color=ada3ff`,
-          category: "Konsultasi Hukum", 
+          category: "Konsultasi Hukum",
         }));
 
         setHistoryList(formattedData);
@@ -88,8 +90,8 @@ export default function ConsultantHistoryPage() {
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
-        <PageHeader 
-          title="Riwayat" 
+        <PageHeader
+          title="Riwayat"
           rightElement={
             <Button variant="icon" className="!bg-transparent">
               <MaterialIcon name="tune" className="text-[#ada3ff]" />
@@ -99,7 +101,7 @@ export default function ConsultantHistoryPage() {
 
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
           <div className="max-w-4xl mx-auto w-full space-y-8">
-            
+
             <div className="flex justify-between items-center px-2">
               <h2 className="text-xl font-bold text-white">Semua Sesi</h2>
               <span className="bg-[#1f1d35] text-[#ada3ff] text-[10px] font-bold px-4 py-1.5 rounded-full border border-white/5 uppercase tracking-widest">
