@@ -31,4 +31,24 @@ export const consultantService = {
       throw error;
     }
   },
+
+  getClientList: async () => {
+    try {
+      const response = await api.get("/consultants/me/clients");
+      return response.data;
+    } catch (error) {
+      console.error("Gagal load daftar klien:", error);
+      throw error;
+    }
+  },
+
+  getHistory: async () => {
+    try {
+      const response = await api.get("/consultants/me/history");
+      return response.data;
+    } catch (error) {
+      console.error("Gagal load riwayat konsultan:", error);
+      throw error;
+    }
+  },
 };

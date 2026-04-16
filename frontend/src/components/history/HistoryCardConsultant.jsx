@@ -1,24 +1,44 @@
 "use client";
 
-import { Button } from "@/components/ui";
 import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function HistoryCardConsultant({ item }) {
-  const isCanceled = item.status === "Dibatalkan";
-  
-  // Warna dinamis berdasarkan status
-  const statusColors = isCanceled 
-    ? "bg-[#ff6e84]/10 text-[#ff6e84]" 
-    : "bg-[#ada3ff]/10 text-[#ada3ff]";
+  // 1. Tentukan pewarnaan berdasarkan status
+  let statusColors = "";
+  let isDimmed = false;
+
+  switch (item.status) {
+    case "Selesai":
+      // Ungu (Bawaan LangkahLegal)
+      statusColors = "bg-[#ada3ff]/10 text-[#ada3ff]";
+      break;
+    case "Terjadwal":
+      // Hijau (Menandakan Aktif & Sudah Dibayar)
+      statusColors = "bg-[#4ade80]/10 text-[#4ade80]";
+      break;
+    case "Menunggu Pembayaran":
+      // Kuning (Menandakan Warning/Belum Tuntas)
+      statusColors = "bg-[#facc15]/10 text-[#facc15]";
+      break;
+    case "Dibatalkan":
+    case "Ditolak":
+    case "Kedaluwarsa":
+      // Merah dan Redup (Menandakan Gagal/Batal)
+      statusColors = "bg-[#ff6e84]/10 text-[#ff6e84]";
+      isDimmed = true;
+      break;
+    default:
+      // Default Abu-abu
+      statusColors = "bg-white/10 text-white";
+  }
 
   return (
-    <div className={`bg-[#1f1d35]/50 border border-white/5 rounded-[2rem] p-5 space-y-5 transition-all hover:border-[#6f59fe]/20 ${isCanceled ? 'opacity-70' : ''}`}>
+    <div className={`bg-[#1f1d35]/50 border border-white/5 rounded-[2rem] p-5 space-y-5 transition-all hover:border-[#6f59fe]/20 ${isDimmed ? 'opacity-60 grayscale-[30%]' : ''}`}>
       
       {/* Bagian Atas: Profil & Status */}
       <div className="flex items-start justify-between">
         <div className="flex gap-4">
-          {/* Avatar Kotak Rounded */}
-          <div className="w-16 h-16 bg-white rounded-2xl overflow-hidden flex-shrink-0">
+          <div className="w-16 h-16 bg-[#2c2945] rounded-2xl overflow-hidden flex-shrink-0">
             <img 
               src={item.avatar} 
               alt={item.name} 
@@ -26,7 +46,6 @@ export default function HistoryCardConsultant({ item }) {
             />
           </div>
           
-          {/* Info Utama */}
           <div className="space-y-1">
             <h3 className="font-bold text-[#e8e2fc] text-lg">{item.name}</h3>
             <p className="text-xs text-[#aca8c1] font-medium">{item.category}</p>
@@ -49,12 +68,10 @@ export default function HistoryCardConsultant({ item }) {
           <span>{item.date}, {item.time}</span>
         </div>
 
-        {!isCanceled && (
-          <button className="text-[#ada3ff] text-xs font-bold flex items-center gap-1 hover:gap-2 transition-all">
-            Lihat Detail
-            <MaterialIcon name="chevron_right" className="text-lg" />
-          </button>
-        )}
+        <button className="text-[#ada3ff] text-xs font-bold flex items-center gap-1 hover:gap-2 transition-all">
+          Lihat Detail
+          <MaterialIcon name="chevron_right" className="text-lg" />
+        </button>
       </div>
     </div>
   );
