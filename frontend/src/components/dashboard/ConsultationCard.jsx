@@ -43,7 +43,7 @@ export default function ConsultationCard({ data, onCancel, onHide }) {
     glow: "",
   };
 
-  // Logika: Hanya bisa batal jika pending atau menunggu_pembayaran
+  // Logika: Tombol batal hanya muncul jika pending atau menunggu_pembayaran
   const canCancel = ["pending", "menunggu_pembayaran"].includes(
     data?.status_pengajuan,
   );
@@ -97,7 +97,7 @@ export default function ConsultationCard({ data, onCancel, onHide }) {
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-xs font-bold text-muted hover:bg-white/5 transition-colors"
                 >
                   <MaterialIcon name="visibility_off" className="text-lg" />
-                  SEMBUNYIKAN
+                  HAPUS DARI UI
                 </button>
               </div>
             </>
@@ -109,6 +109,7 @@ export default function ConsultationCard({ data, onCancel, onHide }) {
         Konsultasi Terdekat
       </h2>
 
+      {/* Profil Konsultan */}
       <div className="bg-main/10 p-4 rounded-xl flex items-center gap-4 border border-white/5">
         <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/20 border border-white/10">
           <img
@@ -127,6 +128,7 @@ export default function ConsultationCard({ data, onCancel, onHide }) {
         </div>
       </div>
 
+      {/* Info Waktu - Format: Tanggal | HH:mm - HH:mm WIB */}
       <div className="flex items-center gap-2.5 text-muted text-xs bg-black/10 p-3 rounded-lg">
         <MaterialIcon
           name="calendar_today"
@@ -134,7 +136,7 @@ export default function ConsultationCard({ data, onCancel, onHide }) {
         />
         <span className="font-medium">
           {jadwal?.tanggal
-            ? `${jadwal.tanggal} | ${jadwal.jam_mulai.substring(0, 5)} - ${jadwal.jam_selesai.substring(0, 5)} WIB`
+            ? `${jadwal.tanggal} | ${data.jam_mulai?.substring(0, 5)} - ${data.jam_selesai?.substring(0, 5)} WIB`
             : "Jadwal belum tersedia"}
         </span>
       </div>

@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [activeConsultation, setActiveConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hideCard, setHideCard] = useState(false);
+  const [hiddenCardIds, setHiddenCardIds] = useState([]);
 
   const DASHBOARD_CATEGORIES = [
     { id: "semua", label: "Semua" },
@@ -43,30 +43,37 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // 1. Ambil list ID yang pernah disembunyikan dari LocalStorage saat pertama kali load
+    const storedHidden = JSON.parse(localStorage.getItem("hidden_consultations") || "[]");
+    setHiddenCardIds(storedHidden);
+
     async function loadDashboardData() {
       setIsLoading(true);
-
       try {
         const [profile, consultations] = await Promise.all([
-          userService.getFullProfile(), 
+          userService.getFullProfile(),
           consultationService.getConsultations(),
         ]);
 
-        // Mapping Profil Client
         setUser({
           nama: profile?.nama || "User",
           foto_profil: profile?.foto_profil || profile?.avatar || "",
         });
 
-        // Mapping Konsultasi Aktif
-        if (consultations && consultations.length > 0) {
-          const raw = consultations[0];
+        const allowedStatuses = ["pending", "menunggu_pembayaran", "ditolak"];
+        const filteredConsultations = consultations.filter((item) =>
+          allowedStatuses.includes(item.status_pengajuan)
+        );
+
+        if (filteredConsultations.length > 0) {
+          const raw = filteredConsultations[0];
           setActiveConsultation({
+            id_pengajuan: raw.id_pengajuan,
             status_pengajuan: raw.status_pengajuan,
+            jam_mulai: raw.jam_mulai,
+            jam_selesai: raw.jam_selesai,
             jadwal_ketersediaan: {
               tanggal: raw.jadwal_ketersediaan?.tanggal,
-              jam_mulai: raw.jadwal_ketersediaan?.jam_mulai,
-              jam_selesai: raw.jadwal_ketersediaan?.jam_selesai,
               konsultan: {
                 nama_lengkap: raw.jadwal_ketersediaan?.konsultan?.nama_lengkap,
                 spesialisasi: raw.jadwal_ketersediaan?.konsultan?.spesialisasi,
@@ -74,36 +81,41 @@ export default function DashboardPage() {
               },
             },
           });
+        } else {
+          setActiveConsultation(null);
         }
       } catch (error) {
-        // Kalau gagal, error-nya bakal muncul merah-merah di Console
         console.error("Gagal memuat data dashboard client:", error);
       } finally {
-        // Berhasil ataupun gagal, loading HARUS dimatikan
         setIsLoading(false);
       }
     }
-
     loadDashboardData();
   }, []);
 
+  const handleHideCard = () => {
+    if (!activeConsultation) return;
+    
+    const newHiddenList = [...hiddenCardIds, activeConsultation.id_pengajuan];
+    setHiddenCardIds(newHiddenList);
+    localStorage.setItem("hidden_consultations", JSON.stringify(newHiddenList));
+  };
+
   const handleCancelConsultation = async () => {
     if (!confirm("Apakah Anda yakin ingin membatalkan konsultasi ini?")) return;
-
     try {
-      // Asumsi kita ambil ID dari activeConsultation yang di-set saat fetch
-      // Kita butuh ID pengajuan yang aslinya disimpan di konsultasi
       const idPengajuan = activeConsultation?.id_pengajuan;
-
       await consultationService.updateStatus(idPengajuan, "dibatalkan");
-
-      // Refresh data agar status berubah jadi dibatalkan
       alert("Konsultasi berhasil dibatalkan.");
       window.location.reload();
     } catch (error) {
       alert("Gagal membatalkan konsultasi.");
     }
   };
+
+  const isCurrentlyHidden = activeConsultation && hiddenCardIds.includes(activeConsultation.id_pengajuan);
+
+  
 
   if (isLoading) {
     return (
@@ -133,11 +145,11 @@ export default function DashboardPage() {
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
             <div className="w-full">
-              {activeConsultation && !hideCard ? (
+              {activeConsultation && !isCurrentlyHidden ? (
                 <ConsultationCard
                   data={activeConsultation}
                   onCancel={handleCancelConsultation}
-                  onHide={() => setHideCard(true)}
+                  onHide={handleHideCard}
                 />
               ) : (
                 <EmptyConsultationCard />
