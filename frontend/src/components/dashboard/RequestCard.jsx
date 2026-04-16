@@ -1,15 +1,19 @@
 // components/dashboard/RequestCard.jsx
 import { MaterialIcon } from "@/components/ui";
 
-export default function RequestCard({ name, time, onClick }) {
+export default function RequestCard({ name, time, avatar, onClick }) {
   return (
     <div
-      onClick={onClick} // Tambahkan handler klik di sini
+      onClick={onClick}
       className="glass-card bg-input border border-white/5 p-5 rounded-3xl flex items-center gap-4 hover:bg-white/5 transition-all cursor-pointer group"
     >
-      {/* Icon Profile Section */}
-      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-primary-light/20 transition-colors">
-        <MaterialIcon name="person_add" className="text-primary-light" />
+      {/* Profile Section */}
+      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden group-hover:bg-primary-light/20 transition-colors border border-white/5">
+        {avatar ? (
+          <img src={avatar} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <MaterialIcon name="person" className="text-primary-light text-2xl" />
+        )}
       </div>
 
       {/* Text Info Section */}

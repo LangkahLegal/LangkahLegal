@@ -41,7 +41,7 @@ const formatFullSchedule = (item) => {
 };
 
 export default function ConsultantDashboardPage() {
-  const router = useRouter(); // 2. Inisialisasi router
+  const router = useRouter();
   const [user, setUser] = useState({ name: "", foto_profil: "" });
   const [stats, setStats] = useState({
     income: 0,
@@ -92,6 +92,7 @@ export default function ConsultantDashboardPage() {
   const mappedRequests = pendingRequests.map((req) => ({
     id: req.id_pengajuan,
     name: req.users?.nama || "Klien",
+    avatar: req.users?.foto_profil, // AMBIL DARI API
     time: formatFullSchedule(req),
   }));
 
@@ -103,8 +104,10 @@ export default function ConsultantDashboardPage() {
         <DashboardHeader userName={user.name} foto_profil={user.foto_profil} />
 
         <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12">
+          {/* 1. Income Card */}
           <IncomeCard amount={formatCurrency(stats.income)} />
 
+          {/* 2. Stat Cards */}
           <section className="grid grid-cols-2 gap-4 lg:gap-8">
             <StatCard
               label="Konsultasi Aktif"
@@ -118,11 +121,11 @@ export default function ConsultantDashboardPage() {
             />
           </section>
 
+          {/* 3. Jadwal Terdekat Section */}
           <section className="space-y-6">
             <h2 className="text-xl font-headline font-bold text-white">
               Jadwal Terdekat
             </h2>
-
             {liveSession ? (
               <LiveSessionCard
                 clientName={liveSession.users?.nama}
@@ -149,6 +152,7 @@ export default function ConsultantDashboardPage() {
             )}
           </section>
 
+          {/* 4. Permintaan Baru Section */}
           <section className="space-y-6">
             <h2 className="text-xl font-headline font-bold text-white">
               Permintaan Baru
@@ -160,11 +164,11 @@ export default function ConsultantDashboardPage() {
                 </div>
               ) : mappedRequests.length > 0 ? (
                 mappedRequests.map((req) => (
-                  // 3. Tambahkan onClick untuk navigasi ke /request/[id]
                   <RequestCard
                     key={req.id}
                     name={req.name}
                     time={req.time}
+                    avatar={req.avatar} // KIRIM KE KOMPONEN
                     onClick={() => router.push(`/request/${req.id}`)}
                   />
                 ))
