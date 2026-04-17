@@ -128,7 +128,14 @@ def get_my_schedules(
     "/me/dashboard-stats",
     status_code=status.HTTP_200_OK,
     summary="Statistik dashboard konsultan",
-    description="Mengembalikan total income, total klien, dan total klien aktif untuk dashboard konsultan.",
+    description="""
+Mengembalikan statistik ringkasan untuk halaman dashboard konsultan.
+
+**Response:**
+- `total_income` (number): Total pendapatan bersih konsultan (90% dari gross) dari transaksi yang sudah **settlement**.
+- `total_klien` (number): Jumlah klien unik yang pengajuannya berstatus `terjadwal` atau `selesai`.
+- `total_klien_aktif` (number): Jumlah klien unik yang pengajuannya masih berstatus `terjadwal` (belum selesai).
+""",
 )
 def get_consultant_dashboard_stats(
     current_user: dict = Depends(get_current_user),
@@ -142,44 +149,56 @@ def get_consultant_dashboard_stats(
         db.table("konsultan")
         .select("id_konsultan")
         .eq("id_user", current_user["id_user"])
-        .single()
+        .limit(1)
         .execute()
     )
-    id_kons = kons_profile.data["id_konsultan"]
+    if not kons_profile.data:
+        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
-    # 2. Total Income (Nominal Konsultan dari transaksi yang 'settlement')
-    # Hak bersih konsultan sudah dihitung di 'nominal_konsultan'
-    transaksi = (
-        db.table("transaksi")
-        .select("nominal_konsultan, pengajuan_konsultasi!inner(id_konsultan)")
-        .eq("pengajuan_konsultasi.id_konsultan", id_kons)
-        .eq("status_pembayaran", "settlement")
-        .execute()
-    )
-    total_income = sum([t["nominal_konsultan"] for t in transaksi.data])
+    id_kons = kons_profile.data[0]["id_konsultan"]
 
-    # 3. Total Klien (Status 'terjadwal' + 'selesai')
-    total_klien = (
+    # 2. Total Income — ambil dari pengajuan konsultan ini yang punya transaksi settlement
+    #    Query: pengajuan_konsultasi → transaksi (lebih reliable daripada inner join terbalik)
+    pengajuan_with_tx = (
         db.table("pengajuan_konsultasi")
-        .select("id_user", count="exact")
+        .select("id_pengajuan, transaksi(nominal_konsultan, status_pembayaran)")
+        .eq("id_konsultan", id_kons)
+        .execute()
+    )
+
+    total_income = 0
+    for p in pengajuan_with_tx.data:
+        tx_list = p.get("transaksi") or []
+        if isinstance(tx_list, dict):
+            tx_list = [tx_list]
+        for tx in tx_list:
+            if tx.get("status_pembayaran") == "settlement":
+                total_income += float(tx.get("nominal_konsultan") or 0)
+
+    # 3. Total Klien (klien unik dengan status terjadwal/selesai)
+    klien_data = (
+        db.table("pengajuan_konsultasi")
+        .select("id_user")
         .eq("id_konsultan", id_kons)
         .in_("status_pengajuan", ["terjadwal", "selesai"])
         .execute()
     )
+    unique_klien = set(p["id_user"] for p in klien_data.data)
 
-    # 4. Total Klien Aktif (Status 'terjadwal')
-    klien_aktif = (
+    # 4. Total Klien Aktif (klien unik dengan status terjadwal)
+    klien_aktif_data = (
         db.table("pengajuan_konsultasi")
-        .select("id_user", count="exact")
+        .select("id_user")
         .eq("id_konsultan", id_kons)
         .eq("status_pengajuan", "terjadwal")
         .execute()
     )
+    unique_klien_aktif = set(p["id_user"] for p in klien_aktif_data.data)
 
     return {
         "total_income": total_income,
-        "total_klien": total_klien.count,
-        "total_klien_aktif": klien_aktif.count,
+        "total_klien": len(unique_klien),
+        "total_klien_aktif": len(unique_klien_aktif),
     }
 
 
@@ -632,11 +651,11 @@ def get_riwayat_konsultan(
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Akses ditolak")
 
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
+    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
         
-    id_kons = kons_profile.data["id_konsultan"]
+    id_kons = kons_profile.data[0]["id_konsultan"]
 
     # Ambil SEMUA pengajuan kecuali yang pending
     # Termasuk: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak, kedaluwarsa
