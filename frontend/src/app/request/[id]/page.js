@@ -11,6 +11,7 @@ import FileItem from "@/components/ui/FileItem";
 import ClientCard from "@/components/request/ClientCard";
 import InfoGrid from "@/components/request/InfoGrid";
 import CaseDescription from "@/components/request/CaseDescription";
+import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import ActionButtons from "@/components/request/ActionButtons";
 
 // Import service
@@ -144,20 +145,12 @@ export default function RequestDetailPage() {
 
             <CaseDescription description={requestData.caseDescription} />
 
-            <section className="space-y-4">
-              <h3 className="text-xs font-bold text-[#aca8c1] uppercase tracking-[0.2em] ml-2">
-                Dokumen Terlampir
-              </h3>
-              <div className="space-y-3">
-                {requestData.documents.map((doc) => (
-                  <FileItem
-                    key={doc.id}
-                    file={doc}
-                    onClick={() => window.open(doc.url, "_blank")}
-                  />
-                ))}
-              </div>
-            </section>
+            <AttachedDocuments 
+              documents={requestData.documents} 
+              title="Dokumen Terlampir"
+              titleClassName="text-xs font-bold text-[#aca8c1] uppercase tracking-[0.2em] ml-2"
+              allowDelete={false} 
+            />
 
             <ActionButtons
               onReject={() => handleAction("tolak")}

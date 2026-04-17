@@ -7,7 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button, FileUpload } from "@/components/ui"; // Pastikan FileUpload diimport
-import FileItem from "@/components/ui/FileItem"; // Import FileItem
+import AttachedDocuments from "@/components/documents/AttachedDocuments"; // Import FileItem
 
 import { consultantService } from "@/services/consultant.service";
 import { consultationService } from "@/services/consultation.service";
@@ -182,42 +182,44 @@ export default function ConsultantDetailPage() {
                 onDescriptionChange={setDescription}
                 // Props files tidak lagi digunakan di sini karena kita render manual list-nya
               />
+            </div>
 
-              <div className="space-y-4">
-                <label className="text-sm font-bold text-[#ada3ff] uppercase tracking-widest ml-1">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <div className="w-1.5 h-6 bg-[#6f59fe] rounded-full shadow-[0_0_10px_rgba(111,89,254,0.5)]" />
+                <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-tight">
                   Dokumen Pendukung
-                </label>
-
-                {/* List File yang sudah dipilih */}
-                <div className="grid grid-cols-1 gap-3">
-                  {files.map((file, index) => (
-                    <FileItem
-                      key={index}
-                      file={{
-                        name: file.name,
-                        size: (file.size / 1024 / 1024).toFixed(2) + " MB",
-                        type: file.type.includes("pdf") ? "pdf" : "image",
-                        date: "Baru ditambahkan",
-                      }}
-                      onDelete={() => handleRemoveFile(index)}
-                      onClick={() =>
-                        window.open(URL.createObjectURL(file), "_blank")
-                      }
-                    />
-                  ))}
-                </div>
-
-                {/* Komponen Upload */}
-                <FileUpload
-                  onChange={handleFileChange}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  maxSizeMB={10}
-                />
-                <p className="text-[10px] text-[#aca8c1] px-2 italic">
-                  * Unggah bukti dokumen, foto TKP, atau berkas pendukung
-                  lainnya (Maks. 10 file).
-                </p>
+                </h2>
               </div>
+              {/* Ubah format File mentah menjadi bentuk objek yang 
+                bisa dibaca oleh komponen AttachedDocuments 
+              */}
+              <AttachedDocuments 
+                documents={files.map((file, index) => ({
+                  id: index, 
+                  name: file.name,
+                  size: (file.size / 1024 / 1024).toFixed(2) + " MB",
+                  type: file.type.includes("pdf") ? "pdf" : "image",
+                  date: "Baru ditambahkan",
+                  url: URL.createObjectURL(file) 
+                }))}
+                title
+                titleClassName="text-sm font-bold text-[#ada3ff] uppercase tracking-widest ml-1"
+                allowDelete={true}
+                onDelete={(id) => handleRemoveFile(id)} 
+              />
+
+              {/* Komponen Upload tetap di bawahnya */}
+              <FileUpload
+                onChange={handleFileChange}
+                accept=".pdf,.jpg,.jpeg,.png"
+                maxSizeMB={10}
+              />
+              
+              <p className="text-[10px] text-[#aca8c1] px-2 italic">
+                * Unggah bukti dokumen, foto TKP, atau berkas pendukung
+                lainnya (Maks. 10 file).
+              </p>
             </div>
 
             <div className="pt-2">
