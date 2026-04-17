@@ -10,6 +10,7 @@ import { FileUpload } from "@/components/ui";
 
 import FileItem from "@/components/ui/FileItem";
 import SecurityNotice from "@/components/documents/SecurityNotice";
+import AttachedDocuments from "@/components/documents/AttachedDocuments";
 
 const INITIAL_FILES = [
   {
@@ -87,22 +88,13 @@ export default function DocumentsPage() {
               <Filter onClick={() => console.log("Filter open")} />
             </div>
 
-            <section className="space-y-6">
-              <div className="flex justify-between items-center px-2">
-                <h2 className="font-bold text-lg lg:text-xl text-white">
-                  All Documents
-                </h2>
-                <span className="bg-[#6f59fe]/10 text-[#ada3ff] text-[10px] font-bold px-3 py-1 rounded-full border border-[#6f59fe]/20 uppercase tracking-widest">
-                  {filteredFiles.length} Files
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {filteredFiles.map((file) => (
-                  <FileItem key={file.id} file={file} />
-                ))}
-              </div>
-            </section>
+            <AttachedDocuments 
+              documents={filteredFiles} 
+              title="All Documents" 
+              showCount={true} 
+              allowDelete={true}
+              onDelete={(id) => console.log("Hapus dokumen ID:", id)} 
+            />
 
             <SecurityNotice />
           </div>
