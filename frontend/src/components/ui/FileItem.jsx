@@ -13,7 +13,7 @@ const FileIcon = ({ type }) => {
   }
 };
 
-export default function FileItem({ file, onClick, onDelete }) {
+export default function FileItem({ file, onClick, onDelete, allowDelete = false }) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -34,16 +34,18 @@ export default function FileItem({ file, onClick, onDelete }) {
           </p>
         </div>
 
-        {/* Tombol Titik Tiga */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation(); // Agar tidak mentrigger onClick (view file)
-            setShowMenu(!showMenu);
-          }}
-          className={`p-2 transition-colors ${showMenu ? "text-white" : "text-[#aca8c1] hover:text-white"}`}
-        >
-          <MaterialIcon name="more_vert" />
-        </button>
+        {/* Tombol titik tiga dengan kondisi allowDelete */}
+        {allowDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); 
+              setShowMenu(!showMenu);
+            }}
+            className={`p-2 transition-colors ${showMenu ? "text-white" : "text-[#aca8c1] hover:text-white"}`}
+          >
+            <MaterialIcon name="more_vert" />
+          </button>
+        )}
       </div>
 
       {/* Popover Menu Delete */}

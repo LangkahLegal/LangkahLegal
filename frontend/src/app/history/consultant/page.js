@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
-import HistoryCardConsultant from "@/components/history/HistoryCardConsultant";
+import HistoryCard from "@/components/history/HistoryCard";
 import { Button } from "@/components/ui";
 import { MaterialIcon } from "@/components/ui/Icons";
+import Filter from "@/components/layout/Filter";
 import { consultantService } from "@/services/consultant.service";
 
 const formatDateId = (dateString) => {
@@ -19,10 +20,11 @@ const formatDateId = (dateString) => {
   });
 };
 
-// 1. UPDATE: Tambahkan semua kemungkinan enum di sini
 const normalizeStatus = (status) => {
   const lowerStatus = (status || "").toLowerCase();
   switch (lowerStatus) {
+    case "pending":
+      return "Pending";
     case "menunggu_pembayaran":
       return "Menunggu Pembayaran";
     case "terjadwal":
@@ -35,6 +37,8 @@ const normalizeStatus = (status) => {
       return "Ditolak";
     case "kedaluwarsa":
       return "Kedaluwarsa";
+    case "pembayaran_gagal": 
+      return "Pembayaran Gagal";
     default:
       return status || "Tidak Diketahui";
   }
@@ -53,24 +57,16 @@ export default function ConsultantHistoryPage() {
 
         setTotalSelesai(response.total_sesi_selesai || 0);
 
-        // 2. UPDATE: Filter data yang statusnya BUKAN pending
         const rawData = response.data || [];
-        const filteredData = rawData.filter(
-          (req) =>
-            // Cek status_pengajuan atau status_akhir (sesuaikan dengan nama kolom DB kamu)
-            (req.status_pengajuan || req.status_akhir)?.toLowerCase() !== "pending"
-        );
-
-        const formattedData = filteredData.map((req) => ({
+        
+        const formattedData = rawData.map((req) => ({
           id: req.id_pengajuan,
           name: req.nama_klien || "Klien Anonim",
           price: req.nominal_konsultan || 0,
-          // Sesuaikan pengambilan field status dengan backend kamu
           status: normalizeStatus(req.status_pengajuan || req.status_akhir),
           date: formatDateId(req.tanggal_konsultasi),
           time: req.rentang_waktu || "-",
           avatar: req.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.nama_klien || "K")}&background=1f1d35&color=ada3ff`,
-          category: "Konsultasi Hukum",
         }));
 
         setHistoryList(formattedData);
@@ -85,11 +81,10 @@ export default function ConsultantHistoryPage() {
   }, []);
 
   return (
-    // ... SISA KODE UI SAMA PERSIS SEPERTI SEBELUMNYA ...
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
       <Sidebar role="konsultan" />
 
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 w-full">
         <PageHeader
           title="Riwayat"
           rightElement={
@@ -116,8 +111,10 @@ export default function ConsultantHistoryPage() {
                   <p className="text-sm text-[#ada3ff] animate-pulse">Memuat riwayat...</p>
                 </div>
               ) : historyList.length > 0 ? (
-                historyList.map((item) => (
-                  <HistoryCardConsultant key={item.id} item={item} />
+                historyList
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map((item) => (
+                  <HistoryCard key={item.id} item={item} role="konsultan" />
                 ))
               ) : (
                 <div className="text-center py-16 bg-[#1f1d35]/30 rounded-3xl border border-white/5 border-dashed">
