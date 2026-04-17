@@ -11,8 +11,8 @@ export default function ConsultationForm({
       {/* Deskripsi */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 px-1">
-          <div className="w-1.5 h-6 bg-[#6f59fe] rounded-full" />
-          <h2 className="text-base font-bold text-white uppercase tracking-tight">
+          <div className="w-1.5 h-6 bg-[#6f59fe] rounded-full shadow-[0_0_10px_rgba(111,89,254,0.5)]" />
+          <h2 className="text-base sm:text-lg font-bold text-white uppercase tracking-tight">
             Deskripsi Kasus
           </h2>
         </div>
