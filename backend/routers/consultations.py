@@ -257,7 +257,10 @@ def get_detail_pengajuan(
     query = db.table("pengajuan_konsultasi")\
         .select("""
             *,
-            jadwal_ketersediaan(*),
+            jadwal_ketersediaan(
+                *,
+                konsultan(nama_lengkap, tarif_per_sesi, foto_profil)
+            ),
             users(nama, email, foto_profil),
             dokumen_pendukung(id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at)
         """)\
