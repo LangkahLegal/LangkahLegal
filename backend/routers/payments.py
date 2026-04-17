@@ -100,15 +100,40 @@ def create_transaction(
     )
 
     if existing_tx.data:
-        # Sudah ada transaksi pending, kembalikan snap_token yang ada
         tx = existing_tx.data[0]
-        if tx.get("snap_token"):
-            return {
-                "snap_token": tx["snap_token"],
-                "redirect_url": tx.get("snap_redirect_url", ""),
-                "order_id": tx["order_id"],
-            }
-
+        # Double check status ke Midtrans untuk memastikan token belum expired
+        api_client = _get_core_api_client(settings)
+        try:
+            status_response = api_client.transactions.status(tx["order_id"])
+            tx_status = status_response.get("transaction_status")
+            
+            if tx_status in ("cancel", "deny", "expire"):
+                # Update DB menjadi batal/kedaluwarsa, lalu lanjut buat transaksi KEDUA
+                db.table("transaksi").update({
+                    "status_pembayaran": tx_status,
+                    "updated_at": datetime.now().isoformat()
+                }).eq("order_id", tx["order_id"]).execute()
+                print(f"[INFO] Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
+            else:
+                # Masih valid/pending, kembalikan snap_token yang ada
+                if tx.get("snap_token"):
+                    return {
+                        "snap_token": tx["snap_token"],
+                        "redirect_url": tx.get("snap_redirect_url", ""),
+                        "order_id": tx["order_id"],
+                    }
+        except Exception as e:
+            # Jika transaksi belum ada di sisi Midtrans (misal belum klik payment method sama sekali),
+            # API status() akan error 404. Ini berarti token Snap MASIH VALID & belum dipilih methodnya.
+            if "404" in str(e):
+                if tx.get("snap_token"):
+                    return {
+                        "snap_token": tx["snap_token"],
+                        "redirect_url": tx.get("snap_redirect_url", ""),
+                        "order_id": tx["order_id"],
+                    }
+            else:
+                print(f"[WARN] Failed to check status for existing tx {tx['order_id']}: {e}")
     # 5. Hitung nominal
     konsultan_data = pengajuan.get("konsultan") or {}
     tarif = konsultan_data.get("tarif_per_sesi")

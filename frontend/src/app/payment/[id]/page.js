@@ -75,17 +75,15 @@ export default function PaymentPage() {
       window.snap.pay(result.snap_token, {
         onSuccess: async function (result) {
           console.log("Payment success:", result);
-          // Sync status ke DB (fallback jika webhook belum sampai)
           try {
             await paymentService.syncPaymentStatus(parseInt(id));
           } catch (syncErr) {
-            console.warn("Sync after success failed (webhook might handle it):", syncErr);
+            console.warn("Sync after success failed:", syncErr);
           }
           router.push(`/payment/success?order=${result.order_id}&id=${id}`);
         },
         onPending: async function (result) {
           console.log("Payment pending:", result);
-          // Sync status ke DB
           try {
             await paymentService.syncPaymentStatus(parseInt(id));
           } catch (syncErr) {
@@ -94,23 +92,38 @@ export default function PaymentPage() {
           router.push(`/payment/pending?order=${result.order_id}&id=${id}`);
         },
         onError: function (result) {
-          console.error("Payment error:", result);
-          setError("Pembayaran gagal. Silakan coba lagi.");
+          console.error("Payment error from Midtrans:", result);
+          // Jangan langsung set error karena Midtrans sering trigger onError saat user abort/cancel
+          // Biarkan user mencoba lagi dengan tenang
           setIsProcessing(false);
         },
         onClose: function () {
-          console.log("Payment popup closed");
+          console.log("Payment popup closed by user");
           setIsProcessing(false);
         },
       });
     } catch (err) {
       console.error("Gagal memulai pembayaran:", err);
+      // Backend error (e.g., token already processed, validation failed)
       setError(
         err.response?.data?.detail || "Gagal memulai pembayaran. Silakan coba lagi."
       );
       setIsProcessing(false);
     }
   }, [snapReady, id, router]);
+
+  // Bugfix: Handle Midtrans popup closed via browser 'Back' button or hardware back
+  // Midtrans uses hash routing (#snap-midtrans). If hash changes back to normal, reset loading state.
+  useEffect(() => {
+    const handleNavigation = () => {
+      if (!window.location.hash.includes('snap')) {
+        setIsProcessing(false);
+      }
+    };
+    
+    window.addEventListener('hashchange', handleNavigation);
+    return () => window.removeEventListener('hashchange', handleNavigation);
+  }, []);
 
   // Format currency
   const formatRupiah = (num) => {
