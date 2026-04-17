@@ -373,3 +373,123 @@ def get_payment_status(
         return {"data": None, "message": "Belum ada transaksi pembayaran"}
 
     return {"data": tx_res.data[0]}
+
+
+# ============================================================
+# 4. SYNC STATUS — Frontend fallback saat webhook belum sampai
+# ============================================================
+@router.post(
+    "/sync/{id_pengajuan}",
+    status_code=status.HTTP_200_OK,
+    summary="Sinkronisasi status pembayaran dari Midtrans",
+    description="""
+Endpoint ini dipanggil oleh frontend setelah Snap popup `onSuccess` / `onPending`.
+
+Karena webhook Midtrans bisa terlambat (atau tidak sampai jika ngrok mati),
+endpoint ini langsung query status ke Midtrans Core API berdasarkan order_id,
+lalu update tabel `transaksi` dan `pengajuan_konsultasi` sesuai hasilnya.
+
+Ini adalah mekanisme **fallback** — webhook tetap jadi primary.
+""",
+)
+def sync_payment_status(
+    id_pengajuan: int,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+    settings: Settings = Depends(get_settings),
+):
+    # 1. Validasi role
+    if current_user.get("role") != "client":
+        raise HTTPException(status_code=403, detail="Hanya klien yang bisa sinkronisasi pembayaran")
+
+    # 2. Cari transaksi terbaru untuk pengajuan ini
+    tx_res = (
+        db.table("transaksi")
+        .select("*")
+        .eq("id_pengajuan", id_pengajuan)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    if not tx_res.data:
+        raise HTTPException(status_code=404, detail="Transaksi tidak ditemukan")
+
+    tx = tx_res.data[0]
+    order_id = tx["order_id"]
+    current_status = tx.get("status_pembayaran", "")
+
+    # 3. Jika sudah final, skip
+    if current_status in ("settlement", "cancel", "refund"):
+        return {
+            "synced": False,
+            "message": f"Status sudah final: {current_status}",
+            "status_pembayaran": current_status,
+        }
+
+    # 4. Query status langsung ke Midtrans Core API
+    api_client = _get_core_api_client(settings)
+
+    try:
+        midtrans_status = api_client.transactions.status(order_id)
+    except Exception as e:
+        print(f"[SYNC] Gagal query Midtrans status for {order_id}: {e}")
+        raise HTTPException(status_code=502, detail=f"Gagal cek status ke Midtrans: {str(e)}")
+
+    transaction_status = midtrans_status.get("transaction_status", "")
+    fraud_status = midtrans_status.get("fraud_status", "")
+    payment_type = midtrans_status.get("payment_type", "")
+
+    print(f"[SYNC] Order {order_id}: midtrans_status={transaction_status}, fraud={fraud_status}")
+
+    # 5. Tentukan status baru (mapping sama dengan webhook)
+    new_payment_status = None
+    new_pengajuan_status = None
+
+    if transaction_status == "capture":
+        if fraud_status == "accept":
+            new_payment_status = "settlement"
+            new_pengajuan_status = "terjadwal"
+    elif transaction_status == "settlement":
+        new_payment_status = "settlement"
+        new_pengajuan_status = "terjadwal"
+    elif transaction_status in ("cancel", "deny"):
+        new_payment_status = "cancel"
+        new_pengajuan_status = "dibatalkan"
+    elif transaction_status == "expire":
+        new_payment_status = "expire"
+        new_pengajuan_status = "kedaluwarsa"
+    elif transaction_status == "pending":
+        new_payment_status = "pending"
+
+    # 6. Update DB jika ada perubahan
+    if new_payment_status and new_payment_status != current_status:
+        update_data = {
+            "status_pembayaran": new_payment_status,
+            "metode_pembayaran": payment_type,
+            "updated_at": datetime.now().isoformat(),
+        }
+        if new_payment_status == "settlement":
+            update_data["waktu_bayar"] = datetime.now().isoformat()
+
+        db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
+
+        if new_pengajuan_status:
+            db.table("pengajuan_konsultasi").update({
+                "status_pengajuan": new_pengajuan_status,
+                "updated_at": datetime.now().isoformat(),
+            }).eq("id_pengajuan", id_pengajuan).execute()
+
+        print(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
+
+        return {
+            "synced": True,
+            "status_pembayaran": new_payment_status,
+            "status_pengajuan": new_pengajuan_status,
+        }
+
+    return {
+        "synced": False,
+        "message": "Tidak ada perubahan status",
+        "status_pembayaran": current_status,
+    }
