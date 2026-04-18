@@ -543,10 +543,9 @@ def toggle_global_active(
 
 @router.get(
     "/me/clients",
-    summary="Daftar Klien (Pending & Belum Lewat)",
+    summary="Daftar Klien Terjadwal (Belum Lewat)",
     description="""
-Page Daftar Klien: Menampilkan pengajuan berstatus 'pending' yang jadwalnya belum lewat.
-Pengajuan yang jadwalnya sudah lewat akan otomatis diubah statusnya menjadi 'kedaluwarsa'.
+Page Daftar Klien: Menampilkan pengajuan berstatus 'terjadwal' yang jadwalnya belum lewat waktu sekarang.
 """
 )
 def get_daftar_klien(
@@ -566,7 +565,7 @@ def get_daftar_klien(
         db.table("pengajuan_konsultasi")
         .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)")
         .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", "pending")
+        .eq("status_pengajuan", "terjadwal")
         .execute()
     )
     
@@ -574,8 +573,6 @@ def get_daftar_klien(
     now = datetime.now()
     
     formatted_data = []
-    expired_ids = []  # Kumpulkan ID pengajuan yang sudah lewat waktu
-    expired_jadwal_ids = []  # Kumpulkan ID jadwal untuk dibebaskan
     
     for req in response.data:
         jadwal = req.get("jadwal_ketersediaan") or {}
@@ -590,16 +587,10 @@ def get_daftar_klien(
             jam_selesai_full = jam_selesai_str if jam_selesai_str else "23:59"
             deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_full}", "%Y-%m-%d %H:%M")
         except ValueError:
-            # Fallback: bandingkan tanggal saja
             deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
         
-        if now > deadline:
-            # Jadwal sudah lewat → tandai untuk auto-expire
-            expired_ids.append(req["id_pengajuan"])
-            if req.get("id_jadwal"):
-                expired_jadwal_ids.append(req["id_jadwal"])
-        else:
-            # Jadwal belum lewat → tampilkan di daftar klien
+        # Hanya tampilkan yang jadwalnya belum lewat
+        if now <= deadline:
             formatted_data.append({
                 "id_pengajuan": req["id_pengajuan"],
                 "nama_klien": req.get("users", {}).get("nama"),
@@ -609,25 +600,6 @@ def get_daftar_klien(
                 "waktu_selesai": jam_selesai_str,
                 "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
             })
-    
-    # Auto-expire: Update status di database menjadi 'kedaluwarsa' dan bebaskan jadwal
-    for exp_id in expired_ids:
-        try:
-            db.table("pengajuan_konsultasi") \
-                .update({"status_pengajuan": "kedaluwarsa"}) \
-                .eq("id_pengajuan", exp_id) \
-                .execute()
-        except Exception as e:
-            print(f"[WARN] Gagal auto-expire pengajuan {exp_id}: {e}")
-    
-    for jdw_id in expired_jadwal_ids:
-        try:
-            db.table("jadwal_ketersediaan") \
-                .update({"status_tersedia": True}) \
-                .eq("id_jadwal", jdw_id) \
-                .execute()
-        except Exception as e:
-            print(f"[WARN] Gagal bebaskan jadwal {jdw_id}: {e}")
 
     return {
         "total_klien_aktif": len(formatted_data),
@@ -700,7 +672,10 @@ def get_riwayat_konsultan(
     # Sort DESC by tanggal_konsultasi
     formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
 
+    # Hitung hanya yang berstatus 'selesai'
+    total_selesai = sum(1 for item in formatted_data if item["status_akhir"] == "selesai")
+
     return {
-        "total_sesi_selesai": len(formatted_data),
+        "total_sesi_selesai": total_selesai,
         "data": formatted_data
     }
