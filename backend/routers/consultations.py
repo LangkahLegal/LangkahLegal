@@ -55,7 +55,7 @@ async def buat_pengajuan_konsultasi(
     else:
         valid_files = []
 
-    # 1. Ambil data jadwal ketersediaan untuk validasi range jam
+    # 1. Ambil data jadwal ketersediaan untuk validasi range jam dan ambil tanggal
     jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
     
     if not jadwal.data:
@@ -75,6 +75,7 @@ async def buat_pengajuan_konsultasi(
         "id_user": current_user["id_user"],
         "id_konsultan": data_jadwal["id_konsultan"],
         "id_jadwal": id_jadwal,
+        "tanggal_pengajuan": data_jadwal["tanggal"],  ### TAMBAHKAN INI: Mengambil tanggal dari jadwal
         "jam_mulai": jam_mulai, 
         "jam_selesai": jam_selesai, 
         "deskripsi_kasus": deskripsi_kasus,
@@ -89,16 +90,14 @@ async def buat_pengajuan_konsultasi(
     id_pengajuan = res_pengajuan.data[0]["id_pengajuan"]
 
     # 4. Upload dokumen pendukung ke Supabase bucket (jika ada)
+    # ... (sisanya tetap sama) ...
+    
     settings = get_settings()
     bucket_name = settings.supabase_berkas_pendukung_bucket
     uploaded_docs = []
     failed_docs = []
 
-    print(f"[DEBUG] Total valid_files untuk upload: {len(valid_files)}")
-    print(f"[DEBUG] Bucket target: {bucket_name}")
-
     for file in valid_files:
-        print(f"[DEBUG] Mencoba upload: {file.filename} ({file.content_type})")
         try:
             doc_meta = await upload_supporting_document_to_supabase(
                 file=file,
@@ -107,7 +106,6 @@ async def buat_pengajuan_konsultasi(
                 db_client=db,
                 bucket_name=bucket_name,
             )
-            # Simpan metadata dokumen ke tabel dokumen_pendukung
             db.table("dokumen_pendukung").insert({
                 "id_pengajuan": id_pengajuan,
                 "nama_dokumen": doc_meta["nama_dokumen"],
@@ -116,24 +114,21 @@ async def buat_pengajuan_konsultasi(
                 "ukuran_kb": doc_meta["ukuran_kb"],
             }).execute()
             uploaded_docs.append(doc_meta["nama_dokumen"])
-            print(f"[DEBUG] Berhasil upload: {file.filename}")
-        except HTTPException as e:
-            print(f"[ERROR] Gagal upload {file.filename}: {e.detail}")
-            failed_docs.append({"nama": file.filename, "alasan": e.detail})
         except Exception as e:
-            print(f"[ERROR] Exception tak terduga saat upload {file.filename}: {str(e)}")
             failed_docs.append({"nama": file.filename, "alasan": str(e)})
 
     return {
         "message": "Pengajuan berhasil dikirim.",
         "data": {
             "id_pengajuan": id_pengajuan,
+            "tanggal_konsultasi": data_jadwal["tanggal"], ### TAMBAHKAN INI ke response agar jelas
             "jam_diajukan": f"{jam_mulai} - {jam_selesai}",
             "status": "pending",
             "dokumen_terupload": uploaded_docs,
             "dokumen_gagal": failed_docs,
         }
     }
+
 @router.put("/{id_pengajuan}/status")
 def update_consultation_status(
     id_pengajuan: int,

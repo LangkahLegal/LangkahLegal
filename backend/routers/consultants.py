@@ -262,9 +262,11 @@ def get_active_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
+    # 1. Security check: Hanya untuk konsultan
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
+    # 2. Ambil ID Konsultan dari tabel profil
     kons_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -272,22 +274,33 @@ def get_active_requests(
         .single()
         .execute()
     )
+    
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
+    # 3. Query pengajuan: Ambil field tanggal & jam langsung dari tabel pengajuan_konsultasi
     response = (
         db.table("pengajuan_konsultasi")
         .select(
             """
-            id_pengajuan, deskripsi_kasus, status_pengajuan, created_at,
-            users ( nama, foto_profil ),
-            jadwal_ketersediaan ( tanggal, jam_mulai, jam_selesai )
+            id_pengajuan, 
+            deskripsi_kasus, 
+            status_pengajuan, 
+            created_at,
+            tanggal_pengajuan, 
+            jam_mulai, 
+            jam_selesai,
+            users ( nama, foto_profil )
         """
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
         .eq("status_pengajuan", "terjadwal")
+        # Opsional: Urutkan agar yang paling dekat muncul di atas
+        .order("tanggal_pengajuan", desc=False)
+        .order("jam_mulai", desc=False)
         .execute()
     )
+    
     return response.data
 
 

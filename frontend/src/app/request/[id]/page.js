@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// Layout & UI
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
-import FileItem from "@/components/ui/FileItem";
+import SuccessView from "@/components/layout/SuccessView"; // Import SuccessView
 
 // Komponen lokal
 import ClientCard from "@/components/request/ClientCard";
@@ -20,141 +23,121 @@ import { consultationService } from "@/services/consultation.service";
 export default function RequestDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [requestData, setRequestData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // --- STATE UNTUK SUCCESS VIEW ---
+  const [isProcessed, setIsProcessed] = useState(false);
+  const [actionLabel, setActionLabel] = useState("");
 
-  // --- HELPER UNTUK FORMAT WAKTU RELATIF (REVISI: SELALU HARI) ---
-  const formatRelativeTime = (dateString) => {
-    if (!dateString) return "-";
+  // --- 1. FETCH DATA DETAIL ---
+  const { data: requestData, isLoading } = useQuery({
+    queryKey: ["consultationRequest", id],
+    queryFn: () => consultationService.getConsultationDetail(id),
+    enabled: !!id,
+    select: (data) => ({
+      clientName: data.nama_klien,
+      fotoProfil: data.foto_profil,
+      rawDate: data.created_at,
+      consultationDate: data.tanggal_konsultasi,
+      consultationTime: data.rentang_waktu,
+      caseDescription: data.deskripsi_kasus,
+      documents:
+        data.berkas_pendukung?.map((doc) => ({
+          id: doc.id_dokumen,
+          name: doc.nama_dokumen,
+          date: "Dokumen Pendukung",
+          size: `${(doc.ukuran_kb / 1024).toFixed(2)} MB`,
+          type: doc.tipe_file?.includes("pdf") ? "pdf" : "image",
+          url: doc.file_url,
+        })) || [],
+    }),
+  });
 
-    const now = new Date();
+  // --- 2. MUTATION UNTUK UPDATE STATUS ---
+  const statusMutation = useMutation({
+    mutationFn: (newStatus) => consultationService.updateStatus(id, newStatus),
+    onSuccess: (_, newStatus) => {
+      // Invalidate cache
+      queryClient.invalidateQueries({ queryKey: ["pendingRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["activeRequests"] });
 
-    // PAKSA asumsikan string dari database adalah UTC dengan menambahkan 'Z'
-    // 15:13:05 -> 15:13:05Z
-    const standardizedDate = dateString.endsWith("Z")
-      ? dateString
-      : `${dateString}Z`;
+      // Set label untuk SuccessView
+      setActionLabel(
+        newStatus === "menunggu_pembayaran" ? "Diterima" : "Ditolak",
+      );
+      setIsProcessed(true);
+    },
+    onError: (error) => {
+      alert("Gagal memproses permintaan.");
+    },
+  });
 
-    const past = new Date(standardizedDate);
-    const diffInMs = now - past;
-
-    const diffInSeconds = Math.floor(diffInMs / 1000);
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    const diffInDays = Math.floor(diffInHours / 24);
-
-    // Jika selisih negatif (karena jam server sedikit lebih cepat), anggap baru saja
-    if (diffInSeconds < 0) return "Baru saja";
-
-    if (diffInSeconds < 60) return "Baru saja";
-    if (diffInMinutes < 60) return `${diffInMinutes} menit yang lalu`;
-    if (diffInHours < 24) return `${diffInHours} jam yang lalu`;
-
-    return `${diffInDays} hari yang lalu`;
-  };
-  useEffect(() => {
-    const fetchDetail = async () => {
-      try {
-        setIsLoading(true);
-        const data = await consultationService.getConsultationDetail(id);
-
-        setRequestData({
-          clientName: data.nama_klien,
-          fotoProfil: data.foto_profil,
-          timeAgo: formatRelativeTime(data.tanggal_pengajuan),
-          consultationDate: data.tanggal_konsultasi,
-          consultationTime: data.rentang_waktu,
-          caseDescription: data.deskripsi_kasus,
-          documents: data.berkas_pendukung.map((doc) => ({
-            id: doc.id_dokumen,
-            name: doc.nama_dokumen,
-            date: "Dokumen Pendukung",
-            size: `${(doc.ukuran_kb / 1024).toFixed(2)} MB`,
-            type: doc.tipe_file?.includes("pdf") ? "pdf" : "image",
-            url: doc.file_url,
-          })),
-        });
-      } catch (error) {
-        console.error("Gagal mengambil detail pengajuan:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (id) fetchDetail();
-  }, [id]);
-
-  const handleAction = async (action) => {
-    try {
-      setIsProcessing(true);
-
-      // Sesuaikan dengan isi ENUM database kamu
-      const newStatus = action === "terima" ? "menunggu_pembayaran" : "ditolak";
-
-      // Kirim ke backend
-      await consultationService.updateStatus(id, newStatus);
-
-      alert(`Permintaan berhasil di-${action}!`);
-      router.push("/dashboard/consultant");
-    } catch (error) {
-      // Jika error, kemungkinan besar karena typo string yang tidak ada di ENUM
-      console.error("Gagal update status:", error);
-      alert("Gagal memproses permintaan. Pastikan status sesuai ENUM.");
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleAction = (action) => {
+    const newStatus = action === "terima" ? "menunggu_pembayaran" : "ditolak";
+    statusMutation.mutate(newStatus);
   };
 
-  if (isLoading) {
+  // --- RENDER SUCCESS VIEW ---
+  if (isProcessed) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#6f59fe]"></div>
-      </div>
+      <SuccessView
+        title={`Permintaan Berhasil ${actionLabel}!`}
+        description={`Permintaan konsultasi dari ${requestData?.clientName} telah berhasil ${actionLabel.toLowerCase()}. Klien akan segera mendapatkan notifikasi.`}
+        onAction={() => router.push("/dashboard/consultant")}
+      />
     );
   }
 
-  if (!requestData) {
+  // --- RENDER LOADING ---
+  if (isLoading) return <LoadingSpinner />;
+
+  // --- RENDER NOT FOUND ---
+  if (!requestData)
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center text-white">
+      <div className="text-white text-center mt-20 font-bold uppercase tracking-widest opacity-40">
         Data tidak ditemukan.
       </div>
     );
-  }
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all">
-        <PageHeader title="Detail Permintaan" showSettings />
+        <PageHeader title="Detail Permintaan" />
 
         <main className="flex-1 overflow-y-auto w-full">
-          <div className="max-w-2xl mx-auto px-6 pt-8 pb-24 space-y-8">
+          <div className="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-8">
+            {/* Informasi Klien */}
             <ClientCard
               name={requestData.clientName}
-              timeAgo={requestData.timeAgo}
+              createdAt={requestData.rawDate}
               avatar={requestData.fotoProfil}
             />
 
+            {/* Grid Informasi Waktu */}
             <InfoGrid
               date={requestData.consultationDate}
               time={requestData.consultationTime}
             />
 
+            {/* Deskripsi Kasus */}
             <CaseDescription description={requestData.caseDescription} />
 
-            <AttachedDocuments 
-              documents={requestData.documents} 
+            {/* Dokumen Lampiran dengan Preview Modal */}
+            <AttachedDocuments
               title="Dokumen Terlampir"
               titleClassName="text-xs font-bold text-[#aca8c1] uppercase tracking-[0.2em] ml-2"
-              allowDelete={false} 
+              documents={requestData.documents}
+              showCount={true}
+              allowDelete={false}
             />
 
+            {/* Tombol Aksi Terima/Tolak */}
             <ActionButtons
               onReject={() => handleAction("tolak")}
               onAccept={() => handleAction("terima")}
+              isLoading={statusMutation.isPending}
             />
           </div>
         </main>
@@ -166,3 +149,14 @@ export default function RequestDetailPage() {
     </div>
   );
 }
+
+const LoadingSpinner = () => (
+  <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#6f59fe]"></div>
+      <p className="text-[#ada3ff] text-[10px] font-bold tracking-widest uppercase animate-pulse">
+        Loading Detail...
+      </p>
+    </div>
+  </div>
+);

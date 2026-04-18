@@ -1,9 +1,10 @@
-import { Inter } from "next/font/google"; 
+import { Inter } from "next/font/google";
 import "./globals.css";
+import AppProviders from "@/providers";
 
 const inter = Inter({
   subsets: ["latin"],
-  display: "swap", 
+  display: "swap",
   variable: "--font-inter",
 });
 
@@ -12,7 +13,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: "cover", 
+  viewportFit: "cover",
 };
 
 export const metadata = {
@@ -29,9 +30,9 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-
       <body className={`${inter.className} antialiased`}>
-        {children}
+        {/* Cukup panggil AppProviders sekali untuk membungkus semuanya */}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

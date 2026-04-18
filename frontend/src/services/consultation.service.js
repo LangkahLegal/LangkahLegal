@@ -27,34 +27,21 @@ export const consultationService = {
   },
 
   createConsultation: async (payload, files = []) => {
-    try {
-      const formData = new FormData();
+    const formData = new FormData();
 
-      // 1. Append Text Fields dari payload
-      formData.append("id_jadwal", payload.id_jadwal);
-      formData.append("deskripsi_kasus", payload.deskripsi_kasus);
-      formData.append("jam_mulai", payload.jam_mulai);
-      formData.append("jam_selesai", payload.jam_selesai);
-
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, value);
       }
-      // 2. Append Multiple Files (jika ada)
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          formData.append("dokumen_pendukung_files", file);
-        });
-      }
+    });
 
-      // 3. Eksekusi Post
-      // Axios akan otomatis mengatur 'Content-Type': 'multipart/form-data'
-      const response = await api.post("/consultations/", formData);
+    files?.forEach((file) => {
+      formData.append("dokumen_pendukung_files", file);
+    });
 
-      return response.data;
-    } catch (error) {
-      console.error("Gagal mengirim pengajuan konsultasi:", error);
-      throw error;
-    }
+    const { data } = await api.post("/consultations/", formData);
+
+    return data;
   },
 
   getConsultationDetail: async (id) => {
@@ -98,7 +85,9 @@ export const consultationService = {
 
   getDocuments: async (id_pengajuan) => {
     try {
-      const response = await api.get(`/consultations/${id_pengajuan}/documents`);
+      const response = await api.get(
+        `/consultations/${id_pengajuan}/documents`,
+      );
       return response.data;
     } catch (error) {
       console.error("Gagal memuat dokumen:", error);
@@ -112,7 +101,10 @@ export const consultationService = {
       files.forEach((file) => {
         formData.append("dokumen_pendukung_files", file);
       });
-      const response = await api.post(`/consultations/${id_pengajuan}/documents`, formData);
+      const response = await api.post(
+        `/consultations/${id_pengajuan}/documents`,
+        formData,
+      );
       return response.data;
     } catch (error) {
       console.error("Gagal upload dokumen:", error);
@@ -122,7 +114,9 @@ export const consultationService = {
 
   deleteDocument: async (id_pengajuan, id_dokumen) => {
     try {
-      const response = await api.delete(`/consultations/${id_pengajuan}/documents/${id_dokumen}`);
+      const response = await api.delete(
+        `/consultations/${id_pengajuan}/documents/${id_dokumen}`,
+      );
       return response.data;
     } catch (error) {
       console.error("Gagal hapus dokumen:", error);

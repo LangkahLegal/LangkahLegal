@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // 1. Import useRouter
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+
+// Components
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import IncomeCard from "@/components/dashboard/IncomeCard";
 import StatCard from "@/components/dashboard/StatCard";
-import LiveSessionCard from "@/components/dashboard/LiveSessionCard";
-import UpcomingSessionCard from "@/components/dashboard/UpcomingSessionCard";
-import RequestCard from "@/components/dashboard/RequestCard";
+import ConsultationCard from "@/components/dashboard/ConsultationCard";
+import { MaterialIcon } from "@/components/ui/Icons";
+
+// Services
 import { consultantService } from "@/services/consultant.service";
 import { userService } from "@/services/user.service";
 
@@ -19,162 +23,184 @@ const formatCurrency = (value) => {
   return `Rp ${safeValue.toLocaleString("id-ID")}`;
 };
 
-const formatDateLabel = (value) => {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
-};
-
-const formatTimeRange = (start, end) => {
-  const s = start?.substring(0, 5);
-  const e = end?.substring(0, 5);
-  if (!s || !e) return null;
-  return `${s} - ${e}`;
-};
-
-const formatFullSchedule = (item) => {
-  const date = formatDateLabel(item?.tanggal_pengajuan);
-  const time = formatTimeRange(item?.jam_mulai, item?.jam_selesai);
-  if (date && time) return `${date} • ${time}`;
-  return formatDateLabel(item?.created_at) || "Menunggu jadwal";
-};
-
 export default function ConsultantDashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState({ name: "", foto_profil: "" });
-  const [stats, setStats] = useState({
-    income: 0,
-    activeConsultations: 0,
-    totalClients: 0,
+
+  // --- 1. QUERIES ---
+  const { data: user } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: () => userService.getFullProfile(),
+    select: (data) => ({
+      name: data?.nama || data?.nama_lengkap || "Konsultan",
+      foto_profil: data?.foto_profil || data?.avatar,
+    }),
   });
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [activeRequests, setActiveRequests] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      setIsLoading(true);
-      try {
-        const [userResponse, statsResponse, pendingResponse, activeResponse] =
-          await Promise.all([
-            userService.getFullProfile(),
-            consultantService.getDashboardStats(),
-            consultantService.getPendingRequests(),
-            consultantService.getActiveRequests(),
-          ]);
+  const {
+    data: stats,
+    isLoading: isStatsLoading,
+    isError: isStatsError,
+  } = useQuery({
+    queryKey: ["consultantStats"],
+    queryFn: () => consultantService.getDashboardStats(),
+    select: (data) => ({
+      income: data?.total_income ?? 0,
+      activeConsultations: data?.total_klien_aktif ?? 0,
+      totalClients: data?.total_klien ?? 0,
+    }),
+  });
 
-        setUser({
-          name: userResponse?.nama || userResponse?.nama_lengkap || "Konsultan",
-          foto_profil: userResponse?.foto_profil || userResponse?.avatar,
-        });
+  const { data: pendingRequests = [], isLoading: isPendingLoading } = useQuery({
+    queryKey: ["pendingRequests"],
+    queryFn: () => consultantService.getPendingRequests(),
+    refetchInterval: 30000,
+  });
 
-        setStats({
-          income: statsResponse?.total_income ?? 0,
-          activeConsultations: statsResponse?.total_klien_aktif ?? 0,
-          totalClients: statsResponse?.total_klien ?? 0,
-        });
+  const {
+    data: activeRequests = [],
+    isLoading: isActiveLoading,
+    isError: isActiveError,
+  } = useQuery({
+    queryKey: ["activeRequests"],
+    queryFn: () => consultantService.getActiveRequests(),
+    refetchInterval: 60000,
+  });
 
-        setPendingRequests(pendingResponse || []);
-        setActiveRequests(activeResponse || []);
-      } catch (error) {
-        console.error("Gagal memuat dashboard:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDashboard();
-  }, []);
+  // --- 2. LOGIKA MAPPING DATA (Helper untuk menyesuaikan struktur ConsultationCard) ---
+  const transformToCardData = (raw) => ({
+    id_pengajuan: raw.id_pengajuan,
+    status_pengajuan: raw.status_pengajuan,
+    jam_mulai: raw.jam_mulai,
+    jam_selesai: raw.jam_selesai,
+    nominal_konsultan: raw.nominal_konsultan || 0,
+    jadwal_ketersediaan: {
+      tanggal: raw.tanggal_pengajuan,
+      konsultan: {
+        nama_lengkap: raw.users?.nama || "Klien",
+        foto_profil: raw.users?.foto_profil,
+      },
+    },
+  });
 
-  const liveSession = activeRequests[0];
-  const upcomingSession = activeRequests[1];
+  const closestSession = useMemo(() => {
+    if (!activeRequests?.length) return null;
 
-  const mappedRequests = pendingRequests.map((req) => ({
-    id: req.id_pengajuan,
-    name: req.users?.nama || "Klien",
-    avatar: req.users?.foto_profil, // AMBIL DARI API
-    time: formatFullSchedule(req),
-  }));
+    const terjadwalOnly = activeRequests.filter(
+      (req) => req.status_pengajuan?.toLowerCase() === "terjadwal",
+    );
+
+    if (!terjadwalOnly.length) return null;
+
+    const sorted = terjadwalOnly.sort((a, b) => {
+      const dateTimeA = new Date(`${a.tanggal_pengajuan}T${a.jam_mulai}`);
+      const dateTimeB = new Date(`${b.tanggal_pengajuan}T${b.jam_mulai}`);
+      return dateTimeA - dateTimeB;
+    });
+
+    return transformToCardData(sorted[0]);
+  }, [activeRequests]);
+
+  const mappedRequests = useMemo(() => {
+    return pendingRequests.map((req) => transformToCardData(req));
+  }, [pendingRequests]);
+
+  // --- 3. LOADING & ERROR GATE ---
+  const isInitialLoading = isStatsLoading || isActiveLoading;
+
+  if (isInitialLoading) {
+    return (
+      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#6f59fe]"></div>
+          <p className="text-[#ada3ff] text-[10px] font-bold tracking-widest uppercase animate-pulse text-center">
+            Synchronizing Dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-all">
-        <DashboardHeader userName={user.name} foto_profil={user.foto_profil} />
+        <DashboardHeader
+          userName={user?.name}
+          foto_profil={user?.foto_profil}
+        />
 
         <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12">
-          {/* 1. Income Card */}
-          <IncomeCard amount={formatCurrency(stats.income)} />
+          <IncomeCard amount={formatCurrency(stats?.income)} />
 
-          {/* 2. Stat Cards */}
-          <section className="grid grid-cols-2 gap-4 lg:gap-8">
+          <section className="grid grid-cols-2 gap-4 lg:gap-8 w-full">
             <StatCard
               label="Konsultasi Aktif"
-              val={stats.activeConsultations}
+              val={stats?.activeConsultations || 0}
               icon="gavel"
             />
             <StatCard
               label="Total Klien"
-              val={stats.totalClients}
+              val={stats?.totalClients || 0}
               icon="group"
             />
           </section>
 
-          {/* 3. Jadwal Terdekat Section */}
-          <section className="space-y-6">
-            <h2 className="text-xl font-headline font-bold text-white">
+          {/* JADWAL TERDEKAT SECTION */}
+          <section className="space-y-6 w-full">
+            <h2 className="text-xl font-headline font-bold text-white px-1">
               Jadwal Terdekat
             </h2>
-            {liveSession ? (
-              <LiveSessionCard
-                clientName={liveSession.users?.nama}
-                caseType={liveSession.deskripsi_kasus}
-                time={formatFullSchedule(liveSession)}
-                avatar={liveSession.users?.foto_profil}
-              />
-            ) : (
-              <div className="bg-[#1f1d35] border border-white/5 p-6 rounded-3xl text-sm text-[#aca8c1]">
-                Belum ada sesi aktif saat ini.
-              </div>
-            )}
-
-            {upcomingSession && (
-              <UpcomingSessionCard
-                name={upcomingSession.users?.nama}
-                caseType={upcomingSession.deskripsi_kasus}
-                time={formatTimeRange(
-                  upcomingSession.jam_mulai,
-                  upcomingSession.jam_selesai,
-                )}
-                dateLabel={formatDateLabel(upcomingSession.tanggal_pengajuan)}
-              />
-            )}
+            <div className="w-full">
+              {closestSession ? (
+                <ConsultationCard
+                  data={closestSession}
+                  role="konsultan"
+                  onHide={() => {}}
+                  onCancel={() => {}}
+                />
+              ) : (
+                <div className="bg-[#1f1d35]/50 border border-white/5 p-8 rounded-[1.5rem] sm:rounded-[2rem] text-sm text-[#aca8c1] italic flex items-center gap-3">
+                  <MaterialIcon
+                    name="event_busy"
+                    className="text-xl opacity-40"
+                  />
+                  <span>
+                    Belum ada jadwal konsultasi yang disetujui dalam waktu
+                    dekat.
+                  </span>
+                </div>
+              )}
+            </div>
           </section>
 
-          {/* 4. Permintaan Baru Section */}
-          <section className="space-y-6">
-            <h2 className="text-xl font-headline font-bold text-white">
+          {/* PERMINTAAN BARU SECTION (REVISI: Menggunakan ConsultationCard) */}
+          <section className="space-y-6 w-full">
+            <h2 className="text-xl font-headline font-bold text-white px-1">
               Permintaan Baru
             </h2>
-            <div className="space-y-4">
-              {isLoading ? (
-                <div className="text-sm text-[#aca8c1] animate-pulse">
-                  Memuat permintaan...
+            <div className="space-y-4 w-full">
+              {isPendingLoading ? (
+                <div className="text-sm text-[#aca8c1] animate-pulse italic">
+                  Memperbarui...
                 </div>
               ) : mappedRequests.length > 0 ? (
                 mappedRequests.map((req) => (
-                  <RequestCard
-                    key={req.id}
-                    name={req.name}
-                    time={req.time}
-                    avatar={req.avatar} // KIRIM KE KOMPONEN
-                    onClick={() => router.push(`/request/${req.id}`)}
+                  <ConsultationCard
+                    key={req.id_pengajuan}
+                    data={req}
+                    role="konsultan"
+                    onHide={() => {}}
+                    onCancel={() => {}}
                   />
                 ))
               ) : (
-                <div className="text-sm text-[#aca8c1]">
-                  Tidak ada permintaan pending.
+                <div className="text-sm text-[#aca8c1] py-8 bg-[#1f1d35]/30 rounded-[2rem] border border-dashed border-white/5 text-center flex flex-col items-center gap-2">
+                  <MaterialIcon
+                    name="mail_outline"
+                    className="text-3xl opacity-20"
+                  />
+                  <span>Tidak ada permintaan pending saat ini.</span>
                 </div>
               )}
             </div>

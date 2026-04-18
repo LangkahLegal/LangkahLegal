@@ -147,7 +147,7 @@ export default function AttachedDocuments({
                 href={previewDoc.url} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#6f59fe] hover:bg-[#5b48db] text-white rounded-xl transition-colors font-bold shadow-lg"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#353050] hover:bg-[#5b48db] text-white rounded-xl transition-colors font-bold shadow-lg"
               >
                 <MaterialIcon name="open_in_new" className="text-sm" />
                 Buka di Browser

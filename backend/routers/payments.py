@@ -140,6 +140,7 @@ def create_transaction(
 
     if not tarif or float(tarif) <= 0:
         raise HTTPException(status_code=400, detail="Tarif konsultan belum diatur")
+    
 
     gross_amount = int(float(tarif))
 
