@@ -306,6 +306,9 @@ def get_detail_pengajuan(
     # link_dokumen: prioritaskan kolom langsung (dari GDrive URL), fallback ke file upload pertama
     data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
 
+    # Link Zoom untuk konsultasi terjadwal
+    data["link_zoom"] = data.get("link_zoom")
+
     # Expose array berkas_pendukung lengkap dari tabel dokumen_pendukung (upload ke Supabase bucket)
     data["berkas_pendukung"] = [
         {
@@ -428,3 +431,186 @@ def get_booked_slots(
         "message": "Data jadwal terisi ditemukan",
         "data": response.data
     }
+
+
+# ==========================================
+# CRUD DOKUMEN PENDUKUNG (Post-Pengajuan)
+# ==========================================
+
+@router.get(
+    "/{id_pengajuan}/documents",
+    status_code=status.HTTP_200_OK,
+    summary="Lihat daftar dokumen pendukung",
+    description="""
+Mengambil semua dokumen pendukung yang terkait dengan pengajuan konsultasi tertentu.
+Akses dibatasi: hanya pemilik pengajuan (client) atau konsultan terkait yang bisa melihat.
+""",
+)
+def get_documents(
+    id_pengajuan: int,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    # 1. Cek kepemilikan pengajuan
+    pengajuan = db.table("pengajuan_konsultasi").select("id_user, id_konsultan").eq("id_pengajuan", id_pengajuan).execute()
+    if not pengajuan.data:
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
+
+    data_pengajuan = pengajuan.data[0]
+    user_role = current_user.get("role")
+    user_id = current_user.get("id_user")
+
+    if user_role == "client":
+        if data_pengajuan["id_user"] != user_id:
+            raise HTTPException(status_code=403, detail="Akses ditolak")
+    elif user_role == "konsultan":
+        kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", user_id).single().execute()
+        if not kons_profile.data or data_pengajuan["id_konsultan"] != kons_profile.data["id_konsultan"]:
+            raise HTTPException(status_code=403, detail="Akses ditolak")
+    else:
+        raise HTTPException(status_code=403, detail="Role tidak dikenali")
+
+    # 2. Ambil dokumen
+    docs = (
+        db.table("dokumen_pendukung")
+        .select("id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at")
+        .eq("id_pengajuan", id_pengajuan)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return {
+        "message": "Dokumen berhasil dimuat",
+        "total": len(docs.data),
+        "data": docs.data
+    }
+
+
+@router.post(
+    "/{id_pengajuan}/documents",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload dokumen pendukung tambahan",
+    description="""
+Upload file dokumen pendukung tambahan untuk pengajuan yang sudah ada.
+Hanya pemilik pengajuan (client) yang boleh menambahkan dokumen.
+Format: PDF / JPG / JPEG / PNG / WEBP / GIF. Maks 10MB per file.
+""",
+)
+async def upload_document(
+    id_pengajuan: int,
+    dokumen_pendukung_files: list[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    # Hanya client yang boleh upload
+    if current_user.get("role") != "client":
+        raise HTTPException(status_code=403, detail="Hanya klien yang dapat mengunggah dokumen")
+
+    # Cek kepemilikan pengajuan
+    pengajuan = db.table("pengajuan_konsultasi").select("id_user").eq("id_pengajuan", id_pengajuan).execute()
+    if not pengajuan.data:
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
+    if pengajuan.data[0]["id_user"] != current_user["id_user"]:
+        raise HTTPException(status_code=403, detail="Anda tidak berhak mengunggah dokumen untuk pengajuan ini")
+
+    valid_files = [f for f in dokumen_pendukung_files if f.filename]
+    if not valid_files:
+        raise HTTPException(status_code=400, detail="Tidak ada file valid yang dikirim")
+    if len(valid_files) > 10:
+        raise HTTPException(status_code=400, detail="Maksimal 10 file per upload")
+
+    settings = get_settings()
+    bucket_name = settings.supabase_berkas_pendukung_bucket
+    uploaded_docs = []
+    failed_docs = []
+
+    for file in valid_files:
+        try:
+            doc_meta = await upload_supporting_document_to_supabase(
+                file=file,
+                id_pengajuan=id_pengajuan,
+                id_user=current_user["id_user"],
+                db_client=db,
+                bucket_name=bucket_name,
+            )
+            result = db.table("dokumen_pendukung").insert({
+                "id_pengajuan": id_pengajuan,
+                "nama_dokumen": doc_meta["nama_dokumen"],
+                "file_url": doc_meta["file_url"],
+                "tipe_file": doc_meta["tipe_file"],
+                "ukuran_kb": doc_meta["ukuran_kb"],
+            }).execute()
+            
+            uploaded_docs.append({
+                "id_dokumen": result.data[0]["id_dokumen"] if result.data else None,
+                "nama_dokumen": doc_meta["nama_dokumen"],
+                "file_url": doc_meta["file_url"],
+                "tipe_file": doc_meta["tipe_file"],
+                "ukuran_kb": doc_meta["ukuran_kb"],
+            })
+        except HTTPException as e:
+            failed_docs.append({"nama": file.filename, "alasan": e.detail})
+        except Exception as e:
+            failed_docs.append({"nama": file.filename, "alasan": str(e)})
+
+    return {
+        "message": f"{len(uploaded_docs)} dokumen berhasil diupload",
+        "data": {
+            "dokumen_terupload": uploaded_docs,
+            "dokumen_gagal": failed_docs,
+        }
+    }
+
+
+@router.delete(
+    "/{id_pengajuan}/documents/{id_dokumen}",
+    status_code=status.HTTP_200_OK,
+    summary="Hapus dokumen pendukung",
+    description="""
+Menghapus satu dokumen pendukung berdasarkan `id_dokumen`.
+Hanya pemilik pengajuan (client) yang boleh menghapus dokumen miliknya.
+File juga akan dihapus dari Supabase Storage.
+""",
+)
+def delete_document(
+    id_pengajuan: int,
+    id_dokumen: int,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    # Hanya client yang boleh hapus
+    if current_user.get("role") != "client":
+        raise HTTPException(status_code=403, detail="Hanya klien yang dapat menghapus dokumen")
+
+    # Cek kepemilikan pengajuan
+    pengajuan = db.table("pengajuan_konsultasi").select("id_user").eq("id_pengajuan", id_pengajuan).execute()
+    if not pengajuan.data:
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
+    if pengajuan.data[0]["id_user"] != current_user["id_user"]:
+        raise HTTPException(status_code=403, detail="Anda tidak berhak menghapus dokumen untuk pengajuan ini")
+
+    # Cek dokumen ada dan milik pengajuan ini
+    doc = db.table("dokumen_pendukung").select("*").eq("id_dokumen", id_dokumen).eq("id_pengajuan", id_pengajuan).execute()
+    if not doc.data:
+        raise HTTPException(status_code=404, detail="Dokumen tidak ditemukan")
+
+    doc_data = doc.data[0]
+    file_url = doc_data.get("file_url", "")
+
+    # Coba hapus file dari Supabase Storage
+    settings = get_settings()
+    bucket_name = settings.supabase_berkas_pendukung_bucket
+    
+    try:
+        # Ekstrak path dari public URL
+        # Format URL: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
+        if f"/storage/v1/object/public/{bucket_name}/" in file_url:
+            storage_path = file_url.split(f"/storage/v1/object/public/{bucket_name}/")[1]
+            db.storage.from_(bucket_name).remove([storage_path])
+    except Exception as e:
+        print(f"[WARN] Gagal hapus file dari storage: {e}")
+
+    # Hapus record dari database
+    db.table("dokumen_pendukung").delete().eq("id_dokumen", id_dokumen).execute()
+
+    return {"message": "Dokumen berhasil dihapus", "id_dokumen": id_dokumen}

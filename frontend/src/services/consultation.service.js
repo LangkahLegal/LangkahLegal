@@ -93,4 +93,40 @@ export const consultationService = {
       throw error;
     }
   },
+
+  // --- CRUD Dokumen Pendukung ---
+
+  getDocuments: async (id_pengajuan) => {
+    try {
+      const response = await api.get(`/consultations/${id_pengajuan}/documents`);
+      return response.data;
+    } catch (error) {
+      console.error("Gagal memuat dokumen:", error);
+      throw error;
+    }
+  },
+
+  uploadDocuments: async (id_pengajuan, files) => {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("dokumen_pendukung_files", file);
+      });
+      const response = await api.post(`/consultations/${id_pengajuan}/documents`, formData);
+      return response.data;
+    } catch (error) {
+      console.error("Gagal upload dokumen:", error);
+      throw error;
+    }
+  },
+
+  deleteDocument: async (id_pengajuan, id_dokumen) => {
+    try {
+      const response = await api.delete(`/consultations/${id_pengajuan}/documents/${id_dokumen}`);
+      return response.data;
+    } catch (error) {
+      console.error("Gagal hapus dokumen:", error);
+      throw error;
+    }
+  },
 };
