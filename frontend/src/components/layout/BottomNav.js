@@ -5,14 +5,14 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const CLIENT_NAV = [
-  { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
+  { label: "Konsultasi", icon: "gavel", path: "/explore" },
   { label: "Tanya AI", icon: "psychology", path: "/ai" },
   { label: "Riwayat", icon: "history", path: "/history/client" },
   { label: "Berkas", icon: "folder", path: "/documents" },
 ];
 
 const CONSULTANT_NAV = [
-  { label: "Klien", icon: "group", path: "/client-list" },
+  { label: "Klien", icon: "group", path: "/consultation" },
   { label: "Tanya AI", icon: "psychology", path: "/ai" },
   { label: "Riwayat", icon: "history", path: "/history/consultant" },
   { label: "Jadwal", icon: "calendar_today", path: "/schedule" },

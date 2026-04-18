@@ -8,8 +8,8 @@ export default function ConsultantCard({ consultant }) {
   const { name, spec, rating, reviews, status, foto_profil } = consultant;
 
   const detailHref = consultant?.id
-    ? `/konsultasi/${consultant.id}`
-    : "/konsultasi";
+    ? `/explore/${consultant.id}`
+    : "/explore";
 
   // Fallback UI-Avatars jika foto_profil null atau error
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(

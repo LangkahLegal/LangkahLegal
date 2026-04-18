@@ -49,7 +49,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
       {isConsultant && (
         <>
           <div className="pt-4 border-t border-white/5">
-            <h3 className="text-[#ada3ff] text-xs font-bold tracking-widest uppercase mb-6">
+            <h3 className="text-[#ada3ff] text-lg font-bold tracking-widest uppercase mb-6">
               Kredensial Profesional
             </h3>
           </div>
