@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,6 +19,14 @@ import { consultationService } from "@/services/consultation.service";
 
 export default function ConsultationDetail() {
   const { id } = useParams();
+  const router = useRouter();
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    // Contoh: ambil dari localStorage setelah komponen dimount
+    const role = localStorage.getItem("userRole") || "client"; 
+    setUserRole(role);
+  }, []);
 
   // --- 1. FETCH DATA DETAIL (TanStack Query) ---
   const {
@@ -37,7 +46,8 @@ export default function ConsultationDetail() {
       consultationTime: data.rentang_waktu,
       caseDescription: data.deskripsi_kasus,
       zoomLink: data.link_zoom,
-      zoomPassword: data.zoom_password || data.password_zoom, // Sesuaikan field backend
+      zoomPassword: data.zoom_password || data.password_zoom,
+      status: data.status_pengajuan,
       documents:
         data.berkas_pendukung?.map((doc) => ({
           id: doc.id_dokumen,
@@ -85,7 +95,7 @@ export default function ConsultationDetail() {
 
   return (
     <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex">
-      <Sidebar role="konsultan" />
+      <Sidebar role={userRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Detail Konsultasi" />
@@ -118,13 +128,14 @@ export default function ConsultationDetail() {
               <ZoomLinkCard
                 link={requestData.zoomLink}
                 password={requestData.zoomPassword}
+                status={requestData.status}
               />
             )}
           </div>
         </main>
 
         <div className="lg:hidden">
-          <BottomNav role="konsultan" />
+          <BottomNav role={userRole} />
         </div>
       </div>
     </div>
