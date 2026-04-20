@@ -582,14 +582,20 @@ def get_daftar_klien(
         .execute()
     )
     
-    from datetime import datetime
-    now = datetime.now()
+    from datetime import datetime, timezone, timedelta
+    wib = timezone(timedelta(hours=7))
+    now = datetime.now(wib).replace(tzinfo=None)  # naive WIB time for comparison
     
     formatted_data = []
     
     for req in response.data:
+        # jadwal_ketersediaan bisa berupa dict atau list, handle keduanya
         jadwal = req.get("jadwal_ketersediaan") or {}
-        tanggal_konsultasi = jadwal.get("tanggal")
+        if isinstance(jadwal, list):
+            jadwal = jadwal[0] if len(jadwal) > 0 else {}
+        
+        # Prioritaskan tanggal_pengajuan dari tabel pengajuan, fallback ke jadwal
+        tanggal_konsultasi = req.get("tanggal_pengajuan") or jadwal.get("tanggal")
         jam_selesai_str = str(req.get("jam_selesai", ""))[:5]  # "HH:MM"
         
         if not tanggal_konsultasi:
