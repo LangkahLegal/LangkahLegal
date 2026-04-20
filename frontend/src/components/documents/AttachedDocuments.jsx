@@ -16,7 +16,22 @@ export default function AttachedDocuments({
   const [isLoadingFile, setIsLoadingFile] = useState(true);
 
   if (!documents || documents.length === 0) {
-    return null; 
+    return (
+      <section className="space-y-4">
+        {/* Tetap render judul (jika ada) agar pengguna tahu ini area apa */}
+        {title && (
+          <h2 className={titleClassName}>
+            {title}
+          </h2>
+        )}
+        
+        {/* Visual Empty State */}
+        <div className="bg-[#1f1d35]/30 border border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-3">
+          <MaterialIcon name="folder_off" className="text-4xl text-[#48455a]" />
+          <p className="text-sm text-[#aca8c1]">Tidak ada dokumen pendukung yang dilampirkan.</p>
+        </div>
+      </section>
+    ); 
   }
 
   const isImage = (url, type) => {
