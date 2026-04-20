@@ -130,7 +130,9 @@ export default function PaymentPage() {
             <PaymentBreakdown
               pricePerSession={konsultan.tarif_per_sesi || 0}
               quantity={consultation?.jumlah_sesi || 1}
-              totalAmount={consultation?.total_harga || (konsultan.tarif_per_sesi || 0)}
+              totalAmount={
+                consultation?.total_harga || konsultan.tarif_per_sesi || 0
+              }
               sessionDuration={30}
             />
 
@@ -140,7 +142,7 @@ export default function PaymentPage() {
                 fullWidth
                 isLoading={transactionMutation.isPending}
                 onClick={() => transactionMutation.mutate()}
-                className="py-5 rounded-2xl bg-gradient-to-r from-[#6f59fe] to-[#8b7aff] shadow-[0_15px_30px_rgba(111,89,254,0.3)] transition-all active:scale-[0.98]"
+                className="py-5 rounded-2xl bg-gradient-to-r from-[#19142e] to-[#19142e] shadow-[0_15px_30px_rgba(111,89,254,0.3)] transition-all active:scale-[0.98]"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold uppercase tracking-widest">

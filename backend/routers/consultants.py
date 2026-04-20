@@ -123,19 +123,10 @@ def get_my_schedules(
         )
         formatted.append({**item, "nama_klien": nama_klien})
     return formatted
-
 @router.get(
     "/me/dashboard-stats",
     status_code=status.HTTP_200_OK,
     summary="Statistik dashboard konsultan",
-    description="""
-Mengembalikan statistik ringkasan untuk halaman dashboard konsultan.
-
-**Response:**
-- `total_income` (number): Total pendapatan bersih konsultan (90% dari gross) dari transaksi yang sudah **settlement**.
-- `total_klien` (number): Jumlah klien unik yang pengajuannya berstatus `terjadwal` atau `selesai`.
-- `total_klien_aktif` (number): Jumlah klien unik yang pengajuannya masih berstatus `terjadwal` (belum selesai).
-""",
 )
 def get_consultant_dashboard_stats(
     current_user: dict = Depends(get_current_user),
@@ -145,23 +136,15 @@ def get_consultant_dashboard_stats(
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
     # 1. Ambil ID Konsultan
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .limit(1)
-        .execute()
-    )
+    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-
     id_kons = kons_profile.data[0]["id_konsultan"]
 
-    # 2. Total Income — ambil dari pengajuan konsultan ini yang punya transaksi settlement
-    #    Query: pengajuan_konsultasi → transaksi (lebih reliable daripada inner join terbalik)
+    # 2. Total Income (Hanya yang settlement)
     pengajuan_with_tx = (
         db.table("pengajuan_konsultasi")
-        .select("id_pengajuan, transaksi(nominal_konsultan, status_pembayaran)")
+        .select("transaksi(nominal_konsultan, status_pembayaran)")
         .eq("id_konsultan", id_kons)
         .execute()
     )
@@ -169,38 +152,36 @@ def get_consultant_dashboard_stats(
     total_income = 0
     for p in pengajuan_with_tx.data:
         tx_list = p.get("transaksi") or []
-        if isinstance(tx_list, dict):
-            tx_list = [tx_list]
+        if isinstance(tx_list, dict): tx_list = [tx_list]
         for tx in tx_list:
             if tx.get("status_pembayaran") == "settlement":
                 total_income += float(tx.get("nominal_konsultan") or 0)
 
-    # 3. Total Klien (klien unik dengan status terjadwal/selesai)
-    klien_data = (
+    # 3. Query Data Pengajuan (Ambil sekali saja untuk optimasi)
+    # Kita ambil data dengan status terjadwal atau selesai
+    klien_data_res = (
         db.table("pengajuan_konsultasi")
-        .select("id_user")
+        .select("id_user, status_pengajuan")
         .eq("id_konsultan", id_kons)
         .in_("status_pengajuan", ["terjadwal", "selesai"])
         .execute()
     )
-    unique_klien = set(p["id_user"] for p in klien_data.data)
+    
+    all_data = klien_data_res.data or []
 
-    # 4. Total Klien Aktif (klien unik dengan status terjadwal)
-    klien_aktif_data = (
-        db.table("pengajuan_konsultasi")
-        .select("id_user")
-        .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", "terjadwal")
-        .execute()
-    )
-    unique_klien_aktif = set(p["id_user"] for p in klien_aktif_data.data)
+    # LOGIKA DISTINCT: Total Klien (Orang unik yang pernah/sedang ditangani)
+    # Client X booking 10x tetap dihitung 1 orang.
+    unique_klien = set(p["id_user"] for p in all_data)
+
+    # LOGIKA BARIS: Konsultasi Aktif (Jumlah sesi yang statusnya terjadwal)
+    # Client X punya 2 jadwal aktif, dihitung 2 sesi.
+    sesi_aktif = [p for p in all_data if p["status_pengajuan"] == "terjadwal"]
 
     return {
         "total_income": total_income,
-        "total_klien": len(unique_klien),
-        "total_klien_aktif": len(unique_klien_aktif),
+        "total_klien": len(unique_klien),      # Output: 1 (Distinct People)
+        "total_klien_aktif": len(sesi_aktif),  # Output: 2 (Total Active Rows/Sessions)
     }
-
 
 @router.get(
     "/me/requests/pending",

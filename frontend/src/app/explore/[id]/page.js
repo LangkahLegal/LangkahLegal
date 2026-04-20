@@ -137,7 +137,13 @@ export default function ConsultantDetailPage() {
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10">
             {/* Konten Utama Profil */}
-            <ConsultantHero {...consultant} />
+            <ConsultantHero
+              {...consultant}
+              name={consultant.nama_lengkap || consultant.users?.nama}
+              // Cek di root dulu, baru cek di dalam users
+              avatar={consultant.foto_profil || consultant.users?.foto_profil}
+              rating={`${consultant.rating || "0.0"} (${consultant.reviews}+)`}
+            />
 
             <PriceCard
               price={consultant.tarif_per_sesi?.toLocaleString("id-ID") || "0"}

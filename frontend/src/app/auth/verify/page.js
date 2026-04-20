@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { MaterialIcon } from "../../../components/ui";
 import { authService } from "@/services/auth.service";
 
+// Import Komponen PageHeader
+import PageHeader from "@/components/layout/PageHeader";
+
 export default function EmailVerificationPage() {
   const [code, setCode] = useState(Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
@@ -13,20 +16,17 @@ export default function EmailVerificationPage() {
   const router = useRouter();
 
   const handleChange = (index, value) => {
-    // Only allow single digit/letter
     const val = value.replace(/[^a-zA-Z0-9]/g, "").slice(-1);
     const newCode = [...code];
     newCode[index] = val;
     setCode(newCode);
 
-    // Auto-focus next input
     if (val && index < 5) {
       inputs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index, e) => {
-    // On backspace, clear current and move back
     if (e.key === "Backspace" && !code[index] && index > 0) {
       inputs.current[index - 1]?.focus();
     }
@@ -43,7 +43,6 @@ export default function EmailVerificationPage() {
       newCode[i] = char;
     });
     setCode(newCode);
-    // Focus last filled or next empty
     const nextEmpty = newCode.findIndex((c) => !c);
     const focusIndex = nextEmpty === -1 ? 5 : nextEmpty;
     inputs.current[focusIndex]?.focus();
@@ -140,17 +139,14 @@ export default function EmailVerificationPage() {
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 
-      {/* Top App Bar */}
-      <header className="top-nav">
-        <div className="flex items-center w-full max-w-md mx-auto">
-          <button onClick={() => router.back()} className="btn-icon">
-            <MaterialIcon name="arrow_back" />
-          </button>
-          <h1 className="top-nav-title">Verifikasi Email</h1>
-        </div>
-      </header>
+      {/* --- REFACTOR: Menggunakan PageHeader --- */}
+      <PageHeader
+        title="Verifikasi Email"
+        backHref="/auth/login"
+        onSettingsClick={() => {}} // Kosongkan karena di page OTP belum ada setting
+      />
 
-      <main className="flex-1 w-full max-w-md px-6 pt-24 pb-12 flex flex-col items-center">
+      <main className="flex-1 w-full max-w-md px-6 pt-12 pb-12 flex flex-col items-center">
         {/* Hero Banner */}
         <div className="w-full relative mb-10 overflow-hidden rounded-3xl h-48 flex items-center justify-center">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(111,89,254,0.3),transparent_70%)]" />

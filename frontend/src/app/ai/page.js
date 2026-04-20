@@ -66,7 +66,11 @@ export default function TanyaAIPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
-        <ChatHeader />
+        <ChatHeader
+          name="Visi"
+          avatarUrl="/images/visi.png" 
+          status="Online"
+        />
 
         <main
           ref={scrollRef}

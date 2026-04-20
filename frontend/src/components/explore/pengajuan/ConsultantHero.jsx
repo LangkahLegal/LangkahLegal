@@ -1,3 +1,5 @@
+"use client";
+
 import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function ConsultantHero({
@@ -8,13 +10,14 @@ export default function ConsultantHero({
   portofolioUrl,
   linkedinUrl,
 }) {
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User",
+  )}&background=1f1d35&color=ada3ff&size=256`;
+
   // Memastikan URL diawali dengan protokol
   const handleOpenLink = (url) => {
     if (!url) return alert("Tautan tidak tersedia");
-
-    // Jika URL tidak dimulai dengan http:// atau https://, tambahkan https://
     const formattedUrl = url.startsWith("http") ? url : `https://${url}`;
-
     window.open(formattedUrl, "_blank");
   };
 
@@ -23,19 +26,25 @@ export default function ConsultantHero({
       {/* 1. Ambient Glow Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#6f59fe]/20 blur-[80px] -z-10 rounded-full" />
 
-      {/* 2. Avatar Section */}
-      <div className="relative mb-6 sm:mb-8">
-        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-[6px] border-[#6f59fe]/10 p-1.5 backdrop-blur-sm shadow-inner">
-          <div className="w-full h-full rounded-full border-2 border-[#6f59fe] p-1">
+      {/* 2. Avatar Section - Diperbesar */}
+      <div className="relative mb-8 sm:mb-10">
+        <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full border-[8px] border-[#6f59fe]/10 p-2 backdrop-blur-sm shadow-inner">
+          <div className="w-full h-full rounded-full border-[3px] border-[#6f59fe] p-1.5 overflow-hidden">
             <img
-              src={avatar}
-              className="w-full h-full rounded-full object-cover shadow-2xl"
+              src={avatar || fallbackUrl} // Gunakan fallback jika avatar null/undefined
+              className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
               alt={name}
+              onError={(e) => {
+                // Gunakan fallback jika link gambar rusak (404)
+                e.target.src = fallbackUrl;
+              }}
             />
           </div>
         </div>
-        <div className="absolute bottom-1 right-1 bg-[#8b77ff] text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full border-[3px] border-[#0e0c1e] flex items-center justify-center shadow-lg">
-          <MaterialIcon name="verified" className="text-[10px] sm:text-xs" />
+
+        {/* Badge Verified */}
+        <div className="absolute bottom-2 right-2 bg-[#8b77ff] text-white w-8 h-8 sm:w-11 sm:h-11 rounded-full border-[4px] border-[#0e0c1e] flex items-center justify-center shadow-xl">
+          <MaterialIcon name="verified" className="text-xs sm:text-lg" />
         </div>
       </div>
 
@@ -56,7 +65,9 @@ export default function ConsultantHero({
         {/* Portofolio Button */}
         <div
           onClick={() => handleOpenLink(portofolioUrl)}
-          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${!portofolioUrl && "opacity-50 cursor-not-allowed"}`}
+          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-4 py-1.5 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${
+            !portofolioUrl && "opacity-50 cursor-not-allowed"
+          }`}
         >
           <MaterialIcon name="description" className="text-xs text-[#aca8c1]" />
           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#aca8c1]">
@@ -64,10 +75,12 @@ export default function ConsultantHero({
           </span>
         </div>
 
-        {/* LinkedIn Button - Sekarang sudah aman dari relative path */}
+        {/* LinkedIn Button */}
         <div
           onClick={() => handleOpenLink(linkedinUrl)}
-          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-3 py-1 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${!linkedinUrl && "opacity-50 cursor-not-allowed"}`}
+          className={`bg-[#1f1d35]/50 hover:bg-[#1f1d35] px-4 py-1.5 rounded-full border border-white/5 flex items-center gap-1.5 cursor-pointer transition-all ${
+            !linkedinUrl && "opacity-50 cursor-not-allowed"
+          }`}
         >
           <MaterialIcon name="language" className="text-xs text-[#aca8c1]" />
           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#aca8c1]">

@@ -14,7 +14,6 @@ export default function ConsultationCard({
   const router = useRouter();
 
   // --- HELPERS ---
-
   const formatDate = (dateString) => {
     if (!dateString) return null;
     const dateOnly = dateString.split("T")[0];
@@ -25,14 +24,6 @@ export default function ConsultationCard({
       month: "short",
       year: "numeric",
     });
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price || 0);
   };
 
   const statusConfig = {
@@ -62,13 +53,18 @@ export default function ConsultationCard({
     data?.status_pengajuan,
   );
 
-  // REFACTOR: Tambahkan pengecekan role agar konsultan tidak bisa membatalkan
   const canCancel =
     role === "client" &&
     ["pending", "menunggu_pembayaran"].includes(data?.status_pengajuan);
 
   const jadwal = data?.jadwal_ketersediaan;
   const konsultan = jadwal?.konsultan;
+
+  // --- LOGIC FALLBACK AVATAR ---
+  const displayName = konsultan?.nama_lengkap || "User";
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    displayName,
+  )}&background=1f1d35&color=ada3ff&size=128`;
 
   const handleMainAction = () => {
     const status = data?.status_pengajuan;
@@ -95,13 +91,17 @@ export default function ConsultationCard({
         <div className="relative shrink-0">
           <div
             className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden border-2 ${
-              isActive ? "border-[#6f59fe]" : "border-white/10"
+              isActive ? "border-[#797498]/30" : "border-white/10"
             }`}
           >
+            {/* IMPLEMENTASI LOGIC FOTO PROFIL */}
             <img
-              src={konsultan?.foto_profil || "/api/placeholder/48/48"}
-              alt={konsultan?.nama_lengkap}
-              className="w-full h-full object-cover"
+              src={konsultan?.foto_profil || fallbackUrl}
+              alt={displayName}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              onError={(e) => {
+                e.target.src = fallbackUrl;
+              }}
             />
           </div>
           {isActive && data?.status_pengajuan === "terjadwal" && (
@@ -113,7 +113,7 @@ export default function ConsultationCard({
           <div className="flex justify-between items-start gap-2">
             <div className="flex flex-col gap-2 truncate">
               <h3 className="font-bold text-sm sm:text-base text-[#e8e2fc] group-hover:text-white transition-colors truncate leading-tight">
-                {konsultan?.nama_lengkap || "Nama Konsultan"}
+                {displayName}
               </h3>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -143,7 +143,6 @@ export default function ConsultationCard({
                     onClick={() => setShowMenu(false)}
                   />
                   <div className="absolute right-0 mt-2 w-40 bg-[#1f1d35] border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden backdrop-blur-xl">
-                    {/* Opsi Batalkan disembunyikan jika role bukan client melalui canCancel */}
                     {canCancel && (
                       <button
                         onClick={() => {
