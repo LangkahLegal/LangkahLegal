@@ -3,7 +3,7 @@ import { useState } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
 
-export default function ZoomLinkCard({ link, status }) {
+export default function ZoomLinkCard({ link, status, role = "klien"}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = async () => {
@@ -20,6 +20,10 @@ export default function ZoomLinkCard({ link, status }) {
 
   // Cek apakah statusnya sudah selesai
   const isSelesai = status === "selesai";
+
+  const buttonLabel = role === "konsultan" 
+    ? "Mulai Sesi Konsultasi" 
+    : "Gabung Sesi Konsultasi";
 
   return (
     <section className="space-y-4">
@@ -65,7 +69,7 @@ export default function ZoomLinkCard({ link, status }) {
           fullWidth
           onClick={() => window.open(link, "_blank")}
         >
-          Mulai Sesi Konsultasi
+          {buttonLabel}
         </Button>
       )}
     </section>

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
+import { MaterialIcon } from "@/components/ui";
 import ClientCard from "@/components/request/ClientCard";
 import InfoGrid from "@/components/request/InfoGrid";
 import CaseDescription from "@/components/request/CaseDescription";
@@ -102,7 +103,6 @@ export default function ConsultationDetail() {
 
         <main className="flex-1 overflow-y-auto w-full">
           <div className="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-8">
-            {/* Mengirim createdAt (Raw Date) ke ClientCard */}
             <ClientCard
               name={requestData.clientName}
               createdAt={requestData.createdAt}
@@ -123,14 +123,12 @@ export default function ConsultationDetail() {
               allowDelete={false}
             />
 
-            {/* Menampilkan Zoom Link jika tersedia */}
-            {requestData.zoomLink && (
-              <ZoomLinkCard
-                link={requestData.zoomLink}
-                password={requestData.zoomPassword}
-                status={requestData.status}
-              />
-            )}
+            <ZoomLinkCard
+              link={requestData.zoomLink}
+              password={requestData.zoomPassword}
+              status={requestData.status}
+              role={userRole}
+            />
           </div>
         </main>
 
