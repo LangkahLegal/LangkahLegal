@@ -298,6 +298,29 @@ def get_detail_pengajuan(
     js = str(data.get("jam_selesai", ""))[:5]
     data["rentang_waktu"] = f"{jm} - {js}" if jm and js else ""
     
+    import math
+    jumlah_sesi = 1
+    if len(jm) >= 5 and len(js) >= 5:
+        try:
+            start_h, start_m = int(jm[:2]), int(jm[3:5])
+            end_h, end_m = int(js[:2]), int(js[3:5])
+            start_total = start_h * 60 + start_m
+            end_total = end_h * 60 + end_m
+            diff = end_total - start_total
+            if diff < 0:
+                diff += 24 * 60
+            calc_sesi = math.ceil(diff / 30.0)
+            if calc_sesi > 0:
+                jumlah_sesi = calc_sesi
+        except Exception:
+            pass
+
+    data["jumlah_sesi"] = jumlah_sesi
+    
+    # Ambil tarif
+    tarif_skrg = jadwal.get("konsultan", {}).get("tarif_per_sesi", 0)
+    data["total_harga"] = tarif_skrg * jumlah_sesi
+
     # link_dokumen: prioritaskan kolom langsung (dari GDrive URL), fallback ke file upload pertama
     data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
 

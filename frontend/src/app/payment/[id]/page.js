@@ -129,10 +129,9 @@ export default function PaymentPage() {
             {/* Rincian Biaya dengan Jam Dinamis */}
             <PaymentBreakdown
               pricePerSession={konsultan.tarif_per_sesi || 0}
-              quantity={1}
+              quantity={consultation?.jumlah_sesi || 1}
+              totalAmount={consultation?.total_harga || (konsultan.tarif_per_sesi || 0)}
               sessionDuration={30}
-              startTime={startTime}
-              endTime={endTime}
             />
 
             {/* Area Tombol Bayar */}

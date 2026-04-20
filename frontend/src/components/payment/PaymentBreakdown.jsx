@@ -1,39 +1,13 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 
 export default function PaymentBreakdown({
   pricePerSession = 200000,
   sessionDuration = 30,
-  startTime = "00:00",
-  endTime = "00:00",
+  quantity = 1,
+  totalAmount = 200000,
 }) {
-  // --- LOGIKA PERHITUNGAN QUANTITY ---
-  const { quantity, totalMinutes } = useMemo(() => {
-    if (!startTime || !endTime) return { quantity: 0, totalMinutes: 0 };
-
-    // Pecah string jam dan menit
-    const [startH, startM] = startTime.split(":").map(Number);
-    const [endH, endM] = endTime.split(":").map(Number);
-
-    // Konversi ke total menit dari awal hari
-    const startTotalMinutes = startH * 60 + startM;
-    const endTotalMinutes = endH * 60 + endM;
-
-    // Hitung selisih
-    const diff = endTotalMinutes - startTotalMinutes;
-
-    // Jika durasi negatif (melewati tengah malam), asumsikan 0 atau tangani sesuai kebutuhan
-    const finalDiff = diff > 0 ? diff : 0;
-
-    return {
-      totalMinutes: finalDiff,
-      // Bagi dengan 30 menit per sesi
-      quantity: finalDiff / 30,
-    };
-  }, [startTime, endTime]);
-
-  const totalAmount = pricePerSession * quantity;
 
   // Helper untuk format rupiah
   const formatCurrency = (amount) => {
