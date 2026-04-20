@@ -23,6 +23,25 @@ const formatCurrency = (value) => {
   return `Rp ${safeValue.toLocaleString("id-ID")}`;
 };
 
+/**
+ * Helper untuk mengecek apakah jadwal sudah terlewat berdasarkan WIB
+ * API Date: 2026-04-22T00:00:00
+ * API Time: 01:30:00
+ */
+const isSchedulePast = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return true;
+
+  // Ambil bagian YYYY-MM-DD dari string ISO
+  const datePart = dateStr.split("T")[0];
+  // Gabungkan dengan jam dari API
+  const scheduleDateTime = new Date(`${datePart}T${timeStr}`);
+
+  // Waktu sekarang
+  const now = new Date();
+
+  return scheduleDateTime < now;
+};
+
 export default function ConsultantDashboardPage() {
   const router = useRouter();
 
@@ -36,11 +55,7 @@ export default function ConsultantDashboardPage() {
     }),
   });
 
-  const {
-    data: stats,
-    isLoading: isStatsLoading,
-    isError: isStatsError,
-  } = useQuery({
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ["consultantStats"],
     queryFn: () => consultantService.getDashboardStats(),
     select: (data) => ({
@@ -56,17 +71,14 @@ export default function ConsultantDashboardPage() {
     refetchInterval: 30000,
   });
 
-  const {
-    data: activeRequests = [],
-    isLoading: isActiveLoading,
-    isError: isActiveError,
-  } = useQuery({
+  const { data: activeRequests = [], isLoading: isActiveLoading } = useQuery({
     queryKey: ["activeRequests"],
     queryFn: () => consultantService.getActiveRequests(),
     refetchInterval: 60000,
   });
 
-  // --- 2. LOGIKA MAPPING DATA (Helper untuk menyesuaikan struktur ConsultationCard) ---
+  // --- 2. LOGIKA MAPPING & FILTERING ---
+
   const transformToCardData = (raw) => ({
     id_pengajuan: raw.id_pengajuan,
     status_pengajuan: raw.status_pengajuan,
@@ -82,29 +94,39 @@ export default function ConsultantDashboardPage() {
     },
   });
 
+  // Filter dan ambil jadwal terdekat yang BELUM terlewat
   const closestSession = useMemo(() => {
     if (!activeRequests?.length) return null;
 
-    const terjadwalOnly = activeRequests.filter(
-      (req) => req.status_pengajuan?.toLowerCase() === "terjadwal",
-    );
+    const filtered = activeRequests.filter((req) => {
+      const isScheduled = req.status_pengajuan?.toLowerCase() === "terjadwal";
+      const isFuture = !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
+      return isScheduled && isFuture;
+    });
 
-    if (!terjadwalOnly.length) return null;
+    if (!filtered.length) return null;
 
-    const sorted = terjadwalOnly.sort((a, b) => {
-      const dateTimeA = new Date(`${a.tanggal_pengajuan}T${a.jam_mulai}`);
-      const dateTimeB = new Date(`${b.tanggal_pengajuan}T${b.jam_mulai}`);
+    const sorted = filtered.sort((a, b) => {
+      const dateTimeA = new Date(
+        `${a.tanggal_pengajuan.split("T")[0]}T${a.jam_mulai}`,
+      );
+      const dateTimeB = new Date(
+        `${b.tanggal_pengajuan.split("T")[0]}T${b.jam_mulai}`,
+      );
       return dateTimeA - dateTimeB;
     });
 
     return transformToCardData(sorted[0]);
   }, [activeRequests]);
 
+  // Filter permintaan baru yang BELUM terlewat
   const mappedRequests = useMemo(() => {
-    return pendingRequests.map((req) => transformToCardData(req));
+    return pendingRequests
+      .filter((req) => !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai))
+      .map((req) => transformToCardData(req));
   }, [pendingRequests]);
 
-  // --- 3. LOADING & ERROR GATE ---
+  // --- 3. LOADING GATE ---
   const isInitialLoading = isStatsLoading || isActiveLoading;
 
   if (isInitialLoading) {
@@ -146,7 +168,7 @@ export default function ConsultantDashboardPage() {
             />
           </section>
 
-          {/* JADWAL TERDEKAT SECTION */}
+          {/* JADWAL TERDEKAT */}
           <section className="space-y-6 w-full">
             <h2 className="text-xl font-headline font-bold text-white px-1">
               Jadwal Terdekat
@@ -165,16 +187,13 @@ export default function ConsultantDashboardPage() {
                     name="event_busy"
                     className="text-xl opacity-40"
                   />
-                  <span>
-                    Belum ada jadwal konsultasi yang disetujui dalam waktu
-                    dekat.
-                  </span>
+                  <span>Tidak ada jadwal mendatang yang tersedia.</span>
                 </div>
               )}
             </div>
           </section>
 
-          {/* PERMINTAAN BARU SECTION (REVISI: Menggunakan ConsultationCard) */}
+          {/* PERMINTAAN BARU */}
           <section className="space-y-6 w-full">
             <h2 className="text-xl font-headline font-bold text-white px-1">
               Permintaan Baru
@@ -200,7 +219,9 @@ export default function ConsultantDashboardPage() {
                     name="mail_outline"
                     className="text-3xl opacity-20"
                   />
-                  <span>Tidak ada permintaan pending saat ini.</span>
+                  <span>
+                    Tidak ada permintaan baru yang valid untuk waktu mendatang.
+                  </span>
                 </div>
               )}
             </div>
