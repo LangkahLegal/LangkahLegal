@@ -43,7 +43,9 @@ export default function PaymentPage() {
       createdAt: data.created_at,
       consultationDate: data.tanggal_konsultasi,
       consultationTime: data.rentang_waktu,
-      tarif: data.konsultan?.tarif_per_sesi || 0,
+      tarif: data.konsultan?.tarif_per_sesi || data.jadwal_ketersediaan?.konsultan?.tarif_per_sesi || 0,
+      jumlah_sesi: data.jumlah_sesi || 1,
+      total_harga: data.total_harga || 0,
       status: data.status_pengajuan,
     }),
   });
@@ -126,7 +128,8 @@ export default function PaymentPage() {
             {/* Rincian Biaya (Komponen Baru) */}
             <PaymentBreakdown
               pricePerSession={requestData.tarif}
-              quantity={1}
+              quantity={requestData.jumlah_sesi}
+              totalAmount={requestData.total_harga || requestData.tarif}
               sessionDuration={30}
             />
 

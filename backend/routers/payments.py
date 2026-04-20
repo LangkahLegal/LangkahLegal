@@ -77,7 +77,7 @@ def create_transaction(
         raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
 
     pengajuan = pengajuan_res.data[0]
-
+    
     # 3. Validasi status — izinkan bayar/bayar ulang dari status berikut:
     #    - menunggu_pembayaran: konsultan baru approve
     #    - pembayaran_gagal: pembayaran sebelumnya gagal (legacy)
@@ -89,7 +89,6 @@ def create_transaction(
             status_code=400,
             detail=f"Pengajuan tidak dalam status yang memerlukan pembayaran (status saat ini: {pengajuan['status_pengajuan']})",
         )
-
     # 4. Cek apakah sudah ada transaksi pending untuk pengajuan ini
     existing_tx = (
         db.table("transaksi")
@@ -98,7 +97,6 @@ def create_transaction(
         .eq("status_pembayaran", "pending")
         .execute()
     )
-
     if existing_tx.data:
         tx = existing_tx.data[0]
         # Double check status ke Midtrans untuk memastikan token belum expired
@@ -140,10 +138,34 @@ def create_transaction(
 
     if not tarif or float(tarif) <= 0:
         raise HTTPException(status_code=400, detail="Tarif konsultan belum diatur")
-    
 
-    gross_amount = int(float(tarif))
+    jam_mulai_str = str(pengajuan.get("jam_mulai", ""))
+    jam_selesai_str = str(pengajuan.get("jam_selesai", ""))
 
+    quantity = 1
+    if jam_mulai_str and jam_selesai_str:
+        try:
+            import math
+            jam_mulai_parts = jam_mulai_str.split(":")
+            jam_selesai_parts = jam_selesai_str.split(":")
+            
+            start_h, start_m = int(jam_mulai_parts[0]), int(jam_mulai_parts[1])
+            end_h, end_m = int(jam_selesai_parts[0]), int(jam_selesai_parts[1])
+            
+            start_total = start_h * 60 + start_m
+            end_total = end_h * 60 + end_m
+            
+            diff = end_total - start_total
+            if diff < 0:
+                diff += 24 * 60
+            
+            calc_quantity = math.ceil(diff / 30.0)
+            if calc_quantity > 0:
+                quantity = calc_quantity
+        except Exception as e:
+            print(f"[WARN] Failed to calculate quantity: {e}")
+
+    gross_amount = int(float(tarif)) * quantity
     # Hitung komisi platform (10%) dan nominal konsultan (90%)
     komisi_platform = int(gross_amount * 0.10)
     nominal_konsultan = gross_amount - komisi_platform
@@ -172,7 +194,6 @@ def create_transaction(
             "duration": 1,
         },
     }
-
     try:
         snap_response = snap.create_transaction(transaction_param)
     except Exception as e:
@@ -203,7 +224,6 @@ def create_transaction(
         "redirect_url": redirect_url,
         "order_id": order_id,
     }
-
 
 # ============================================================
 # 2. NOTIFICATION WEBHOOK — Midtrans server-to-server callback
