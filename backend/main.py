@@ -7,9 +7,6 @@ from dependencies import get_current_user
 from config import get_settings, Settings
 from database import check_db_connection
 
-# TODO: Nanti kita import file-file router di sini
-# from routers import auth, consultants, cases, consultations
-
 app = FastAPI(
     title="LangkahLegal API",
     description="""
