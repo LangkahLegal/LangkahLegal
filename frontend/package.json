@@ -10,12 +10,16 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-query-devtools": "^5.99.0",
     "axios": "^1.14.0",
+    "framer-motion": "^12.38.0",
     "lightningcss": "^1.32.0",
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "supabase-js": "^0.0.1-security"
+    "supabase-js": "^0.0.1-security",
+    "tanstack": "^2.0.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

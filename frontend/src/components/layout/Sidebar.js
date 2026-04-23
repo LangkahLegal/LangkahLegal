@@ -10,13 +10,13 @@ export default function Sidebar({ role = "client" }) {
   const NAV_ITEMS =
     role === "konsultan"
       ? [
-          { label: "Klien", icon: "group", path: "/dashboard/consultant/clients" },
+          { label: "Klien", icon: "group", path: "/consultation" },
           { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Riwayat", icon: "history", path: "/history/consultant" },
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
       : [
-          { label: "Konsultasi", icon: "gavel", path: "/konsultasi" },
+          { label: "Konsultasi", icon: "gavel", path: "/explore" },
           { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Riwayat", icon: "history", path: "/history/client" },
           { label: "Berkas", icon: "folder", path: "/documents" },

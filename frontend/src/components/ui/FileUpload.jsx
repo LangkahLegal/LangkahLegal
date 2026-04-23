@@ -82,7 +82,7 @@ export function FileUpload({
         <Button
           type="button"
           variant={file ? "ghost" : "secondary"}
-          className={`px-8 !py-2.5 !rounded-xl !text-sm ${
+          className={`px-8 py-2.5 rounded-xl text-sm! ${
             !file ? "bg-primary/20 text-primary-light hover:bg-primary/40" : ""
           }`}
         >

@@ -2,7 +2,13 @@ import api from "@/lib/axios";
 
 // REVISI: Nama variabel disamakan dengan yang di-import Dashboard (consultationService)
 export const consultationService = {
- 
+  /**
+   * Mengirim pengajuan konsultasi baru.
+   * Mendukung upload file dokumen pendukung secara otomatis.
+   * @param {Object} payload - Data pengajuan (id_jadwal, deskripsi, jam_mulai, jam_selesai, link_drive)
+   * @param {File[]} files - Array of File objects (opsional)
+   */
+
   getConsultantCatalog: async (spesialisasi = null) => {
     try {
       const params =
@@ -20,9 +26,22 @@ export const consultationService = {
     return response.data.data;
   },
 
-  createConsultation: async (payload) => {
-    const response = await api.post("/consultations/", payload);
-    return response.data;
+  createConsultation: async (payload, files = []) => {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, value);
+      }
+    });
+
+    files?.forEach((file) => {
+      formData.append("dokumen_pendukung_files", file);
+    });
+
+    const { data } = await api.post("/consultations/", formData);
+
+    return data;
   },
 
   getConsultationDetail: async (id) => {
@@ -47,5 +66,61 @@ export const consultationService = {
       params: { new_status: newStatus },
     });
     return response.data;
+  },
+
+  getBookedSlots: async (id_konsultan) => {
+    try {
+      const response = await api.get(
+        // Ubah dari 'consultants' menjadi 'consultations' agar sesuai prefix backend
+        `/consultations/${id_konsultan}/booked-slots`,
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Gagal mengambil data jadwal terisi:", error);
+      throw error;
+    }
+  },
+
+  // --- CRUD Dokumen Pendukung ---
+
+  getDocuments: async (id_pengajuan) => {
+    try {
+      const response = await api.get(
+        `/consultations/${id_pengajuan}/documents`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Gagal memuat dokumen:", error);
+      throw error;
+    }
+  },
+
+  uploadDocuments: async (id_pengajuan, files) => {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("dokumen_pendukung_files", file);
+      });
+      const response = await api.post(
+        `/consultations/${id_pengajuan}/documents`,
+        formData,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Gagal upload dokumen:", error);
+      throw error;
+    }
+  },
+
+  deleteDocument: async (id_pengajuan, id_dokumen) => {
+    try {
+      const response = await api.delete(
+        `/consultations/${id_pengajuan}/documents/${id_dokumen}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Gagal hapus dokumen:", error);
+      throw error;
+    }
   },
 };
