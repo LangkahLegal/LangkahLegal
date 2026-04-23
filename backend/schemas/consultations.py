@@ -1,9 +1,13 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from typing import Optional
 
 class ConsultationCreate(BaseModel):
     id_jadwal: int
     deskripsi_kasus: str
+    jam_mulai: datetime
+    jam_selesai: datetime
     
 class ConsultationRespond(BaseModel):
     status_persetujuan: str = Field(..., description="Isi dengan 'disetujui' atau 'ditolak'")

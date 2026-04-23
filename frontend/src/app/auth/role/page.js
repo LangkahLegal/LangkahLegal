@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../../../components/ui";
-import RoleHeader from "../../../components/role/RoleHeader";
-import RoleCard from "../../../components/role/RoleCard";
+import { Button } from "@/components/ui";
+// Import PageHeader baru
+import PageHeader from "@/components/layout/PageHeader";
+import RoleCard from "@/components/role/RoleCard";
 
 const ROLES_DATA = [
   {
@@ -48,22 +49,24 @@ export default function RolePage() {
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 
-      <RoleHeader onBack={() => router.back()} title="Select Role" />
+      {/* MENGGUNAKAN PAGEHEADER GLOBAL
+        Eksplisit mengarahkan backHref ke login karena ini alur onboarding 
+      */}
+      <PageHeader title="Select Role" backHref="/auth/login" />
 
       <main className="flex-grow flex flex-col px-6 pt-8 pb-32 max-w-md mx-auto w-full relative z-10">
         <div className="mb-10">
-          <h2 className="page-title mb-4 text-3xl font-bold">
+          <h2 className="text-3xl font-bold text-white mb-4">
             Pilih Peran Anda
           </h2>
 
-          {/* Tampilkan error jika registrasi gagal */}
           {error && (
             <div className="mb-4 p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
               {error}
             </div>
           )}
 
-          <p className="page-subtitle text-[#aca8c1]">
+          <p className="text-[#aca8c1]">
             Tentukan bagaimana Anda ingin menggunakan LangkahLegal
           </p>
         </div>
@@ -80,12 +83,12 @@ export default function RolePage() {
         </div>
       </main>
 
-      <footer className="bottom-nav p-6 fixed bottom-0 left-0 right-0 bg-[#0e0c1e]/80 backdrop-blur-md z-20">
+      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-[#0e0c1e]/80 backdrop-blur-md z-20 border-t border-white/5">
         <div className="max-w-md mx-auto w-full">
           <Button
             onClick={handleContinue}
             className="w-full"
-            disabled={isLoading}
+            isLoading={isLoading} // Menggunakan standar Button UI Anda
           >
             {isLoading ? "Memproses..." : "Lanjutkan"}
           </Button>

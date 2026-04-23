@@ -36,7 +36,7 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
         <div className="flex items-center gap-4">
           <Link
             href={finalBackHref}
-            className="flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-white/5 border border-white/5 hover:bg-[#ada3ff]/10 hover:border-[#ada3ff]/30 transition-all duration-300 group/back"
+            className="flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-white/0 border border-white/0 hover:bg-[#ada3ff]/10 hover:border-[#ada3ff]/30 transition-all duration-300 group/back"
           >
             <MaterialIcon
               name="west"

@@ -1,226 +1,194 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import BottomNav from "@/components/layout/BottomNav";
-import WeeklyCalendar from "@/components/schedule/WeeklyCalendar";
+import Sidebar from "@/components/layout/Sidebar";
+import MonthlyCalendar from "@/components/schedule/MonthlyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
-import TimeSlotList from "@/components/schedule/TimeSlotList";
+import AddSlotModal from "@/components/schedule/AddSlotModal";
 import PageHeader from "@/components/layout/PageHeader";
 
 import { scheduleService } from "@/services/schedule.service";
 import { consultantService } from "@/services/consultant.service";
 
+// Helper format tanggal YYYY-MM-DD
 const formatDate = (date) => {
   const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export default function SchedulePage() {
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [allSlots, setAllSlots] = useState({});
-  const [selectedDate, setSelectedDate] = useState(new Date()); 
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const loadInitialData = async () => {
-    try {
-      setIsLoading(true);
-      const scheduleData = await scheduleService.getMySchedules();
-      const stats = await consultantService.getDashboardStats();
+  // --- 1. DATA FETCHING ---
+  const { data: scheduleData = [] } = useQuery({
+    queryKey: ["mySchedules"],
+    queryFn: scheduleService.getMySchedules,
+  });
 
-      setIsAvailable(stats.is_active ?? true);
+  const { data: stats } = useQuery({
+    queryKey: ["consultantStats"],
+    queryFn: consultantService.getDashboardStats,
+  });
 
-      const groupedSlots = {};
-      scheduleData.forEach((slot) => {
-        if (!groupedSlots[slot.tanggal]) {
-          groupedSlots[slot.tanggal] = [];
-        }
-        groupedSlots[slot.tanggal].push(slot);
-      });
+  // --- 2. MUTATIONS ---
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["mySchedules"] });
 
-      setAllSlots(groupedSlots);
-    } catch (error) {
-      console.error("Gagal memuat data jadwal:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Mutasi untuk Create (POST)
+  const createMutation = useMutation({
+    mutationFn: (data) => scheduleService.addSchedule(data),
+    onSuccess: () => {
+      invalidate();
+      setIsModalOpen(false);
+      alert("Jadwal baru berhasil ditambahkan!");
+    },
+    onError: () =>
+      alert("Gagal menambah jadwal. Pastikan jam tidak bertabrakan."),
+  });
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
+  // Mutasi untuk Update (PUT)
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => scheduleService.updateSchedule(id, data),
+    onSuccess: () => {
+      invalidate();
+      setIsModalOpen(false);
+      alert("Jadwal berhasil diperbarui!");
+    },
+    onError: () =>
+      alert("Gagal memperbarui jadwal. Slot mungkin sudah dipesan klien."),
+  });
 
+  // --- 3. DERIVED STATE ---
   const activeDateString = useMemo(
     () => formatDate(selectedDate),
     [selectedDate],
   );
 
-  const weekDays = useMemo(() => {
+  const allSlotsGrouped = useMemo(() => {
+    const grouped = {};
+    scheduleData.forEach((slot) => {
+      if (!grouped[slot.tanggal]) grouped[slot.tanggal] = [];
+      grouped[slot.tanggal].push(slot);
+    });
+    return grouped;
+  }, [scheduleData]);
+
+  // Cari data eksisting untuk tanggal yang dipilih
+  const currentActiveSlot = useMemo(() => {
+    const slots = allSlotsGrouped[activeDateString];
+    return slots && slots.length > 0 ? slots[0] : null;
+  }, [allSlotsGrouped, activeDateString]);
+
+  const calendarDays = useMemo(() => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
     const days = [];
-    const labels = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-
-    const startOfWeek = new Date(selectedDate);
-    const dayIndex = startOfWeek.getDay();
-    startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      days.push({
-        label: labels[date.getDay()],
-        date: date.getDate(),
-        fullDate: new Date(date),
-        isWeekend: date.getDay() === 0 || date.getDay() === 6,
-      });
+    for (let i = 0; i < firstDay; i++) days.push({ date: null });
+    for (let d = 1; d <= totalDays; d++) {
+      const fullDate = formatDate(new Date(year, month, d));
+      days.push({ date: d, fullDate, hasEvent: !!allSlotsGrouped[fullDate] });
     }
     return days;
-  }, [selectedDate]);
+  }, [selectedDate, allSlotsGrouped]);
 
-  const monthLabel = selectedDate.toLocaleDateString("id-ID", {
-    month: "long",
-    year: "numeric",
-  });
+  // --- 4. HANDLERS ---
+  const handleSave = (formData) => {
+    const [start, end] = formData.time.split(" - ");
 
-  const handlePrevWeek = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() - 7);
-    setSelectedDate(newDate);
-  };
+    // Siapkan Payload sesuai kebutuhan API
+    const payload = {
+      tanggal: activeDateString,
+      jam_mulai: `${start}:00`,
+      jam_selesai: `${end}:00`,
+      status_tersedia: formData.status === "available",
+    };
 
-  const handleNextWeek = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + 7);
-    setSelectedDate(newDate);
-  };
-
-  const currentSlots = useMemo(() => {
-    const rawSlots = allSlots[activeDateString] || [];
-    return rawSlots.map((slot) => {
-      let status = slot.status_tersedia ? "available" : "off";
-      if (slot.nama_klien) status = "booked";
-
-      return {
-        id: String(slot.id_jadwal),
-        time: `${slot.jam_mulai.substring(0, 5)} - ${slot.jam_selesai.substring(0, 5)}`,
-        status: status,
-        client: slot.nama_klien,
-      };
-    });
-  }, [allSlots, activeDateString]);
-
-  const handleGlobalAvailability = async (newStatus) => {
-    try {
-      setIsAvailable(newStatus);
-      await scheduleService.toggleGlobalActive(newStatus);
-    } catch (error) {
-      setIsAvailable(!newStatus);
-      alert("Gagal mengubah ketersediaan global.");
-    }
-  };
-
-  const handleAddSlot = async (newSlotData) => {
-    try {
-      const [jam_mulai, jam_selesai] = newSlotData.time.split(" - ");
-      await scheduleService.addSchedule({
-        tanggal: activeDateString,
-        jam_mulai: `${jam_mulai}:00`,
-        jam_selesai: `${jam_selesai}:00`,
+    // CEK: Apakah ini UPDATE atau CREATE?
+    if (currentActiveSlot) {
+      // Jalankan PUT jika ID jadwal sudah ada
+      updateMutation.mutate({
+        id: currentActiveSlot.id_jadwal,
+        data: payload,
       });
-      loadInitialData(); 
-    } catch (error) {
-      alert("Gagal menambah slot. Pastikan format jam benar.");
-    }
-  };
-
-  const handleSlotChange = async (id, newStatusString) => {
-    try {
-      const isTersedia = newStatusString === "available";
-      await scheduleService.toggleScheduleSlot(id, isTersedia);
-      loadInitialData();
-    } catch (error) {
-      alert("Gagal update status slot.");
-    }
-  };
-
-  const handleUpdateSlot = async (id, newTime, newStatusString) => {
-    try {
-      const [jam_mulai, jam_selesai] = newTime.split(" - ");
-      const isTersedia = newStatusString === "available";
-
-      await scheduleService.updateSchedule(id, {
-        jam_mulai: `${jam_mulai}:00`,
-        jam_selesai: `${jam_selesai}:00`,
-      });
-
-      await scheduleService.toggleScheduleSlot(id, isTersedia);
-
-      loadInitialData(); 
-    } catch (error) {
-      console.error("Error update slot:", error);
-      alert("Gagal memperbarui jadwal.");
-    }
-  };
-
-  const handleDeleteSlot = async (id) => {
-    if (!window.confirm("Hapus slot ini?")) return;
-    try {
-      await scheduleService.deleteSchedule(id);
-      loadInitialData();
-    } catch (error) {
-      alert("Slot tidak bisa dihapus (mungkin sudah dipesan).");
+    } else {
+      // Jalankan POST jika belum ada jadwal di tanggal ini
+      createMutation.mutate(payload);
     }
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col overflow-x-hidden">
-      {/* Background Decor */}
-      <div className="fixed top-[-20%] left-[-10%] w-[80%] h-[60%] bg-[#6D57FC]/10 blur-[120px] -z-10 rounded-full" />
+    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+      <Sidebar role="konsultan" />
 
-      <PageHeader 
-        title="Manajemen Jadwal"
-        backHref="/dashboard/consultant"
-      />
+      <div className="flex-1 flex flex-col relative min-w-0 w-full ml-0 lg:ml-64 transition-all duration-300">
+        <PageHeader title="Kelola Jadwal" backHref="/dashboard/consultant" />
 
-      <main className="flex-grow px-6 pb-32 pt-6 space-y-8 max-w-4xl mx-auto w-full">
-        <WeeklyCalendar
-          days={weekDays}
-          selectedDay={selectedDate.getDate()}
-          onSelectDay={(dayNum) => {
-            // Logic agar pilih hari tetap di minggu yang sama
-            const targetDate = weekDays.find((d) => d.date === dayNum).fullDate;
-            setSelectedDate(targetDate);
-          }}
-          monthLabel={monthLabel}
-          onPrev={handlePrevWeek}
-          onNext={handleNextWeek}
-        />
+        <main className="flex-1 overflow-y-auto px-6 pt-6 w-full">
+          <div className="max-w-2xl mx-auto w-full space-y-10 pb-32">
+            <AvailabilityToggle
+              isAvailable={stats?.is_active ?? true}
+              onChange={(s) =>
+                queryClient.setQueryData(["consultantStats"], (old) => ({
+                  ...old,
+                  is_active: s,
+                }))
+              }
+            />
 
-        <AvailabilityToggle
-          isAvailable={isAvailable}
-          onChange={handleGlobalAvailability}
-        />
-
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-10 h-10 border-4 border-[#6D57FC] border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-[#ada3ff] animate-pulse">
-              Sinkronisasi Kalender...
-            </p>
+            <MonthlyCalendar
+              days={calendarDays}
+              selectedDay={activeDateString}
+              onSelectDay={(date) => {
+                setSelectedDate(new Date(date));
+                setIsModalOpen(true);
+              }}
+              monthLabel={selectedDate.toLocaleDateString("id-ID", {
+                month: "long",
+                year: "numeric",
+              })}
+              onPrev={() =>
+                setSelectedDate(
+                  new Date(
+                    new Date(selectedDate).setMonth(
+                      selectedDate.getMonth() - 1,
+                    ),
+                  ),
+                )
+              }
+              onNext={() =>
+                setSelectedDate(
+                  new Date(
+                    new Date(selectedDate).setMonth(
+                      selectedDate.getMonth() + 1,
+                    ),
+                  ),
+                )
+              }
+            />
           </div>
-        ) : (
-          <TimeSlotList
-            slots={currentSlots}
-            onSlotChange={handleSlotChange}
-            onAddSlot={handleAddSlot}
-            onUpdateSlot={handleUpdateSlot}
-            onDeleteSlot={handleDeleteSlot}
-          />
-        )}
-      </main>
+        </main>
 
-      <BottomNav role="konsultan" />
+        {/* MODAL HANDLE CREATE & UPDATE */}
+        <AddSlotModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSave}
+          initialStart={currentActiveSlot?.jam_mulai.substring(0, 5) || "00:00"}
+          initialEnd={currentActiveSlot?.jam_selesai.substring(0, 5) || "00:00"}
+          isNewData={!currentActiveSlot}
+          isBooked={!!currentActiveSlot?.nama_klien}
+        />
+
+        <div className="lg:hidden">
+          <BottomNav role="konsultan" />
+        </div>
+      </div>
     </div>
   );
 }
