@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import PageHeader from "@/components/layout/PageHeader";
@@ -11,12 +11,28 @@ import SearchBar from "@/components/layout/SearchBar";
 import { MaterialIcon } from "@/components/ui/Icons";
 import ConsultantCard from "@/components/verification/ConsultantCard";
 import CategoryList from "@/components/dashboard/CategoryList";
+import ConfirmActionModal from "@/components/verification/ConfirmActionModal";
 
 import { getConsultants, verifyConsultant } from "@/services/admin.service";
 
 export default function VerificationListPage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [actionType, setActionType] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: ({ id, action, reason }) =>
+      verifyConsultant(id, action, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["consultants"]);
+      setShowConfirm(false);
+      setReason("");
+    },
+  });
+
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -175,13 +191,15 @@ export default function VerificationListPage() {
                       onDetail={(item) =>
                         router.push(`/verification/${item.id}`)
                       }
-                      onApprove={async (item) => {
-                        await verifyConsultant(item.id, "terverifikasi");
-                        queryClient.invalidateQueries(["consultants"]);
+                      onApprove={(item) => {
+                        setSelectedItem(item);
+                        setActionType("terverifikasi");
+                        setShowConfirm(true);
                       }}
-                      onReject={async (item) => {
-                        await verifyConsultant(item.id, "ditolak");
-                        queryClient.invalidateQueries(["consultants"]);
+                      onReject={(item) => {
+                        setSelectedItem(item);
+                        setActionType("ditolak");
+                        setShowConfirm(true);
                       }}
                     />
                   ))}
@@ -194,6 +212,28 @@ export default function VerificationListPage() {
         <div className="lg:hidden">
           <BottomNavAdmin />
         </div>
+
+        <ConfirmActionModal
+          open={showConfirm}
+          actionType={actionType}
+          selectedItem={selectedItem}
+          reason={reason}
+          setReason={setReason}
+          isLoading={mutation.isPending}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={() => {
+            if (actionType === "ditolak" && !reason.trim()) {
+              alert("Alasan wajib diisi!");
+              return;
+            }
+
+            mutation.mutate({
+              id: selectedItem.id,
+              action: actionType,
+              reason,
+            });
+          }}
+        />
       </div>
 
       {/* Scrollbar */}
