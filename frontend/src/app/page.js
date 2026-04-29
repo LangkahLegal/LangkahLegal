@@ -15,8 +15,6 @@ export default function LandingPage() {
 
   /**
    * Centralized Navigation Logic
-   * Kita menjaga logika di level page agar komponen section tetap "dumb" (stateless)
-   * dan bisa digunakan kembali di tempat lain jika perlu.
    */
   const handleGetStarted = () => {
     router.push("/auth/role");
@@ -30,29 +28,22 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative selection:bg-[#ada3ff]/30 bg-[#0f0e1c] min-h-screen">
+    /* REFACTOR: selection:bg-primary/30 | bg-bg | Tambahkan transition agar smooth */
+    <div className="relative selection:bg-primary/30 bg-bg min-h-screen transition-colors duration-500">
       {/* Layout: Top */}
       <Navbar />
 
       <main className="pt-24 overflow-x-hidden">
-        {/* Section 1: Hero 
-            Menerima fungsi navigasi sebagai props.
-        */}
+        {/* Section 1: Hero */}
         <Hero onGetStarted={handleGetStarted} onLearnMore={handleLearnMore} />
 
-        {/* Section 2: Features 
-            Sudah membungkus ID "features" di dalamnya untuk scroll-to-view.
-        */}
+        {/* Section 2: Features */}
         <Features />
 
-        {/* Section 3: Editorial 
-            Menjelaskan detail layanan secara visual.
-        */}
+        {/* Section 3: Editorial */}
         <Editorial />
 
-        {/* Section 4: CTA 
-            Final conversion point.
-        */}
+        {/* Section 4: CTA */}
         <CTA onGetStarted={handleGetStarted} />
       </main>
 

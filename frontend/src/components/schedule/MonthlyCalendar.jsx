@@ -1,10 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui";
+import React from "react";
+import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function FullCalendar({
-  days, // Array berisi { date: 1, label: 'Min', fullDate: '2023-10-01', hasEvent: true }
+  days,
   selectedDay,
   onSelectDay,
   monthLabel,
@@ -15,31 +16,34 @@ export default function FullCalendar({
 
   return (
     <section className="w-full max-w-md mx-auto">
-      <div className="bg-[#131125]/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl">
+      {/* Container Utama: Menggunakan bg-card dan shadow-soft */}
+      <div className="bg-card/60 backdrop-blur-xl rounded-[2.5rem] p-8 border border-surface shadow-soft">
         {/* Header: Ikon + Bulan + Navigasi */}
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-3">
-            <div className="text-[#6f59fe] bg-[#6f59fe]/10 p-2 rounded-xl">
+            <div className="text-primary bg-primary/10 p-2 rounded-xl">
               <MaterialIcon name="calendar_month" className="text-2xl" />
             </div>
-            <h2 className="text-xl lg:text-2xl font-black text-white tracking-tight">
+            <h2 className="text-xl lg:text-2xl font-black text-main tracking-tight font-headline">
               {monthLabel}
             </h2>
           </div>
 
-          <div className="flex gap-3">
-            <button
+          <div className="flex gap-2">
+            <Button
+              variant="icon"
               onClick={onPrev}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#1f1d35] text-[#aca8c1] hover:bg-[#6f59fe] hover:text-white transition-all border border-white/5"
+              className="!w-10 !h-10 !bg-input border border-surface text-muted hover:text-primary"
             >
               <MaterialIcon name="chevron_left" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="icon"
               onClick={onNext}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#1f1d35] text-[#aca8c1] hover:bg-[#6f59fe] hover:text-white transition-all border border-white/5"
+              className="!w-10 !h-10 !bg-input border border-surface text-muted hover:text-primary"
             >
               <MaterialIcon name="chevron_right" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -48,7 +52,7 @@ export default function FullCalendar({
           {weekLabels.map((label) => (
             <span
               key={label}
-              className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#48455a]"
+              className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted/50"
             >
               {label}
             </span>
@@ -58,7 +62,6 @@ export default function FullCalendar({
         {/* Grid Tanggal */}
         <div className="grid grid-cols-7 gap-y-2">
           {days.map((day, index) => {
-            // Asumsi: Jika day.date adalah null, itu adalah padding awal bulan
             if (!day.date) return <div key={`empty-${index}`} />;
 
             const isSelected = selectedDay === day.fullDate;
@@ -66,30 +69,29 @@ export default function FullCalendar({
             return (
               <div
                 key={day.fullDate}
-                className="flex flex-col items-center justify-center py-2"
+                className="flex flex-col items-center justify-center py-1"
               >
-                <button
+                {/* Menggunakan Komponen Button untuk setiap Tanggal */}
+                <Button
+                  variant={isSelected ? "primary" : "ghost"}
                   onClick={() => onSelectDay(day.fullDate)}
                   className={`
-                    relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 font-bold text-sm
-                    ${
-                      isSelected
-                        ? "bg-[#6f59fe] text-white shadow-[0_10px_25px_rgba(111,89,254,0.4)] scale-110 z-10"
-                        : "text-[#aca8c1] hover:bg-white/5 hover:text-white"
-                    }
+                    relative !w-10 !h-10 sm:!w-12 sm:!h-12 !rounded-2xl !p-0 transition-all duration-300
+                    ${isSelected ? "scale-110 z-10 shadow-soft" : "text-muted hover:text-main"}
                   `}
                 >
-                  {day.date}
+                  <span className="text-sm font-bold">{day.date}</span>
 
                   {/* Indikator Titik (Event) */}
                   {day.hasEvent && !isSelected && (
-                    <div className="absolute bottom-1 w-1 h-1 bg-[#6f59fe] rounded-full" />
+                    <div className="absolute bottom-2 w-1 h-1 bg-primary rounded-full" />
                   )}
 
+                  {/* Indikator Aktif (Dot Putih di dalam Button Primary) */}
                   {isSelected && (
-                    <div className="absolute bottom-1.5 w-1 h-1 bg-white/50 rounded-full animate-pulse" />
+                    <div className="absolute bottom-2 w-1 h-1 bg-white/50 rounded-full animate-pulse" />
                   )}
-                </button>
+                </Button>
               </div>
             );
           })}

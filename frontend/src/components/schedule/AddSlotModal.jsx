@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button, Dropdown } from "@/components/ui";
+import { MaterialIcon } from "@/components/ui/Icons";
 
 const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
   const hr = Math.floor(i / 2);
@@ -13,6 +14,13 @@ const STATUS_OPTIONS = [
   { value: "available", label: "Tersedia", icon: "schedule" },
   { value: "off", label: "Libur / Tutup", icon: "block" },
 ];
+const scrollbarStyles = `
+  [&::-webkit-scrollbar]:w-1.5
+  [&::-webkit-scrollbar-track]:bg-transparent
+  [&::-webkit-scrollbar-thumb]:bg-muted/20
+  [&::-webkit-scrollbar-thumb]:rounded-full
+  hover:[&::-webkit-scrollbar-thumb]:bg-primary/50
+`;
 
 export default function AddSlotModal({
   isOpen,
@@ -21,7 +29,7 @@ export default function AddSlotModal({
   initialStart = "00:00",
   initialEnd = "00:00",
   isNewData = true,
-  isBooked = false, // Tambahkan prop ini
+  isBooked = false,
 }) {
   const [formData, setFormData] = useState({
     start: initialStart,
@@ -53,49 +61,51 @@ export default function AddSlotModal({
     onClose();
   };
 
-  const getTextColor = (timeValue) => {
-    return isNewData && timeValue === "00:00" ? "text-[#48455a]" : "text-white";
-  };
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0e0c1e]/80 backdrop-blur-sm px-6">
-      <div className="bg-[#1f1d35] rounded-[2.5rem] p-8 w-full max-w-sm border border-white/5 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h3 className="text-xl font-bold text-[#e8e2fc]">
-              {isBooked
-                ? "Detail Jadwal"
-                : isNewData
-                  ? "Tambah Jadwal"
-                  : "Edit Jadwal"}
-            </h3>
-          </div>
-          <button
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-md px-6 animate-in fade-in duration-300">
+      <div className="bg-card rounded-[2.5rem] p-8 w-full max-w-sm border border-surface shadow-soft animate-in zoom-in-95 duration-300 flex flex-col max-h-[90dvh]">
+        {/* Header - Tetap di atas (shrink-0 agar tidak mengecil) */}
+        <div className="flex justify-between items-center mb-8 shrink-0">
+          <h3 className="text-xl font-headline font-extrabold text-main tracking-tight">
+            {isBooked
+              ? "Detail Jadwal"
+              : isNewData
+                ? "Tambah Jadwal"
+                : "Edit Jadwal"}
+          </h3>
+          <Button
+            variant="icon"
             onClick={onClose}
-            className="text-[#aca8c1] hover:text-rose-400 transition-colors cursor-pointer"
+            className="text-muted hover:text-danger hover:bg-danger/10"
           >
-            <span className="material-symbols-outlined">close</span>
-          </button>
+            <MaterialIcon name="close" className="text-[20px]" />
+          </Button>
         </div>
 
-        {/* Form Area: Di-disable jika sudah dibooking */}
+        {/* Content Area */}
         <div
-          className={`space-y-6 ${isBooked ? "opacity-50 pointer-events-none" : ""}`}
+          className={`
+            flex-1 space-y-6 overflow-y-auto pr-2 
+            ${scrollbarStyles} 
+            ${isBooked ? "opacity-60 pointer-events-none" : ""}
+            /* 1. Tambahkan Padding Bottom yang besar (pb-10) agar list dropdown punya ruang di dalam scroll */
+            /* 2. Beri z-index pada container ini agar di atas footer */
+            pb-48 relative z-[20]
+          `}
         >
-          <div className="flex items-center justify-between w-full gap-2">
+          {/* Row 1: Time Picker */}
+          <div className="flex items-center justify-between w-full gap-3 relative z-[40]">
             <div className="flex-1">
               <Dropdown
                 label="Mulai"
                 value={formData.start}
                 options={TIME_OPTIONS}
                 onChange={(val) => handleChange("start", val)}
-                className={`w-full transition-colors duration-300 ${getTextColor(formData.start)}`}
               />
             </div>
 
-            <div className="flex items-center justify-center pt-5">
-              <span className="text-[#48455a] font-bold">−</span>
+            <div className="pt-6">
+              <span className="text-muted/20 font-black">−</span>
             </div>
 
             <div className="flex-1">
@@ -104,45 +114,49 @@ export default function AddSlotModal({
                 value={formData.end}
                 options={TIME_OPTIONS}
                 onChange={(val) => handleChange("end", val)}
-                className={`w-full transition-colors duration-300 ${getTextColor(formData.end)}`}
               />
             </div>
           </div>
 
-          <Dropdown
-            label="Status Slot"
-            value={
-              formData.status === "available" ? "Tersedia" : "Libur / Tutup"
-            }
-            options={STATUS_OPTIONS}
-            onChange={(val) => handleChange("status", val)}
-            renderItem={(opt) => (
-              <div className="flex items-center gap-2">
-                <span
-                  className={`material-symbols-outlined text-[18px] ${opt.value === "available" ? "text-emerald-400" : "text-rose-400"}`}
-                >
-                  {opt.icon}
-                </span>
-                <span className="font-medium">{opt.label}</span>
-              </div>
-            )}
-          />
+          {/* Row 2: Status Picker */}
+          <div className="relative z-[30]">
+            <Dropdown
+              label="Status Slot"
+              value={
+                formData.status === "available" ? "Tersedia" : "Libur / Tutup"
+              }
+              options={STATUS_OPTIONS}
+              onChange={(val) => handleChange("status", val)}
+              renderItem={(opt) => (
+                <div className="flex items-center gap-3">
+                  <MaterialIcon
+                    name={opt.icon}
+                    className={`text-[20px] ${opt.value === "available" ? "text-emerald-500" : "text-danger"}`}
+                  />
+                  <span className="font-bold text-sm tracking-wide text-main">
+                    {opt.label}
+                  </span>
+                </div>
+              )}
+            />
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 mt-10">
+        {/* Footer - Paksa z-index lebih rendah agar tidak menimpa dropdown yang melayang */}
+        <div className="mt-6 shrink-0 relative z-[10]">
           {!isBooked ? (
             <Button
               variant="primary"
+              fullWidth
               onClick={handleSave}
-              className="w-full !py-4 rounded-2xl shadow-[0_10px_20px_rgba(111,89,254,0.2)]"
+              className="py-4 shadow-soft"
             >
-              {isNewData ? "Tambah" : "Simpan Perubahan"}
+              {isNewData ? "Tambah Slot" : "Simpan Perubahan"}
             </Button>
           ) : (
-            <div className="text-center p-3 bg-white/5 rounded-2xl">
-              <p className="text-[11px] text-[#aca8c1] italic">
-                Jadwal yang sudah dipesan tidak dapat diubah.
+            <div className="text-center p-4 bg-surface rounded-2xl border border-surface">
+              <p className="text-[12px] text-muted font-medium italic leading-relaxed">
+                Jadwal yang sudah dipesan tidak dapat diubah kembali.
               </p>
             </div>
           )}

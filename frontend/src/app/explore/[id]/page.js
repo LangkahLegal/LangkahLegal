@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
-import SuccessView from "@/components/layout/SuccessView"; // Import SuccessView (Fullscreen)
+import SuccessView from "@/components/layout/SuccessView";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button, FileUpload } from "@/components/ui";
 
@@ -35,7 +35,26 @@ export default function ConsultantDetailPage() {
   const [endTime, setEndTime] = useState("");
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState([]);
-  const [isSubmitted, setIsSubmitted] = useState(false); // State untuk mengontrol Fullscreen View
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("dark-tech");
+
+  // --- DETEKSI TEMA UNTUK FALLBACK AVATAR ---
+  useEffect(() => {
+    const detectTheme = () => {
+      const htmlClasses = document.documentElement.classList;
+      if (htmlClasses.contains("theme-white-modern"))
+        return "theme-white-modern";
+      if (htmlClasses.contains("theme-cyber-slate")) return "theme-cyber-slate";
+      return "dark-tech";
+    };
+    setCurrentTheme(detectTheme());
+  }, []);
+
+  const themeColors = {
+    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
+    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
+    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
+  };
 
   // --- 1. FETCH DATA ---
   const { data: consultant, isLoading: isLoadingConsultant } = useQuery({
@@ -54,10 +73,10 @@ export default function ConsultantDetailPage() {
   const displayFiles = useMemo(() => {
     return files.map((file, index) => ({
       id: index,
-      name: file.name,
-      size: (file.size / 1024 / 1024).toFixed(2) + " MB",
-      type: file.type.includes("pdf") ? "pdf" : "image",
-      url: URL.createObjectURL(file),
+      name: file?.name || "Untitled",
+      size: ((file?.size || 0) / 1024 / 1024).toFixed(2) + " MB",
+      type: file?.type?.includes("pdf") ? "pdf" : "image",
+      url: file ? URL.createObjectURL(file) : "",
     }));
   }, [files]);
 
@@ -67,11 +86,11 @@ export default function ConsultantDetailPage() {
       consultationService.createConsultation(payload, files),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consultations"] });
-      setIsSubmitted(true); // Aktifkan tampilan sukses fullscreen
+      setIsSubmitted(true);
     },
     onError: (error) => {
       const errorMessage =
-        error.response?.data?.detail || "Gagal mengirim pengajuan";
+        error?.response?.data?.detail || "Gagal mengirim pengajuan";
       alert(errorMessage);
     },
   });
@@ -87,7 +106,7 @@ export default function ConsultantDetailPage() {
   };
 
   const handleBooking = () => {
-    if (!selectedDate || !startTime || !endTime || !description.trim()) {
+    if (!selectedDate || !startTime || !endTime || !description?.trim()) {
       return alert("Mohon lengkapi semua data pengajuan.");
     }
 
@@ -108,15 +127,21 @@ export default function ConsultantDetailPage() {
     bookingMutation.mutate({ payload, files });
   };
 
-  // --- LOADING STATE ---
+  // --- GENERATE FALLBACK URL ---
+  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
+  const displayName =
+    consultant?.nama_lengkap || consultant?.users?.nama || "Konsultan";
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${activeColors.bg}&color=${activeColors.color}&size=128&bold=true`;
+
+  // --- LOADING STATE (THEME AWARE) ---
   if (isLoadingConsultant)
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6f59fe]"></div>
+      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
 
-  // --- SUCCESS STATE (FULLSCREEN VIEW) ---
+  // --- SUCCESS STATE ---
   if (isSubmitted) {
     return (
       <SuccessView
@@ -127,31 +152,34 @@ export default function ConsultantDetailPage() {
     );
   }
 
-  // --- NORMAL STATE (PROFIL KONSULTAN) ---
+  // --- NORMAL STATE ---
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full overflow-x-hidden font-['Inter',sans-serif]">
+    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500">
       <Sidebar role="client" />
-      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64">
+      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Profil Konsultan" />
 
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
-          <div className="max-w-2xl mx-auto w-full space-y-10">
+          <div className="max-w-2xl mx-auto w-full space-y-10 animate-fade-in">
             {/* Konten Utama Profil */}
             <ConsultantHero
               {...consultant}
-              name={consultant.nama_lengkap || consultant.users?.nama}
-              // Cek di root dulu, baru cek di dalam users
-              avatar={consultant.foto_profil || consultant.users?.foto_profil}
-              rating={`${consultant.rating || "0.0"} (${consultant.reviews}+)`}
+              name={displayName}
+              avatar={
+                consultant?.foto_profil ||
+                consultant?.users?.foto_profil ||
+                fallbackUrl
+              }
+              rating={`${consultant?.rating || "0.0"} (${consultant?.reviews || 0}+)`}
             />
 
             <PriceCard
-              price={consultant.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
+              price={consultant?.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
             />
 
             <AboutSection
-              bio={consultant.deskripsi_lengkap}
-              tags={consultant.spesialisasi?.split(",") || []}
+              bio={consultant?.deskripsi_lengkap || "Tidak ada deskripsi."}
+              tags={consultant?.spesialisasi?.split(",") || []}
             />
 
             <SchedulePicker
@@ -161,7 +189,7 @@ export default function ConsultantDetailPage() {
               onStartTimeChange={setStartTime}
               endTime={endTime}
               onEndTimeChange={setEndTime}
-              rawSchedules={consultant.jadwal_ketersediaan || []}
+              rawSchedules={consultant?.jadwal_ketersediaan || []}
               bookedSlots={bookedSlots}
             />
 
@@ -190,7 +218,8 @@ export default function ConsultantDetailPage() {
                 fullWidth
                 isLoading={bookingMutation.isPending}
                 onClick={handleBooking}
-                className="py-5 rounded-xl shadow-[0_10px_30px_rgba(111,89,254,0.3)]"
+                /* REFACTOR: Shadow mengikuti warna primer tema */
+                className="py-5 rounded-xl shadow-lg shadow-primary/20"
               >
                 Booking Konsultasi
               </Button>

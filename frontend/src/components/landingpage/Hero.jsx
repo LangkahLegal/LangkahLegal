@@ -9,7 +9,16 @@ export default function Hero({ onGetStarted, onLearnMore }) {
       <div className="relative z-10 space-y-8 max-w-4xl">
         <h1 className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.1] tracking-tight">
           Solusi Hukum{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-light to-primary">
+          <span
+            style={{
+              background:
+                "linear-gradient(to right, var(--primary-light), var(--primary))",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
             Digital & Terpercaya
           </span>
         </h1>

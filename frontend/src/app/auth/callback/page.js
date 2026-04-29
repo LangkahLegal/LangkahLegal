@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
 
+// Import Komponen Modular
+import CallbackBackground from "@/components/auth/callback/CallbackBackground";
+import CallbackLoading from "@/components/auth/callback/CallbackLoading";
+import CallbackError from "@/components/auth/callback/CallbackError";
+
 export default function AuthCallbackPage() {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -39,8 +44,7 @@ export default function AuthCallbackPage() {
           role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client",
         );
       } catch (err) {
-        const message = err?.message || "Gagal memproses login.";
-        setError(message);
+        setError(err?.message || "Gagal memproses login.");
       }
     };
 
@@ -48,18 +52,19 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="auth-screen flex items-center justify-center">
-      <div className="auth-container text-center">
-        <h1 className="auth-title">Memproses login...</h1>
-        <p className="auth-subtitle">
-          Mohon tunggu, kami sedang menyiapkan akun Anda.
-        </p>
-        {error && (
-          <div className="mt-6 p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-            {error}
-          </div>
+    <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0e0c1e] px-6 overflow-hidden">
+      <CallbackBackground />
+
+      <main className="relative z-10 w-full max-w-[400px] text-center">
+        {error ? (
+          <CallbackError
+            error={error}
+            onRetry={() => router.replace("/auth/login")}
+          />
+        ) : (
+          <CallbackLoading />
         )}
-      </div>
+      </main>
     </div>
   );
 }

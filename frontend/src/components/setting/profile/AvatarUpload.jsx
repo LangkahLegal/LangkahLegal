@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { userService } from "@/services/user.service";
+import { Button } from "@/components/ui/Button";
+import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function AvatarUpload({
   foto_profil,
@@ -13,12 +15,16 @@ export default function AvatarUpload({
   const inputRef = useRef(null);
   const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Luthfi")}&background=1f1d35&color=ada3ff&size=128`;
+  // Fallback URL menggunakan variabel warna yang mendekati tema Dark Tech secara default
+  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User",
+  )}&background=1f1d35&color=ada3ff&size=128`;
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || file.size > 2 * 1024 * 1024)
+    if (!file || file.size > 2 * 1024 * 1024) {
       return file && alert("File terlalu besar (max 2MB)");
+    }
 
     if (onUploadStart) onUploadStart();
     const formData = new FormData();
@@ -48,8 +54,13 @@ export default function AvatarUpload({
   return (
     <div className="flex flex-col items-center mb-10">
       <div className="relative group">
+        {/* Container Avatar: Menggunakan bg-input dan border-card */}
         <div
-          className={`w-32 h-32 rounded-full border-4 border-[#1f1d35] overflow-hidden shadow-2xl relative ${isUploading ? "opacity-50 scale-95" : ""}`}
+          className={`
+            w-32 h-32 rounded-full border-4 border-card overflow-hidden shadow-soft relative bg-input
+            transition-all duration-300
+            ${isUploading ? "opacity-50 scale-95" : "hover:shadow-primary/10"}
+          `}
         >
           <img
             key={foto_profil}
@@ -58,21 +69,28 @@ export default function AvatarUpload({
             className="w-full h-full object-cover"
             onError={(e) => (e.target.src = fallbackUrl)}
           />
+
+          {/* Loading Overlay */}
           {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-              <div className="w-8 h-8 border-3 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center bg-bg/60 backdrop-blur-[2px]">
+              <div className="w-8 h-8 border-3 border-primary-light border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => !isUploading && inputRef.current.click()}
-          className="absolute bottom-1 right-1 bg-[#6f59fe] p-2.5 rounded-full border-2 border-[#0e0c1e] shadow-xl active:scale-90 transition-all"
-        >
-          <span className="material-symbols-outlined text-white text-sm">
-            edit
-          </span>
-        </button>
+
+        {/* Tombol Edit: Menggunakan komponen Button UI */}
+        <div className="absolute bottom-1 right-1">
+          <Button
+            variant="primary"
+            type="button"
+            onClick={() => !isUploading && inputRef.current.click()}
+            className="!p-2.5 !rounded-full border-2 border-bg shadow-xl"
+            aria-label="Edit Profile Picture"
+          >
+            <MaterialIcon name="edit" className="text-sm" />
+          </Button>
+        </div>
+
         <input
           ref={inputRef}
           type="file"

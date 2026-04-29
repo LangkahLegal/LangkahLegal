@@ -2,21 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  Button,
-  InputField,
-  PasswordField,
-  GoogleIcon,
-} from "../../../components/ui";
 import { authService } from "@/services/auth.service";
 
-export default function SignupClientPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
+// Import Komponen Signup
+import SignupHeader from "@/components/auth/signup/SignupHeader";
+import SignupForm from "@/components/auth/signup/SignupForm";
+import SocialSignup from "@/components/auth/signup/SocialSignup";
+import SignupFooter from "@/components/auth/signup/SignupFooter";
+
+export default function SignupPage() {
   const [selectedRole, setSelectedRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -31,33 +25,22 @@ export default function SignupClientPage() {
     setSelectedRole(pendingRole);
   }, [router]);
 
-  // Logika Konten Header Dinamis
   const isConsultant = selectedRole === "konsultan";
-  const headerTitle = isConsultant
-    ? "Daftar sebagai Konsultan"
-    : "Daftar sebagai Client";
-  const headerSubtitle = isConsultant
-    ? "Bergabunglah dengan jaringan pakar hukum kami dan mulai berikan konsultasi profesional."
-    : "Daftar sekarang dan cari konsultan hukum terbaik untuk kebutuhan Anda.";
 
-  const handleChange = (e) =>
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const headerContent = {
+    title: isConsultant ? "Daftar sebagai Konsultan" : "Daftar sebagai Client",
+    subtitle: isConsultant
+      ? "Bergabunglah dengan jaringan pakar hukum kami dan mulai berikan konsultasi profesional."
+      : "Daftar sekarang dan cari konsultan hukum terbaik untuk kebutuhan Anda.",
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSignup = async (formData) => {
     setIsLoading(true);
     setErrorMsg("");
 
     try {
-      if (!selectedRole) {
-        setErrorMsg("Silakan pilih role terlebih dahulu.");
-        return;
-      }
-
       await authService.signUpWithPassword({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
+        ...formData,
         role: selectedRole,
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       });
@@ -74,8 +57,7 @@ export default function SignupClientPage() {
 
       router.push("/auth/verify");
     } catch (err) {
-      const message = err?.message || "Gagal mengirim OTP. Coba lagi.";
-      setErrorMsg(message);
+      setErrorMsg(err?.message || "Gagal mendaftar. Coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -101,86 +83,25 @@ export default function SignupClientPage() {
   };
 
   return (
-    <div className="auth-screen">
-      <div className="glow-top-left" />
-      <div className="glow-bottom-right" />
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
+    <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-12 bg-bg text-main overflow-x-hidden transition-colors duration-500">
+      <main className="relative z-10 w-full max-w-[400px] mx-auto my-auto">
+        <SignupHeader
+          title={headerContent.title}
+          subtitle={headerContent.subtitle}
+        />
 
-      {/* Side decoration (desktop only) */}
-      <div className="hidden lg:block fixed -right-20 top-1/4 w-80 h-80 opacity-20 rotate-12 pointer-events-none">
-        <div className="w-full h-full rounded-[4rem] border-[40px] border-[#9e93ff] blur-sm" />
-      </div>
+        <section className="mt-8">
+          <SignupForm
+            onSubmit={handleSignup}
+            isLoading={isLoading}
+            errorMsg={errorMsg}
+          />
 
-      <main className="auth-container my-auto py-10">
-        <header className="mb-6 text-center space-y-3">
-          <h1 className="auth-title text-4xl">{headerTitle}</h1>
-          <p className="text-[#aca8c1] text-base px-4">{headerSubtitle}</p>
-        </header>
-
-        <section className="space-y-6">
-          {errorMsg && (
-            <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-              {errorMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <InputField
-              label="Nama Lengkap"
-              name="name"
-              type="text"
-              placeholder="John Doe"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              placeholder="example@langkahlegal.id"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-
-            <PasswordField
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-
-            <Button type="submit" className="mt-4 w-full" disabled={isLoading}>
-              {isLoading ? "Mengirim OTP..." : "Daftar"}
-            </Button>
-          </form>
-
-          <div className="auth-divider">
-            <div className="auth-divider-line" />
-            <span className="auth-divider-text">Atau daftar dengan</span>
-            <div className="auth-divider-line" />
-          </div>
-
-          <button
-            type="button"
-            className="btn-social w-full flex items-center justify-center gap-3"
-            onClick={handleGoogleSignup}
-          >
-            <GoogleIcon />
-            Daftar dengan Google
-          </button>
+          <SocialSignup onGoogleSignup={handleGoogleSignup} />
         </section>
 
-        <footer className="text-center pt-4">
-          <p className="text-[#aca8c1] text-sm font-medium">
-            Sudah memiliki akun?{" "}
-            <Link href="/auth/login" className="link-accent ml-1">
-              Masuk Sekarang
-            </Link>
-          </p>
-        </footer>
+        <SignupFooter />
       </main>
     </div>
   );

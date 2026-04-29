@@ -1,3 +1,5 @@
+"use client";
+
 import { useRouter } from "next/navigation";
 
 function SettingsItem({ item }) {
@@ -12,41 +14,57 @@ function SettingsItem({ item }) {
   return (
     <div
       onClick={handleClick}
-      className={`rounded-2xl group cursor-pointer transition-all duration-300 ${
-        isDanger
-          ? "bg-[#a70138]/5 hover:bg-[#a70138]/10 border border-[#a70138]/10"
-          : "bg-[#131125] hover:bg-[#2c2945]"
-      }`}
+      className={`
+        relative group cursor-pointer transition-all duration-300
+        rounded-2xl border active:scale-[0.98]
+        ${
+          isDanger
+            ? "bg-danger/5 border-danger/20 hover:bg-danger/10"
+            : "bg-card border-surface hover:border-primary/30 shadow-soft"
+        }
+      `}
     >
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 sm:p-5">
         <div className="flex items-center gap-4">
-          {/* Icon */}
+          {/* ICON BOX - Theme Aware */}
           <div
-            className={`w-11 h-11 flex items-center justify-center rounded-xl group-hover:scale-110 transition-transform duration-300 ${
-              isDanger
-                ? "bg-[#a70138]/20 text-[#ff6e84]"
-                : "bg-[#25233d] text-[#ada3ff]"
-            }`}
+            className={`
+              w-12 h-12 flex items-center justify-center rounded-xl 
+              transition-all duration-300 group-hover:scale-110
+              ${
+                isDanger
+                  ? "bg-danger/20 text-danger"
+                  : "bg-surface text-primary-light group-hover:bg-primary/10 group-hover:text-primary"
+              }
+            `}
           >
-            <span className="material-symbols-outlined">{item.icon}</span>
+            <span className="material-symbols-outlined text-2xl">
+              {item.icon}
+            </span>
           </div>
 
-          {/* Text */}
-          <div>
-            <p className={`font-semibold ${isDanger ? "text-[#ff6e84]" : "text-[#e8e2fc]"}`}>
+          {/* TEXT CONTENT */}
+          <div className="flex flex-col gap-0.5">
+            <p
+              className={`font-bold tracking-tight ${isDanger ? "text-danger" : "text-main"}`}
+            >
               {item.label}
             </p>
-            <p className={`text-xs ${isDanger ? "text-[#ff6e84]/60" : "text-[#aca8c1]"}`}>
+            <p
+              className={`text-xs font-medium ${isDanger ? "text-danger/60" : "text-muted"}`}
+            >
               {item.description}
             </p>
           </div>
         </div>
 
-        {/* Chevron */}
+        {/* CHEVRON */}
         <span
-          className={`material-symbols-outlined opacity-50 group-hover:translate-x-1 transition-transform ${
-            isDanger ? "text-[#ff6e84]/40" : "text-[#aca8c1]"
-          }`}
+          className={`
+            material-symbols-outlined text-xl transition-all duration-300
+            group-hover:translate-x-1
+            ${isDanger ? "text-danger/40" : "text-muted opacity-50"}
+          `}
         >
           chevron_right
         </span>
@@ -58,9 +76,12 @@ function SettingsItem({ item }) {
 export default function SettingsGroup({ title, items }) {
   return (
     <section className="space-y-4">
-      <h3 className="text-xs font-bold text-[#aca8c1] uppercase tracking-[0.2em] px-2">
+      {/* HEADER SECTION - Sesuai Design System */}
+      <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] px-2">
         {title}
       </h3>
+
+      {/* GRID/STACK ITEMS */}
       <div className="space-y-3">
         {items.map((item) => (
           <SettingsItem key={item.id} item={item} />
