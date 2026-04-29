@@ -1,74 +1,97 @@
-// components/ui/FileItem.jsx
+"use client";
+
 import { useState } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { Button } from "@/components/ui/Button";
 
 const FileIcon = ({ type }) => {
   switch (type) {
     case "pdf":
-      return <MaterialIcon name="picture_as_pdf" className="text-red-400" />;
+      // Tetap merah tapi menggunakan tone yang pas
+      return (
+        <MaterialIcon
+          name="picture_as_pdf"
+          className="text-red-500 dark:text-red-400"
+        />
+      );
     case "image":
-      return <MaterialIcon name="image" className="text-amber-400" />;
+      // Menggunakan warna secondary (Gold) dari tema baru Anda
+      return <MaterialIcon name="image" className="text-secondary" />;
     default:
-      return <MaterialIcon name="description" className="text-blue-400" />;
+      return <MaterialIcon name="description" className="text-primary-light" />;
   }
 };
 
-export default function FileItem({ file, onClick, onDelete, allowDelete = false }) {
+export default function FileItem({
+  file,
+  onClick,
+  onDelete,
+  allowDelete = false,
+}) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div className="relative">
       <div
         onClick={onClick}
-        className="group bg-[#1f1d35] p-4 rounded-3xl border border-white/5 flex items-center gap-4 hover:border-[#6f59fe]/30 hover:bg-[#25233d] transition-all cursor-pointer"
+        className={`
+          group flex items-center gap-4 p-4 rounded-3xl border transition-all cursor-pointer
+          bg-card border-surface 
+          hover:border-primary/30 hover:bg-surface/50
+        `}
       >
-        <div className="w-12 h-12 rounded-2xl bg-[#0e0c1e] flex items-center justify-center shrink-0 shadow-inner">
+        {/* Icon Container */}
+        <div className="w-12 h-12 rounded-xl bg-base flex items-center justify-center shrink-0 shadow-inner">
           <FileIcon type={file.type} />
         </div>
+
+        {/* Info */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold text-white truncate group-hover:text-[#6f59fe] transition-colors">
+          <h4 className="text-sm font-bold text-main truncate group-hover:text-primary transition-colors">
             {file.name}
           </h4>
-          <p className="text-[11px] text-[#aca8c1] mt-0.5">
+          <p className="text-[11px] text-muted mt-0.5 font-medium">
             {file.date} • {file.size}
           </p>
         </div>
 
-        {/* Tombol titik tiga dengan kondisi allowDelete */}
+        {/* Menu Trigger menggunakan Button UI */}
         {allowDelete && (
-          <button
+          <Button
+            variant="icon"
             onClick={(e) => {
-              e.stopPropagation(); 
+              e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className={`p-2 transition-colors ${showMenu ? "text-white" : "text-[#aca8c1] hover:text-white"}`}
+            className={`!p-2 ${showMenu ? "text-primary bg-surface" : "text-muted"}`}
           >
             <MaterialIcon name="more_vert" />
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Popover Menu Delete */}
       {showMenu && (
         <>
-          {/* Overlay untuk menutup menu jika klik di luar */}
           <div
             className="fixed inset-0 z-10"
             onClick={() => setShowMenu(false)}
           />
 
-          <div className="absolute right-4 top-14 z-20 bg-[#25233d] border border-white/10 rounded-2xl shadow-2xl p-2 min-w-[120px] animate-fade-in">
-            <button
+          <div className="absolute right-4 top-16 z-20 bg-card border border-surface rounded-2xl shadow-soft p-1.5 min-w-[140px] animate-fade-in">
+            <Button
+              variant="danger"
+              fullWidth
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
                 setShowMenu(false);
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-xl transition-all text-xs font-bold"
+              className="!justify-start !py-2.5 !px-3 !text-xs !rounded-xl"
             >
-              <MaterialIcon name="delete" className="text-base" />
-              Hapus
-            </button>
+              <MaterialIcon name="delete" className="text-lg" />
+              <span>Hapus Berkas</span>
+            </Button>
           </div>
         </>
       )}

@@ -3,7 +3,7 @@ import { Button } from "../ui";
 export default function CTA({ onGetStarted }) {
   return (
     <section className="px-6 py-24 relative z-10">
-      <div className="glass-card max-w-5xl mx-auto p-12 md:p-20 text-center relative overflow-hidden">
+      <div className="max-w-5xl mx-auto p-12 md:p-20 text-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-light/10 rounded-full blur-[80px] -mr-32 -mt-32" />
 
         <div className="relative z-10">

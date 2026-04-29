@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 export default function SuccessView({
   title = "Permintaan Booking Berhasil Terkirim!",
   description = "Mohon tunggu konfirmasi dari Konsultan, anda akan menerima email segera setelah jadwal dikonfirmasi.",
-  onAction,
+  onAction = () => {}, // Safety: fallback fungsi kosong
 }) {
   // Variasi untuk container teks agar muncul setelah ikon
   const containerVariants = {
@@ -29,14 +29,15 @@ export default function SuccessView({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[999] bg-[#0e0c1e] flex flex-col items-center justify-center px-8 text-center overflow-hidden"
+      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-main */
+      className="fixed inset-0 z-[999] bg-bg flex flex-col items-center justify-center px-8 text-center overflow-hidden transition-colors duration-500"
     >
       {/* 1. SEKSI IKON (Animasi Pop-up dari Bawah) */}
       <div className="relative mb-16 flex items-center justify-center">
-        {/* Efek Glow Statis di Belakang */}
-        <div className="absolute w-[300px] h-[300px] bg-[#6f59fe]/10 blur-[100px] rounded-full" />
+        {/* Efek Glow Statis - REFACTOR: bg-primary/10 */}
+        <div className="absolute w-[300px] h-[300px] bg-primary/10 blur-[100px] rounded-full" />
 
-        {/* Lingkaran Luar 1 (Paling Besar) */}
+        {/* Lingkaran Luar 1 (Paling Besar) - REFACTOR: bg-primary/5 */}
         <motion.div
           initial={{ scale: 0, opacity: 0, y: 100 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -46,23 +47,23 @@ export default function SuccessView({
             stiffness: 100,
             delay: 0.1,
           }}
-          className="w-64 h-64 rounded-full bg-[#6f59fe]/5 flex items-center justify-center"
+          className="w-64 h-64 rounded-full bg-primary/5 flex items-center justify-center"
         >
-          {/* Lingkaran Luar 2 */}
+          {/* Lingkaran Luar 2 - REFACTOR: bg-primary/10 */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", damping: 12, delay: 0.2 }}
-            className="w-48 h-48 rounded-full bg-[#6f59fe]/10 flex items-center justify-center"
+            className="w-48 h-48 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            {/* Lingkaran Inti (Solid) */}
+            {/* Lingkaran Inti (Solid) - REFACTOR: bg-primary | shadow-primary */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", damping: 10, delay: 0.3 }}
-              className="relative w-28 h-28 rounded-full bg-[#6f59fe] flex items-center justify-center shadow-[0_0_40px_rgba(111,89,254,0.4)]"
+              className="relative w-28 h-28 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/40"
             >
-              {/* SVG Checkmark (Tipis & Elegan sesuai Gambar) */}
+              {/* SVG Checkmark */}
               <motion.svg
                 width="44"
                 height="44"
@@ -79,7 +80,7 @@ export default function SuccessView({
                 <polyline points="20 6 9 17 4 12" />
               </motion.svg>
 
-              {/* Efek Gelombang Pulse (Baru muncul setelah ikon diam) */}
+              {/* Efek Gelombang Pulse */}
               <motion.div
                 animate={{
                   scale: [1, 1.4, 1.6],
@@ -106,14 +107,16 @@ export default function SuccessView({
       >
         <motion.h2
           variants={itemVariants}
-          className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-4"
+          /* REFACTOR: text-white -> text-main */
+          className="text-2xl sm:text-3xl font-bold text-main leading-tight mb-4 transition-colors duration-500"
         >
           {title}
         </motion.h2>
 
         <motion.p
           variants={itemVariants}
-          className="text-[#aca8c1] text-sm sm:text-base leading-relaxed mb-12 px-2"
+          /* REFACTOR: text-[#aca8c1] -> text-muted */
+          className="text-muted text-sm sm:text-base leading-relaxed mb-12 px-2 transition-colors duration-500"
         >
           {description}
         </motion.p>
@@ -123,7 +126,8 @@ export default function SuccessView({
           <Button
             onClick={onAction}
             fullWidth
-            className="py-5 !rounded-full bg-[#17152a] hover:bg-[#1f1d35] border border-white/5 text-white font-bold transition-all shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
+            /* REFACTOR: bg-card | hover:bg-input | border-surface | text-main */
+            className="py-5 !rounded-full bg-card hover:bg-input border border-surface text-main font-bold transition-all shadow-lg"
           >
             Kembali ke Dashboard
           </Button>

@@ -64,34 +64,38 @@ export default function ConsultantClientsPage() {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-x-hidden font-['Inter',sans-serif] w-full">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main min-h-screen flex overflow-x-hidden font-primary w-full transition-colors duration-500">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 w-full transition-all duration-300">
         <PageHeader title="Daftar Klien" />
 
-        {/* REVISI: Menggunakan w-full tanpa max-width sempit agar card bisa melebar penuh */}
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="w-full max-w-[1600px] mx-auto space-y-8">
+          <div className="w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
             {/* Stats & Filter Header */}
             <div className="flex justify-between items-end px-1">
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-[#aca8c1] uppercase tracking-[0.2em]">
+                {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+                <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">
                   Klien Aktif
                 </p>
-                <h2 className="text-3xl font-black text-white">
+                {/* REFACTOR: text-white -> text-main */}
+                <h2 className="text-3xl font-black text-main tracking-tight">
                   {isLoading ? "..." : rawRequests.length}{" "}
-                  <span className="text-[#ada3ff]">Klien</span>
+                  {/* REFACTOR: text-[#ada3ff] -> text-primary-light */}
+                  <span className="text-primary-light">Klien</span>
                 </h2>
               </div>
 
               <div className="relative">
                 <Button
                   variant="icon"
+                  /* REFACTOR: !bg-primary / !bg-card | border-primary / border-surface */
                   className={`!w-12 !h-12 !rounded-2xl border group transition-all ${
                     isFilterOpen
-                      ? "!bg-[#6f59fe] border-[#6f59fe]"
-                      : "!bg-[#1f1d35] border-white/5 hover:border-[#6f59fe]/50"
+                      ? "!bg-primary border-primary shadow-soft"
+                      : "!bg-card border-surface hover:border-primary/50"
                   }`}
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
                   disabled={isLoading}
@@ -101,15 +105,16 @@ export default function ConsultantClientsPage() {
                     className={
                       isFilterOpen
                         ? "text-white"
-                        : "text-[#ada3ff] group-hover:text-white"
+                        : "text-primary-light group-hover:text-primary"
                     }
                   />
                 </Button>
 
                 {isFilterOpen && (
-                  <div className="absolute right-0 mt-3 w-64 bg-[#1f1d35] rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-20 py-2 overflow-hidden flex flex-col">
-                    <div className="px-4 py-2 border-b border-white/5">
-                      <p className="text-[10px] font-bold text-[#aca8c1] uppercase tracking-wider mb-2">
+                  /* REFACTOR: bg-[#1f1d35] -> bg-dropdown | border-white/10 -> border-surface */
+                  <div className="absolute right-0 mt-3 w-64 bg-dropdown rounded-2xl border border-surface shadow-soft z-20 py-2 overflow-hidden flex flex-col">
+                    <div className="px-4 py-2 border-b border-surface">
+                      <p className="text-[10px] font-black text-muted uppercase tracking-wider mb-2">
                         Urutkan Pengajuan
                       </p>
                       <SortButton
@@ -126,7 +131,7 @@ export default function ConsultantClientsPage() {
                       />
                     </div>
                     <div className="px-4 py-2">
-                      <p className="text-[10px] font-bold text-[#aca8c1] uppercase tracking-wider mb-2">
+                      <p className="text-[10px] font-black text-muted uppercase tracking-wider mb-2">
                         Urutkan Jadwal
                       </p>
                       <SortButton
@@ -147,12 +152,12 @@ export default function ConsultantClientsPage() {
               </div>
             </div>
 
-            {/* REVISI: Grid diubah menjadi 1 kolom (grid-cols-1) agar card memanjang penuh ke samping */}
             <div className="grid grid-cols-1 gap-6 w-full">
               {isLoading ? (
                 <LoadingState />
               ) : isError ? (
-                <div className="text-center py-20 text-rose-400 text-sm">
+                /* REFACTOR: text-rose-400 -> text-danger */
+                <div className="text-center py-20 text-danger text-sm font-bold">
                   Gagal memuat data klien.
                 </div>
               ) : sortedClients.length > 0 ? (
@@ -167,12 +172,14 @@ export default function ConsultantClientsPage() {
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-32 bg-[#1f1d35]/20 rounded-[2rem] border border-dashed border-white/5">
+                /* REFACTOR: bg-[#1f1d35]/20 -> bg-card/20 | border-white/5 -> border-surface */
+                <div className="flex flex-col items-center justify-center py-32 bg-card/20 rounded-[2rem] border border-dashed border-surface">
                   <MaterialIcon
                     name="group_off"
-                    className="text-5xl text-[#48455a] mb-4"
+                    /* REFACTOR: text-[#48455a] -> text-muted/30 */
+                    className="text-5xl text-muted/30 mb-4"
                   />
-                  <p className="text-[#aca8c1] text-sm">
+                  <p className="text-muted text-sm font-medium">
                     Belum ada klien terjadwal.
                   </p>
                 </div>
@@ -193,15 +200,16 @@ export default function ConsultantClientsPage() {
 const SortButton = ({ active, onClick, icon, label }) => (
   <button
     onClick={onClick}
+    /* REFACTOR: bg-[#6f59fe] -> bg-primary | text-[#aca8c1] -> text-muted | hover:bg-white/5 -> hover:bg-surface */
     className={`w-full flex items-center justify-between px-3 py-2.5 text-sm rounded-xl mb-1 transition-all ${
       active
-        ? "bg-[#6f59fe] text-white font-bold"
-        : "text-[#aca8c1] hover:bg-white/5 hover:text-white"
+        ? "bg-primary text-white font-bold shadow-soft"
+        : "text-muted hover:bg-surface hover:text-main"
     }`}
   >
     <div className="flex items-center gap-2">
       <MaterialIcon name={icon} className="text-[16px]" />
-      <span>{label}</span>
+      <span className="font-semibold">{label}</span>
     </div>
     {active && <MaterialIcon name="check" className="text-[16px]" />}
   </button>
@@ -209,8 +217,10 @@ const SortButton = ({ active, onClick, icon, label }) => (
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center py-32 gap-4">
-    <div className="w-12 h-12 border-4 border-[#6f59fe] border-t-transparent rounded-full animate-spin" />
-    <p className="text-sm text-[#ada3ff] animate-pulse uppercase tracking-[0.2em] font-bold text-[10px]">
+    {/* REFACTOR: border-[#6f59fe] -> border-primary */}
+    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    {/* REFACTOR: text-[#ada3ff] -> text-primary-light */}
+    <p className="text-primary-light animate-pulse uppercase tracking-[0.2em] font-black text-[10px]">
       Synchronizing...
     </p>
   </div>

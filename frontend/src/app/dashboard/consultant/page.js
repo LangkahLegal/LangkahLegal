@@ -23,22 +23,11 @@ const formatCurrency = (value) => {
   return `Rp ${safeValue.toLocaleString("id-ID")}`;
 };
 
-/**
- * Helper untuk mengecek apakah jadwal sudah terlewat berdasarkan WIB
- * API Date: 2026-04-22T00:00:00
- * API Time: 01:30:00
- */
 const isSchedulePast = (dateStr, timeStr) => {
   if (!dateStr || !timeStr) return true;
-
-  // Ambil bagian YYYY-MM-DD dari string ISO
   const datePart = dateStr.split("T")[0];
-  // Gabungkan dengan jam dari API
   const scheduleDateTime = new Date(`${datePart}T${timeStr}`);
-
-  // Waktu sekarang
   const now = new Date();
-
   return scheduleDateTime < now;
 };
 
@@ -78,7 +67,6 @@ export default function ConsultantDashboardPage() {
   });
 
   // --- 2. LOGIKA MAPPING & FILTERING ---
-
   const transformToCardData = (raw) => ({
     id_pengajuan: raw.id_pengajuan,
     status_pengajuan: raw.status_pengajuan,
@@ -94,18 +82,14 @@ export default function ConsultantDashboardPage() {
     },
   });
 
-  // Filter dan ambil jadwal terdekat yang BELUM terlewat
   const closestSession = useMemo(() => {
     if (!activeRequests?.length) return null;
-
     const filtered = activeRequests.filter((req) => {
       const isScheduled = req.status_pengajuan?.toLowerCase() === "terjadwal";
       const isFuture = !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
       return isScheduled && isFuture;
     });
-
     if (!filtered.length) return null;
-
     const sorted = filtered.sort((a, b) => {
       const dateTimeA = new Date(
         `${a.tanggal_pengajuan.split("T")[0]}T${a.jam_mulai}`,
@@ -115,26 +99,22 @@ export default function ConsultantDashboardPage() {
       );
       return dateTimeA - dateTimeB;
     });
-
     return transformToCardData(sorted[0]);
   }, [activeRequests]);
 
-  // Filter permintaan baru yang BELUM terlewat
   const mappedRequests = useMemo(() => {
     return pendingRequests
       .filter((req) => !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai))
       .map((req) => transformToCardData(req));
   }, [pendingRequests]);
 
-  // --- 3. LOADING GATE ---
-  const isInitialLoading = isStatsLoading || isActiveLoading;
-
-  if (isInitialLoading) {
+  // --- 3. LOADING GATE (Theme Aware) ---
+  if (isStatsLoading || isActiveLoading) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#6f59fe]"></div>
-          <p className="text-[#ada3ff] text-[10px] font-bold tracking-widest uppercase animate-pulse text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-primary-light text-[10px] font-black tracking-[0.2em] uppercase animate-pulse text-center">
             Synchronizing Dashboard...
           </p>
         </div>
@@ -143,7 +123,7 @@ export default function ConsultantDashboardPage() {
   }
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
+    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-all">
@@ -152,27 +132,35 @@ export default function ConsultantDashboardPage() {
           foto_profil={user?.foto_profil}
         />
 
-        <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12">
+        <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12 animate-fade-in">
+          {/* INCOME SECTION */}
           <IncomeCard amount={formatCurrency(stats?.income)} />
 
+          {/* STATS GRID */}
           <section className="grid grid-cols-2 gap-4 lg:gap-8 w-full">
             <StatCard
               label="Konsultasi Aktif"
               val={stats?.activeConsultations || 0}
               icon="gavel"
+              variant="primary"
             />
             <StatCard
               label="Total Klien"
               val={stats?.totalClients || 0}
               icon="group"
+              variant="secondary"
             />
           </section>
 
           {/* JADWAL TERDEKAT */}
           <section className="space-y-6 w-full">
-            <h2 className="text-xl font-headline font-bold text-white px-1">
-              Jadwal Terdekat
-            </h2>
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-1.5 h-6 bg-primary rounded-full shadow-soft" />
+              <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                Jadwal Terdekat
+              </h2>
+            </div>
+
             <div className="w-full">
               {closestSession ? (
                 <ConsultationCard
@@ -182,12 +170,14 @@ export default function ConsultantDashboardPage() {
                   onCancel={() => {}}
                 />
               ) : (
-                <div className="bg-[#1f1d35]/50 border border-white/5 p-8 rounded-[1.5rem] sm:rounded-[2rem] text-sm text-[#aca8c1] italic flex items-center gap-3">
+                <div className="bg-card border border-surface p-8 rounded-[2rem] text-sm text-muted italic flex items-center gap-4 shadow-soft">
                   <MaterialIcon
                     name="event_busy"
-                    className="text-xl opacity-40"
+                    className="text-2xl text-primary opacity-40"
                   />
-                  <span>Tidak ada jadwal mendatang yang tersedia.</span>
+                  <span className="font-medium">
+                    Tidak ada jadwal mendatang yang tersedia.
+                  </span>
                 </div>
               )}
             </div>
@@ -195,13 +185,17 @@ export default function ConsultantDashboardPage() {
 
           {/* PERMINTAAN BARU */}
           <section className="space-y-6 w-full">
-            <h2 className="text-xl font-headline font-bold text-white px-1">
-              Permintaan Baru
-            </h2>
+            <div className="flex items-center gap-2 px-1">
+              <div className="w-1.5 h-6 bg-primary-light rounded-full shadow-soft opacity-70" />
+              <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                Permintaan Baru
+              </h2>
+            </div>
+
             <div className="space-y-4 w-full">
               {isPendingLoading ? (
-                <div className="text-sm text-[#aca8c1] animate-pulse italic">
-                  Memperbarui...
+                <div className="text-sm text-muted animate-pulse italic px-2">
+                  Memperbarui permintaan...
                 </div>
               ) : mappedRequests.length > 0 ? (
                 mappedRequests.map((req) => (
@@ -214,13 +208,16 @@ export default function ConsultantDashboardPage() {
                   />
                 ))
               ) : (
-                <div className="text-sm text-[#aca8c1] py-8 bg-[#1f1d35]/30 rounded-[2rem] border border-dashed border-white/5 text-center flex flex-col items-center gap-2">
-                  <MaterialIcon
-                    name="mail_outline"
-                    className="text-3xl opacity-20"
-                  />
-                  <span>
-                    Tidak ada permintaan baru yang valid untuk waktu mendatang.
+                <div className="text-sm text-muted py-12 bg-card/30 rounded-[2.5rem] border border-dashed border-surface text-center flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-1">
+                    <MaterialIcon
+                      name="mail_outline"
+                      className="text-3xl text-muted opacity-30"
+                    />
+                  </div>
+                  <span className="max-w-xs font-medium">
+                    Kotak masuk bersih. Tidak ada permintaan baru yang valid
+                    untuk waktu mendatang.
                   </span>
                 </div>
               )}

@@ -2,26 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { authService } from "@/services/auth.service"; // Import service
-import {
-  Button,
-  InputField,
-  PasswordField,
-  GoogleIcon,
-} from "../../../components/ui";
+import { authService } from "@/services/auth.service";
+
+// Import Komponen Baru
+import LoginHeader from "@/components/auth/login/LoginHeader";
+import LoginForm from "@/components/auth/login/LoginForm";
+import SocialLogin from "@/components/auth/login/SocialLogin";
+import LoginFooter from "@/components/auth/login/LoginFooter";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
 
-  const handleChange = (e) =>
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
+  const handlePasswordLogin = async (formData) => {
     if (!formData.password) {
       setErrorMsg("Password wajib diisi.");
       return;
@@ -31,10 +25,7 @@ export default function LoginPage() {
     setErrorMsg("");
 
     try {
-      const session = await authService.loginWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+      const session = await authService.loginWithPassword(formData);
 
       if (!session) {
         setErrorMsg("Email atau password salah.");
@@ -54,8 +45,7 @@ export default function LoginPage() {
       );
       router.refresh();
     } catch (err) {
-      const message = err?.message || "Gagal login. Coba lagi.";
-      setErrorMsg(message);
+      setErrorMsg(err?.message || "Gagal login. Coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -68,80 +58,27 @@ export default function LoginPage() {
         redirectTo: `${window.location.origin}/auth/callback`,
       });
     } catch (err) {
-      const message = err?.message || "Gagal login dengan Google.";
-      setErrorMsg(message);
+      setErrorMsg(err?.message || "Gagal login dengan Google.");
     }
   };
 
   return (
-    <div className="auth-screen">
-      <div className="glow-top-left" />
-      <div className="glow-bottom-right" />
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
+    <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-8 bg-bg text-main overflow-hidden transition-colors duration-500">
+      <main className="relative z-10 w-full max-w-[400px] mx-auto">
+        <LoginHeader />
 
-      <main className="auth-container">
-        <header className="mb-10 text-center md:text-left">
-          <h1 className="auth-title">Selamat Datang</h1>
-          <p className="auth-subtitle">
-            Masuk untuk melakukan konsultasi hukum Anda.
-          </p>
-        </header>
+        <section>
+          <LoginForm
+            onSubmit={handlePasswordLogin}
+            isLoading={isLoading}
+            errorMsg={errorMsg}
+          />
 
-        <section className="space-y-5">
-          {/* Tampilkan Pesan Error */}
-          {errorMsg && (
-            <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-              {errorMsg}
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordLogin} className="space-y-4">
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              placeholder="nama@gmail.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-
-            <PasswordField
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-            />
-
-            <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
-              {isLoading ? "Memverifikasi..." : "Masuk"}
-            </Button>
-          </form>
-
-          <div className="auth-divider">
-            <div className="auth-divider-line" />
-            <span className="auth-divider-text">Atau masuk dengan</span>
-            <div className="auth-divider-line" />
-          </div>
-
-          <Button
-            variant="social"
-            type="button"
-            className="w-full"
-            onClick={handleGoogleLogin}
-          >
-            <GoogleIcon />
-            Masuk dengan Google
-          </Button>
+          <SocialLogin onGoogleLogin={handleGoogleLogin} />
         </section>
 
-        <footer className="mt-12 text-center">
-          <p className="text-[#aca8c1] font-medium">
-            Belum punya akun?{" "}
-            <Link href="/auth/role" className="link-primary ml-1">
-              Daftar
-            </Link>
-          </p>
-        </footer>
+        <LoginFooter />
       </main>
     </div>
   );

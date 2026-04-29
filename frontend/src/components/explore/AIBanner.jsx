@@ -1,44 +1,69 @@
-import { MaterialIcon } from "@/components/ui";
+"use client";
+
+import React from "react";
+import { Button } from "@/components/ui/Button";
+import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function AIBanner({ onAction }) {
   return (
     <section className="w-full">
       <div
-        className="relative overflow-hidden bg-[#8470ff] p-8 lg:p-12 rounded-[2.5rem] flex flex-col lg:flex-row lg:items-center justify-between gap-10 transition-all duration-500"
+        className={`
+          relative overflow-hidden 
+          bg-primary p-8 lg:p-12 
+          rounded-[2.5rem] 
+          flex flex-col lg:flex-row lg:items-center justify-between 
+          gap-10 transition-all duration-500
+          shadow-soft
+        `}
       >
-        {/* Konten Teks: Fluid di desktop */}
+        {/* Konten Teks */}
         <div className="space-y-4 z-10 relative">
-          {/* JUDUL: Kita perlebar max-w di desktop agar memanjang ke samping */}
+          {/* JUDUL: Menggunakan text-bg agar selalu kontras dengan background primary */}
           <h2
-            className="text-2xl sm:text-3xl lg:text-4xl font-headline font-bold text-[#0e0c1e] leading-[1.1] tracking-tight/* Mobile: max-w-xs (320px) agar memeluk judul, Desktop: max-w-lg (512px) agar memanjang */max-w-xs sm:max-w-sm lg:max-w-lg">
+            className={`
+              text-2xl sm:text-3xl lg:text-4xl 
+              font-headline font-black 
+              text-bg leading-[1.1] tracking-tight
+              max-w-xs sm:max-w-sm lg:max-w-lg
+            `}
+          >
             Konsultasi AI Tersedia 24/7
           </h2>
 
-          {/* DESKRIPSI: Kita perlebar max-w secara drastis di desktop agar tidak kaku */}
+          {/* DESKRIPSI: text-bg/70 untuk kesan muted tapi tetap terbaca */}
           <p
-            className="text-[#0e0c1e]/70 text-sm sm:text-base lg:text-lg leading-relaxed font-medium/* Mobile: max-w-xs (320px) agar rapi, Desktop: max-w-2xl (672px) agar memanjang */max-w-xs sm:max-w-md md:max-w-xl lg:max-w-3xl">
+            className={`
+              text-bg/70 text-sm sm:text-base lg:text-lg 
+              leading-relaxed font-medium
+              max-w-xs sm:max-w-md md:max-w-xl lg:max-w-3xl
+            `}
+          >
             Dapatkan jawaban hukum instan sebelum bicara dengan pakar.
           </p>
 
           <div className="pt-4 lg:pt-2">
-            <button
+            {/* BUTTON: Menggunakan komponen Button dengan override warna khusus */}
+            <Button
               onClick={onAction}
-              className="bg-[#0e0c1e] text-white px-10 py-4 rounded-full font-bold text-sm lg:text-bas hover:scale-105 transition-all active:scale-95 shadow-lg shadow-[#0e0c1e]/2 w-full sm:w-auto">
+              className="!bg-bg !text-main !rounded-full !px-10 !py-6 !text-base lg:!text-lg shadow-xl hover:scale-105 active:scale-95"
+            >
               Coba Sekarang
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* --- ICON DEKORATIF (STAY AS IS) --- */}
+        {/* --- ICON DEKORATIF --- */}
+        {/* Menggunakan text-bg/20 agar ikon menyatu dengan tema banner */}
         <div className="absolute -bottom-10 -right-6 opacity-20 pointer-events-none rotate-12">
           <MaterialIcon
             name="auto_awesome"
-            className="text-[14rem] lg:text-[18rem] text-white"
+            className="text-[14rem] lg:text-[18rem] text-bg"
           />
         </div>
 
         <div className="absolute top-8 right-20 opacity-10 pointer-events-none">
-          <MaterialIcon name="star" className="text-4xl text-white" />
+          <MaterialIcon name="star" className="text-4xl text-bg" />
         </div>
       </div>
     </section>
