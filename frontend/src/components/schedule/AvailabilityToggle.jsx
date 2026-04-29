@@ -1,23 +1,32 @@
+"use client";
+
 import { Toggle } from "@/components/ui/Toggle";
 
-export default function AvailabilityToggle({ isAvailable, onChange }) {
+export default function AvailabilityToggle({
+  isAvailable = false, // Safety: default ke false jika undefined
+  onChange = () => {}, // Safety: fallback ke fungsi kosong
+}) {
   return (
     <section>
-      {/* Ubah rounded ke [2rem] dan padding ke p-6 agar sama dengan card lain */}
-      <div className="bg-[#131125] rounded-[2rem] p-6 flex items-center justify-between border border-white/5 shadow-2xl">
+
+      <div className="bg-card rounded-[2rem] p-6 flex items-center justify-between border border-surface shadow-2xl transition-all duration-500">
         <div className="flex flex-col">
-          <h3 className="text-lg font-bold text-white">
+          {/* REFACTOR: text-white -> text-main */}
+          <h3 className="text-lg font-bold text-main transition-colors duration-500">
             Status Konsultasi
           </h3>
 
-          <p className="text-xs text-[#aca8c1]">
-            {isAvailable ? "Aktif Menerima Konsultasi" : "Tidak Menerima Konsultasi"}
+          {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+          <p className="text-xs text-muted transition-colors duration-500">
+            {isAvailable
+              ? "Aktif Menerima Konsultasi"
+              : "Tidak Menerima Konsultasi"}
           </p>
         </div>
 
         {/* Toggle switch */}
-        <div className="scale-110"> {/* Sedikit scale agar lebih proporsional dengan card yang lebih besar */}
-          <Toggle enabled={isAvailable} onChange={onChange} />
+        <div className="scale-110">
+          <Toggle enabled={isAvailable ?? false} onChange={onChange} />
         </div>
       </div>
     </section>

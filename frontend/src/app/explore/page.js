@@ -17,7 +17,6 @@ export default function KonsultasiPage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("semua");
 
-  // Definisi kategori untuk filter
   const CATEGORIES = [
     { id: "semua", label: "Semua" },
     { id: "pidana", label: "Pidana" },
@@ -31,12 +30,10 @@ export default function KonsultasiPage() {
     isLoading,
     isFetching,
   } = useQuery({
-    // Query Key menyertakan activeCategory agar cache terpisah tiap kategori
     queryKey: ["consultantCatalog", activeCategory],
     queryFn: () => consultationService.getConsultantCatalog(activeCategory),
-    // Menjaga data lama tetap tampil saat mengambil data kategori baru (UX lebih smooth)
     placeholderData: (previousData) => previousData,
-    staleTime: 5 * 60 * 1000, // Data dianggap fresh selama 5 menit
+    staleTime: 5 * 60 * 1000,
   });
 
   // --- 2. Client-side Filtering untuk Search ---
@@ -45,7 +42,8 @@ export default function KonsultasiPage() {
   );
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
+    /* REFACTOR: Menggunakan variabel global --bg dan --text-main */
+    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
       <Sidebar />
 
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
@@ -62,11 +60,13 @@ export default function KonsultasiPage() {
 
           {/* Grid List Section */}
           <div className="relative min-h-[400px]">
-            {/* Indikator Loading saat pertama kali fetch */}
+            {/* Indikator Loading Utama */}
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                <div className="w-12 h-12 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-[#ada3ff] font-medium animate-pulse uppercase text-[10px] tracking-widest">
+                {/* REFACTOR: Menggunakan warna primary tema */}
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                {/* REFACTOR: Menggunakan warna primary-light tema */}
+                <p className="text-primary-light font-bold animate-pulse uppercase text-[10px] tracking-widest">
                   Mengambil Katalog...
                 </p>
               </div>
@@ -79,8 +79,10 @@ export default function KonsultasiPage() {
                     <ConsultantCard key={pro.id} consultant={pro} />
                   ))
                 ) : (
-                  <div className="col-span-full py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
-                    <p className="text-[#aca8c1]">
+                  /* REFACTOR: Menggunakan bg-card dan border-surface sesuai tema */
+                  <div className="col-span-full py-20 text-center bg-card/30 rounded-[2.5rem] border border-dashed border-surface shadow-sm">
+                    {/* REFACTOR: Menggunakan warna text-muted tema */}
+                    <p className="text-muted font-medium">
                       Tidak ada konsultan yang ditemukan.
                     </p>
                   </div>
@@ -88,10 +90,11 @@ export default function KonsultasiPage() {
               </section>
             )}
 
-            {/* Indikator kecil saat background fetching (saat ganti kategori) */}
+            {/* Indikator Background Fetching */}
             {!isLoading && isFetching && (
               <div className="absolute top-0 right-0 p-2">
-                <div className="w-4 h-4 border-2 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
+                {/* REFACTOR: Menggunakan warna primary tema */}
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
           </div>

@@ -3,56 +3,31 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function ClientCard({ name, createdAt, avatar }) {
-  // --- INTERNAL HELPER: Menghitung Waktu Relatif ---
+  // --- INTERNAL HELPER: Menghitung Waktu Relatif (Tetap Sama) ---
   const getRelativeTime = (dateString) => {
     if (!dateString) return "-";
-
     const now = new Date();
-
-    // 1. Paksa interpretasi sebagai UTC dengan menambahkan 'Z' jika belum ada
-    // 2. Hilangkan spasi jika ada (beberapa DB mengirim format "YYYY-MM-DD HH:mm:ss")
     const isoString =
       dateString.includes("Z") || dateString.includes("+")
         ? dateString
         : `${dateString.replace(" ", "T")}Z`;
-
     const past = new Date(isoString);
-
-    // Jika parsing gagal sama sekali
     if (isNaN(past.getTime())) return "-";
-
-    // Hitung selisih dalam milidetik
     const diffInMs = now.getTime() - past.getTime();
-
-    // Gunakan Math.abs untuk menghindari bug jika jam client sedikit di belakang server
     const diffInSeconds = Math.floor(Math.abs(diffInMs) / 1000);
 
-    // --- LOGIKA THRESHOLD ---
-
-    if (diffInSeconds < 30) {
-      return "Baru saja";
-    }
-
-    if (diffInSeconds < 60) {
-      return "Kurang dari semenit";
-    }
+    if (diffInSeconds < 30) return "Baru saja";
+    if (diffInSeconds < 60) return "Kurang dari semenit";
 
     const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} menit yang lalu`;
-    }
+    if (diffInMinutes < 60) return `${diffInMinutes} menit yang lalu`;
 
     const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) {
-      return `${diffInHours} jam yang lalu`;
-    }
+    if (diffInHours < 24) return `${diffInHours} jam yang lalu`;
 
     const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) {
-      return `${diffInDays} hari yang lalu`;
-    }
+    if (diffInDays < 7) return `${diffInDays} hari yang lalu`;
 
-    // Jika lebih dari seminggu, tampilkan tanggal aslinya
     return past.toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
@@ -61,9 +36,11 @@ export default function ClientCard({ name, createdAt, avatar }) {
   };
 
   return (
-    <section className="bg-[#1f1d35] p-6 rounded-[32px] border border-white/5 flex items-center gap-5 transition-all hover:border-[#6f59fe]/30 group">
+    /* REFACTOR: bg-[#1f1d35] -> bg-card | border-white/5 -> border-surface | hover:border-primary/30 */
+    <section className="bg-card p-6 rounded-[32px] border border-surface flex items-center gap-5 transition-all duration-500 hover:border-primary/30 group">
       {/* Profile Section */}
-      <div className="w-20 h-20 shrink-0 rounded-2xl bg-[#0e0c1e] flex items-center justify-center border border-white/10 shadow-inner overflow-hidden">
+      {/* REFACTOR: bg-[#0e0c1e] -> bg-bg | border-white/10 -> border-surface */}
+      <div className="w-20 h-20 shrink-0 rounded-2xl bg-bg flex items-center justify-center border border-surface shadow-inner overflow-hidden transition-colors duration-500">
         {avatar ? (
           <img
             src={avatar}
@@ -71,17 +48,21 @@ export default function ClientCard({ name, createdAt, avatar }) {
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <MaterialIcon name="person" className="text-3xl text-[#6f59fe]" />
+          /* REFACTOR: text-[#6f59fe] -> text-primary */
+          <MaterialIcon name="person" className="text-3xl text-primary" />
         )}
       </div>
 
       {/* Info Section */}
       <div className="min-w-0">
-        <h2 className="text-xl font-bold text-white leading-tight truncate">
+        {/* REFACTOR: text-white -> text-main */}
+        <h2 className="text-xl font-bold text-main leading-tight truncate transition-colors duration-500">
           {name || "Klien Anonim"}
         </h2>
-        <div className="flex items-center gap-1.5 text-[#aca8c1] mt-1.5">
-          <MaterialIcon name="schedule" className="text-sm text-[#8f8ca1]" />
+        {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+        <div className="flex items-center gap-1.5 text-muted mt-1.5 transition-colors duration-500">
+          {/* REFACTOR: text-[#8f8ca1] -> text-muted (opacity adjusted) */}
+          <MaterialIcon name="schedule" className="text-sm opacity-80" />
           <span className="text-xs font-medium tracking-wide">
             {getRelativeTime(createdAt)}
           </span>

@@ -36,8 +36,21 @@ export default function EditProfilePage() {
 
   const [portofolioFile, setPortofolioFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("dark-tech");
 
-  // --- 2. Fetch Data Profil (Menggunakan Cache yang sudah ada) ---
+  // --- 2. Deteksi Tema untuk Fallback Avatar ---
+  useEffect(() => {
+    const detectTheme = () => {
+      const htmlClasses = document.documentElement.classList;
+      if (htmlClasses.contains("theme-white-modern"))
+        return "theme-white-modern";
+      if (htmlClasses.contains("theme-cyber-slate")) return "theme-cyber-slate";
+      return "dark-tech";
+    };
+    setCurrentTheme(detectTheme());
+  }, []);
+
+  // --- 3. Fetch Data Profil ---
   const { data: profile, isLoading: isQueryLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
@@ -47,30 +60,29 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: profile.nama || "",
-        nama_lengkap: profile.nama_lengkap || "",
-        email: profile.email || "",
-        kota_praktik: profile.kota_praktik || "",
-        spesialisasi: profile.spesialisasi || "",
-        pengalaman_tahun: profile.pengalaman_tahun || "",
-        tarif_per_sesi: profile.tarif_per_sesi || "",
-        linkedin: profile.linkedin || "",
-        portofolio: profile.portofolio || "",
-        foto_profil: profile.foto_profil || "",
-        bio_singkat: profile.bio_singkat || "",
-        deskripsi_lengkap: profile.deskripsi_lengkap || "",
-        nomor_izin_praktik: profile.nomor_izin_praktik || "",
-        gelar_akademik: profile.gelar_akademik || "",
-        pendidikan_terakhir: profile.pendidikan_terakhir || "",
+        name: profile?.nama || "",
+        nama_lengkap: profile?.nama_lengkap || "",
+        email: profile?.email || "",
+        kota_praktik: profile?.kota_praktik || "",
+        spesialisasi: profile?.spesialisasi || "",
+        pengalaman_tahun: profile?.pengalaman_tahun || "",
+        tarif_per_sesi: profile?.tarif_per_sesi || "",
+        linkedin: profile?.linkedin || "",
+        portofolio: profile?.portofolio || "",
+        foto_profil: profile?.foto_profil || "",
+        bio_singkat: profile?.bio_singkat || "",
+        deskripsi_lengkap: profile?.deskripsi_lengkap || "",
+        nomor_izin_praktik: profile?.nomor_izin_praktik || "",
+        gelar_akademik: profile?.gelar_akademik || "",
+        pendidikan_terakhir: profile?.pendidikan_terakhir || "",
       });
     }
   }, [profile]);
 
-  // --- 3. Mutation untuk Update Profil ---
+  // --- 4. Mutation untuk Update Profil ---
   const updateMutation = useMutation({
     mutationFn: (payload) => userService.updateProfile(payload),
     onSuccess: () => {
-      // Validasi ulang cache agar semua halaman mendapatkan data terbaru
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       router.push("/setting");
     },
@@ -123,7 +135,6 @@ export default function EditProfilePage() {
       portofolio_file: portofolioFile,
     };
 
-    // Bersihkan payload dari field kosong kecuali portofolio yang memang ingin dihapus
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([key, v]) => {
         if (key === "portofolio" && v === "") return true;
@@ -134,32 +145,40 @@ export default function EditProfilePage() {
     updateMutation.mutate(cleanPayload);
   };
 
+  // --- RENDER LOADING STATE (Theme Aware) ---
   if (isQueryLoading)
     return (
-      <div className="bg-[#0e0c1e] text-white flex flex-col justify-center items-center h-screen gap-4">
-        <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-        <p className="animate-pulse text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase">
+      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-white -> text-main */
+      <div className="bg-bg text-main flex flex-col justify-center items-center h-screen gap-4 transition-colors duration-500">
+        {/* REFACTOR: border-[#ada3ff] -> border-primary */}
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+        <p className="animate-pulse text-muted text-[10px] font-bold tracking-widest uppercase">
           Syncing Profile...
         </p>
       </div>
     );
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
       <Sidebar role={userRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Edit Profil" />
 
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8">
+          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
             <div className="relative mb-12">
               <AvatarUpload
                 foto_profil={formData.foto_profil}
-                name={formData.name || formData.nama_lengkap}
+                // Safety: Pastikan name tidak undefined untuk fallback avatar
+                name={formData.name || formData.nama_lengkap || "User"}
                 isUploading={isUploading}
                 onUploadStart={() => setIsUploading(true)}
                 onChange={handlePhotoChange}
+                // Optional: Kirim theme info jika AvatarUpload membutuhkannya secara eksplisit
+                theme={currentTheme}
               />
             </div>
 

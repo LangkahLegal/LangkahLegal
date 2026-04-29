@@ -2,7 +2,7 @@ import { MaterialIcon } from "@/components/ui";
 
 export default function StatCard({ label, val, icon }) {
   return (
-    <div className="glass-card bg-input border border-white/5 p-6 rounded-3xl space-y-4 hover:border-white/10 transition-all cursor-default">
+    <div className=" bg-input border border-white/5 p-6 rounded-3xl space-y-4 hover:border-white/10 transition-all cursor-default">
       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
         <MaterialIcon name={icon} className="text-muted" />
       </div>

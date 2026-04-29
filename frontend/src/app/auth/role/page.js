@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
-// Import PageHeader baru
 import PageHeader from "@/components/layout/PageHeader";
 import RoleCard from "@/components/role/RoleCard";
 
@@ -45,32 +44,36 @@ export default function RolePage() {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col selection:bg-[#6D57FC]/30">
-      <div className="glow-top-left-purple" />
-      <div className="glow-bottom-right-secondary" />
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan transition-colors */
+    <div className="relative min-h-screen bg-bg text-main flex flex-col overflow-x-hidden transition-colors duration-500">
+      {/* Background Ornaments */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 blur-[120px] rounded-full" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary/10 blur-[120px] rounded-full" />
+      </div>
 
-      {/* MENGGUNAKAN PAGEHEADER GLOBAL
-        Eksplisit mengarahkan backHref ke login karena ini alur onboarding 
-      */}
       <PageHeader title="Select Role" backHref="/auth/login" />
 
-      <main className="flex-grow flex flex-col px-6 pt-8 pb-32 max-w-md mx-auto w-full relative z-10">
+      <main className="relative z-10 flex-grow flex flex-col px-6 pt-8 pb-20 max-w-md mx-auto w-full">
         <div className="mb-10">
-          <h2 className="text-3xl font-bold text-white mb-4">
+          {/* REFACTOR: text-white -> text-main agar otomatis gelap di Light Mode */}
+          <h2 className="font-headline text-3xl font-extrabold text-main mb-4 tracking-tight">
             Pilih Peran Anda
           </h2>
 
           {error && (
-            <div className="mb-4 p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            /* REFACTOR: Menggunakan skema warna danger theme */
+            <div className="mb-4 p-4 text-sm text-danger bg-danger/10 border border-danger/20 rounded-2xl">
               {error}
             </div>
           )}
 
-          <p className="text-[#aca8c1]">
+          <p className="text-muted leading-relaxed">
             Tentukan bagaimana Anda ingin menggunakan LangkahLegal
           </p>
         </div>
 
+        {/* Roles List */}
         <div className="space-y-6">
           {ROLES_DATA.map((role) => (
             <RoleCard
@@ -81,19 +84,18 @@ export default function RolePage() {
             />
           ))}
         </div>
-      </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-[#0e0c1e]/80 backdrop-blur-md z-20 border-t border-white/5">
-        <div className="max-w-md mx-auto w-full">
+        {/* Tombol Lanjutkan */}
+        <div className="mt-12">
           <Button
             onClick={handleContinue}
-            className="w-full"
-            isLoading={isLoading} // Menggunakan standar Button UI Anda
+            className="w-full py-4 text-lg"
+            isLoading={isLoading}
           >
-            {isLoading ? "Memproses..." : "Lanjutkan"}
+            Lanjutkan
           </Button>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }

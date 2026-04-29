@@ -38,7 +38,6 @@ export default function SchedulePage() {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["mySchedules"] });
 
-  // Mutasi untuk Create (POST)
   const createMutation = useMutation({
     mutationFn: (data) => scheduleService.addSchedule(data),
     onSuccess: () => {
@@ -50,7 +49,6 @@ export default function SchedulePage() {
       alert("Gagal menambah jadwal. Pastikan jam tidak bertabrakan."),
   });
 
-  // Mutasi untuk Update (PUT)
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => scheduleService.updateSchedule(id, data),
     onSuccess: () => {
@@ -77,7 +75,6 @@ export default function SchedulePage() {
     return grouped;
   }, [scheduleData]);
 
-  // Cari data eksisting untuk tanggal yang dipilih
   const currentActiveSlot = useMemo(() => {
     const slots = allSlotsGrouped[activeDateString];
     return slots && slots.length > 0 ? slots[0] : null;
@@ -100,8 +97,6 @@ export default function SchedulePage() {
   // --- 4. HANDLERS ---
   const handleSave = (formData) => {
     const [start, end] = formData.time.split(" - ");
-
-    // Siapkan Payload sesuai kebutuhan API
     const payload = {
       tanggal: activeDateString,
       jam_mulai: `${start}:00`,
@@ -109,28 +104,26 @@ export default function SchedulePage() {
       status_tersedia: formData.status === "available",
     };
 
-    // CEK: Apakah ini UPDATE atau CREATE?
     if (currentActiveSlot) {
-      // Jalankan PUT jika ID jadwal sudah ada
       updateMutation.mutate({
         id: currentActiveSlot.id_jadwal,
         data: payload,
       });
     } else {
-      // Jalankan POST jika belum ada jadwal di tanggal ini
       createMutation.mutate(payload);
     }
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main | font-['Inter'] -> font-primary */
+    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative min-w-0 w-full ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Kelola Jadwal" backHref="/dashboard/consultant" />
 
         <main className="flex-1 overflow-y-auto px-6 pt-6 w-full">
-          <div className="max-w-2xl mx-auto w-full space-y-10 pb-32">
+          <div className="max-w-2xl mx-auto w-full space-y-10 pb-32 animate-fade-in">
             <AvailabilityToggle
               isAvailable={stats?.is_active ?? true}
               onChange={(s) =>
