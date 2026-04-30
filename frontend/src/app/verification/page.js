@@ -64,7 +64,7 @@ export default function VerificationListPage() {
     });
 
   const mappedConsultants = consultants.map((item) => {
-    const dateObj = new Date(item.created_at);
+    const dateObj = new Date(item.updated_at || item.created_at);
 
     return {
       id: item.id_konsultan,
