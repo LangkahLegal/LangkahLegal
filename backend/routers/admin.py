@@ -69,16 +69,29 @@ def get_admin_stats(
     pending_verification = sum(1 for k in all_konsultan if k.get("status_verifikasi") == "pending")
 
     # Transaction stats (hanya settlement)
-    tx_res = (
-        db.table("transaksi")
-        .select("gross_amount, komisi_platform, nominal_konsultan, status_pembayaran")
-        .eq("status_pembayaran", "settlement")
-        .execute()
-    )
-    settled_txs = tx_res.data or []
-    total_transactions = len(settled_txs)
-    total_revenue = sum(float(tx.get("gross_amount") or 0) for tx in settled_txs)
-    total_commission = sum(float(tx.get("komisi_platform") or 0) for tx in settled_txs)
+    # Gunakan Database View jika ada agar tidak berat menarik semua data
+    try:
+        view_res = db.table("admin_transaction_stats").select("*").execute()
+        if view_res.data:
+            stats = view_res.data[0]
+            total_transactions = stats.get("total_transactions", 0)
+            total_revenue = float(stats.get("total_revenue", 0) or 0)
+            total_commission = float(stats.get("total_commission", 0) or 0)
+        else:
+            raise Exception("View kosong")
+    except Exception as e:
+        # Fallback lambat (heavy fetch) jika view belum dibuat di Supabase
+        logger.warning(f"Gagal memuat view admin_transaction_stats, fallback ke fetch semua transaksi: {e}")
+        tx_res = (
+            db.table("transaksi")
+            .select("gross_amount, komisi_platform")
+            .eq("status_pembayaran", "settlement")
+            .execute()
+        )
+        settled_txs = tx_res.data or []
+        total_transactions = len(settled_txs)
+        total_revenue = sum(float(tx.get("gross_amount") or 0) for tx in settled_txs)
+        total_commission = sum(float(tx.get("komisi_platform") or 0) for tx in settled_txs)
 
     return {
         "total_users": total_users,
@@ -98,6 +111,7 @@ def get_admin_stats(
 @router.get("/consultants")
 def get_consultants_list(
     status_filter: str = None,
+    spesialisasi: str = None,
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
@@ -119,14 +133,20 @@ def get_consultants_list(
             is_active,
             status_verifikasi,
             created_at,
+            updated_at,
+            pengalaman_tahun,
+            kota_praktik,
             users (id_user, nama, email, foto_profil)
         """)
     )
 
-    if status_filter and status_filter in ("pending", "terverifikasi"):
+    if status_filter and status_filter in ("pending", "terverifikasi", "ditolak"):
         query = query.eq("status_verifikasi", status_filter)
 
-    query = query.order("created_at", desc=True)
+    if spesialisasi and spesialisasi != "semua":
+        query = query.ilike("spesialisasi", f"%{spesialisasi}%")
+
+    query = query.order("updated_at", desc=True)
     result = query.execute()
 
     return {
@@ -153,7 +173,7 @@ def get_consultant_detail(
         .select("""
             *,
             users (id_user, nama, email, foto_profil, created_at),
-            rating_ulasan (skor_rating, ulasan, created_at)
+            rating_ulasan (skor_rating, ulasan_teks, created_at)
         """)
         .eq("id_konsultan", id_konsultan)
         .execute()
@@ -225,11 +245,15 @@ def verify_consultant(
     # Update status verifikasi
     update_data = {
         "status_verifikasi": payload.action,
+        "updated_at": datetime.now().isoformat()
     }
 
     # Jika diverifikasi, aktifkan konsultan
     if payload.action == "terverifikasi":
         update_data["is_active"] = True
+        update_data["alasan_penolakan"] = None
+    elif payload.action == "ditolak" and payload.alasan:
+        update_data["alasan_penolakan"] = payload.alasan
 
     result = (
         db.table("konsultan")
@@ -248,90 +272,6 @@ def verify_consultant(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MONITORING KOMISI / TRANSAKSI
+# MONITORING KOMISI / TRANSAKSI (History dihapus sesuai permintaan)
 # ═══════════════════════════════════════════════════════════════════════════
 
-@router.get("/transactions")
-def get_all_transactions(
-    status_filter: str = None,
-    user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client),
-):
-    """
-    List semua transaksi dengan breakdown komisi.
-
-    Query params:
-    - status_filter: 'pending' | 'settlement' | 'cancel' | 'expire' | None (semua)
-    """
-    _require_admin(user)
-
-    query = (
-        db.table("transaksi")
-        .select("""
-            *,
-            pengajuan_konsultasi (
-                id_pengajuan,
-                deskripsi_kasus,
-                tanggal_pengajuan,
-                users (nama, email),
-                konsultan (nama_lengkap, spesialisasi)
-            )
-        """)
-    )
-
-    if status_filter:
-        query = query.eq("status_pembayaran", status_filter)
-
-    query = query.order("created_at", desc=True)
-    result = query.execute()
-
-    return {
-        "data": result.data or [],
-        "total": len(result.data or []),
-    }
-
-
-@router.get("/transactions/summary")
-def get_transaction_summary(
-    user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client),
-):
-    """
-    Summary transaksi untuk monitoring komisi.
-
-    Returns:
-    - total_gross: Total gross amount (semua settlement)
-    - total_commission: Total komisi platform
-    - total_consultant_payout: Total yang dibayarkan ke konsultan
-    - transaction_count: Jumlah transaksi per status
-    """
-    _require_admin(user)
-
-    # Semua transaksi
-    all_tx_res = (
-        db.table("transaksi")
-        .select("gross_amount, komisi_platform, nominal_konsultan, status_pembayaran")
-        .execute()
-    )
-    all_txs = all_tx_res.data or []
-
-    # Hitung per status
-    status_counts = {}
-    for tx in all_txs:
-        s = tx.get("status_pembayaran", "unknown")
-        status_counts[s] = status_counts.get(s, 0) + 1
-
-    # Hanya settlement yang masuk revenue
-    settled = [tx for tx in all_txs if tx.get("status_pembayaran") == "settlement"]
-    total_gross = sum(float(tx.get("gross_amount") or 0) for tx in settled)
-    total_commission = sum(float(tx.get("komisi_platform") or 0) for tx in settled)
-    total_consultant_payout = sum(float(tx.get("nominal_konsultan") or 0) for tx in settled)
-
-    return {
-        "total_gross": total_gross,
-        "total_commission": total_commission,
-        "total_consultant_payout": total_consultant_payout,
-        "total_settled": len(settled),
-        "total_all": len(all_txs),
-        "by_status": status_counts,
-    }
