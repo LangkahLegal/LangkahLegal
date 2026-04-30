@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
 // Daftar path yang butuh login
-const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
+const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting", "/admin"];
 
 const normalizeRole = (role) => {
   if (role === "konsultan" || role === "consultant") return "konsultan";
   if (role === "client") return "client";
+  if (role === "admin") return "admin";
   return null;
 };
 
@@ -131,6 +132,12 @@ export async function middleware(request) {
       );
     }
 
+    if (role === "admin") {
+      return applySessionCookies(
+        NextResponse.redirect(new URL("/admin", request.url)),
+      );
+    }
+
     return applySessionCookies(NextResponse.next());
   }
 
@@ -140,8 +147,17 @@ export async function middleware(request) {
 
   const isConsultantPath = pathname.startsWith("/dashboard/consultant");
   const isClientPath = pathname.startsWith("/dashboard/client");
+  const isAdminPath = pathname.startsWith("/admin");
 
-  // 4. Role Guard: Cegah Client masuk ke dashboard Konsultan
+  // 4. Role Guard: Admin routes
+  if (isAdminPath && role !== "admin") {
+    const fallback = role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client";
+    return applySessionCookies(
+      NextResponse.redirect(new URL(fallback, request.url)),
+    );
+  }
+
+  // 5. Role Guard: Cegah Client masuk ke dashboard Konsultan
   if (isConsultantPath && role !== "konsultan") {
     return applySessionCookies(
       NextResponse.redirect(new URL("/dashboard/client", request.url)),
@@ -173,5 +189,6 @@ export const config = {
     "/schedule/:path*",
     "/setting/:path*",
     "/auth/:path*",
+    "/admin/:path*",
   ],
 };
