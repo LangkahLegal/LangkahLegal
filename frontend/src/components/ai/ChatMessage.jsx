@@ -30,6 +30,37 @@ export default function ChatMessage({ message }) {
         >
           <p className="whitespace-pre-line">{message.text}</p>
         </div>
+
+        {/* Pasal References — only shown for AI messages with citations */}
+        {isAI && message.pasal_referensi && message.pasal_referensi.length > 0 && (
+          <div className="px-4 pt-2 space-y-1">
+            <p className="text-[10px] lg:text-xs text-muted font-semibold uppercase tracking-wider">
+              📚 Referensi Pasal:
+            </p>
+            {message.pasal_referensi.map((ref, idx) => (
+              <div
+                key={idx}
+                className="text-[10px] lg:text-xs text-muted/80 bg-surface/50 px-3 py-1.5 rounded-lg border border-surface inline-block mr-1.5 mb-1"
+              >
+                <span className="font-medium">{ref.nama_uu}</span>
+                {ref.pasal_bagian && (
+                  <span> — {ref.pasal_bagian}</span>
+                )}
+                <span className="text-primary-light ml-1.5 font-mono">
+                  {Math.round(ref.similarity * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Disclaimer — shown for AI messages that have one */}
+        {isAI && message.disclaimer && (
+          <p className="text-[9px] lg:text-[10px] text-muted/60 px-4 pt-1 italic">
+            {message.disclaimer}
+          </p>
+        )}
+
         <p
           /* REFACTOR: text-muted */
           className={`text-[10px] lg:text-xs text-muted font-medium px-4 ${!isAI ? "text-right" : "text-left"}`}
