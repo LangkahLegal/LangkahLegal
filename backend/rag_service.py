@@ -2,10 +2,11 @@
 LangkahLegal RAG Service
 ========================
 Handles the core RAG pipeline:
-  1. Embed user query via Voyage AI (voyage-law-2, input_type="query")
-  2. Retrieve relevant pasals from Supabase (match_dokumen_hukum RPC)
-  3. Build context and call Gemini for answer generation
-  4. Return structured response with citations and disclaimer
+  1. Rewrite user query using conversation context (query augmentation)
+  2. Embed optimized query via Voyage AI (voyage-law-2, input_type="query")
+  3. Retrieve relevant pasals from Supabase (match_dokumen_hukum RPC)
+  4. Build context and call Gemini for answer generation
+  5. Return structured response with citations and disclaimer
 """
 
 import logging
@@ -25,30 +26,73 @@ log = logging.getLogger(__name__)
 # ============================================================
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
-LLM_MODEL = "gemini-2.0-flash"
+LLM_MODEL = "gemini-2.5-flash-lite"
 
-SYSTEM_PROMPT = """Kamu adalah asisten hukum LangkahLegal bernama "Kia". 
-Tugasmu memberikan P3K Hukum (Pertolongan Pertama pada Permasalahan Hukum) untuk situasi pra-litigasi.
+# --- Query Rewriter Prompt ---
+# Translates casual/emotional user input into a precise legal search query
+QUERY_REWRITER_PROMPT = """Kamu adalah ahli hukum Indonesia. Tugasmu adalah menerjemahkan pertanyaan dari orang awam menjadi query pencarian hukum yang presisi.
 
-ATURAN KETAT:
-1. Jawab dalam Bahasa Indonesia yang sederhana dan mudah dipahami oleh masyarakat awam.
-2. Gunakan HANYA informasi dari konteks pasal yang diberikan di bawah. Jangan mengarang informasi hukum di luar konteks.
-3. Jika ada dua versi UU (lama vs baru, misal KUHP Lama dan KUHP Baru), jelaskan perbedaannya dan sebutkan mana yang berlaku saat ini.
-4. Selalu sebutkan pasal-pasal yang relevan dalam jawabanmu.
-5. Gunakan format yang rapi: poin-poin bernomor untuk langkah-langkah, bold untuk istilah penting.
-6. Jika konteks tidak cukup untuk menjawab pertanyaan, katakan dengan jujur bahwa kamu tidak menemukan pasal yang relevan.
+ATURAN:
+1. Ubah bahasa sehari-hari/emosional menjadi istilah hukum yang tepat.
+2. Jika ada riwayat percakapan, GABUNGKAN konteks dari pesan sebelumnya.
+3. Hasilkan HANYA query pencarian (1-2 kalimat), tanpa penjelasan.
+4. Sertakan istilah hukum Indonesia yang relevan (misal: "tindak pidana", "perlindungan saksi", "hak korban").
+5. Jika user berbicara tentang ketakutan/keraguan melapor, arahkan ke "perlindungan saksi dan korban" atau "hak korban dalam proses hukum".
+
+CONTOH:
+- User: "tapi saya takut melapor..." (konteks: kekerasan seksual)
+  → "perlindungan korban kekerasan seksual hak pelapor jaminan kerahasiaan identitas UU TPKS"
+- User: "tetangga saya ribut terus tiap malam"
+  → "tindak pidana kebisingan gangguan ketertiban umum tetangga"
+- User: "bos saya tidak bayar gaji 3 bulan"
+  → "pelanggaran pembayaran upah ketenagakerjaan hak pekerja PHK sepihak"
+"""
+
+# --- Main System Prompt ---
+SYSTEM_PROMPT = """Kamu adalah "Kia", konsultan hukum virtual LangkahLegal yang hangat, empatik, dan profesional.
+Tugasmu memberikan P3K Hukum (Pertolongan Pertama pada Permasalahan Hukum) untuk masyarakat awam.
+
+KEPRIBADIAN:
+- Bicara seperti konsultan yang ramah, BUKAN robot yang membacakan pasal.
+- Validasi perasaan pengguna terlebih dahulu sebelum membahas hukum.
+- Gunakan bahasa sehari-hari yang mudah dipahami, jelaskan istilah hukum jika muncul.
+- Berikan rasa aman dan dukungan — pengguna mungkin sedang dalam situasi sulit.
+
+ATURAN MENJAWAB:
+1. Jika pengguna menceritakan pengalaman traumatis/sulit, MULAI dengan validasi emosi:
+   "Saya turut prihatin mendengar apa yang Anda alami..." atau "Perasaan takut Anda sangat wajar..."
+2. Jawab dalam Bahasa Indonesia yang sederhana dan mudah dipahami.
+3. Gunakan informasi dari konteks pasal yang diberikan, tapi JANGAN membacakan pasal secara mentah — jelaskan maknanya.
+4. Jika konteks pasal kurang relevan tapi kamu tahu topik umumnya, berikan panduan umum lalu sarankan konsultasi lanjutan.
+5. Selalu sebutkan dasar hukum yang relevan (nama UU dan pasal), tapi sebagai referensi pendukung bukan inti jawaban.
+6. Gunakan poin-poin bernomor untuk langkah-langkah konkret.
 7. Jangan pernah memberikan nasihat untuk melakukan tindakan ilegal.
-8. Ingatkan pengguna bahwa ini bukan nasihat hukum resmi di akhir jawaban.
+8. Akhiri dengan saran langkah selanjutnya yang KONKRET dan BISA DILAKUKAN.
 
 FORMAT JAWABAN:
-- Mulai dengan ringkasan singkat (1-2 kalimat).
-- Lanjutkan dengan penjelasan detail menggunakan konteks pasal.
-- Akhiri dengan saran langkah selanjutnya jika relevan.
+- Respons empatik (1-2 kalimat, jika topik sensitif)
+- Ringkasan situasi hukum (1-2 kalimat)
+- Langkah-langkah konkret (poin bernomor)
+- Informasi kontak/resource jika relevan
+- Saran untuk konsultasi lebih lanjut
+
+YANG TIDAK BOLEH DILAKUKAN:
+- Jangan menyebutkan "Sumber 1", "Sumber 2", dll — itu internal.
+- Jangan bilang "berdasarkan konteks pasal yang diberikan" — itu terasa seperti robot.
+- Jangan bilang "cukup jelas" jika sebuah pasal hanya bertuliskan itu — skip dan fokus pasal lain.
+- Jangan memperkenalkan diri di setiap jawaban — cukup di pesan pertama saja.
 """
 
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
-NO_RESULTS_MSG = "Maaf, saya tidak menemukan pasal yang relevan dengan pertanyaan Anda. Silakan coba dengan pertanyaan yang lebih spesifik, atau konsultasikan langsung dengan advokat."
+NO_RESULTS_MSG = (
+    "Saya memahami kekhawatiran Anda. Sayangnya, saya belum menemukan pasal yang secara spesifik "
+    "membahas hal ini dalam database kami. Namun, saya sangat menyarankan Anda untuk:\n\n"
+    "1. **Menghubungi LBH (Lembaga Bantuan Hukum)** terdekat untuk konsultasi gratis\n"
+    "2. **Hubungi hotline bantuan hukum**: 021-3145508 (YLBHI)\n"
+    "3. **Konsultasi dengan advokat** melalui fitur konsultasi di LangkahLegal\n\n"
+    "Anda tidak sendirian, dan ada banyak pihak yang siap membantu."
+)
 
 # ============================================================
 # CORE FUNCTIONS
@@ -63,6 +107,54 @@ def _get_gemini_client() -> genai.Client:
     """Initialize Google GenAI client with API key."""
     settings = get_settings()
     return genai.Client(api_key=settings.google_api_key)
+
+
+def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
+    """
+    Use Gemini to translate a casual/emotional user query into a precise 
+    legal search query, incorporating conversation history for context.
+    
+    Example:
+      raw: "tapi saya takut melapor..."
+      history: [{"role":"user","text":"ingin melaporkan kekerasan seksual"}]
+      → "perlindungan korban kekerasan seksual hak pelapor jaminan kerahasiaan UU TPKS"
+    """
+    client = _get_gemini_client()
+    
+    # Build conversation context
+    history_text = ""
+    if chat_history:
+        recent = chat_history[-6:]  # Last 3 turns (user+ai pairs)
+        history_parts = []
+        for msg in recent:
+            role_label = "User" if msg.get("role") == "user" else "Kia"
+            history_parts.append(f"{role_label}: {msg.get('text', '')[:300]}")
+        history_text = "\n".join(history_parts)
+    
+    prompt = f"""RIWAYAT PERCAKAPAN:
+{history_text if history_text else "(Tidak ada riwayat)"}
+
+PESAN TERBARU USER:
+{raw_query}
+
+Tuliskan query pencarian hukum yang optimal untuk menemukan pasal relevan:"""
+
+    try:
+        response = client.models.generate_content(
+            model=LLM_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=QUERY_REWRITER_PROMPT,
+                temperature=0.1,
+                max_output_tokens=150,
+            ),
+        )
+        rewritten = response.text.strip().strip('"').strip("'")
+        log.info(f"[RAG] Query rewritten: '{raw_query[:50]}...' → '{rewritten[:80]}...'")
+        return rewritten
+    except Exception as e:
+        log.warning(f"[RAG] Query rewrite failed, using original: {e}")
+        return raw_query
 
 
 def embed_query(query: str) -> list[float]:
@@ -132,24 +224,34 @@ def _build_references(pasals: list[dict]) -> list[dict]:
     return refs
 
 
-def generate_answer(query: str, context: str) -> str:
-    """Call Gemini to generate an answer based on the retrieved context."""
+def generate_answer(query: str, context: str, chat_history: list[dict] = None) -> str:
+    """Call Gemini to generate an answer based on the retrieved context and chat history."""
     client = _get_gemini_client()
     
-    user_prompt = f"""PERTANYAAN PENGGUNA:
+    # Build conversation history for context
+    history_text = ""
+    if chat_history:
+        recent = chat_history[-6:]
+        history_parts = []
+        for msg in recent:
+            role_label = "User" if msg.get("role") == "user" else "Kia"
+            history_parts.append(f"{role_label}: {msg.get('text', '')[:500]}")
+        history_text = "RIWAYAT PERCAKAPAN:\n" + "\n".join(history_parts) + "\n\n"
+    
+    user_prompt = f"""{history_text}PESAN TERBARU USER:
 {query}
 
 KONTEKS PASAL HUKUM YANG RELEVAN:
-{context}
+{context if context else "(Tidak ada pasal yang ditemukan)"}
 
-Berdasarkan konteks pasal di atas, jawab pertanyaan pengguna dengan bahasa yang mudah dipahami."""
+Jawab pesan user dengan gaya konsultan hukum yang empatis dan mudah dipahami."""
 
     response = client.models.generate_content(
         model=LLM_MODEL,
         contents=user_prompt,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
-            temperature=0.3,
+            temperature=0.4,
             max_output_tokens=2048,
         ),
     )
@@ -165,22 +267,27 @@ def triage(
     query: str,
     supabase: Client,
     kategori: Optional[str] = None,
+    chat_history: list[dict] = None,
 ) -> dict:
     """
-    Main RAG triage pipeline.
+    Main RAG triage pipeline with query rewriting and conversation memory.
     
-    1. Embed user query
-    2. Retrieve relevant pasals (with retry at lower threshold)
-    3. Generate answer with Gemini
-    4. Return structured response
+    1. Rewrite query using conversation context (casual → legal terms)
+    2. Embed rewritten query
+    3. Retrieve relevant pasals (with retry at lower threshold)
+    4. Generate empathetic answer with Gemini
+    5. Return structured response
     """
-    log.info(f"[RAG] Query: {query[:100]}...")
+    log.info(f"[RAG] Raw query: {query[:100]}...")
     
-    # Step 1: Embed the query
-    query_embedding = embed_query(query)
-    log.info(f"[RAG] Query embedded (dim={len(query_embedding)})")
+    # Step 1: Rewrite query for better retrieval
+    search_query = rewrite_query(query, chat_history)
     
-    # Step 2: Retrieve pasals with primary threshold
+    # Step 2: Embed the rewritten query
+    query_embedding = embed_query(search_query)
+    log.info(f"[RAG] Search query embedded (dim={len(query_embedding)})")
+    
+    # Step 3: Retrieve pasals with primary threshold
     pasals = retrieve_pasals(
         supabase=supabase,
         query_embedding=query_embedding,
@@ -190,7 +297,7 @@ def triage(
     )
     log.info(f"[RAG] Retrieved {len(pasals)} pasals (threshold=0.5)")
     
-    # Step 2b: Retry with lower threshold if < 3 results
+    # Step 3b: Retry with lower threshold if < 3 results
     if len(pasals) < 3:
         log.info("[RAG] Too few results, retrying with threshold=0.35...")
         pasals = retrieve_pasals(
@@ -202,7 +309,7 @@ def triage(
         )
         log.info(f"[RAG] Retry retrieved {len(pasals)} pasals (threshold=0.35)")
     
-    # Step 3: Handle no results
+    # Step 4: Handle no results — still generate empathetic response
     if not pasals:
         return {
             "jawaban": NO_RESULTS_MSG,
@@ -210,9 +317,9 @@ def triage(
             "disclaimer": DISCLAIMER,
         }
     
-    # Step 4: Build context and generate answer
+    # Step 5: Build context and generate answer
     context = _build_context(pasals)
-    jawaban = generate_answer(query, context)
+    jawaban = generate_answer(query, context, chat_history)
     references = _build_references(pasals)
     
     log.info(f"[RAG] Answer generated ({len(jawaban)} chars), {len(references)} refs")

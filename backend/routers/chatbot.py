@@ -23,6 +23,11 @@ router = APIRouter()
 # SCHEMAS
 # ============================================================
 
+class ChatHistoryMessage(BaseModel):
+    role: str = Field(..., description="'user' atau 'ai'")
+    text: str
+
+
 class TriageRequest(BaseModel):
     query: str = Field(
         ...,
@@ -37,13 +42,17 @@ class TriageRequest(BaseModel):
     )
     session_id: Optional[str] = Field(
         None,
-        description="ID sesi untuk tracking percakapan (opsional, untuk penggunaan di masa depan)",
+        description="ID sesi untuk tracking percakapan (opsional)",
+    )
+    chat_history: Optional[list[ChatHistoryMessage]] = Field(
+        None,
+        description="Riwayat percakapan sebelumnya untuk konteks (opsional, max 6 pesan terakhir)",
     )
 
 
 class PasalReference(BaseModel):
-    nama_uu: str
-    nomor_uu: str
+    nama_uu: Optional[str] = ""
+    nomor_uu: Optional[str] = ""
     pasal_bagian: str
     judul_bab: Optional[str] = None
     similarity: float
@@ -85,10 +94,16 @@ async def chatbot_triage(request: TriageRequest):
     try:
         supabase = get_supabase_client()
         
+        # Convert chat history to dicts for the service
+        history = None
+        if request.chat_history:
+            history = [msg.model_dump() for msg in request.chat_history[-6:]]
+        
         result = triage(
             query=request.query,
             supabase=supabase,
             kategori=request.kategori,
+            chat_history=history,
         )
         
         return TriageResponse(**result)
