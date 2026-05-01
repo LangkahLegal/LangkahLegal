@@ -131,7 +131,7 @@ export default function VerificationDetailPage() {
 
               {mapped.bio && (
                 <p className="text-sm text-center italic text-[#aca8c1]">
-                  "{mapped.bio}"
+                  {`"${mapped.bio}"`}
                 </p>
               )}
 
