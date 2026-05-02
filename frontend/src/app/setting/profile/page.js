@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
@@ -12,74 +12,43 @@ import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
 
 export default function EditProfilePage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  // --- 1. State Lokal untuk Form ---
-  const [formData, setFormData] = useState({
-    name: "",
-    nama_lengkap: "",
-    email: "",
-    kota_praktik: "",
-    spesialisasi: "",
-    pengalaman_tahun: "",
-    tarif_per_sesi: "",
-    linkedin: "",
-    portofolio: "",
-    foto_profil: "",
-    bio_singkat: "",
-    deskripsi_lengkap: "",
-    nomor_izin_praktik: "",
-    gelar_akademik: "",
-    pendidikan_terakhir: "",
-  });
-
-  const [portofolioFile, setPortofolioFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
-
-  // --- 2. Deteksi Tema untuk Fallback Avatar ---
-  useEffect(() => {
-    const detectTheme = () => {
-      const htmlClasses = document.documentElement.classList;
-      if (htmlClasses.contains("theme-white-modern"))
-        return "theme-white-modern";
-      if (htmlClasses.contains("theme-cyber-slate")) return "theme-cyber-slate";
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
-
-  // --- 3. Fetch Data Profil ---
   const { data: profile, isLoading: isQueryLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
   });
+  if (isQueryLoading)
+    return (
+      <div className="bg-[#0e0c1e] text-white flex flex-col justify-center items-center h-screen gap-4">
+        <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
+        <p className="animate-pulse text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase">
+          Syncing Profile...
+        </p>
+      </div>
+    );
 
-  // Sync data dari Query ke State Lokal Form
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        name: profile?.nama || "",
-        nama_lengkap: profile?.nama_lengkap || "",
-        email: profile?.email || "",
-        kota_praktik: profile?.kota_praktik || "",
-        spesialisasi: profile?.spesialisasi || "",
-        pengalaman_tahun: profile?.pengalaman_tahun || "",
-        tarif_per_sesi: profile?.tarif_per_sesi || "",
-        linkedin: profile?.linkedin || "",
-        portofolio: profile?.portofolio || "",
-        foto_profil: profile?.foto_profil || "",
-        bio_singkat: profile?.bio_singkat || "",
-        deskripsi_lengkap: profile?.deskripsi_lengkap || "",
-        nomor_izin_praktik: profile?.nomor_izin_praktik || "",
-        gelar_akademik: profile?.gelar_akademik || "",
-        pendidikan_terakhir: profile?.pendidikan_terakhir || "",
-      });
-    }
-  }, [profile]);
+  const initialFormData = buildProfileFormData(profile);
+  const profileKey = getProfileKey(profile);
 
-  // --- 4. Mutation untuk Update Profil ---
+  return (
+    <EditProfileContent
+      key={profileKey}
+      profile={profile}
+      initialFormData={initialFormData}
+    />
+  );
+}
+
+function EditProfileContent({ profile, initialFormData }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // --- 1. State Lokal untuk Form ---
+  const [formData, setFormData] = useState(initialFormData);
+  const [portofolioFile, setPortofolioFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("dark-tech");
+
+  // --- 2. Mutation untuk Update Profil ---
   const updateMutation = useMutation({
     mutationFn: (payload) => userService.updateProfile(payload),
     onSuccess: () => {
@@ -145,20 +114,6 @@ export default function EditProfilePage() {
     updateMutation.mutate(cleanPayload);
   };
 
-  // --- RENDER LOADING STATE (Theme Aware) ---
-  if (isQueryLoading)
-    return (
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-white -> text-main */
-      <div className="bg-bg text-main flex flex-col justify-center items-center h-screen gap-4 transition-colors duration-500">
-        {/* REFACTOR: border-[#ada3ff] -> border-primary */}
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        {/* REFACTOR: text-[#aca8c1] -> text-muted */}
-        <p className="animate-pulse text-muted text-[10px] font-bold tracking-widest uppercase">
-          Syncing Profile...
-        </p>
-      </div>
-    );
-
   return (
     /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
@@ -214,4 +169,28 @@ export default function EditProfilePage() {
       </div>
     </div>
   );
+}
+
+function buildProfileFormData(profile) {
+  return {
+    name: profile?.nama || "",
+    nama_lengkap: profile?.nama_lengkap || "",
+    email: profile?.email || "",
+    kota_praktik: profile?.kota_praktik || "",
+    spesialisasi: profile?.spesialisasi || "",
+    pengalaman_tahun: profile?.pengalaman_tahun || "",
+    tarif_per_sesi: profile?.tarif_per_sesi || "",
+    linkedin: profile?.linkedin || "",
+    portofolio: profile?.portofolio || "",
+    foto_profil: profile?.foto_profil || "",
+    bio_singkat: profile?.bio_singkat || "",
+    deskripsi_lengkap: profile?.deskripsi_lengkap || "",
+    nomor_izin_praktik: profile?.nomor_izin_praktik || "",
+    gelar_akademik: profile?.gelar_akademik || "",
+    pendidikan_terakhir: profile?.pendidikan_terakhir || "",
+  };
+}
+
+function getProfileKey(profile) {
+  return profile?.id_user || profile?.email || profile?.nama || "profile";
 }

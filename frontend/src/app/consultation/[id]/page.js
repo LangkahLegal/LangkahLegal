@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 // Layout & UI
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
-import { MaterialIcon } from "@/components/ui";
 import ClientCard from "@/components/request/ClientCard";
 import InfoGrid from "@/components/request/InfoGrid";
 import CaseDescription from "@/components/request/CaseDescription";
@@ -18,15 +17,31 @@ import ZoomLinkCard from "@/components/consultation/ZoomLinkCard";
 // Services
 import { consultationService } from "@/services/consultation.service";
 
+const getUserRoleSnapshot = () => {
+  if (typeof window === "undefined") return "client";
+  return localStorage.getItem("userRole") || "client";
+};
+
+const getUserRoleServerSnapshot = () => "client";
+
+const subscribeToUserRole = (callback) => {
+  if (typeof window === "undefined") return () => {};
+  const handleStorage = (event) => {
+    if (!event || event.key === "userRole") {
+      callback();
+    }
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+};
+
 export default function ConsultationDetail() {
   const { id } = useParams();
-  const router = useRouter();
-  const [userRole, setUserRole] = useState("");
-
-  useEffect(() => {
-    const role = localStorage.getItem("userRole") || "client";
-    setUserRole(role);
-  }, []);
+  const userRole = useSyncExternalStore(
+    subscribeToUserRole,
+    getUserRoleSnapshot,
+    getUserRoleServerSnapshot,
+  );
 
   // --- 1. FETCH DATA DETAIL (TanStack Query) ---
   const {

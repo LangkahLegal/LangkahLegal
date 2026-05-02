@@ -5,6 +5,8 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
 
 export default function ZoomLinkCard({ link, status, role = "klien" }) {
+  const [copied, setCopied] = useState(false);
+
   // 1. FILTER STATUS
   const allowedStatuses = ["terjadwal", "selesai"];
   if (!allowedStatuses.includes(status)) {
@@ -12,8 +14,6 @@ export default function ZoomLinkCard({ link, status, role = "klien" }) {
   }
 
   // 2. STATE & HANDLER
-  const [copied, setCopied] = useState(false);
-
   const handleCopyLink = async () => {
     if (!link || !navigator.clipboard) return;
     try {
