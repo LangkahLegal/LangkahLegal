@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Script from "next/script";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 // Layout & UI
 import Sidebar from "@/components/layout/Sidebar";
@@ -26,18 +26,6 @@ export default function PaymentPage() {
   const { id } = useParams();
   const router = useRouter();
   const [isPaid, setIsPaid] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
-
-  // --- 1. CONFIG & THEME DETECTION ---
-  useEffect(() => {
-    const detectTheme = () => {
-      const htmlClasses = document.documentElement.classList;
-      if (htmlClasses.contains("theme-white-modern"))
-        return "theme-white-modern";
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
 
   const midtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
   const midtransScriptUrl =

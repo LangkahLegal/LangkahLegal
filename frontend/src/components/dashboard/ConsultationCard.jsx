@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function ConsultationCard({
   data,
@@ -12,19 +13,9 @@ export default function ConsultationCard({
   role = "client",
 }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
   const router = useRouter();
-
-  // --- 1. THEME DETECTION FOR FALLBACK URL ---
-  useEffect(() => {
-    const detectTheme = () => {
-      const htmlClasses = document.documentElement.classList;
-      if (htmlClasses.contains("theme-white-modern"))
-        return "theme-white-modern";
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
 
   const themeColors = {
     "dark-tech": { bg: "1f1d35", color: "ada3ff" },

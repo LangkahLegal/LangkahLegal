@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, cases, consultations, consultants, users, payments, chatbot
+from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin
 from dependencies import get_current_user
 
 # Mengambil fungsi dari file yang sudah ada
