@@ -1,4 +1,8 @@
-import { MaterialIcon } from "@/components/ui";
+"use client";
+
+import React from "react";
+import { MaterialIcon } from "@/components/ui/Icons";
+import { Button } from "@/components/ui/Button";
 
 export default function LiveSessionCard({
   clientName,
@@ -7,43 +11,68 @@ export default function LiveSessionCard({
   avatar,
 }) {
   return (
-    <div className="glass-card bg-input border border-primary/30 p-6 rounded-[2.5rem] space-y-6 relative overflow-hidden group">
+    <div className="bg-input border border-primary/20 p-6 rounded-[2.5rem] space-y-6 relative overflow-hidden group shadow-soft transition-all duration-300 hover:border-primary/40">
+      {/* Header: Badge LIVE & More Menu */}
       <div className="flex justify-between items-center relative z-10">
-        <div className="px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 flex items-center gap-2">
+        <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs font-bold text-primary-light tracking-widest">
+          <span className="text-[10px] font-black text-primary-light tracking-[0.2em] uppercase">
             LIVE
           </span>
         </div>
-        <MaterialIcon name="more_vert" className="text-muted cursor-pointer" />
+        <MaterialIcon
+          name="more_vert"
+          className="text-muted cursor-pointer hover:text-main transition-colors"
+        />
       </div>
 
+      {/* Main Info */}
       <div className="space-y-4 relative z-10">
-        <h3 className="text-lg font-headline font-bold text-main">
+        <h3 className="text-lg font-headline font-black text-main">
           Konsultasi Berlangsung
         </h3>
-        <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 border border-white/5 group-hover:bg-white/10 transition-colors">
+
+        {/* Detail Client Card: Menggunakan bg-surface agar solid & theme-aware */}
+        <div className="bg-surface rounded-2xl p-4 flex items-center gap-4 border border-surface group-hover:bg-primary/5 transition-colors duration-300">
           <img
-            src={avatar || "/api/placeholder/48/48"}
-            className="w-12 h-12 rounded-xl object-cover"
+            src={
+              avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName)}&background=random`
+            }
+            className="w-12 h-12 rounded-xl object-cover border border-surface"
             alt="client"
           />
-          <div>
-            <h4 className="font-bold text-main text-sm">{clientName}</h4>
-            <p className="text-xs text-muted">{caseType}</p>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-bold text-main text-sm truncate">
+              {clientName}
+            </h4>
+            <p className="text-xs text-muted truncate font-medium">
+              {caseType}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-between items-center relative z-10">
-        <div className="flex items-center gap-2 text-muted">
+      {/* Footer Actions */}
+      <div className="flex justify-between items-center relative z-10 gap-4">
+        <div className="flex items-center gap-2 text-muted shrink-0">
           <MaterialIcon name="calendar_today" className="text-sm" />
-          <span className="text-xs font-medium">{time}</span>
+          <span className="text-xs font-bold tracking-tight">{time}</span>
         </div>
-        {/* Tombol dimapping ke primary, teks ke dark sesuai konvensi btn-primary */}
-        <button className="bg-primary text-dark px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/40 hover:brightness-110 active:scale-95 transition-all">
+
+        {/* Menggunakan Komponen Button Primary Anda */}
+        <Button
+          variant="primary"
+          className="!px-6 !py-3 !text-sm !rounded-xl shadow-soft flex-1 sm:flex-none"
+          onClick={() => console.log("Sesi Dimulai")}
+        >
           Mulai Sesi
-        </button>
+        </Button>
+      </div>
+
+      {/* Dekorasi Background Halus */}
+      <div className="absolute -bottom-4 -right-4 opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity">
+        <MaterialIcon name="videocam" className="text-8xl text-primary" />
       </div>
     </div>
   );

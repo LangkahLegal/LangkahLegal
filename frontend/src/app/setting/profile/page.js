@@ -46,12 +46,12 @@ function EditProfileContent({ profile, initialFormData }) {
   const [formData, setFormData] = useState(initialFormData);
   const [portofolioFile, setPortofolioFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("dark-tech");
 
   // --- 2. Mutation untuk Update Profil ---
   const updateMutation = useMutation({
     mutationFn: (payload) => userService.updateProfile(payload),
     onSuccess: () => {
-      // Validasi ulang cache agar semua halaman mendapatkan data terbaru
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       router.push("/setting");
     },
@@ -104,7 +104,6 @@ function EditProfileContent({ profile, initialFormData }) {
       portofolio_file: portofolioFile,
     };
 
-    // Bersihkan payload dari field kosong kecuali portofolio yang memang ingin dihapus
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([key, v]) => {
         if (key === "portofolio" && v === "") return true;
@@ -116,21 +115,25 @@ function EditProfileContent({ profile, initialFormData }) {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
       <Sidebar role={userRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Edit Profil" />
 
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8">
+          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
             <div className="relative mb-12">
               <AvatarUpload
                 foto_profil={formData.foto_profil}
-                name={formData.name || formData.nama_lengkap}
+                // Safety: Pastikan name tidak undefined untuk fallback avatar
+                name={formData.name || formData.nama_lengkap || "User"}
                 isUploading={isUploading}
                 onUploadStart={() => setIsUploading(true)}
                 onChange={handlePhotoChange}
+                // Optional: Kirim theme info jika AvatarUpload membutuhkannya secara eksplisit
+                theme={currentTheme}
               />
             </div>
 

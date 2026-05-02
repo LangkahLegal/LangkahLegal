@@ -1,14 +1,13 @@
-export default function LinkedInField({ value, onChange }) {
+export default function LinkedInField({ value, onChange, className = "" }) {
   return (
-    <div className="space-y-2">
-      <label className="form-label">
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <label className="block font-headline text-[11px] font-bold uppercase tracking-[0.12em] text-muted ml-1">
         Link LinkedIn
       </label>
       <div className="relative flex items-center">
-        {/* LinkedIn Icon */}
         <div className="absolute left-4 flex items-center pointer-events-none">
           <svg
-            className="w-5 h-5 text-[#ada3ff]"
+            className="w-5 h-5 text-primary-light"
             fill="currentColor"
             viewBox="0 0 24 24"
           >
@@ -18,11 +17,9 @@ export default function LinkedInField({ value, onChange }) {
         <input
           type="url"
           value={value}
-          // FIX: Cukup teruskan event 'e' ke parent (ProfileForm)
-          // Parent yang akan menangani e.target.value
           onChange={onChange}
           placeholder="https://linkedin.com/in/username"
-          className="w-full bg-white/5 backdrop-blur-md text-[#e8e2fc] border border-[#6D57FC]/20 rounded-xl pl-12 pr-4 py-3.5 outline-none transition-all focus:ring-1 focus:ring-[#6D57FC] focus:border-[#6D57FC]/50 focus:shadow-[0_0_15px_rgba(109,87,252,0.3)] placeholder:text-[#aca8c1]/40"
+          className="w-full font-headline text-sm bg-dark/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-main transition-all duration-200 outline-none focus:border-primary-light focus:bg-[#1f1d35] focus:ring-1 focus:ring-primary-light/20 placeholder:text-muted/30"
         />
       </div>
     </div>

@@ -1,5 +1,12 @@
-import React from "react";
+"use client";
 
+import React from "react";
+import { Button } from "@/components/ui/Button";
+
+/**
+ * CategoryList Component
+ * Refactored to be fully Theme Aware & uses the custom Button component
+ */
 export default function CategoryList({
   categories = [],
   activeCategory,
@@ -7,32 +14,44 @@ export default function CategoryList({
 }) {
   return (
     <section className="w-full space-y-6">
-      <h2 className="text-xl font-headline font-bold text-main px-1">
+      <h2 className="text-xl font-headline font-black text-main px-1 tracking-tight">
         Kategori Hukum
       </h2>
 
-      {/* Container Scroll Horizontal */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-4 -mb-4 custom-scrollbar">
+      {/* Container dengan scroll horizontal halus */}
+      <div className="flex items-center gap-3 overflow-x-auto pb-4 -mb-4 no-scrollbar scroll-smooth px-1">
         {categories.map((category) => {
           const isActive = category.id === activeCategory;
 
           return (
-            <button
+            <Button
               key={category.id}
-              onClick={() => onCategoryChange && onCategoryChange(category.id)}
-              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full border transition-all duration-300 whitespace-nowrap text-sm ${
-                isActive
-                  ? "bg-main/10 text-main font-semibold border-primary-light/50 shadow-lg shadow-primary-light/10"
-                  : "bg-card text-muted border-muted/30 hover:border-primary-light/30"
-              }`}
+              variant={isActive ? "primary" : "secondary"}
+              onClick={() => onCategoryChange?.(category.id)}
+              className={`
+                !px-5 !py-2.5 !rounded-full !text-xs !font-bold border whitespace-nowrap transition-all duration-300
+                ${
+                  isActive
+                    ? "!bg-primary/10 !text-primary !border-primary/40 shadow-soft"
+                    : "!bg-input/50 !text-muted !border-surface hover:!border-primary/30"
+                }
+              `}
             >
-              <div
-                className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                  isActive ? "bg-primary-light animate-pulse" : "bg-muted/50"
-                }`}
+              {/* Dot Indicator: Theme Aware */}
+              <span
+                className={`
+                  w-2 h-2 rounded-full transition-all duration-300
+                  ${
+                    isActive
+                      ? "bg-primary-light animate-pulse scale-110 shadow-[0_0_8px_var(--primary-light)]"
+                      : "bg-muted/30"
+                  }
+                `}
               />
-              {category.label}
-            </button>
+              <span className="tracking-wide uppercase text-[10px]">
+                {category.label}
+              </span>
+            </Button>
           );
         })}
       </div>

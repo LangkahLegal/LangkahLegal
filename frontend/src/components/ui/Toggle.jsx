@@ -1,21 +1,29 @@
 "use client";
 
 import React from "react";
+import { Button } from "./Button";
 
 export function Toggle({ enabled, onChange, className = "" }) {
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       onClick={() => onChange(!enabled)}
-      className={`w-14 h-7 rounded-full transition-all duration-300 flex items-center px-1 flex-shrink-0 outline-none ${
-        enabled ? "bg-primary" : "bg-white/20"
-      } ${className}`.trim()}
+
+      className={`
+        !p-1 !h-7 !w-14 !min-w-[56px] rounded-full transition-all duration-500 border
+        ${enabled ? "bg-primary border-primary" : "bg-surface border-border"} 
+        ${className}
+      `.trim()}
     >
       <div
-        className={`bg-white rounded-full shadow-md transition-transform duration-300 h-5 w-5 min-w-[20px] min-h-[20px] aspect-square flex-shrink-0 ${
-          enabled ? "translate-x-7" : "translate-x-0"
-        }`}
+
+        className={`
+          bg-secondary rounded-full shadow-sm transition-all duration-300
+          h-5 w-5 flex-shrink-0
+          ${enabled ? "translate-x-3.5" : "-translate-x-3.5"}
+        `}
       />
-    </button>
+    </Button>
   );
 }
