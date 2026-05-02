@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function ConsultantHero({
   name = "User",
@@ -11,19 +11,8 @@ export default function ConsultantHero({
   portofolioUrl,
   linkedinUrl,
 }) {
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
-
-  // --- 1. DETEKSI TEMA UNTUK FALLBACK AVATAR ---
-  useEffect(() => {
-    const detectTheme = () => {
-      const htmlClasses = document.documentElement.classList;
-      if (htmlClasses.contains("theme-white-modern"))
-        return "theme-white-modern";
-      if (htmlClasses.contains("theme-cyber-slate")) return "theme-cyber-slate";
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
 
   const themeColors = {
     "dark-tech": { bg: "1f1d35", color: "ada3ff" },

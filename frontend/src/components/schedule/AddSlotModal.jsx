@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button, Dropdown } from "@/components/ui";
 import { MaterialIcon } from "@/components/ui/Icons";
 
@@ -31,23 +31,34 @@ export default function AddSlotModal({
   isNewData = true,
   isBooked = false,
 }) {
+  if (!isOpen) return null;
+
+  return (
+    <AddSlotModalContent
+      key={`${initialStart}-${initialEnd}-${isNewData ? "new" : "edit"}-${isBooked ? "booked" : "free"}`}
+      onClose={onClose}
+      onSave={onSave}
+      initialStart={initialStart}
+      initialEnd={initialEnd}
+      isNewData={isNewData}
+      isBooked={isBooked}
+    />
+  );
+}
+
+function AddSlotModalContent({
+  onClose,
+  onSave,
+  initialStart,
+  initialEnd,
+  isNewData,
+  isBooked,
+}) {
   const [formData, setFormData] = useState({
     start: initialStart,
     end: initialEnd,
     status: "available",
   });
-
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        start: initialStart,
-        end: initialEnd,
-        status: "available",
-      });
-    }
-  }, [isOpen, initialStart, initialEnd]);
-
-  if (!isOpen) return null;
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
