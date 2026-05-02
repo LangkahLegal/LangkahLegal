@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -9,8 +9,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import SuccessView from "@/components/layout/SuccessView";
-import { MaterialIcon } from "@/components/ui/Icons";
 import { Button, FileUpload } from "@/components/ui";
+import { useTheme } from "@/providers/ThemeProvider";
 
 // Services
 import { consultantService } from "@/services/consultant.service";
@@ -36,19 +36,8 @@ export default function ConsultantDetailPage() {
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
-
-  // --- DETEKSI TEMA UNTUK FALLBACK AVATAR ---
-  useEffect(() => {
-    const detectTheme = () => {
-      const htmlClasses = document.documentElement.classList;
-      if (htmlClasses.contains("theme-white-modern"))
-        return "theme-white-modern";
-      if (htmlClasses.contains("theme-cyber-slate")) return "theme-cyber-slate";
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
 
   const themeColors = {
     "dark-tech": { bg: "1f1d35", color: "ada3ff" },

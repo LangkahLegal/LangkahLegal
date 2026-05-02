@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function DashboardHeader({
   userName = "Pengguna",
@@ -11,24 +11,8 @@ export default function DashboardHeader({
   onSettingsClick,
 }) {
   const router = useRouter();
-  const [currentTheme, setCurrentTheme] = useState("dark-tech");
-
-  // --- 1. THEME DETECTION FOR FALLBACK URL ---
-  useEffect(() => {
-    const detectTheme = () => {
-      // Pastikan berjalan di client-side
-      if (typeof window !== "undefined") {
-        const htmlClasses = document.documentElement.classList;
-        if (htmlClasses.contains("theme-white-modern"))
-          return "theme-white-modern";
-        if (htmlClasses.contains("theme-cyber-slate"))
-          return "theme-cyber-slate"; // Antisipasi jika ada tema lain
-        return "dark-tech";
-      }
-      return "dark-tech";
-    };
-    setCurrentTheme(detectTheme());
-  }, []);
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
 
   // Mapping warna hex untuk API ui-avatars
   const themeColors = {
