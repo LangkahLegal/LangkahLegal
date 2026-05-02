@@ -18,6 +18,8 @@ class Settings:
 	midtrans_server_key: str
 	midtrans_client_key: str
 	midtrans_is_production: bool
+	voyage_api_key: str
+	google_api_key: str
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -30,6 +32,8 @@ def get_settings() -> Settings:
 	midtrans_server_key = os.getenv("MIDTRANS_SERVER_KEY", "").strip()
 	midtrans_client_key = os.getenv("MIDTRANS_CLIENT_KEY", "").strip()
 	midtrans_is_production = os.getenv("MIDTRANS_IS_PRODUCTION", "false").strip().lower() == "true"
+	voyage_api_key = os.getenv("VOYAGE_API_KEY", "").strip()
+	google_api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 
 	if not supabase_url or not supabase_key:
 		raise RuntimeError(
@@ -48,4 +52,6 @@ def get_settings() -> Settings:
 		midtrans_server_key=midtrans_server_key,
 		midtrans_client_key=midtrans_client_key,
 		midtrans_is_production=midtrans_is_production,
+		voyage_api_key=voyage_api_key,
+		google_api_key=google_api_key,
 	)

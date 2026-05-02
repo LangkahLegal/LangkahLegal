@@ -6,7 +6,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui";
-import { PasswordField } from "@/components/ui/PasswordField"; // Pastikan path ini sesuai
+import { PasswordField } from "@/components/ui/PasswordField";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -40,20 +40,23 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main | font-primary */
+    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="client" />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Keamanan & Sandi" />
 
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-8">
+          <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
             {/* Header Section */}
             <div className="space-y-3">
-              <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              {/* REFACTOR: text-white -> text-main */}
+              <h2 className="text-3xl font-extrabold text-main tracking-tight transition-colors duration-500">
                 Ubah Kata Sandi
               </h2>
-              <p className="text-sm leading-relaxed text-[#aca8c1]">
+              {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+              <p className="text-sm leading-relaxed text-muted">
                 Pastikan kata sandi Anda kuat dan unik untuk menjaga keamanan
                 akun Anda.
               </p>
@@ -100,7 +103,8 @@ export default function ChangePasswordPage() {
                   fullWidth
                   type="submit"
                   isLoading={isLoading}
-                  className="py-6 rounded-2xl shadow-[0_10px_30px_rgba(111,89,254,0.3)] font-bold"
+                  /* REFACTOR: Shadow menggunakan shadow-primary/20 agar adaptif */
+                  className="py-6 rounded-2xl shadow-lg shadow-primary/20 font-bold"
                 >
                   Simpan Kata Sandi
                 </Button>

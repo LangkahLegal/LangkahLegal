@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const [tempHiddenIds, setTempHiddenIds] = useState([]);
 
-  // --- 1. Fetch Profile (Key ini akan dipakai di Settings Page juga) ---
+  // --- 1. Fetch Profile ---
   const { data: user } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
@@ -27,7 +27,7 @@ export default function DashboardPage() {
     }),
   });
 
-  // --- 2. Fetch Consultations (Key ini akan dipakai di History Page juga) ---
+  // --- 2. Fetch Consultations ---
   const { data: consultations, isLoading } = useQuery({
     queryKey: ["consultations"],
     queryFn: consultationService.getConsultations,
@@ -37,14 +37,13 @@ export default function DashboardPage() {
   const cancelMutation = useMutation({
     mutationFn: (id) => consultationService.updateStatus(id, "dibatalkan"),
     onSuccess: () => {
-      // Invalidate cache agar data ditarik ulang secara otomatis tanpa reload
       queryClient.invalidateQueries({ queryKey: ["consultations"] });
       alert("Konsultasi berhasil dibatalkan.");
     },
     onError: () => alert("Gagal membatalkan konsultasi."),
   });
 
-  // --- 4. Logika Filtering Kartu Aktif (useMemo untuk efisiensi) ---
+  // --- 4. Logika Filtering Kartu Aktif ---
   const activeConsultation = useMemo(() => {
     if (!consultations) return null;
 
@@ -61,9 +60,7 @@ export default function DashboardPage() {
 
     const filtered = consultations
       .filter((item) => allowedStatuses.includes(item.status_pengajuan))
-      // Filter permanen (ditolak)
       .filter((item) => !persistentHidden.includes(Number(item.id_pengajuan)))
-      // Filter sementara (pending/terjadwal yang diklik hapus)
       .filter((item) => !tempHiddenIds.includes(Number(item.id_pengajuan)))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -72,7 +69,6 @@ export default function DashboardPage() {
 
   const handleHideCard = () => {
     if (!activeConsultation) return;
-
     const currentId = Number(activeConsultation.id_pengajuan);
     const currentStatus = activeConsultation.status_pengajuan;
 
@@ -82,7 +78,6 @@ export default function DashboardPage() {
       );
       const updated = [...new Set([...stored, currentId])];
       localStorage.setItem("hidden_rejected_ids", JSON.stringify(updated));
-      // Re-render manual untuk filter lokal
       setTempHiddenIds((prev) => [...prev, currentId]);
     } else {
       setTempHiddenIds((prev) => [...prev, currentId]);
@@ -94,11 +89,14 @@ export default function DashboardPage() {
     cancelMutation.mutate(activeConsultation.id_pengajuan);
   };
 
+  // --- RENDER LOADING STATE (Theme Aware) ---
   if (isLoading) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center text-[#ada3ff]">
+      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#ada3ff] -> text-primary-light */
+      <div className="bg-bg min-h-screen flex items-center justify-center text-primary-light transition-colors duration-500">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
+          {/* REFACTOR: border-[#ada3ff] -> border-primary */}
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="animate-pulse font-bold text-[10px] tracking-widest uppercase">
             Synchronizing Dashboard...
           </p>
@@ -115,7 +113,8 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
       <Sidebar />
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <header className="sticky top-0 z-40 w-full">
@@ -126,7 +125,7 @@ export default function DashboardPage() {
         </header>
 
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12 animate-fade-in">
             <div className="w-full">
               {activeConsultation ? (
                 <ConsultationCard

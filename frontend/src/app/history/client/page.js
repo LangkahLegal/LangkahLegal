@@ -8,12 +8,11 @@ import PageHeader from "@/components/layout/PageHeader";
 
 // Import Komponen
 import HistoryStats from "@/components/history/HistoryStats";
-import ConsultationCard from "@/components/dashboard/ConsultationCard"; // Pakai komponen Dashboard
+import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { consultationService } from "@/services/consultation.service";
 
 export default function HistoryPage() {
   // --- 1. Fetch Data via TanStack Query ---
-  // Menggunakan key yang sama ["consultations"] agar mengambil dari cache dashboard
   const { data: consultations, isLoading } = useQuery({
     queryKey: ["history", "client"],
     queryFn: consultationService.getConsultations,
@@ -21,39 +20,38 @@ export default function HistoryPage() {
 
   // --- 2. Logic Data (Sorting & Stats) ---
   const { sortedHistory, completedCount } = useMemo(() => {
-    if (!consultations) return { sortedHistory: [], completedCount: 0 };
+    // Pastikan consultations tidak undefined sebelum diproses
+    const data = consultations || [];
 
-    // Sortir: Terjadwal & Pending di atas, sisanya berdasarkan waktu terbaru
-    const sorted = [...consultations].sort((a, b) => {
+    const sorted = [...data].sort((a, b) => {
       const priority = ["terjadwal", "pending", "menunggu_pembayaran"];
       const aPriority = priority.indexOf(a.status_pengajuan);
       const bPriority = priority.indexOf(b.status_pengajuan);
 
-      // Jika salah satu punya prioritas (index != -1)
       if (aPriority !== bPriority) {
         if (aPriority === -1) return 1;
         if (bPriority === -1) return -1;
         return aPriority - bPriority;
       }
 
-      // Default sort berdasarkan tanggal terbaru
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    const count = consultations.filter(
-      (i) => i.status_pengajuan === "selesai",
-    ).length;
+    const count = data.filter((i) => i.status_pengajuan === "selesai").length;
 
     return { sortedHistory: sorted, completedCount: count };
   }, [consultations]);
 
-  // --- 3. Loading State ---
+  // --- 3. Loading State (Theme Aware) ---
   if (isLoading) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+      /* REFACTOR: bg-[#0e0c1e] -> bg-bg */
+      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-[#6f59fe] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase animate-pulse">
+          {/* REFACTOR: border-[#6f59fe] -> border-primary */}
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          {/* REFACTOR: text-[#aca8c1] -> text-muted */}
+          <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
             Memuat Riwayat...
           </p>
         </div>
@@ -62,20 +60,22 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    /* REFACTOR: bg-bg | text-main | font-primary */
+    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="client" />
 
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 transition-all duration-300">
         <PageHeader title="Riwayat Konsultasi" />
 
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth">
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
             {/* Stats Section */}
             <HistoryStats count={completedCount} />
 
             {/* List Section */}
             <div className="space-y-6">
-              <h3 className="text-xs font-bold text-[#aca8c1] uppercase tracking-[0.2em] ml-2">
+              {/* REFACTOR: text-muted */}
+              <h3 className="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2">
                 Daftar Aktivitas
               </h3>
 
@@ -85,16 +85,16 @@ export default function HistoryPage() {
                     <ConsultationCard
                       key={item.id_pengajuan}
                       data={item}
-                      // Di halaman riwayat, fitur Hide biasanya tidak diperlukan
-                      // agar user tetap bisa melihat semua record
                       onHide={() => {}}
-                      onCancel={() => {}} // Fungsi cancel bisa ditambahkan jika status masih pending
+                      onCancel={() => {}}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 bg-[#1f1d35]/30 rounded-[2rem] border border-white/5">
-                  <p className="text-[#aca8c1] text-sm">
+                /* REFACTOR: bg-card/30 | border-surface */
+                <div className="text-center py-20 bg-card/30 rounded-[2rem] border border-surface border-dashed">
+                  {/* REFACTOR: text-muted */}
+                  <p className="text-muted text-sm font-medium">
                     Belum ada riwayat konsultasi.
                   </p>
                 </div>

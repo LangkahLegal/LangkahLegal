@@ -8,6 +8,8 @@ import ChatMessage from "@/components/ai/ChatMessage";
 import ChatInput from "@/components/ai/ChatInput";
 import { MaterialIcon } from "@/components/ui/Icons";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 export default function TanyaAIPage() {
   const scrollRef = useRef(null);
   const [input, setInput] = useState("");
@@ -16,10 +18,12 @@ export default function TanyaAIPage() {
     {
       id: 1,
       role: "ai",
-      text: "Halo! Saya Kia, asisten hukum pintar Anda. Ada yang bisa saya bantu hari ini?",
-      time: "10:00 AM",
+      text: "Halo! Saya Kia, asisten hukum pintar Anda. Tanyakan apa saja tentang hukum Indonesia — saya akan bantu cari pasal yang relevan dan jelaskan dengan bahasa yang mudah dipahami. 💡",
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     },
-    // ... data mock lainnya
   ]);
 
   useEffect(() => {
@@ -28,13 +32,14 @@ export default function TanyaAIPage() {
     }
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
 
+    const userQuery = input.trim();
     const userMsg = {
       id: Date.now(),
       role: "user",
-      text: input,
+      text: userQuery,
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -45,32 +50,72 @@ export default function TanyaAIPage() {
     setInput("");
     setIsTyping(true);
 
-    // Simulasi respons AI
-    setTimeout(() => {
+    try {
+      // Build chat history from previous messages (last 6, excluding system/initial)
+      const recentHistory = messages
+        .filter((m) => m.id !== 1) // exclude initial greeting
+        .slice(-6)
+        .map((m) => ({
+          role: m.role === "ai" ? "ai" : "user",
+          text: m.text.slice(0, 500), // truncate for payload size
+        }));
+
+      const response = await fetch(`${BACKEND_URL}/api/v1/chatbot/triage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userQuery,
+          kategori: null,
+          session_id: null,
+          chat_history: recentHistory.length > 0 ? recentHistory : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
       const aiMsg = {
         id: Date.now() + 1,
         role: "ai",
-        text: "Terima kasih. Berdasarkan hukum di Indonesia, pendaftaran HAKI dapat dilakukan melalui Dirjen KI.",
+        text: data.jawaban,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        pasal_referensi: data.pasal_referensi || [],
+        disclaimer: data.disclaimer || "",
       };
+
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (error) {
+      console.error("Chatbot error:", error);
+
+      const errorMsg = {
+        id: Date.now() + 1,
+        role: "ai",
+        text: "Maaf, terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi dalam beberapa saat.",
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] h-screen flex overflow-hidden font-['Inter',sans-serif]">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500">
       <Sidebar />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
-        <ChatHeader
-          name="Visi"
-          avatarUrl="/images/visi.png" 
-          status="Online"
-        />
+        <ChatHeader name="Kia" avatarUrl="/images/visi.png" status="Online" />
 
         <main
           ref={scrollRef}
@@ -83,16 +128,20 @@ export default function TanyaAIPage() {
 
             {isTyping && (
               <div className="flex justify-start items-center gap-3 animate-pulse">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[#1f1d35] flex items-center justify-center border border-white/10 shrink-0">
+                {/* REFACTOR: bg-[#1f1d35] -> bg-input | border-white/10 -> border-surface */}
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-input flex items-center justify-center border border-surface shrink-0 shadow-soft">
+                  {/* REFACTOR: text-[#ada3ff] -> text-primary-light */}
                   <MaterialIcon
                     name="smart_toy"
-                    className="text-[#ada3ff] text-sm"
+                    className="text-primary-light text-sm"
                   />
                 </div>
-                <div className="bg-[#e8e2fc]/10 px-6 py-4 rounded-full flex gap-1.5 items-center">
-                  <div className="w-1.5 h-1.5 bg-[#ada3ff] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-[#ada3ff] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1.5 h-1.5 bg-[#ada3ff] rounded-full animate-bounce"></div>
+                {/* REFACTOR: bg-[#e8e2fc]/10 -> bg-main/10 */}
+                <div className="bg-main/10 px-6 py-4 rounded-full flex gap-1.5 items-center border border-surface">
+                  {/* REFACTOR: bg-[#ada3ff] -> bg-primary-light */}
+                  <div className="w-1.5 h-1.5 bg-primary-light rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary-light rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary-light rounded-full animate-bounce"></div>
                 </div>
               </div>
             )}
