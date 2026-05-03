@@ -21,7 +21,8 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "tanstack": "^2.0.3"
+    "tanstack": "^2.0.3",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

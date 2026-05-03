@@ -1,6 +1,7 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import AIConsultantCard from "./AIConsultantCard";
 
 export default function ChatMessage({ message }) {
   const isAI = message.role === "ai";
@@ -49,6 +50,20 @@ export default function ChatMessage({ message }) {
               >
                 {message.text}
               </ReactMarkdown>
+
+              {/* Agentic Output: Render Consultants if tool was called */}
+              {message.type === "consultant_list" && message.consultants && message.consultants.length > 0 && (
+                <div className="mt-6 space-y-3 pt-4 border-t border-surface/50">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary-light mb-4">
+                    Rekomendasi Konsultan:
+                  </p>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    {message.consultants.map((c) => (
+                      <AIConsultantCard key={c.id_konsultan} consultant={c} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="whitespace-pre-line">{message.text}</p>
