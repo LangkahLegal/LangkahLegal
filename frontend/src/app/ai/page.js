@@ -18,7 +18,7 @@ export default function TanyaAIPage() {
     {
       id: 1,
       role: "ai",
-      text: "Halo! Saya Kia, asisten hukum pintar Anda. Tanyakan apa saja tentang hukum Indonesia — saya akan bantu cari pasal yang relevan dan jelaskan dengan bahasa yang mudah dipahami. 💡",
+      text: "Halo! Saya Kia, asisten hukum pintar Anda. Saat ini saya telah mempelajari ribuan dokumen hukum dan dapat membantu Anda dalam topik berikut:\n\n- **Hukum Pidana:** KUHP, KUHAP, UU Narkotika, UU Antikorupsi, UU Pencucian Uang (TPPU), dll.\n- **Hukum Perdata:** KUH Perdata, UU Perkawinan, Kompilasi Hukum Islam (KHI), UU Pokok Agraria, UU Perlindungan Konsumen, dll.\n- **Ketenagakerjaan:** UU Ketenagakerjaan, UU Cipta Kerja, Aturan BPJS, Panduan Pesangon & PHK, dll.\n- **Teknologi Informasi:** UU ITE, UU Perlindungan Data Pribadi (PDP), UU Pers.\n- **Hak Asasi Manusia:** UU TPKS (Kekerasan Seksual), UU PKDRT, UU Perlindungan Anak, dll.\n- **Hukum Umum:** UU Advokat, UU Bantuan Hukum, UU Kepolisian, Pelayanan Publik, dll.\n\nCeritakan masalah yang Anda hadapi secara detail, dan saya akan carikan pasal yang relevan serta menjelaskannya dengan bahasa yang mudah dipahami! 💡",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",

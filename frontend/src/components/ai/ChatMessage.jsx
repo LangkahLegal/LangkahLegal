@@ -1,4 +1,6 @@
 import { MaterialIcon } from "@/components/ui/Icons";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function ChatMessage({ message }) {
   const isAI = message.role === "ai";
@@ -28,7 +30,29 @@ export default function ChatMessage({ message }) {
                 "bg-surface text-main rounded-bl-none font-medium border border-surface"
           }`}
         >
-          <p className="whitespace-pre-line">{message.text}</p>
+          {isAI ? (
+            <div className="markdown-content">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ node, ...props }) => <p className="mb-3 last:mb-0 whitespace-pre-wrap" {...props} />,
+                  ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 last:mb-0 space-y-1" {...props} />,
+                  ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 last:mb-0 space-y-1" {...props} />,
+                  li: ({ node, ...props }) => <li className="" {...props} />,
+                  strong: ({ node, ...props }) => <strong className="font-bold text-inherit" {...props} />,
+                  em: ({ node, ...props }) => <em className="italic" {...props} />,
+                  a: ({ node, ...props }) => <a className="text-primary-light hover:underline" {...props} />,
+                  h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2 mt-4" {...props} />,
+                  h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2 mt-4" {...props} />,
+                  h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-2 mt-3" {...props} />,
+                }}
+              >
+                {message.text}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="whitespace-pre-line">{message.text}</p>
+          )}
         </div>
 
         {/* Pasal References — only shown for AI messages with citations */}
