@@ -30,81 +30,15 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# ============================================================
-# SCHEMAS
-# ============================================================
-
-# --- Session ---
-class CreateSessionRequest(BaseModel):
-    title: Optional[str] = Field(
-        "Sesi Konsultasi Baru",
-        max_length=100,
-        description="Judul sesi (opsional, bisa di-auto-generate dari pesan pertama)",
-    )
-
-
-class SessionResponse(BaseModel):
-    id: str
-    title: str
-    created_at: str
-    updated_at: str
-
-
-class SessionListResponse(BaseModel):
-    sessions: list[SessionResponse]
-
-
-# --- Messages ---
-class MessageResponse(BaseModel):
-    id: str
-    session_id: str
-    role: str
-    content: str
-    metadata: Optional[dict] = None
-    created_at: str
-
-
-class MessageListResponse(BaseModel):
-    messages: list[MessageResponse]
-
-
-# --- Triage ---
-class TriageRequest(BaseModel):
-    query: str = Field(
-        ...,
-        min_length=3,
-        max_length=2000,
-        description="Pertanyaan hukum dari pengguna",
-        examples=["Apa hukuman untuk pencurian?"],
-    )
-    session_id: Optional[str] = Field(
-        None,
-        description="ID sesi. Jika null, backend akan membuat sesi baru secara otomatis.",
-    )
-    kategori: Optional[str] = Field(
-        None,
-        description="Filter kategori hukum (opsional)",
-    )
-
-
-class PasalReference(BaseModel):
-    nama_uu: Optional[str] = ""
-    nomor_uu: Optional[str] = ""
-    pasal_bagian: str
-    judul_bab: Optional[str] = None
-    similarity: float
-
-
-class TriageResponse(BaseModel):
-    session_id: str
-    jawaban: str
-    pasal_referensi: list[PasalReference]
-    disclaimer: str
-
-
-# ============================================================
-# HELPER: Get chat history from DB
-# ============================================================
+from schemas.chatbot import (
+    CreateSessionRequest,
+    SessionResponse,
+    SessionListResponse,
+    MessageResponse,
+    MessageListResponse,
+    TriageRequest,
+    TriageResponse,
+)
 
 def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 10) -> list[dict]:
     """
@@ -176,11 +110,6 @@ def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> 
             log.info(f"[CHATBOT] Auto-generated title for {session_id}: {title}")
     except Exception as e:
         log.warning(f"[CHATBOT] Failed to auto-generate title: {e}")
-
-
-# ============================================================
-# ENDPOINTS: Session CRUD
-# ============================================================
 
 @router.post(
     "/sessions",
@@ -272,14 +201,10 @@ async def delete_session(
     )
     
     if not check.data:
-        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan.")
+        raise HTTPException(status_code=404, detail=f"Sesi dengan ID {session_id} tidak ditemukan atau Anda tidak memiliki akses.")
     
     supabase.table("chat_sessions").delete().eq("id", session_id).execute()
 
-
-# ============================================================
-# ENDPOINTS: Messages
-# ============================================================
 
 @router.get(
     "/sessions/{session_id}/messages",
@@ -327,11 +252,6 @@ async def get_session_messages(
     
     return MessageListResponse(messages=messages)
 
-
-# ============================================================
-# ENDPOINT: Triage (RAG Pipeline + Persistence)
-# ============================================================
-
 @router.post(
     "/triage",
     response_model=TriageResponse,
@@ -364,9 +284,7 @@ async def chatbot_triage(
         session_id = request.session_id
         is_new_session = False
         
-        # Step 1: Resolve session
         if not session_id:
-            # Create a new session automatically
             session_result = (
                 supabase.table("chat_sessions")
                 .insert({
@@ -379,7 +297,6 @@ async def chatbot_triage(
             is_new_session = True
             log.info(f"[CHATBOT] Auto-created session: {session_id}")
         else:
-            # Verify ownership of existing session
             check = (
                 supabase.table("chat_sessions")
                 .select("id")
@@ -390,7 +307,6 @@ async def chatbot_triage(
             if not check.data:
                 raise HTTPException(status_code=404, detail="Sesi tidak ditemukan.")
             
-            # Check if this is the first message (for title auto-gen)
             msg_count = (
                 supabase.table("chat_messages")
                 .select("id", count="exact")
@@ -399,10 +315,8 @@ async def chatbot_triage(
             )
             is_new_session = (msg_count.count or 0) == 0
         
-        # Step 2: Load chat history from DB (NOT from frontend)
         chat_history = _get_chat_history_from_db(supabase, session_id, limit=10)
         
-        # Step 3: Run RAG pipeline
         result = triage(
             query=request.query,
             supabase=supabase,
@@ -410,27 +324,35 @@ async def chatbot_triage(
             chat_history=chat_history,
         )
         
-        # Step 4: Save messages to DB
+        response_type = result.get("type", "text")
+        
         _save_message(supabase, session_id, "user", request.query)
+        
+        ai_metadata = {
+            "type": response_type,
+            "pasal_referensi": result.get("pasal_referensi", []),
+            "disclaimer": result.get("disclaimer", ""),
+        }
+        if response_type == "consultant_list":
+            ai_metadata["consultants"] = result.get("consultants", [])
+        
         _save_message(
             supabase,
             session_id,
             "ai",
             result["jawaban"],
-            metadata={
-                "pasal_referensi": result.get("pasal_referensi", []),
-                "disclaimer": result.get("disclaimer", ""),
-            },
+            metadata=ai_metadata,
         )
         
-        # Step 5: Auto-generate title for first message
         if is_new_session:
             _auto_generate_title(supabase, session_id, request.query)
         
         return TriageResponse(
             session_id=session_id,
+            type=response_type,
             jawaban=result["jawaban"],
             pasal_referensi=result.get("pasal_referensi", []),
+            consultants=result.get("consultants") if response_type == "consultant_list" else None,
             disclaimer=result.get("disclaimer", ""),
         )
         
