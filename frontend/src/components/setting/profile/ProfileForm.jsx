@@ -48,8 +48,8 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
       {/* KHUSUS KONSULTAN */}
       {isConsultant && (
         <>
-          <div className="pt-4 border-t border-white/5">
-            <h3 className="text-[#ada3ff] text-lg font-bold tracking-widest uppercase mb-6">
+          <div className="pt-4 border-t border-surface">
+            <h3 className="text-primary-light text-lg font-bold tracking-widest uppercase mb-6">
               Kredensial Profesional
             </h3>
           </div>
@@ -122,18 +122,18 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
           </div>
 
           <div className="space-y-2">
-            <label className="form-label">Deskripsi Lengkap</label>
+            <label className="block font-headline text-[11px] font-bold uppercase tracking-[0.12em] text-muted ml-1">Deskripsi Lengkap</label>
             <textarea
               rows={5}
               placeholder="Ceritakan pengalaman profesional Anda..."
               value={data.deskripsi_lengkap || ""}
               onChange={(e) => onChange("deskripsi_lengkap", e.target.value)}
-              className="w-full bg-[#1f1d35] border border-[#48455a]/50 rounded-2xl py-4 px-6 text-[#e8e2fc] focus:outline-none focus:border-[#6f59fe] focus:ring-2 focus:ring-[#6f59fe]/20 transition-all duration-300 resize-none"
+              className="w-full font-headline text-sm bg-input border border-surface rounded-xl p-4 text-main placeholder:text-muted/30 transition-all duration-300 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"
             />
           </div>
 
           <div className="space-y-4">
-            <label className="form-label">Portofolio</label>
+            <label className="block font-headline text-[11px] font-bold uppercase tracking-[0.12em] text-muted ml-1">Portofolio</label>
 
             {/* Menampilkan FileItem jika ada file baru atau file yang sudah terupload */}
             {(portofolioFile || data.portofolio) && (

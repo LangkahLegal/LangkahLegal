@@ -15,11 +15,16 @@ export default function Sidebar({ role = "client" }) {
           { label: "Riwayat", icon: "history", path: "/history/consultant" },
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
+      : role === "admin"
+      ? [
+          { label: "Verifikasi", icon: "verified_user", path: "/verification" },
+          { label: "Tanya AI", icon: "psychology", path: "/ai" },
+          { label: "Knowledge", icon: "menu_book", path: "/rag" },
+        ]
       : [
           { label: "Konsultasi", icon: "gavel", path: "/explore" },
           { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Riwayat", icon: "history", path: "/history/client" },
-          { label: "Berkas", icon: "folder", path: "/documents" },
         ];
 
   return (

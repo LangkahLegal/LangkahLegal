@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 import PageHeader from "@/components/layout/PageHeader";
-import ConsultantHero from "@/components/explore/pengajuan/ConsultantHero";
+import VerificationHero from "@/components/verification/VerificationHero";
 import PriceCard from "@/components/explore/pengajuan/PriceCard";
-import SidebarAdmin from "@/components/layout/SidebarAdmin";
-import BottomNavAdmin from "@/components/layout/BottomNavAdmin";
+import Sidebar from "@/components/layout/Sidebar";
+import BottomNav from "@/components/layout/BottomNav";
 import AboutSection from "@/components/explore/pengajuan/AboutSection";
 import InfoCard from "@/components/verification/InfoCard";
 import ActionButtons from "@/components/request/ActionButtons";
@@ -45,10 +45,10 @@ export default function VerificationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center">
+      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#ada3ff] text-[10px] font-bold uppercase animate-pulse">
+          <div className="w-10 h-10 border-4 border-primary-light border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-primary-light text-[10px] font-bold uppercase animate-pulse">
             Memuat Data...
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function VerificationDetailPage() {
 
   if (!consultant) {
     return (
-      <div className="bg-[#0e0c1e] min-h-screen flex items-center justify-center text-white">
+      <div className="bg-bg min-h-screen flex items-center justify-center text-main transition-colors duration-500">
         Data Konsultan Tidak Ditemukan
       </div>
     );
@@ -92,8 +92,8 @@ export default function VerificationDetailPage() {
   };
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex">
-      <SidebarAdmin />
+    <div className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500">
+      <Sidebar role="admin"/>
 
       <div className="flex-1 flex flex-col lg:ml-64">
         <PageHeader title="Detail Verifikasi" backHref="/verification" />
@@ -102,38 +102,16 @@ export default function VerificationDetailPage() {
           <div className="max-w-2xl mx-auto w-full space-y-10">
 
             {/* CONTENT */}
-              <ConsultantHero
-                name={mapped.nama}
+              <VerificationHero
+                name={mapped.nama_lengkap}
                 avatar={mapped.foto}
                 rating={`${mapped.rating} (${mapped.reviews})`}
                 linkedinUrl={mapped.linkedin}
                 portofolioUrl={mapped.portofolio}
+                status={mapped.status}
+                isActive={mapped.aktif}
+                bio={mapped.bio}
               />
-
-              {/* STATUS */}
-              <div className="flex justify-center gap-2">
-                <span className={`px-3 py-1 text-xs rounded-full
-                  ${mapped.status === "terverifikasi"
-                    ? "bg-green-400/10 text-green-400"
-                    : mapped.status === "pending"
-                    ? "bg-yellow-400/10 text-yellow-400"
-                    : "bg-red-400/10 text-red-400"}`}>
-                  {mapped.status}
-                </span>
-
-                <span className={`px-3 py-1 text-xs rounded-full
-                  ${mapped.aktif
-                    ? "bg-blue-400/10 text-blue-400"
-                    : "bg-gray-400/10 text-gray-400"}`}>
-                  {mapped.aktif ? "Aktif" : "Nonaktif"}
-                </span>
-              </div>
-
-              {mapped.bio && (
-                <p className="text-sm text-center italic text-[#aca8c1]">
-                  {`"${mapped.bio}"`}
-                </p>
-              )}
 
               <PriceCard
                 price={
@@ -167,7 +145,7 @@ export default function VerificationDetailPage() {
           </div>
         </main>
 
-        <BottomNavAdmin />
+        <BottomNav role="admin"/>
       </div>
 
       {/* MODAL */}

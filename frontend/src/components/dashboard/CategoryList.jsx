@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
  * Refactored to be fully Theme Aware & uses the custom Button component
  */
 export default function CategoryList({
+  title = "Kategori Hukum",
   categories = [],
   activeCategory,
   onCategoryChange,
@@ -15,7 +16,7 @@ export default function CategoryList({
   return (
     <section className="w-full space-y-6">
       <h2 className="text-xl font-headline font-black text-main px-1 tracking-tight">
-        Kategori Hukum
+        {title}
       </h2>
 
       {/* Container dengan scroll horizontal halus */}
