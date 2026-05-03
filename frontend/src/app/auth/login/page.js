@@ -40,9 +40,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(
-        role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client",
-      );
+      if (role === "admin") {
+        router.push("/dashboard/admin");
+      } else if (role === "konsultan") {
+        router.push("/dashboard/consultant");
+      } else {
+        router.push("/dashboard/client");
+      }
       router.refresh();
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login. Coba lagi.");

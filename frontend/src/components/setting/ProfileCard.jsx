@@ -1,15 +1,25 @@
 "use client";
 
 import React from "react";
-import { MaterialIcon } from "@/components/ui/Icons";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function ProfileCard({ user }) {
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
+  
+  const themeColors = {
+    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
+    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
+  };
+  
+  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
+
   const { name, email, foto_profil, role, status_verifikasi } = user;
 
-  // Fallback URL tetap pakai hex karena API eksternal (UI Avatars) membutuhkannya
+  // Fallback URL pakai hex yang sesuai dengan tema saat ini
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User",
-  )}&background=1f1d35&color=ada3ff&size=128`;
+  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
 
   // HELPER: Warna Status yang Theme-Aware
   const getStatusStyles = (status) => {

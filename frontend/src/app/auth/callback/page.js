@@ -40,9 +40,13 @@ export default function AuthCallbackPage() {
           await authService.updateRole(role);
         }
 
-        router.replace(
-          role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client",
-        );
+        if (role === "admin") {
+          router.replace("/dashboard/admin");
+        } else if (role === "konsultan") {
+          router.replace("/dashboard/consultant");
+        } else {
+          router.replace("/dashboard/client");
+        }
       } catch (err) {
         setError(err?.message || "Gagal memproses login.");
       }

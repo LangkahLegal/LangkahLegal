@@ -129,7 +129,7 @@ export default function SettingPage() {
     >
       <Sidebar role={userRole} />
 
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300 pointer-events-none">
+      <div className="flex-1 flex flex-col relative w-full lg:ml-64 transition-all duration-300 pointer-events-none">
         <div className="pointer-events-auto flex flex-col h-full">
           <PageHeader
             title="Pengaturan"

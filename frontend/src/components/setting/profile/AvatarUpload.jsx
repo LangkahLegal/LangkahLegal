@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function AvatarUpload({
   foto_profil,
@@ -15,10 +16,20 @@ export default function AvatarUpload({
   const inputRef = useRef(null);
   const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
-  // Fallback URL menggunakan variabel warna yang mendekati tema Dark Tech secara default
+  const { theme } = useTheme();
+  const currentTheme = theme || "dark-tech";
+  
+  const themeColors = {
+    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
+    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
+  };
+  
+  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
+
+  // Fallback URL menggunakan variabel warna yang sesuai dengan tema
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User",
-  )}&background=1f1d35&color=ada3ff&size=128`;
+  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];

@@ -44,11 +44,10 @@ export default function HistoryCard({ item, role = "client" }) {
 
   return (
     <div
-      className={`group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 ${
-        isActive
+      className={`group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 ${isActive
           ? "bg-primary/5 border-primary/20 shadow-soft"
           : "bg-card border-surface hover:border-primary/20"
-      } ${isDimmed ? "opacity-60 grayscale-[30%]" : ""}`}
+        } ${isDimmed ? "opacity-60 grayscale-[30%]" : ""}`}
     >
       {/* BAGIAN ATAS: Avatar, Info, & Status */}
       <div className="flex items-start justify-between gap-3">
@@ -56,9 +55,8 @@ export default function HistoryCard({ item, role = "client" }) {
           {/* Avatar Section */}
           <div className="relative shrink-0">
             <div
-              className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl overflow-hidden border-2 bg-input transition-colors ${
-                isActive ? "border-primary" : "border-surface"
-              }`}
+              className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl overflow-hidden border-2 bg-input transition-colors ${isActive ? "border-primary" : "border-surface"
+                }`}
             >
               <img
                 src={item.avatar}
@@ -77,9 +75,8 @@ export default function HistoryCard({ item, role = "client" }) {
               {item.name}
             </h3>
             <p
-              className={`text-[10px] sm:text-xs truncate font-semibold uppercase tracking-wider ${
-                role === "konsultan" ? "text-primary-light" : "text-muted"
-              }`}
+              className={`text-[10px] sm:text-xs truncate font-semibold uppercase tracking-wider ${role === "konsultan" ? "text-primary-light" : "text-muted"
+                }`}
             >
               {subtitle}
             </p>
@@ -119,9 +116,8 @@ export default function HistoryCard({ item, role = "client" }) {
         {/* Kanan: Tombol Lihat Detail */}
         <Button
           variant="ghost"
-          className={`!p-0 !h-auto !bg-transparent text-sm transition-all shrink-0 ${
-            isActive ? "text-main" : "text-primary-light"
-          }`}
+          className={`!p-0 !h-auto !bg-transparent text-sm transition-all shrink-0 ${isActive ? "text-main" : "text-primary-light"
+            }`}
         >
           {!isActive && (
             <span className="hidden sm:inline mr-1">Lihat Detail</span>

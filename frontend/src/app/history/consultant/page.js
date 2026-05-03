@@ -16,7 +16,7 @@ export default function ConsultantHistoryPage() {
   const router = useRouter();
   const { theme } = useTheme();
 
-  // Mapping warna untuk UI Avatars (Solusi 1)
+  // Mapping warna untuk UI Avatars
   const themeColors = {
     "dark-tech": { bg: "1f1d35", color: "ada3ff" },
     "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
@@ -94,7 +94,7 @@ export default function ConsultantHistoryPage() {
         />
 
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
             <div className="flex justify-between items-center px-2">
               <h2 className="text-xl font-bold text-main tracking-tight">
                 Semua Sesi
@@ -108,22 +108,23 @@ export default function ConsultantHistoryPage() {
             <div className="space-y-4">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  {/* REFACTOR: border-[#6f59fe] -> border-primary */}
                   <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm text-primary-light animate-pulse uppercase tracking-widest text-[10px] font-bold">
-                    Synchronizing History...
+                    Memuat Riwayat...
                   </p>
                 </div>
               ) : historyList.length > 0 ? (
-                historyList.map((item) => (
-                  <ConsultationCard
-                    key={item.id_pengajuan}
-                    data={item}
-                    role="consultant"
-                    onHide={() => {}}
-                    onCancel={() => {}}
-                  />
-                ))
+                <div className="space-y-4">
+                  {historyList.map((item) => (
+                    <ConsultationCard
+                      key={item.id_pengajuan}
+                      data={item}
+                      role="consultant"
+                      onHide={() => {}}
+                      onCancel={() => {}}
+                    />
+                  ))}
+                </div>
               ) : (
                 /* REFACTOR: bg-[#1f1d35]/30 -> bg-card/30 | border-white/5 -> border-surface */
                 <div className="text-center py-16 bg-card/30 rounded-3xl border border-surface border-dashed">

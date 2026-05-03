@@ -42,22 +42,6 @@ export default function HistoryPage() {
     return { sortedHistory: sorted, completedCount: count };
   }, [consultations]);
 
-  // --- 3. Loading State (Theme Aware) ---
-  if (isLoading) {
-    return (
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg */
-      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-        <div className="flex flex-col items-center gap-4">
-          {/* REFACTOR: border-[#6f59fe] -> border-primary */}
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          {/* REFACTOR: text-[#aca8c1] -> text-muted */}
-          <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
-            Memuat Riwayat...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     /* REFACTOR: bg-bg | text-main | font-primary */
@@ -68,7 +52,7 @@ export default function HistoryPage() {
         <PageHeader title="Riwayat Konsultasi" />
 
         <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth">
-          <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+          <div className="max-w-3xl mx-auto space-y-8">
             {/* Stats Section */}
             <HistoryStats count={completedCount} />
 
@@ -79,7 +63,14 @@ export default function HistoryPage() {
                 Daftar Aktivitas
               </h3>
 
-              {sortedHistory.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                    Memuat Riwayat...
+                  </p>
+                </div>
+              ) : sortedHistory.length > 0 ? (
                 <div className="space-y-4">
                   {sortedHistory.map((item) => (
                     <ConsultationCard

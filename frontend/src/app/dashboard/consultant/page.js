@@ -41,6 +41,8 @@ export default function ConsultantDashboardPage() {
     select: (data) => ({
       name: data?.nama || data?.nama_lengkap || "Konsultan",
       foto_profil: data?.foto_profil || data?.avatar,
+      status_verifikasi: data?.status_verifikasi,
+      alasan_penolakan: data?.alasan_penolakan,
     }),
   });
 
@@ -133,6 +135,19 @@ export default function ConsultantDashboardPage() {
         />
 
         <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12 animate-fade-in">
+          {/* NOTIFICATION: REJECTION ALERT */}
+          {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
+            <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+              <MaterialIcon name="error" className="text-danger text-2xl shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">Pengajuan Verifikasi Ditolak</h3>
+                <p className="text-main/80 text-xs md:text-sm leading-relaxed">
+                  Mohon maaf, pengajuan Anda tidak dapat disetujui karena: <strong>"{user.alasan_penolakan}"</strong>. Silakan lengkapi atau perbaiki profil Anda di menu <span className="font-semibold cursor-pointer underline hover:text-primary transition-colors" onClick={() => router.push('/setting/profile')}>Pengaturan Profil</span>.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* INCOME SECTION */}
           <IncomeCard amount={formatCurrency(stats?.income)} />
 

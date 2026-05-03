@@ -2,11 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import SidebarAdmin from "@/components/layout/SidebarAdmin";
-import BottomNavAdmin from "@/components/layout/BottomNavAdmin";
+import Sidebar from "@/components/layout/Sidebar";
+import BottomNav from "@/components/layout/BottomNav";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCard from "@/components/dashboard/StatCard";
-import ConsultantCard from "@/components/verification/ConsultantCard";
+import ConsultantCard from "@/components/verification/VerificationCard";
 import { MaterialIcon } from "@/components/ui/Icons";
 import TransactionMonitoring from "@/components/dashboard/TransactionMonitoring";
 import { userService } from "@/services/user.service";
@@ -35,14 +35,14 @@ export default function AdminDashboardPage() {
   });
 
   const stats = statsData || {};
-  
+
   const latestPending = (consultantsData?.data || [])
     .filter((c) => c.status_verifikasi === "pending")
     .slice(0, 1);
 
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex">
-      <SidebarAdmin />
+    <div className="bg-bg text-main min-h-screen flex transition-colors duration-500">
+      <Sidebar role="admin" />
 
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-all overflow-x-hidden">
         <DashboardHeader
@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
 
         <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
           <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12">
-            
+
             {/* 1. OVERVIEW STATS */}
             <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatCard label="Total User" val={stats.total_users || 0} icon="group" />
@@ -63,10 +63,10 @@ export default function AdminDashboardPage() {
 
             {/* 2. PENGAJUAN VERIFIKASI */}
             <section className="space-y-4">
-              <h2 className="text-lg font-bold text-white">Pengajuan Verifikasi Terbaru</h2>
-              
+              <h2 className="text-lg font-bold text-main">Pengajuan Verifikasi Terbaru</h2>
+
               {isConsultantsLoading ? (
-                <p className="text-sm text-[#aca8c1] animate-pulse">Memuat data...</p>
+                <p className="text-sm text-muted animate-pulse">Memuat data...</p>
               ) : latestPending.length > 0 ? (
                 latestPending.map((item) => (
                   <ConsultantCard
@@ -87,15 +87,15 @@ export default function AdminDashboardPage() {
                           hour: "2-digit", minute: "2-digit",
                         }),
                       },
-                      foto_profil: item.users?.foto_profil || `https://ui-avatars.com/api/?name=${item.nama_lengkap}`,
+                      foto_profil: item.foto_profil || item.users?.foto_profil,
                     }}
                     onDetail={(item) => router.push(`/verification/${item.id}`)}
                   />
                 ))
               ) : (
-                <div className="text-sm text-[#aca8c1] py-10 bg-[#1f1d35]/30 rounded-[1.5rem] border border-dashed border-white/10 text-center flex flex-col items-center gap-3">
+                <div className="text-sm text-muted py-10 bg-card/30 rounded-[1.5rem] border border-dashed border-surface text-center flex flex-col items-center gap-3">
                   <MaterialIcon name="verified" className="text-4xl opacity-20" />
-                  <span>Hore! Tidak ada pengajuan verifikasi yang tertunda.</span>
+                  <span>Tidak ada pengajuan verifikasi yang tertunda.</span>
                 </div>
               )}
             </section>
@@ -107,7 +107,7 @@ export default function AdminDashboardPage() {
         </main>
 
         <div className="lg:hidden">
-          <BottomNavAdmin />
+          <BottomNav role="admin" />
         </div>
       </div>
     </div>
