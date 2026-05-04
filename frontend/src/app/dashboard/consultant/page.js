@@ -138,11 +138,25 @@ export default function ConsultantDashboardPage() {
           {/* NOTIFICATION: REJECTION ALERT */}
           {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
             <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
-              <MaterialIcon name="error" className="text-danger text-2xl shrink-0 mt-0.5" />
+              <MaterialIcon
+                name="error"
+                className="text-danger text-2xl shrink-0 mt-0.5"
+              />
               <div>
-                <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">Pengajuan Verifikasi Ditolak</h3>
+                <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
+                  Pengajuan Verifikasi Ditolak
+                </h3>
                 <p className="text-main/80 text-xs md:text-sm leading-relaxed">
-                  Mohon maaf, pengajuan Anda tidak dapat disetujui karena: <strong>"{user.alasan_penolakan}"</strong>. Silakan lengkapi atau perbaiki profil Anda di menu <span className="font-semibold cursor-pointer underline hover:text-primary transition-colors" onClick={() => router.push('/setting/profile')}>Pengaturan Profil</span>.
+                  Mohon maaf, pengajuan Anda tidak dapat disetujui karena:{" "}
+                  <strong>&quot;{user.alasan_penolakan}&quot;</strong>. Silakan
+                  lengkapi atau perbaiki profil Anda di menu{" "}
+                  <span
+                    className="font-semibold cursor-pointer underline hover:text-primary transition-colors"
+                    onClick={() => router.push("/setting/profile")}
+                  >
+                    Pengaturan Profil
+                  </span>
+                  .
                 </p>
               </div>
             </div>

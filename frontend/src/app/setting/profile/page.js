@@ -126,17 +126,26 @@ function EditProfileContent({ profile, initialFormData }) {
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
           <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
             {/* NOTIFICATION: REJECTION ALERT */}
-            {profile?.status_verifikasi === "ditolak" && profile?.alasan_penolakan && (
-              <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
-                <MaterialIcon name="error" className="text-danger text-2xl shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">Pengajuan Verifikasi Ditolak</h3>
-                  <p className="text-main/80 text-xs md:text-sm leading-relaxed">
-                    Alasan penolakan: <strong>"{profile.alasan_penolakan}"</strong>. Silakan perbaiki data profesional Anda di bawah ini dan simpan kembali untuk ditinjau ulang oleh admin.
-                  </p>
+            {profile?.status_verifikasi === "ditolak" &&
+              profile?.alasan_penolakan && (
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+                  <MaterialIcon
+                    name="error"
+                    className="text-danger text-2xl shrink-0 mt-0.5"
+                  />
+                  <div>
+                    <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
+                      Pengajuan Verifikasi Ditolak
+                    </h3>
+                    <p className="text-main/80 text-xs md:text-sm leading-relaxed">
+                      Alasan penolakan:{" "}
+                      <strong>&quot;{profile.alasan_penolakan}&quot;</strong>.
+                      Silakan perbaiki data profesional Anda di bawah ini dan
+                      simpan kembali untuk ditinjau ulang oleh admin.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="relative mb-12">
               <AvatarUpload
