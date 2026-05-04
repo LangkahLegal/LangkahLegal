@@ -11,14 +11,12 @@ export default function Sidebar({ role = "client" }) {
     role === "konsultan"
       ? [
           { label: "Klien", icon: "group", path: "/consultation" },
-          { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Riwayat", icon: "history", path: "/history/consultant" },
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
       : role === "admin"
       ? [
           { label: "Verifikasi", icon: "verified_user", path: "/verification" },
-          { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Knowledge", icon: "menu_book", path: "/rag" },
         ]
       : [
