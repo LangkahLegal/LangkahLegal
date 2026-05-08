@@ -1,460 +1,167 @@
 @import "tailwindcss";
 
+/* ===== DESIGN SYSTEM TOKENS ===== */
 :root {
-  --bg-dark: #0e0c1e;
-  --bg-card: #131125;
-  --bg-input: #1f1d35;
-  --bg-dropdown: #25233d; 
-  --bg-secondary: #47369e; 
-  --bg-secondary-hover: #5643b8; 
-  --primary: #6f59fe;
-  --primary-light: #ada3ff;
-  --text-main: #e8e2fc;
-  --text-muted: #aca8c1;
-  --danger: #ff6e84;
-}
+  /* Typography */
+  --font-primary: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-alt: "Urbanist", sans-serif;
 
-@theme {
-  --color-dark: var(--bg-dark);
-  --color-card: var(--bg-card);
-  --color-input: var(--bg-input);
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-main: var(--text-main);
-  --color-muted: var(--text-muted);
-  --color-danger: var(--danger);
-
+  /* Spacing & Radius */
+  --radius-sm: 0.75rem;
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
   --radius-3xl: 2rem;
 
+  /* Shadows */
+  --shadow-soft: 0 20px 70px rgba(0, 0, 0, 0.3);
+
+  /* DEFAULT THEME: DARK TECH */
+  --bg: #0e0c1e;
+  --bg-card: #131125;
+  --bg-input: #1f1d35;
+  --bg-dropdown: #25233d;
+
+  --primary: #6f59fe;
+  --primary-light: #ada3ff;
+
+  /* Kita buat variabel --secondary agar konsisten di semua tema */
+  --secondary: #47369e;
+  --secondary-hover: #5643b8;
+
+  --text-main: #e8e2fc;
+  --text-muted: #aca8c1;
+  --danger: #ff6e84;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --surface: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== ADDITIONAL THEMES ===== */
+
+.theme-white-modern {
+  --bg: #fbf9f4;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-dropdown: #ffffff;
+  --primary: #2d1e17;
+  --primary-light: #402e24;
+  --secondary: #d48806; /* Warna Gold */
+  --secondary-hover: #b87605;
+  --text-main: #2d1e17;
+  --text-muted: #827771;
+  --danger: #b91c1c;
+  --border: rgba(45, 30, 23, 0.08);
+  --surface: #f3f1eb;
+}
+
+/* ===== TAILWIND v4 CONFIGURATION ===== */
+@theme {
+  /* Colors */
+  --color-bg: var(--bg);
+  --color-card: var(--bg-card);
+  --color-input: var(--bg-input);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary); /* Sekarang dinamis mengikuti tema */
+  --color-main: var(--text-main);
+  --color-muted: var(--text-muted);
+  --color-danger: var(--danger);
+  --color-surface: var(--surface);
+  --color-dropdown: var(--bg-dropdown);
+  /* Radius */
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-3xl: var(--radius-3xl);
+
+  /* Custom Font Size */
   --text-nav: 10px;
   --text-label: 11px;
 }
 
-/* ===== BASE ===== */
+/* ===== BASE STYLES ===== */
 body {
-  background-color: var(--bg-dark);
+  background-color: var(--bg);
   color: var(--text-main);
   min-height: 100dvh;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
   display: inline-block;
   vertical-align: middle;
 }
 
-/* ============================================================
-   LAYOUT & DECORATIONS (Recovered from CSS 1)
-   ============================================================ */
-
-.auth-screen {
-  position: relative;
-  overflow-y: auto;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1.5rem; 
-  background-color: var(--bg-dark);
+/* Modern Scrollbar */
+*::-webkit-scrollbar {
+  width: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(111, 89, 254, 0.2); /* Sesuai Primary Dark */
+  border-radius: 20px;
 }
 
-.auth-container {
-  width: 100%;
-  max-width: 400px; 
-  margin-left: auto;
-  margin-right: auto;
-  position: relative;
-  z-index: 10;
+.theme-white-modern *::-webkit-scrollbar-thumb {
+  background-color: rgba(45, 30, 23, 0.1); /* Sesuai Primary Modern White */
 }
 
-.glow-top-left, .glow-top-left-purple {
-  position: fixed;
-  top: -10%;
-  left: -10%;
-  width: 60%;
-  height: 60%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: color-mix(in srgb, var(--primary-light) 10%, transparent);
-  filter: blur(120px);
-  z-index: 0;
+/* ===== UTILITY CLASSES ===== */
+.bg-base {
+  background-color: var(--bg);
 }
-
-.glow-bottom-right, .glow-bottom-right-secondary {
-  position: fixed;
-  bottom: -10%;
-  right: -10%;
-  width: 50%;
-  height: 50%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: color-mix(in srgb, var(--bg-secondary) 15%, transparent);
-  filter: blur(150px);
-  z-index: 0;
+.bg-card {
+  background-color: var(--bg-card);
 }
-
-/* ============================================================
-   BACKGROUND DECORATIONS
-   ============================================================ */
-.glow-top-left {
-  position: absolute;
-  top: -10%;
-  left: -10%;
-  width: 60%;
-  height: 60%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: rgba(173, 163, 255, 0.1);
-  filter: blur(120px);
-}
-
-.glow-bottom-right {
-  position: absolute;
-  bottom: -10%;
-  right: -10%;
-  width: 50%;
-  height: 50%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: rgba(180, 171, 239, 0.05);
-  filter: blur(150px);
-}
-
-.glow-top-left-purple {
-  position: fixed;
-  top: -10%;
-  left: -10%;
-  width: 50%;
-  height: 40%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: rgba(109, 87, 252, 0.1);
-  filter: blur(120px);
-}
-
-.glow-bottom-right-secondary {
-  position: fixed;
-  bottom: 10%;
-  right: -10%;
-  width: 40%;
-  height: 30%;
-  border-radius: 9999px;
-  pointer-events: none;
-  background-color: rgba(70, 63, 122, 0.2);
-  filter: blur(100px);
-}
-
-/* ============================================================
-   TYPOGRAPHY 
-   ============================================================ */
-
-h1, h2, h3, .font-headline {
-  font-family: 'Inter', sans-serif;
-  letter-spacing: -0.03em;
-}
-
-.auth-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 800;
-  font-size: 2rem;
-  letter-spacing: -0.04em;
+.text-main {
   color: var(--text-main);
 }
+.text-muted {
+  color: var(--text-muted);
+}
+.border-surface {
+  border-color: var(--border);
+}
 
-@media (min-width: 768px) {
-  .auth-title {
-    font-size: 2.25rem;
+/* Typography */
+h1,
+h2,
+h3,
+.font-headline {
+  font-family: var(--font-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeInScale 0.3s ease-out forwards;
+}
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-.auth-subtitle {
-  margin-top: 0.5rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.9375rem;
+/* Form Reset */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
 }
-
-.page-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 800;
-  font-size: 2.25rem;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
-  color: var(--text-main);
-}
-
-/* ============================================================
-   FORM ELEMENTS
-   ============================================================ */
-
-.form-field { display: flex; flex-direction: column; gap: 0.5rem; }
-
-.form-label {
-  display: block;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-  margin-left: 0.25rem;
-}
-
-.form-input, .form-input-password {
-  width: 100%;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  background-color: var(--bg-card);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
-  border-radius: var(--radius-xl);
-  padding: 1rem;
-  color: var(--text-main);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+input:focus {
   outline: none;
 }
-
-.form-input-password { padding-right: 3.5rem; }
-
-.form-input:focus, .form-input-password:focus {
-  border-color: var(--primary-light);
-  background-color: var(--bg-input);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-light) 15%, transparent);
-}
-
-.password-toggle {
-  position: absolute;
-  right: 1.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: color-mix(in srgb, var(--text-muted) 50%, transparent);
-  cursor: pointer;
-  transition: color 0.2s;
-  background: none; border: none;
-}
-
-.password-toggle:hover { color: var(--primary); }
-
-.otp-input {
-  width: 100%;
-  aspect-ratio: 1;
-  background-color: var(--bg-input);
-  border: 2px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
-  border-radius: var(--radius-xl);
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-main);
-  transition: all 0.2s;
-  outline: none;
-}
-
-.otp-input:focus {
-  border-color: var(--primary-light);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-light) 10%, transparent);
-}
-
-/* ============================================================
-   BUTTONS & LINKS
-   ============================================================ */
-
-.btn-primary {
-  width: 100%;
-  padding: 1rem;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  color: var(--bg-dark);
-  font-weight: 800;
-  font-size: 1.05rem;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--primary) 50%, transparent);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-}
-
-.btn-social {
-  width: 100%;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  background-color: var(--bg-card);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 15%, transparent);
-  color: var(--text-main);
-  font-weight: 600;
-  border-radius: var(--radius-xl);
-  transition: all 0.2s;
-}
-
-.btn-icon {
-  padding: 0.5rem;
-  border-radius: 9999px;
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
-}
-
-.btn-icon:hover {
-  background-color: #2c2945;
-}
-
-.btn-icon:active {
-  transform: scale(0.95);
-}
-
-/* ============================================================
-   DIVIDER
-   ============================================================ */
-
-.auth-divider {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0;
-}
-
-.auth-divider-line {
-  flex-grow: 1;
-  height: 1px;
-  background-color: rgba(72, 69, 90, 0.2);
-}
-
-.auth-divider-text {
-  padding: 0 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #aca8c1;
-  white-space: nowrap;
-}
-
-/* =========================================================
-   LINKS
-   ============================================================ */
-
-.link-primary {
-  color: #ada3ff;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.link-primary:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.link-accent {
-  color: #6f59fe;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.link-accent:hover {
-  color: #ada3ff;
-}
-
-/* ============================================================
-   ROLE CARDS 
-   ============================================================ */
-
-.role-card {
-  background: color-mix(in srgb, var(--bg-input) 40%, transparent);
-  backdrop-filter: blur(10px);
-  padding: 2rem;
-  border-radius: var(--radius-3xl);
-  transition: all 0.3s;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  border: 2px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
-}
-
-.role-card-active {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  box-shadow: 0 0 25px color-mix(in srgb, var(--primary) 20%, transparent);
-}
-
-.role-card-icon {
-  width: 5rem; height: 5rem;
-  border-radius: 1.25rem;
-  background-color: color-mix(in srgb, var(--primary) 20%, transparent);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--primary);
-}
-
-.role-radio {
-  width: 1.75rem; height: 1.75rem;
-  border-radius: 9999px;
-  border: 2px solid var(--text-muted);
-  display: flex; align-items: center; justify-content: center;
-}
-
-.role-card-active .role-radio {
-  background-color: var(--primary);
-  border-color: var(--primary);
-}
-
-/* ============================================================
-   NAVIGATION 
-   ============================================================ */
-
-.top-nav {
-  background-color: var(--bg-dark);
-  color: var(--primary-light);
-  display: flex; align-items: center;
-  width: 100%; padding: 1rem 1.5rem;
-  position: sticky; top: 0; z-index: 50;
-}
-
-.bottom-nav {
-  position: fixed; bottom: 0; width: 100%; z-index: 50;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 2.5rem 1.5rem;
-  background: linear-gradient(to top, var(--bg-dark), rgba(14, 12, 30, 0.9), transparent);
-}
-
-/* ============================================================
-   GLASSMorphism & DROPDOWN
-   ============================================================ */
-
-.glass-card {
-  background: color-mix(in srgb, var(--bg-input) 60%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, var(--primary-light) 10%, transparent);
-  border-radius: var(--radius-2xl);
-}
-
-.dropdown-menu {
-  position: absolute; left: 0; right: 0; top: 105%;
-  max-height: 12rem; overflow-y: auto;
-  background-color: var(--bg-dropdown); 
-  border: 1px solid color-mix(in srgb, var(--primary-light) 15%, transparent); 
-  border-radius: var(--radius-xl);
-  z-index: 110; padding: 0.5rem 0;
-}
-
-.dropdown-item {
-  padding: 0.625rem 1rem; font-size: 0.875rem;
-  cursor: pointer; color: var(--text-main); transition: 0.2s;
-}
-
-.dropdown-item:hover { background-color: color-mix(in srgb, var(--primary) 20%, transparent); }
-
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary) 30%, transparent); border-radius: 10px; }
-
-.animate-fade-in { animation: fadeInScale 0.3s ease-out forwards; }
-@keyframes fadeInScale { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }

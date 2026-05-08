@@ -52,7 +52,7 @@ export function FileUpload({
         <div
           className={`
           w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-2xl transition-transform group-hover:scale-110
-          ${file ? "bg-primary text-dark" : "bg-primary/20 text-primary"}
+          ${file ? "bg-primary text-white" : "bg-primary/20 text-primary"}
         `}
         >
           <MaterialIcon
