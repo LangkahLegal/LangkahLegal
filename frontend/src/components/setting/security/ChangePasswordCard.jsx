@@ -19,7 +19,6 @@ export default function ChangePasswordCard() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Logic API Update Password
       console.log("Saving passwords...");
     } finally {
       setIsSaving(false);
@@ -27,8 +26,10 @@ export default function ChangePasswordCard() {
   };
 
   return (
-    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-5">
-      <h2 className="font-semibold text-[#e8e2fc]">Ubah Password</h2>
+    <div className="bg-[#1f1d35]/50 p-6 rounded-2xl border border-white/5 space-y-6 backdrop-blur-sm">
+      <h2 className="font-headline font-bold text-lg text-main tracking-tight">
+        Ubah Password
+      </h2>
 
       <div className="space-y-4">
         <PasswordField
@@ -46,7 +47,7 @@ export default function ChangePasswordCard() {
           value={passwords.new}
           onChange={handleChange}
         />
-        
+
         <PasswordField
           label="Konfirmasi Password Baru"
           name="confirm"
@@ -57,7 +58,11 @@ export default function ChangePasswordCard() {
       </div>
 
       <div className="pt-2">
-        <Button onClick={handleSave} className="w-full">
+        <Button
+          onClick={handleSave}
+          className="w-full"
+          disabled={isSaving || !passwords.old || !passwords.new}
+        >
           {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
         </Button>
       </div>

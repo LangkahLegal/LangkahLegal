@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
@@ -10,67 +10,49 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
+import { MaterialIcon } from "@/components/ui/Icons";
 
 export default function EditProfilePage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  // --- 1. State Lokal untuk Form ---
-  const [formData, setFormData] = useState({
-    name: "",
-    nama_lengkap: "",
-    email: "",
-    kota_praktik: "",
-    spesialisasi: "",
-    pengalaman_tahun: "",
-    tarif_per_sesi: "",
-    linkedin: "",
-    portofolio: "",
-    foto_profil: "",
-    bio_singkat: "",
-    deskripsi_lengkap: "",
-    nomor_izin_praktik: "",
-    gelar_akademik: "",
-    pendidikan_terakhir: "",
-  });
-
-  const [portofolioFile, setPortofolioFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  // --- 2. Fetch Data Profil (Menggunakan Cache yang sudah ada) ---
   const { data: profile, isLoading: isQueryLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
   });
+  if (isQueryLoading)
+    return (
+      <div className="bg-[#0e0c1e] text-white flex flex-col justify-center items-center h-screen gap-4">
+        <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
+        <p className="animate-pulse text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase">
+          Syncing Profile...
+        </p>
+      </div>
+    );
 
-  // Sync data dari Query ke State Lokal Form
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        name: profile.nama || "",
-        nama_lengkap: profile.nama_lengkap || "",
-        email: profile.email || "",
-        kota_praktik: profile.kota_praktik || "",
-        spesialisasi: profile.spesialisasi || "",
-        pengalaman_tahun: profile.pengalaman_tahun || "",
-        tarif_per_sesi: profile.tarif_per_sesi || "",
-        linkedin: profile.linkedin || "",
-        portofolio: profile.portofolio || "",
-        foto_profil: profile.foto_profil || "",
-        bio_singkat: profile.bio_singkat || "",
-        deskripsi_lengkap: profile.deskripsi_lengkap || "",
-        nomor_izin_praktik: profile.nomor_izin_praktik || "",
-        gelar_akademik: profile.gelar_akademik || "",
-        pendidikan_terakhir: profile.pendidikan_terakhir || "",
-      });
-    }
-  }, [profile]);
+  const initialFormData = buildProfileFormData(profile);
+  const profileKey = getProfileKey(profile);
 
-  // --- 3. Mutation untuk Update Profil ---
+  return (
+    <EditProfileContent
+      key={profileKey}
+      profile={profile}
+      initialFormData={initialFormData}
+    />
+  );
+}
+
+function EditProfileContent({ profile, initialFormData }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // --- 1. State Lokal untuk Form ---
+  const [formData, setFormData] = useState(initialFormData);
+  const [portofolioFile, setPortofolioFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("dark-tech");
+
+  // --- 2. Mutation untuk Update Profil ---
   const updateMutation = useMutation({
     mutationFn: (payload) => userService.updateProfile(payload),
     onSuccess: () => {
-      // Validasi ulang cache agar semua halaman mendapatkan data terbaru
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       router.push("/setting");
     },
@@ -123,7 +105,6 @@ export default function EditProfilePage() {
       portofolio_file: portofolioFile,
     };
 
-    // Bersihkan payload dari field kosong kecuali portofolio yang memang ingin dihapus
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([key, v]) => {
         if (key === "portofolio" && v === "") return true;
@@ -134,32 +115,48 @@ export default function EditProfilePage() {
     updateMutation.mutate(cleanPayload);
   };
 
-  if (isQueryLoading)
-    return (
-      <div className="bg-[#0e0c1e] text-white flex flex-col justify-center items-center h-screen gap-4">
-        <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-        <p className="animate-pulse text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase">
-          Syncing Profile...
-        </p>
-      </div>
-    );
-
   return (
-    <div className="bg-[#0e0c1e] text-[#e8e2fc] min-h-screen flex w-full">
+    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
+    <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
       <Sidebar role={userRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Edit Profil" />
 
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8">
+          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
+            {/* NOTIFICATION: REJECTION ALERT */}
+            {profile?.status_verifikasi === "ditolak" &&
+              profile?.alasan_penolakan && (
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+                  <MaterialIcon
+                    name="error"
+                    className="text-danger text-2xl shrink-0 mt-0.5"
+                  />
+                  <div>
+                    <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
+                      Pengajuan Verifikasi Ditolak
+                    </h3>
+                    <p className="text-main/80 text-xs md:text-sm leading-relaxed">
+                      Alasan penolakan:{" "}
+                      <strong>&quot;{profile.alasan_penolakan}&quot;</strong>.
+                      Silakan perbaiki data profesional Anda di bawah ini dan
+                      simpan kembali untuk ditinjau ulang oleh admin.
+                    </p>
+                  </div>
+                </div>
+              )}
+
             <div className="relative mb-12">
               <AvatarUpload
                 foto_profil={formData.foto_profil}
-                name={formData.name || formData.nama_lengkap}
+                // Safety: Pastikan name tidak undefined untuk fallback avatar
+                name={formData.name || formData.nama_lengkap || "User"}
                 isUploading={isUploading}
                 onUploadStart={() => setIsUploading(true)}
                 onChange={handlePhotoChange}
+                // Optional: Kirim theme info jika AvatarUpload membutuhkannya secara eksplisit
+                theme={currentTheme}
               />
             </div>
 
@@ -195,4 +192,28 @@ export default function EditProfilePage() {
       </div>
     </div>
   );
+}
+
+function buildProfileFormData(profile) {
+  return {
+    name: profile?.nama || "",
+    nama_lengkap: profile?.nama_lengkap || "",
+    email: profile?.email || "",
+    kota_praktik: profile?.kota_praktik || "",
+    spesialisasi: profile?.spesialisasi || "",
+    pengalaman_tahun: profile?.pengalaman_tahun || "",
+    tarif_per_sesi: profile?.tarif_per_sesi || "",
+    linkedin: profile?.linkedin || "",
+    portofolio: profile?.portofolio || "",
+    foto_profil: profile?.foto_profil || "",
+    bio_singkat: profile?.bio_singkat || "",
+    deskripsi_lengkap: profile?.deskripsi_lengkap || "",
+    nomor_izin_praktik: profile?.nomor_izin_praktik || "",
+    gelar_akademik: profile?.gelar_akademik || "",
+    pendidikan_terakhir: profile?.pendidikan_terakhir || "",
+  };
+}
+
+function getProfileKey(profile) {
+  return profile?.id_user || profile?.email || profile?.nama || "profile";
 }

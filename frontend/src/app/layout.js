@@ -30,7 +30,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} antialiased theme-dark-tech`}>
         {/* Cukup panggil AppProviders sekali untuk membungkus semuanya */}
         <AppProviders>{children}</AppProviders>
       </body>

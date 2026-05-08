@@ -33,6 +33,10 @@ export default function Navbar() {
       router.push("/auth/login");
       return;
     }
+    if (session.role === "admin") {
+      router.push("/dashboard/admin");
+      return;
+    }
 
     if (session.role === "konsultan" || session.role === "consultant") {
       router.push("/dashboard/consultant");

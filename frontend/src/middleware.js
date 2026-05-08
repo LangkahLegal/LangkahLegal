@@ -6,6 +6,7 @@ const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
 const normalizeRole = (role) => {
   if (role === "konsultan" || role === "consultant") return "konsultan";
   if (role === "client") return "client";
+  if (role === "admin") return "admin";
   return null;
 };
 
@@ -131,6 +132,12 @@ export async function middleware(request) {
       );
     }
 
+    if (role === "admin") {
+      return applySessionCookies(
+        NextResponse.redirect(new URL("/dashboard/admin", request.url)),
+      );
+    }
+
     return applySessionCookies(NextResponse.next());
   }
 
@@ -140,19 +147,24 @@ export async function middleware(request) {
 
   const isConsultantPath = pathname.startsWith("/dashboard/consultant");
   const isClientPath = pathname.startsWith("/dashboard/client");
+  const isAdminPath = pathname.startsWith("/dashboard/admin");
 
-  // 4. Role Guard: Cegah Client masuk ke dashboard Konsultan
+  // 4. Role Guard: Admin routes
+  if (isAdminPath && role !== "admin") {
+    const fallback = role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client";
+    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
+  }
+
+  // 5. Role Guard: Cegah Client masuk ke dashboard Konsultan
   if (isConsultantPath && role !== "konsultan") {
-    return applySessionCookies(
-      NextResponse.redirect(new URL("/dashboard/client", request.url)),
-    );
+    const fallback = role === "admin" ? "/dashboard/admin" : "/dashboard/client";
+    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
   }
 
   // 5. Role Guard: Cegah Konsultan masuk ke dashboard Client
-  if (isClientPath && role === "konsultan") {
-    return applySessionCookies(
-      NextResponse.redirect(new URL("/dashboard/consultant", request.url)),
-    );
+  if (isClientPath && role !== "client") {
+    const fallback = role === "admin" ? "/dashboard/admin" : "/dashboard/consultant";
+    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
   }
 
   // 6. Jika di /dashboard tapi belum pilih role (kasus langka)

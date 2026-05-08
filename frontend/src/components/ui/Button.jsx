@@ -9,24 +9,20 @@ export function Button({
   ...props
 }) {
   const variants = {
-    // 0D0A1C sebagai bg, FFFFFF 10% sebagai stroke, dan Drop Shadow
-    primary: `
-      bg-[#0D0A1C] 
-      border border-white/10 
-      text-white 
-      shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] 
-      hover:bg-[#16122c] 
-      hover:border-white/20 
-      hover:shadow-[0_15px_40px_-10px_rgba(0,0,0,0.9)]
-      active:scale-[0.98]
-    `,
+    // Menggunakan var primary & shadow tema
+    primary:
+      "bg-primary text-white border border-white/10 shadow-soft hover:brightness-110 active:scale-[0.98]",
+    // Menggunakan bg-card & text-muted tema
     secondary:
-      "bg-[#1f1d35] border border-white/5 text-[#aca8c1] hover:bg-[#25233d]",
-    social: "btn-social",
-    icon: "btn-icon",
-    outline: "border border-white/20 bg-transparent hover:bg-white/5",
-    danger: "bg-rose-500/20 border border-rose-500/50 text-rose-500",
-    ghost: "bg-transparent hover:bg-white/5",
+      "bg-card border border-surface text-muted hover:text-main hover:border-muted/30",
+    // Menggunakan surface tema
+    social:
+      "bg-surface border border-surface text-main font-semibold hover:bg-surface/80 active:scale-[0.98]",
+    icon: "p-2 rounded-full hover:bg-surface active:scale-90 text-inherit border-none",
+    outline: "border border-surface bg-transparent hover:bg-surface text-main",
+    danger:
+      "bg-danger/10 border border-danger/20 text-danger hover:bg-danger/20",
+    ghost: "bg-transparent hover:bg-surface text-muted hover:text-main",
   };
 
   const widthClass = fullWidth ? "w-full" : "";
@@ -34,27 +30,25 @@ export function Button({
   return (
     <button
       className={`
-        btn 
-        flex items-center justify-center 
-        px-6 py-3 
-        rounded-full 
-        font-semibold 
+        inline-flex items-center justify-center 
+        gap-3 
+        px-6 py-3.5 
+        rounded-xl 
+        font-bold
+        text-sm
         transition-all duration-300 
         disabled:opacity-50 disabled:cursor-not-allowed
         ${variants[variant] || variants.primary} 
         ${widthClass} 
         ${className}
       `.trim()}
-      disabled={isLoading}
+      disabled={isLoading || props.disabled}
       {...props}
     >
       {isLoading ? (
-        <div className="flex items-center gap-2">
-          {/* Spinner Sederhana */}
+        <div className="flex items-center gap-3">
           <svg
-            className="animate-spin h-5 w-5 text-current"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
+            className="animate-spin h-4 w-4 text-current"
             viewBox="0 0 24 24"
           >
             <circle
@@ -71,7 +65,7 @@ export function Button({
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             ></path>
           </svg>
-          <span>Memproses...</span>
+          <span className="tracking-wide">Memproses...</span>
         </div>
       ) : (
         children

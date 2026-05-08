@@ -8,20 +8,23 @@ const CLIENT_NAV = [
   { label: "Konsultasi", icon: "gavel", path: "/explore" },
   { label: "Tanya AI", icon: "psychology", path: "/ai" },
   { label: "Riwayat", icon: "history", path: "/history/client" },
-  { label: "Berkas", icon: "folder", path: "/documents" },
 ];
 
 const CONSULTANT_NAV = [
   { label: "Klien", icon: "group", path: "/consultation" },
-  { label: "Tanya AI", icon: "psychology", path: "/ai" },
   { label: "Riwayat", icon: "history", path: "/history/consultant" },
   { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
+];
+
+const ADMIN_NAV = [
+  { label: "Verifikasi", icon: "verified_user", path: "/verification" },
+  { label: "Knowledge", icon: "menu_book", path: "/rag" },
 ];
 
 // Menambahkan prop className agar instruksi dari luar (seperti lg:hidden) bisa masuk
 export default function BottomNav({ role = "client", className = "" }) {
   const pathname = usePathname();
-  const navItems = role === "konsultan" ? CONSULTANT_NAV : CLIENT_NAV;
+  const navItems = role === "admin" ? ADMIN_NAV : role === "konsultan" ? CONSULTANT_NAV : CLIENT_NAV;
 
   return (
     // Tambahkan lg:hidden di sini agar secara default hilang di desktop

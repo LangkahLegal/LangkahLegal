@@ -1,14 +1,12 @@
 "use client";
 
 import QueryProvider from "./QueryProvider";
+import { ThemeProvider } from "./ThemeProvider"; // Import ini
 
 export default function AppProviders({ children }) {
   return (
-    <QueryProvider>
-
-
-      {children}
-
-    </QueryProvider>
+    <ThemeProvider>
+      <QueryProvider>{children}</QueryProvider>
+    </ThemeProvider>
   );
 }
