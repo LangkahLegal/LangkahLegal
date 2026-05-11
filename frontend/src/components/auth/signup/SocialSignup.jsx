@@ -18,6 +18,7 @@ export default function SocialSignup({ onGoogleSignup }) {
         type="button"
         fullWidth
         onClick={onGoogleSignup}
+        data-testid="google-signup-btn"
       >
         <GoogleIcon />
         <span>Daftar dengan Google</span>

@@ -7,7 +7,7 @@ export default function AvailabilityToggle({
   onChange = () => {}, // Safety: fallback ke fungsi kosong
 }) {
   return (
-    <section>
+    <section data-testid="availability-toggle-section">
 
       <div className="bg-card rounded-[2rem] p-6 flex items-center justify-between border border-surface shadow-2xl transition-all duration-500">
         <div className="flex flex-col">
