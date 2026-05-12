@@ -7,8 +7,43 @@ on:
     branches: [main, dev, develop]
 
 env:
-  PLAYWRIGHT_BASE_URL: http://localhost:3000
-  PLAYWRIGHT_API_URL: http://127.0.0.1:8000/api/v1
+  PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || vars.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
+  PLAYWRIGHT_API_URL: ${{ secrets.PLAYWRIGHT_API_URL || vars.PLAYWRIGHT_API_URL || 'http://127.0.0.1:8000/api/v1' }}
+  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1' }}
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  NEXT_PUBLIC_IMGBB_API_KEY: ${{ secrets.NEXT_PUBLIC_IMGBB_API_KEY || vars.NEXT_PUBLIC_IMGBB_API_KEY }}
+  NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${{ secrets.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || vars.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY }}
+  NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION: ${{ secrets.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION || vars.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION }}
+  APP_ENV: ${{ secrets.APP_ENV || vars.APP_ENV }}
+  APP_NAME: ${{ secrets.APP_NAME || vars.APP_NAME }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || vars.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_KEY || vars.SUPABASE_KEY }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY || vars.SUPABASE_KEY }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
+  SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET || vars.SUPABASE_JWT_SECRET }}
+  SUPABASE_PORTOFOLIO_BUCKET: ${{ secrets.SUPABASE_PORTOFOLIO_BUCKET || vars.SUPABASE_PORTOFOLIO_BUCKET }}
+  SUPABASE_BERKAS_PENDUKUNG_BUCKET: ${{ secrets.SUPABASE_BERKAS_PENDUKUNG_BUCKET || vars.SUPABASE_BERKAS_PENDUKUNG_BUCKET }}
+  SUPABASE_KNOWLEDGE_BUCKET: ${{ secrets.SUPABASE_KNOWLEDGE_BUCKET || vars.SUPABASE_KNOWLEDGE_BUCKET }}
+  IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY || vars.IMGBB_API_KEY }}
+  FRONTEND_URL: ${{ secrets.FRONTEND_URL || vars.FRONTEND_URL || 'http://localhost:3000' }}
+  MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY || vars.MIDTRANS_SERVER_KEY }}
+  MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY || vars.MIDTRANS_CLIENT_KEY }}
+  MIDTRANS_IS_PRODUCTION: ${{ secrets.MIDTRANS_IS_PRODUCTION || vars.MIDTRANS_IS_PRODUCTION }}
+  PASAL_API_TOKEN: ${{ secrets.PASAL_API_TOKEN || vars.PASAL_API_TOKEN }}
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY || vars.GOOGLE_API_KEY }}
+  VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY || vars.VOYAGE_API_KEY }}
+  E2E_CLIENT_EMAIL: ${{ secrets.E2E_CLIENT_EMAIL || vars.E2E_CLIENT_EMAIL }}
+  E2E_CLIENT_PASSWORD: ${{ secrets.E2E_CLIENT_PASSWORD || vars.E2E_CLIENT_PASSWORD }}
+  E2E_CONSULTANT_EMAIL: ${{ secrets.E2E_CONSULTANT_EMAIL || vars.E2E_CONSULTANT_EMAIL }}
+  E2E_CONSULTANT_PASSWORD: ${{ secrets.E2E_CONSULTANT_PASSWORD || vars.E2E_CONSULTANT_PASSWORD }}
+  E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || vars.E2E_ADMIN_EMAIL }}
+  E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || vars.E2E_ADMIN_PASSWORD }}
+  E2E_ENABLE_BOOKING: ${{ secrets.E2E_ENABLE_BOOKING || vars.E2E_ENABLE_BOOKING }}
+  E2E_ENABLE_AI: ${{ secrets.E2E_ENABLE_AI || vars.E2E_ENABLE_AI }}
+  E2E_ENABLE_SCHEDULE_SAVE: ${{ secrets.E2E_ENABLE_SCHEDULE_SAVE || vars.E2E_ENABLE_SCHEDULE_SAVE }}
+  E2E_PAYMENT_REQUEST_ID: ${{ secrets.E2E_PAYMENT_REQUEST_ID || vars.E2E_PAYMENT_REQUEST_ID }}
+  E2E_WEB_SERVER_COMMAND: ${{ secrets.E2E_WEB_SERVER_COMMAND || vars.E2E_WEB_SERVER_COMMAND }}
 
 jobs:
   e2e:
@@ -25,7 +60,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -40,7 +75,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
@@ -50,18 +85,13 @@ jobs:
         run: |
           uvicorn main:app --host 0.0.0.0 --port 8000 &
           sleep 5
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
       - name: Start frontend
         working-directory: frontend
         run: |
           npm run build
-          npm run start &
+          npm run start -- -p 3000 &
           sleep 5
-        env:
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
       - name: Wait for services
         run: |
@@ -75,13 +105,6 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test --project=chromium
-        env:
-          E2E_CLIENT_EMAIL: ${{ secrets.E2E_CLIENT_EMAIL }}
-          E2E_CLIENT_PASSWORD: ${{ secrets.E2E_CLIENT_PASSWORD }}
-          E2E_CONSULTANT_EMAIL: ${{ secrets.E2E_CONSULTANT_EMAIL }}
-          E2E_CONSULTANT_PASSWORD: ${{ secrets.E2E_CONSULTANT_PASSWORD }}
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
       - name: Upload test report
         if: always()
