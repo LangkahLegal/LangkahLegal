@@ -11,7 +11,7 @@ export class ProfilePage {
 
   async goto() {
     await this.page.goto('/setting/profile');
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async getDisplayName() {

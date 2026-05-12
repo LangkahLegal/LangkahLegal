@@ -17,7 +17,7 @@ export class ChatbotPage {
 
   async goto() {
     await this.page.goto('/ai');
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async isLoaded() {

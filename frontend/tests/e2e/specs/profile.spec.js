@@ -22,7 +22,7 @@ authTest.describe('Profile — Happy Path @profile', () => {
     await profilePage.goto();
 
     // Profile page should load without errors
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
     const url = clientPage.url();
     expect(url).toContain('/setting/profile');
   });
@@ -31,7 +31,7 @@ authTest.describe('Profile — Happy Path @profile', () => {
     const profilePage = new ProfilePage(consultantPage);
     await profilePage.goto();
 
-    await consultantPage.waitForLoadState('networkidle');
+    // await consultantPage.waitForLoadState('networkidle');
     
     // Consultant should see professional fields
     const isConsultant = await profilePage.isConsultantFieldVisible();
@@ -42,7 +42,7 @@ authTest.describe('Profile — Happy Path @profile', () => {
     const profilePage = new ProfilePage(clientPage);
     await profilePage.goto();
 
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
     
     // Client should NOT see consultant-specific fields
     const isConsultant = await profilePage.isConsultantFieldVisible();

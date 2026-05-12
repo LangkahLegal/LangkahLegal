@@ -17,13 +17,13 @@ authTest.describe('Payment — Happy Path @payment', () => {
   authTest('should display payment page with pay button for valid consultation', async ({ clientPage }) => {
     // Navigate to client dashboard to find a consultation with payment pending
     await clientPage.goto('/dashboard/client');
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
 
     // Check if there are any consultations with payment link
     const paymentLink = clientPage.locator('a[href*="/payment/"]').first();
     if (await paymentLink.isVisible()) {
       await paymentLink.click();
-      await clientPage.waitForLoadState('networkidle');
+      // await clientPage.waitForLoadState('networkidle');
 
       const paymentPage = new PaymentPage(clientPage);
       // Page should have loaded payment content
@@ -34,12 +34,12 @@ authTest.describe('Payment — Happy Path @payment', () => {
 
   authTest('should show payment breakdown with price details', async ({ clientPage }) => {
     await clientPage.goto('/dashboard/client');
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
 
     const paymentLink = clientPage.locator('a[href*="/payment/"]').first();
     if (await paymentLink.isVisible()) {
       await paymentLink.click();
-      await clientPage.waitForLoadState('networkidle');
+      // await clientPage.waitForLoadState('networkidle');
 
       // Should show price-related content (Rp or tarif)
       const priceContent = clientPage.getByText(/Rp|Total|Biaya/i).first();
@@ -52,12 +52,12 @@ authTest.describe('Payment — Happy Path @payment', () => {
 
   authTest('should show consultant info on payment page', async ({ clientPage }) => {
     await clientPage.goto('/dashboard/client');
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
 
     const paymentLink = clientPage.locator('a[href*="/payment/"]').first();
     if (await paymentLink.isVisible()) {
       await paymentLink.click();
-      await clientPage.waitForLoadState('networkidle');
+      // await clientPage.waitForLoadState('networkidle');
 
       // Page header should say "Selesaikan Pembayaran"
       const header = clientPage.getByText(/pembayaran/i).first();
@@ -74,7 +74,7 @@ authTest.describe('Payment — Validation @payment', () => {
   authTest('should show error for non-existent consultation payment', async ({ clientPage }) => {
     // Try accessing a payment page with invalid ID
     await clientPage.goto('/payment/999999');
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
 
     // Should show error state or redirect
     const pageContent = await clientPage.textContent('body');
@@ -97,7 +97,7 @@ test.describe('Payment — Unauthorized Access @payment', () => {
 authTest.describe('Payment — Role Guard @payment', () => {
   authTest('consultant should not access payment page normally', async ({ consultantPage }) => {
     await consultantPage.goto('/payment/1');
-    await consultantPage.waitForLoadState('networkidle');
+    // await consultantPage.waitForLoadState('networkidle');
     // The page may load but the API will reject non-client roles
     const url = consultantPage.url();
     authExpect(url).toBeTruthy();

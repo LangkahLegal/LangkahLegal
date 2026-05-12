@@ -11,7 +11,7 @@ export class DashboardPage {
 
   async goto(role = 'client') {
     await this.page.goto(`/dashboard/${role}`);
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async isVisible() {

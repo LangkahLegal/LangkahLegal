@@ -80,7 +80,7 @@ authTest.describe('Auth — Logout @auth', () => {
   authTest('should logout and clear session', async ({ clientPage }) => {
     const page = clientPage;
     await page.goto('/dashboard/client');
-    await page.waitForLoadState('networkidle');
+    // await page.waitForLoadState('networkidle');
 
     // Look for logout option in sidebar or settings
     const logoutBtn = page.getByText(/keluar|logout/i).first();
@@ -183,7 +183,7 @@ test.describe('Auth — Edge Cases @auth', () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    // await page.waitForLoadState('networkidle');
 
     // Should still be on dashboard (session persisted)
     expect(page.url()).toContain('/dashboard');

@@ -16,7 +16,7 @@ export class SchedulePage {
 
   async goto() {
     await this.page.goto('/schedule');
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   /** Check if the schedule page loaded (calendar visible) */
