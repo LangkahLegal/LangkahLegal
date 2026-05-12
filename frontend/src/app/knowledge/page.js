@@ -16,7 +16,6 @@ import { FileUpload } from "@/components/ui/FileUpload";
 
 import {
   getAdminDocuments,
-  getDocumentChunks,
   deleteFullDocumentByUri,
   uploadDocumentPdf,
   replaceDocumentPdf,

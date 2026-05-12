@@ -24,9 +24,8 @@ export default function KnowledgeDetailPage() {
         const [toastMsg, setToastMsg] = useState(null);
         const [searchChunk, setSearchChunk] = useState("");
         const [allExpanded, setAllExpanded] = useState(false);
+        const [page, setPage] = useState(1);
 
-        // Mutation State is now handled directly per chunk if we had multiple, 
-        // but useMutation can just handle whatever is passed.
         const [activeSaveId, setActiveSaveId] = useState(null);
         const [saveCallback, setSaveCallback] = useState(null);
 
@@ -35,13 +34,16 @@ export default function KnowledgeDetailPage() {
             setTimeout(() => setToastMsg(null), 3000);
         };
 
-        const { data: chunksData, isLoading } = useQuery({
-            queryKey: ["chunks", uri],
-            queryFn: () => getDocumentChunks(uri),
+        const { data: chunksData, isLoading, isFetching } = useQuery({
+            queryKey: ["chunks", uri, page],
+            queryFn: () => getDocumentChunks(uri, page),
             enabled: !!uri,
+            placeholderData: (previousData) => previousData,
         });
 
-        const chunks = chunksData?.data || chunksData || [];
+        const chunks = chunksData?.data || (Array.isArray(chunksData) ? chunksData : []);
+        const total = chunksData?.total || chunks.length;
+        const totalPages = Math.max(1, Math.ceil(total / 50));
         const meta = chunks.length > 0 ? chunks[0] : null;
 
         const filteredChunks = chunks.filter(c =>
@@ -105,7 +107,7 @@ export default function KnowledgeDetailPage() {
                                 </div>
                             ) : (
                                 <>
-                                    <MetadataCard meta={meta} totalChunks={chunks.length} />
+                                    <MetadataCard meta={meta} totalChunks={total} />
 
                                     {/* Chunks Header */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
@@ -127,6 +129,34 @@ export default function KnowledgeDetailPage() {
                                         </div>
                                     </div>
 
+                                    {/* Pagination Top */}
+                                    {!isLoading && total > 0 && (
+                                        <div className="py-2 mb-2 mt-2 flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-muted uppercase tracking-widest px-2">
+                                                Halaman {page} dari {totalPages}
+                                            </span>
+                                            <div className="flex gap-2 items-center">
+                                                {isFetching && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>}
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="!py-2 !px-4 !text-xs bg-card hover:bg-surface/50"
+                                                    disabled={page <= 1 || isFetching}
+                                                    onClick={() => setPage(p => p - 1)}
+                                                >
+                                                    Prev
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="!py-2 !px-4 !text-xs bg-card hover:bg-surface/50"
+                                                    disabled={page >= totalPages || isFetching}
+                                                    onClick={() => setPage(p => p + 1)}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Chunks List */}
                                     {filteredChunks.length === 0 ? (
                                         <div className="py-20 text-center flex flex-col items-center border border-surface rounded-3xl bg-card border-dashed">
@@ -137,7 +167,7 @@ export default function KnowledgeDetailPage() {
                                             <p className="text-sm text-muted mt-2 max-w-sm">Pencarian untuk "{searchChunk}" tidak menemukan hasil pada dokumen ini.</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className={`space-y-3 transition-opacity duration-300 ${isFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                                             {filteredChunks.map((chunk) => (
                                                 <Accordion
                                                     key={chunk.id_dokumen}
@@ -149,6 +179,34 @@ export default function KnowledgeDetailPage() {
                                                     isForceOpen={allExpanded}
                                                 />
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {/* Pagination Bottom */}
+                                    {!isLoading && total > 0 && (
+                                        <div className="py-2 mt-4 flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-muted uppercase tracking-widest px-2">
+                                                Halaman {page} dari {totalPages}
+                                            </span>
+                                            <div className="flex gap-2 items-center">
+                                                {isFetching && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>}
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="!py-2 !px-4 !text-xs bg-card hover:bg-surface/50"
+                                                    disabled={page <= 1 || isFetching}
+                                                    onClick={() => setPage(p => p - 1)}
+                                                >
+                                                    Prev
+                                                </Button>
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="!py-2 !px-4 !text-xs bg-card hover:bg-surface/50"
+                                                    disabled={page >= totalPages || isFetching}
+                                                    onClick={() => setPage(p => p + 1)}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
                                         </div>
                                     )}
                                 </>
