@@ -13,7 +13,7 @@ export class AdminDashboardPage {
 
   async goto() {
     await this.page.goto('/dashboard/admin');
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async isLoaded() {

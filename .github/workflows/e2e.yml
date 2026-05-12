@@ -104,7 +104,7 @@ jobs:
 
       - name: Run E2E tests
         working-directory: frontend
-        run: npx playwright test --project=chromium
+        run: npx playwright test --project=chromium --workers=1
 
       - name: Upload test report
         if: always()

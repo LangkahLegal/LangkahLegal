@@ -14,7 +14,7 @@ export class PaymentPage {
 
   async goto(consultationId) {
     await this.page.goto(`/payment/${consultationId}`);
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async isLoaded() {

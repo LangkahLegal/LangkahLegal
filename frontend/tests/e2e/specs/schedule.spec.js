@@ -151,7 +151,7 @@ authTest.describe('Schedule — Role Guard @schedule', () => {
     // Client accessing /schedule — middleware should allow access
     // but the page is consultant-only in terms of data
     await clientPage.goto('/schedule');
-    await clientPage.waitForLoadState('networkidle');
+    // await clientPage.waitForLoadState('networkidle');
     // The schedule page fetches consultant data which would fail for a client
     // We verify the page doesn't crash
     const url = clientPage.url();

@@ -11,7 +11,7 @@ export class ConsultantDetailPage {
 
   async goto(consultantId) {
     await this.page.goto(`/explore/${consultantId}`);
-    await this.page.waitForLoadState('networkidle');
+    // await this.page.waitForLoadState('networkidle');
   }
 
   async getConsultantName() {
