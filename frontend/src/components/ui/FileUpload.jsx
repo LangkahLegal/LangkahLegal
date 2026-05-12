@@ -11,6 +11,11 @@ export function FileUpload({
   maxSizeMB = 10,
 }) {
   const inputRef = useRef(null);
+  
+  const formattedAcceptText = accept
+    .split(",")
+    .map((ext) => ext.trim().replace(".", "").toUpperCase())
+    .join(", ");
 
   const handleFileChange = (e) => {
     const selected = e.target.files?.[0];
@@ -73,7 +78,8 @@ export function FileUpload({
             </p>
           ) : (
             <p className="text-muted text-xs mb-6">
-              PDF, DOCX, JPG, PNG (Maks. {maxSizeMB}MB)
+              {/* Teks dinamis dari prop accept */}
+              {formattedAcceptText} (Maks. {maxSizeMB}MB)
             </p>
           )}
         </div>
