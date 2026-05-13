@@ -64,4 +64,5 @@ imgbb
 midtransclient
 google-genai
 PyPDF2
+pytest==8.3.2
 voyageai
