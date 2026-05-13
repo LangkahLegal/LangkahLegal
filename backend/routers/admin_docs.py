@@ -236,8 +236,8 @@ def list_documents(
 ):
     _require_admin(user)
 
-    query = db.table("dokumen_hukum").select(
-        "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum"
+    query = db.table("dokumen_hukum_summary").select(
+        "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, total_chunks", count="exact"
     )
 
     if kategori:
@@ -245,32 +245,13 @@ def list_documents(
     if search:
         query = query.ilike("nama_uu", f"%{search}%")
 
-    result = query.order("frbr_uri").execute()
+    offset = (page - 1) * page_size
+    result = query.order("frbr_uri").range(offset, offset + page_size - 1).execute()
+
     rows = result.data or []
+    total = result.count or 0
 
-    # Group by frbr_uri
-    groups: dict[str, dict] = {}
-    for row in rows:
-        uri = row["frbr_uri"]
-        if uri not in groups:
-            groups[uri] = {
-                "frbr_uri": uri,
-                "nama_uu": row.get("nama_uu"),
-                "nomor_uu": row.get("nomor_uu"),
-                "tahun_uu": row.get("tahun_uu"),
-                "kategori": row.get("kategori"),
-                "status_hukum": row.get("status_hukum"),
-                "total_chunks": 0,
-            }
-        groups[uri]["total_chunks"] += 1
-
-    all_docs = list(groups.values())
-    total = len(all_docs)
-
-    start = (page - 1) * page_size
-    paginated = all_docs[start : start + page_size]
-
-    return PaginatedResponse(data=paginated, total=total, page=page, page_size=page_size)
+    return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
 
 
 @router.get(
@@ -286,7 +267,7 @@ Biasanya digunakan oleh admin saat mereka mengklik satu dokumen dari daftar doku
 def list_chunks(
     frbr_uri: str = Query(..., description="FRBR URI dokumen"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
+    page_size: int = Query(50, ge=1, le=1000),
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):

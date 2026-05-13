@@ -67,7 +67,7 @@ export const getAdminDocuments = async (page = 1, search = "", kategori = "") =>
  */
 export const getDocumentChunks = async (frbrUri, page = 1) => {
   const response = await api.get("/admin/documents/chunks", {
-    params: { frbr_uri: frbrUri, page, page_size: 50 },
+    params: { frbr_uri: frbrUri, page, page_size: 1000 },
   });
   return response.data;
 };
