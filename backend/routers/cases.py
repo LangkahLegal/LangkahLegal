@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, File, Form, UploadFile, status
 from supabase import Client
 from database import get_supabase_client
-from schemas.cases import CaseCreate, BidCreate
 from dependencies import get_current_user
+from config import get_settings
+from services import upload_supporting_document_to_supabase
+from typing import Optional
 
 # Inisialisasi router HARUS di bagian atas sebelum digunakan oleh @router
 router = APIRouter()
@@ -11,16 +13,26 @@ router = APIRouter()
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    summary="Client posting kasus anonim ke bursa",
+    summary="Client posting kasus anonim ke bursa (dengan file upload)",
     description="""
 Membuat kasus baru pada bursa kasus.
 
 Khusus role client. Kasus yang berhasil diposting akan berstatus `open`
-dan dapat dilihat oleh konsultan untuk melakukan bidding.
+dan dapat diklaim langsung oleh konsultan.
+
+Mendukung upload file dokumen pendukung (opsional).
+Gunakan field `dokumen_pendukung_files` untuk upload file (bisa lebih dari satu).
+Format yang diizinkan: PDF / JPG / JPEG / PNG / WEBP.
 """,
 )
-def posting_kasus_anonim(
-    request: CaseCreate,
+async def posting_kasus_anonim(
+    kategori_hukum: str = Form(...),
+    deskripsi_kasus_awam: str = Form(...),
+    tanggal_konsultasi: str = Form(...),
+    jam_mulai: str = Form(...),
+    jam_selesai: str = Form(...),
+    dokumen_bukti: Optional[str] = Form(default=None),
+    dokumen_pendukung_files: list[UploadFile] | None = File(default=None),
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
@@ -29,12 +41,23 @@ def posting_kasus_anonim(
             status_code=403, detail="Hanya klien yang dapat memposting kasus"
         )
 
+    # Validasi jumlah file (maks 10)
+    if dokumen_pendukung_files:
+        valid_files = [f for f in dokumen_pendukung_files if f.filename]
+        if len(valid_files) > 10:
+            raise HTTPException(status_code=400, detail="Maksimal 10 file dokumen pendukung")
+    else:
+        valid_files = []
+
+    # 1. Insert data kasus ke bursa
     data_kasus = {
         "id_user": current_user["id_user"],
-        # .lower() ini kuncinya! Jadi kalau kamu ngetik "Pidana", otomatis jadi "pidana"
-        "kategori_hukum": request.kategori_hukum.lower().strip(),
-        "deskripsi_kasus_awam": request.deskripsi_kasus_awam,
-        "dokumen_bukti": request.dokumen_bukti,
+        "kategori_hukum": kategori_hukum.lower().strip(),
+        "deskripsi_kasus_awam": deskripsi_kasus_awam,
+        "dokumen_bukti": dokumen_bukti,
+        "tanggal_konsultasi": tanggal_konsultasi,
+        "jam_mulai": jam_mulai,
+        "jam_selesai": jam_selesai,
         "status_bursa": "open",
     }
 
@@ -42,9 +65,42 @@ def posting_kasus_anonim(
     if not response.data:
         raise HTTPException(status_code=500, detail="Gagal memposting kasus")
 
+    id_bursa = response.data[0]["id_bursa"]
+
+    # 2. Upload dokumen pendukung ke Supabase bucket (jika ada)
+    settings = get_settings()
+    bucket_name = settings.supabase_berkas_pendukung_bucket
+    uploaded_docs = []
+    failed_docs = []
+    file_urls = []
+
+    for file in valid_files:
+        try:
+            doc_meta = await upload_supporting_document_to_supabase(
+                file=file,
+                id_pengajuan=id_bursa,  # reuse helper, pakai id_bursa sebagai identifier
+                id_user=current_user["id_user"],
+                db_client=db,
+                bucket_name=bucket_name,
+            )
+            uploaded_docs.append(doc_meta["nama_dokumen"])
+            file_urls.append(doc_meta["file_url"])
+        except Exception as e:
+            failed_docs.append({"nama": file.filename, "alasan": str(e)})
+
+    # Update dokumen_bukti dengan URL file yang berhasil diupload
+    if file_urls:
+        combined = dokumen_bukti or ""
+        if combined:
+            combined += ","
+        combined += ",".join(file_urls)
+        db.table("bursa_kasus").update({"dokumen_bukti": combined}).eq("id_bursa", id_bursa).execute()
+
     return {
         "message": "Kasus berhasil diposting secara anonim ke bursa",
         "data": response.data[0],
+        "dokumen_terupload": uploaded_docs,
+        "dokumen_gagal": failed_docs,
     }
 
 
@@ -54,7 +110,7 @@ def posting_kasus_anonim(
     description="Khusus role konsultan. Mengambil semua kasus bursa dengan status `open`.",
 )
 def lihat_bursa_kasus(
-    current_user: dict = Depends(get_current_user),  # Tambahkan pengunci JWT
+    current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     """
@@ -69,24 +125,33 @@ def lihat_bursa_kasus(
     return {"message": "Berhasil mengambil data bursa kasus", "data": response.data}
 
 
+# ================= DIRECT CLAIM (Klaim Langsung) ======================
+
+
 @router.post(
-    "/{id_bursa}/bids",
+    "/{id_bursa}/claim",
     status_code=status.HTTP_201_CREATED,
-    summary="Konsultan kirim penawaran bidding",
-    description="Khusus role konsultan. Mengirim penawaran biaya dan pesan untuk satu kasus bursa.",
+    summary="Konsultan klaim langsung sebuah kasus dari bursa",
+    description="""
+Khusus role konsultan. Konsultan langsung mengambil/mengklaim kasus dari bursa.
+
+Saat klaim berhasil:
+- Status bursa berubah menjadi `closed`.
+- Otomatis dibuatkan draf pengajuan konsultasi (tabel `pengajuan_konsultasi`).
+""",
 )
-def kirim_penawaran_bidding(
+def klaim_kasus(
     id_bursa: int,
-    request: BidCreate,
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
+    # 0. Pastikan yang mengakses adalah konsultan
     if current_user.get("role") != "konsultan":
         raise HTTPException(
-            status_code=403, detail="Hanya konsultan yang bisa mengirim bid"
+            status_code=403, detail="Hanya konsultan yang bisa mengklaim kasus"
         )
 
-    # 1. CARI ID_KONSULTAN YANG ASLI DARI TABEL KONSULTAN
+    # 1. Cari id_konsultan asli dari tabel konsultan berdasarkan id_user JWT
     konsultan_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -102,112 +167,56 @@ def kirim_penawaran_bidding(
 
     real_id_konsultan = konsultan_profile.data[0]["id_konsultan"]
 
-    # 2. Cek apakah status bursa masih open
+    # 2. Cek apakah kasus bursa masih open
     kasus = (
         db.table("bursa_kasus")
-        .select("status_bursa")
+        .select("id_bursa, id_user, status_bursa, deskripsi_kasus_awam, tanggal_konsultasi, jam_mulai, jam_selesai, dokumen_bukti")
         .eq("id_bursa", id_bursa)
         .execute()
     )
-    if not kasus.data or kasus.data[0]["status_bursa"] != "open":
+
+    if not kasus.data:
+        raise HTTPException(status_code=404, detail="Kasus bursa tidak ditemukan")
+
+    kasus_data = kasus.data[0]
+
+    if kasus_data["status_bursa"] != "open":
         raise HTTPException(
-            status_code=400, detail="Kasus tidak ditemukan atau bursa sudah ditutup"
+            status_code=400,
+            detail="Kasus ini sudah diklaim oleh konsultan lain",
         )
 
-    # 3. Insert penawaran menggunakan ID Konsultan yang asli
-    data_penawaran = {
-        "id_bursa": id_bursa,
-        "id_konsultan": real_id_konsultan,  # Pakai ID hasil pencarian tadi
-        "pesan_tawaran": request.pesan_tawaran,
-        "estimasi_biaya": request.estimasi_biaya,
-        "status_penawaran": "menunggu",
-    }
-
-    response = db.table("penawaran_konsultan").insert(data_penawaran).execute()
-    return {"message": "Penawaran berhasil dikirim", "data": response.data[0]}
-
-
-#! ================= BOOKMARK ======================
-
-
-@router.put(
-    "/bids/{id_penawaran}/accept",
-    summary="Client menerima penawaran konsultan",
-    description="""
-Saat client menerima satu penawaran:
-- status bursa ditutup,
-- status penawaran menjadi diterima,
-- dibuat draf pengajuan konsultasi.
-""",
-)
-def terima_penawaran(
-    id_penawaran: int,
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client),
-):
-    # 1. Ambil data bid untuk cari id_bursa & id_konsultan
-    bid = (
-        db.table("penawaran_konsultan")
-        .select("*")
-        .eq("id_penawaran", id_penawaran)
-        .execute()
-    )
-    if not bid.data:
-        raise HTTPException(status_code=404, detail="Penawaran tidak ditemukan")
-
-    bid_data = bid.data[0]
-
-    # 2. Update status bursa & penawaran
+    # 3. Tutup bursa → status menjadi 'closed'
     db.table("bursa_kasus").update({"status_bursa": "closed"}).eq(
-        "id_bursa", bid_data["id_bursa"]
-    ).execute()
-    db.table("penawaran_konsultan").update({"status_penawaran": "diterima"}).eq(
-        "id_penawaran", id_penawaran
+        "id_bursa", id_bursa
     ).execute()
 
-    # Saat Client klik 'Accept'
     new_consultation = {
-        "id_user": current_user["id_user"],
-        "id_konsultan": bid_data["id_konsultan"],
-        "id_bursa": bid_data["id_bursa"],
-        "status_pengajuan": "pending",
-        "deskripsi_kasus": "Hasil dari Bursa Kasus",
+        "id_user": kasus_data["id_user"],
+        "id_konsultan": real_id_konsultan,
+        "id_bursa": id_bursa,
+        "status_pengajuan": "terjadwal",
+        "deskripsi_kasus": kasus_data.get("deskripsi_kasus_awam", "Hasil dari Bursa Kasus"),
+        "tanggal_pengajuan": kasus_data.get("tanggal_konsultasi"),
+        "jam_mulai": kasus_data.get("jam_mulai"),
+        "jam_selesai": kasus_data.get("jam_selesai"),
     }
-    # Masukkan ke tabel muara (pengajuan_konsultasi)
+
     insert_response = (
         db.table("pengajuan_konsultasi").insert(new_consultation).execute()
     )
 
+    if not insert_response.data:
+        # Rollback: buka kembali bursa jika insert gagal
+        db.table("bursa_kasus").update({"status_bursa": "open"}).eq(
+            "id_bursa", id_bursa
+        ).execute()
+        raise HTTPException(
+            status_code=500,
+            detail="Gagal membuat draf konsultasi. Silakan coba lagi.",
+        )
+
     return {
-        "message": "Penawaran diterima, draf konsultasi dibuat",
-        "data": insert_response.data[0] if insert_response.data else None,
+        "message": "Kasus berhasil diklaim. Draf konsultasi telah dibuat.",
+        "data": insert_response.data[0],
     }
-
-
-@router.get(
-    "/{id_bursa}/bids",
-    summary="Client melihat daftar penawaran untuk kasusnya",
-    description="Menampilkan semua bid dari konsultan untuk kasus bursa tertentu milik client.",
-)
-def lihat_penawaran_masuk(
-    id_bursa: int,
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client),
-):
-    """
-    (Khusus Client) Melihat semua bid yang masuk untuk kasus miliknya.
-    """
-    # Validasi: Pastikan yang melihat adalah pemilik kasus
-    kasus = db.table("bursa_kasus").select("id_user").eq("id_bursa", id_bursa).execute()
-    if not kasus.data or kasus.data[0]["id_user"] != current_user["id_user"]:
-        raise HTTPException(status_code=403, detail="Akses ditolak")
-
-    # Ambil semua penawaran untuk bursa ini
-    response = (
-        db.table("penawaran_konsultan")
-        .select("*, konsultan(nama_lengkap, spesialisasi)")
-        .eq("id_bursa", id_bursa)
-        .execute()
-    )
-
-    return {"message": "Daftar penawaran berhasil diambil", "data": response.data}
