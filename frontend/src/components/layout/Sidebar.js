@@ -11,6 +11,7 @@ export default function Sidebar({ role = "client" }) {
     role === "konsultan"
       ? [
           { label: "Klien", icon: "group", path: "/consultation" },
+          { label: "Bursa", icon: "storefront", path: "/bursa" },
           { label: "Riwayat", icon: "history", path: "/history/consultant" },
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
@@ -21,6 +22,7 @@ export default function Sidebar({ role = "client" }) {
         ]
       : [
           { label: "Konsultasi", icon: "gavel", path: "/explore" },
+          { label: "Bursa", icon: "storefront", path: "/bursa/post" },
           { label: "Tanya AI", icon: "psychology", path: "/ai" },
           { label: "Riwayat", icon: "history", path: "/history/client" },
         ];

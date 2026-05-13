@@ -24,7 +24,7 @@ const formatCurrency = (value) => {
 };
 
 const isSchedulePast = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return true;
+  if (!dateStr || !timeStr) return false; // Bursa claims tanpa jadwal tetap tampil
   const datePart = dateStr.split("T")[0];
   const scheduleDateTime = new Date(`${datePart}T${timeStr}`);
   const now = new Date();

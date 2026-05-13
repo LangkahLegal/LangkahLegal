@@ -1,28 +1,33 @@
 import api from "@/lib/axios";
 
 export const caseService = {
-  createCase: async (payload) => {
-    const response = await api.post("/cases", payload);
-    return response.data;
+  // Client: posting kasus anonim ke bursa (dengan file upload)
+  createCase: async (payload, files = []) => {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, value);
+      }
+    });
+
+    files?.forEach((file) => {
+      formData.append("dokumen_pendukung_files", file);
+    });
+
+    const { data } = await api.post("/cases", formData);
+    return data;
   },
 
+  // Konsultan: melihat semua kasus open di bursa
   listOpenCases: async () => {
     const response = await api.get("/cases");
     return response.data.data;
   },
 
-  sendBid: async (idBursa, payload) => {
-    const response = await api.post(`/cases/${idBursa}/bids`, payload);
+  // Konsultan: klaim langsung sebuah kasus
+  claimCase: async (idBursa) => {
+    const response = await api.post(`/cases/${idBursa}/claim`);
     return response.data;
-  },
-
-  acceptBid: async (idPenawaran) => {
-    const response = await api.put(`/cases/bids/${idPenawaran}/accept`);
-    return response.data;
-  },
-
-  listBids: async (idBursa) => {
-    const response = await api.get(`/cases/${idBursa}/bids`);
-    return response.data.data;
   },
 };

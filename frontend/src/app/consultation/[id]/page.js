@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,7 +19,17 @@ import { consultationService } from "@/services/consultation.service";
 
 const getUserRoleSnapshot = () => {
   if (typeof window === "undefined") return "client";
-  return localStorage.getItem("userRole") || "client";
+  // Cek beberapa kemungkinan key yang digunakan untuk menyimpan role
+  const role = localStorage.getItem("userRole") || 
+               localStorage.getItem("role") || 
+               localStorage.getItem("user_role");
+  
+  if (!role) return "client";
+  
+  // Normalisasi: pastikan return "konsultan" atau "client"
+  const normalized = role.toLowerCase();
+  if (normalized.includes("konsultan") || normalized.includes("consultant")) return "konsultan";
+  return "client";
 };
 
 const getUserRoleServerSnapshot = () => "client";
@@ -27,7 +37,7 @@ const getUserRoleServerSnapshot = () => "client";
 const subscribeToUserRole = (callback) => {
   if (typeof window === "undefined") return () => {};
   const handleStorage = (event) => {
-    if (!event || event.key === "userRole") {
+    if (!event || ["userRole", "role", "user_role"].includes(event.key)) {
       callback();
     }
   };
@@ -43,7 +53,18 @@ export default function ConsultationDetail() {
     getUserRoleServerSnapshot,
   );
 
-  // --- 1. FETCH DATA DETAIL (TanStack Query) ---
+  // --- 1. FETCH USER PROFILE ---
+  const { data: userProfile } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+      });
+      return res.json();
+    }
+  });
+
+  // --- 2. FETCH DATA DETAIL ---
   const {
     data: requestData,
     isLoading,
@@ -53,6 +74,7 @@ export default function ConsultationDetail() {
     queryFn: () => consultationService.getConsultationDetail(id),
     enabled: !!id,
     select: (data) => ({
+      id_konsultan: data.id_konsultan,
       clientName: data.nama_klien,
       fotoProfil: data.foto_profil,
       createdAt: data.created_at,
@@ -73,6 +95,16 @@ export default function ConsultationDetail() {
         })) || [],
     }),
   });
+
+  // --- 3. DERIVE FINAL ROLE ---
+  const derivedRole = useMemo(() => {
+    // Jika ID Konsultan di data cocok dengan profil konsultan user, maka dia adalah konsultan
+    if (requestData && userProfile?.data?.konsultan?.id_konsultan === requestData.id_konsultan) {
+      return "konsultan";
+    }
+    // Fallback ke localStorage jika data belum lengkap
+    return userRole;
+  }, [requestData, userProfile, userRole]);
 
   // --- 2. LOADING STATE ---
   if (isLoading) {
@@ -112,7 +144,7 @@ export default function ConsultationDetail() {
   return (
     /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex transition-colors duration-500 font-primary">
-      <Sidebar role={userRole} />
+      <Sidebar role={derivedRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Detail Konsultasi" />
@@ -144,7 +176,8 @@ export default function ConsultationDetail() {
               link={requestData.zoomLink}
               password={requestData.zoomPassword}
               status={requestData.status}
-              role={userRole}
+              role={derivedRole}
+              consultationId={id}
             />
           </div>
         </main>

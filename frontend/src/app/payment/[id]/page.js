@@ -76,7 +76,9 @@ export default function PaymentPage() {
   });
 
   // --- 4. DERIVED STATE ---
-  const konsultan = consultation?.jadwal_ketersediaan?.konsultan || {};
+  const konsultanViaJadwal = consultation?.jadwal_ketersediaan?.konsultan || {};
+  const konsultanDirect = consultation?.konsultan || {};
+  const konsultan = konsultanViaJadwal.nama_lengkap ? konsultanViaJadwal : konsultanDirect;
   const isSettled = paymentStatus?.status_pembayaran === "settlement";
 
   // --- 5. RENDER LOGIC ---

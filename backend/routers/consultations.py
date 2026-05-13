@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from supabase import Client
 from database import get_supabase_client
-from schemas.consultations import ConsultationCreate, ConsultationRespond, RatingCreate
+from schemas.consultations import ConsultationCreate, ConsultationRespond, RatingCreate, AssignSchedule
 from dependencies import get_current_user
 from config import get_settings
 from services import upload_supporting_document_to_supabase
@@ -209,6 +209,9 @@ def get_my_consultations(
         dokumen_pendukung (
             id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at
         ),
+        konsultan (
+            nama_lengkap, spesialisasi, foto_profil
+        ),
         jadwal_ketersediaan (
             tanggal, jam_mulai, jam_selesai,
             konsultan (
@@ -254,8 +257,9 @@ def get_detail_pengajuan(
             *,
             jadwal_ketersediaan(
                 *,
-                konsultan(nama_lengkap, tarif_per_sesi, foto_profil)
+                konsultan(nama_lengkap, tarif_per_sesi, foto_profil, spesialisasi)
             ),
+            konsultan(nama_lengkap, tarif_per_sesi, foto_profil, spesialisasi),
             users(nama, email, foto_profil),
             dokumen_pendukung(id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at)
         """)\
@@ -285,13 +289,16 @@ def get_detail_pengajuan(
     
     # Ekstraksi field agar sesuai dengan kebutuhan response UI Permintaan Baru
     jadwal = data.get("jadwal_ketersediaan") or {}
+    konsultan_via_jadwal = jadwal.get("konsultan") or {}
+    konsultan_direct = data.get("konsultan") or {}
     user_info = data.get("users") or {}
     docs = data.get("dokumen_pendukung") or []
     
     data["nama_klien"] = user_info.get("nama")
     data["foto_profil"] = user_info.get("foto_profil")
     data["tanggal_pengajuan"] = data.get("tanggal_pengajuan") or data.get("created_at")
-    data["tanggal_konsultasi"] = jadwal.get("tanggal")
+    # Tanggal konsultasi: dari jadwal ketersediaan ATAU langsung dari tanggal_pengajuan (bursa)
+    data["tanggal_konsultasi"] = jadwal.get("tanggal") or str(data.get("tanggal_pengajuan", ""))[:10]
     
     # Format rentang waktu HH:MM - HH:MM jika ada detiknya kita hilangkan biar lebih rapi atau biarkan saja
     jm = str(data.get("jam_mulai", ""))[:5]
@@ -317,8 +324,8 @@ def get_detail_pengajuan(
 
     data["jumlah_sesi"] = jumlah_sesi
     
-    # Ambil tarif
-    tarif_skrg = jadwal.get("konsultan", {}).get("tarif_per_sesi", 0)
+    # Ambil tarif: dari jadwal konsultan ATAU direct konsultan join (bursa)
+    tarif_skrg = konsultan_via_jadwal.get("tarif_per_sesi") or konsultan_direct.get("tarif_per_sesi", 0)
     data["total_harga"] = tarif_skrg * jumlah_sesi
 
     # link_dokumen: prioritaskan kolom langsung (dari GDrive URL), fallback ke file upload pertama
@@ -328,7 +335,7 @@ def get_detail_pengajuan(
     data["link_zoom"] = data.get("link_zoom")
 
     # Expose array berkas_pendukung lengkap dari tabel dokumen_pendukung (upload ke Supabase bucket)
-    data["berkas_pendukung"] = [
+    berkas = [
         {
             "id_dokumen": d.get("id_dokumen"),
             "nama_dokumen": d.get("nama_dokumen"),
@@ -339,8 +346,197 @@ def get_detail_pengajuan(
         for d in docs
     ]
 
+    # Fallback: Untuk bursa kasus, dokumen tersimpan di field dokumen_bukti (comma-separated URLs)
+    if not berkas and data.get("id_bursa"):
+        try:
+            bursa_data = db.table("bursa_kasus").select("dokumen_bukti").eq("id_bursa", data["id_bursa"]).execute()
+            if bursa_data.data and bursa_data.data[0].get("dokumen_bukti"):
+                urls = bursa_data.data[0]["dokumen_bukti"].split(",")
+                for idx, url in enumerate(urls):
+                    url = url.strip()
+                    if url:
+                        ext = url.rsplit(".", 1)[-1].lower() if "." in url else ""
+                        berkas.append({
+                            "id_dokumen": idx + 1,
+                            "nama_dokumen": url.rsplit("/", 1)[-1] if "/" in url else f"dokumen_{idx+1}",
+                            "file_url": url,
+                            "tipe_file": "application/pdf" if ext == "pdf" else f"image/{ext}" if ext else "unknown",
+                            "ukuran_kb": 0,
+                        })
+        except Exception:
+            pass
+
+    data["berkas_pendukung"] = berkas
+
     return {"data": data}
-    
+
+
+@router.put(
+    "/{id_pengajuan}/assign-schedule",
+    summary="Konsultan atur jadwal untuk klaim bursa",
+    description="""
+Khusus konsultan. Digunakan setelah konsultan mengklaim kasus dari bursa.
+Konsultan memilih slot jadwal miliknya, lalu sistem:
+- Mengisi tanggal_pengajuan, jam_mulai, jam_selesai, id_jadwal pada pengajuan.
+- Mengubah status menjadi `menunggu_pembayaran`.
+""",
+)
+def assign_schedule_to_claim(
+    id_pengajuan: int,
+    request: AssignSchedule,
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    # 0. Hanya konsultan
+    if current_user.get("role") != "konsultan":
+        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengatur jadwal")
+
+    # 1. Ambil id_konsultan
+    kons_profile = (
+        db.table("konsultan")
+        .select("id_konsultan")
+        .eq("id_user", current_user["id_user"])
+        .single()
+        .execute()
+    )
+    if not kons_profile.data:
+        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
+
+    real_id_konsultan = kons_profile.data["id_konsultan"]
+
+    # 2. Ambil data pengajuan & validasi
+    pengajuan = (
+        db.table("pengajuan_konsultasi")
+        .select("id_pengajuan, id_konsultan, status_pengajuan, id_bursa")
+        .eq("id_pengajuan", id_pengajuan)
+        .execute()
+    )
+    if not pengajuan.data:
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
+
+    data_pengajuan = pengajuan.data[0]
+
+    if data_pengajuan["id_konsultan"] != real_id_konsultan:
+        raise HTTPException(status_code=403, detail="Pengajuan ini bukan milik Anda")
+
+    if data_pengajuan["status_pengajuan"] != "pending":
+        raise HTTPException(status_code=400, detail="Hanya pengajuan berstatus pending yang bisa dijadwalkan")
+
+    # 3. Validasi jadwal milik konsultan ini
+    jadwal = (
+        db.table("jadwal_ketersediaan")
+        .select("id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai, status_tersedia")
+        .eq("id_jadwal", request.id_jadwal)
+        .execute()
+    )
+    if not jadwal.data:
+        raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
+
+    data_jadwal = jadwal.data[0]
+
+    if data_jadwal["id_konsultan"] != real_id_konsultan:
+        raise HTTPException(status_code=403, detail="Jadwal ini bukan milik Anda")
+
+    if not data_jadwal["status_tersedia"]:
+        raise HTTPException(status_code=400, detail="Slot jadwal sudah tidak tersedia")
+
+    # Validasi jam dalam rentang jadwal
+    if request.jam_mulai < data_jadwal["jam_mulai"] or request.jam_selesai > data_jadwal["jam_selesai"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})",
+        )
+
+    # 4. Update pengajuan dengan data jadwal + status
+    update_data = {
+        "id_jadwal": request.id_jadwal,
+        "tanggal_pengajuan": data_jadwal["tanggal"],
+        "jam_mulai": request.jam_mulai,
+        "jam_selesai": request.jam_selesai,
+        "status_pengajuan": "menunggu_pembayaran",
+    }
+
+    response = (
+        db.table("pengajuan_konsultasi")
+        .update(update_data)
+        .eq("id_pengajuan", id_pengajuan)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Gagal mengatur jadwal")
+
+    # 5. Tandai slot jadwal sebagai tidak tersedia
+    db.table("jadwal_ketersediaan").update({"status_tersedia": False}).eq(
+        "id_jadwal", request.id_jadwal
+    ).execute()
+
+    return {
+        "message": "Jadwal berhasil diatur. Status berubah ke menunggu_pembayaran.",
+        "data": response.data[0],
+    }
+
+
+@router.put(
+    "/{id_pengajuan}/zoom-link",
+    summary="Konsultan mengatur link Zoom untuk konsultasi",
+    description="""
+Khusus konsultan. Digunakan untuk mengisi atau mengubah link Zoom meeting
+untuk sesi konsultasi yang sudah terjadwal.
+""",
+)
+def update_zoom_link(
+    id_pengajuan: int,
+    link_zoom: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    if current_user.get("role") != "konsultan":
+        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengatur link Zoom")
+
+    # Ambil id_konsultan
+    kons_profile = (
+        db.table("konsultan")
+        .select("id_konsultan")
+        .eq("id_user", current_user["id_user"])
+        .single()
+        .execute()
+    )
+    if not kons_profile.data:
+        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
+
+    # Validasi pengajuan milik konsultan ini
+    pengajuan = (
+        db.table("pengajuan_konsultasi")
+        .select("id_pengajuan, id_konsultan, status_pengajuan")
+        .eq("id_pengajuan", id_pengajuan)
+        .eq("id_konsultan", kons_profile.data["id_konsultan"])
+        .execute()
+    )
+
+    if not pengajuan.data:
+        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan atau bukan milik Anda")
+
+    # Tetap batasi status agar tidak merusak flow lain
+    if pengajuan.data[0]["status_pengajuan"] not in ["terjadwal", "menunggu_pembayaran", "selesai"]:
+        raise HTTPException(status_code=400, detail="Link Zoom hanya bisa diatur untuk sesi yang relevan")
+
+    response = (
+        db.table("pengajuan_konsultasi")
+        .update({"link_zoom": link_zoom.strip()})
+        .eq("id_pengajuan", id_pengajuan)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Gagal menyimpan link Zoom")
+
+    return {
+        "message": "Link Zoom berhasil disimpan",
+        "data": {"link_zoom": link_zoom.strip()},
+    }
+
+
 @router.post(
     "/{id_pengajuan}/rating",
     summary="Client memberi rating setelah konsultasi selesai",
@@ -389,41 +585,6 @@ def beri_rating_konsultasi(
 
     return {"message": "Terima kasih atas penilaian Anda!"}
 
-@router.put(
-    "/{id_pengajuan}/status",
-    summary="Konsultan mengubah status pengajuan",
-    description="""
-Endpoint utilitas untuk update status pengajuan oleh konsultan.
-
-Contoh nilai `new_status`: `pending`, `menunggu_pembayaran`, `ditolak`, `completed`.
-Frontend disarankan tetap mengikuti workflow bisnis yang sudah ditetapkan.
-""",
-)
-def update_consultation_status(
-    id_pengajuan: int,
-    new_status: str, # Misal: 'accepted', 'rejected', 'completed'
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client)
-):
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengubah status")
-
-    # Ambil info pengajuan terlebih dahulu jika ditolak
-    if new_status.lower() in ["ditolak", "rejected"]:
-        pengajuan = db.table("pengajuan_konsultasi").select("id_jadwal").eq("id_pengajuan", id_pengajuan).execute()
-        if pengajuan.data and pengajuan.data[0].get("id_jadwal"):
-            # Bebaskan jadwal ketersediaan
-            db.table("jadwal_ketersediaan").update({"status_tersedia": True}).eq("id_jadwal", pengajuan.data[0]["id_jadwal"]).execute()
-
-    response = db.table("pengajuan_konsultasi")\
-        .update({"status_pengajuan": new_status})\
-        .eq("id_pengajuan", id_pengajuan)\
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
-
-    return {"message": f"Status berhasil diubah menjadi {new_status}"}
 
 
 @router.get("/{id_konsultan}/booked-slots", status_code=status.HTTP_200_OK)

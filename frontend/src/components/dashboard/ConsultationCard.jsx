@@ -70,7 +70,15 @@ export default function ConsultationCard({
 
   const jadwal = data?.jadwal_ketersediaan;
   const konsultan = jadwal?.konsultan;
-  const displayName = konsultan?.nama_lengkap || "User";
+  // Fallback chain: jadwal > direct konsultan join > users > fallback
+  const displayName =
+    konsultan?.nama_lengkap ||
+    data?.konsultan?.nama_lengkap ||
+    data?.users?.nama ||
+    "User";
+  const isBursaClaim = !!data?.id_bursa;
+  // Tanggal bisa dari jadwal_ketersediaan ATAU langsung dari tanggal_pengajuan
+  const tanggalDisplay = jadwal?.tanggal || data?.tanggal_pengajuan;
 
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     displayName,
@@ -191,9 +199,11 @@ export default function ConsultationCard({
         <div className="flex items-center gap-2 text-muted text-[10px] sm:text-xs font-semibold">
           <MaterialIcon name="calendar_today" className="text-sm opacity-70" />
           <span className="truncate">
-            {jadwal?.tanggal
-              ? `${formatDate(jadwal.tanggal)} • ${data?.jam_mulai?.substring(0, 5)} - ${data?.jam_selesai?.substring(0, 5)}`
-              : "Jadwal belum tersedia"}
+            {tanggalDisplay
+              ? `${formatDate(tanggalDisplay)} • ${data?.jam_mulai?.substring(0, 5)} - ${data?.jam_selesai?.substring(0, 5)}`
+              : isBursaClaim
+                ? "Dari Bursa Kasus — menunggu penjadwalan"
+                : "Jadwal belum tersedia"}
           </span>
         </div>
 

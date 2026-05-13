@@ -123,4 +123,24 @@ export const consultationService = {
       throw error;
     }
   },
+
+  // Konsultan: atur jadwal untuk klaim bursa
+  assignSchedule: async (id_pengajuan, payload) => {
+    const response = await api.put(
+      `/consultations/${id_pengajuan}/assign-schedule`,
+      payload,
+    );
+    return response.data;
+  },
+
+  // Konsultan: atur link Zoom untuk konsultasi
+  updateZoomLink: async (id_pengajuan, link_zoom) => {
+    const formData = new FormData();
+    formData.append("link_zoom", link_zoom);
+    const response = await api.put(
+      `/consultations/${id_pengajuan}/zoom-link`,
+      formData,
+    );
+    return response.data;
+  },
 };

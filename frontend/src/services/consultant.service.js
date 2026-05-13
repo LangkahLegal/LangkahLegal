@@ -11,6 +11,11 @@ export const consultantService = {
     return response.data.data;
   },
 
+  getMySchedules: async () => {
+    const response = await api.get("/consultants/me/schedules");
+    return response.data;
+  },
+
   getPendingRequests: async () => {
     const response = await api.get("/consultants/me/requests/pending");
     return response.data;

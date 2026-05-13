@@ -219,6 +219,7 @@ def get_pending_requests(
             tanggal_pengajuan, 
             jam_mulai, 
             jam_selesai,
+            id_bursa,
             users ( 
                 nama, 
                 foto_profil 
@@ -227,7 +228,7 @@ def get_pending_requests(
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
         .eq("status_pengajuan", "pending")
-        .order("created_at", desc=True) # Senior tip: Biasakan kasih order biar rapi di UI
+        .order("created_at", desc=True)
         .execute()
     )
     
@@ -271,14 +272,13 @@ def get_active_requests(
             tanggal_pengajuan, 
             jam_mulai, 
             jam_selesai,
+            id_bursa,
             users ( nama, foto_profil )
         """
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .eq("status_pengajuan", "terjadwal")
-        # Opsional: Urutkan agar yang paling dekat muncul di atas
-        .order("tanggal_pengajuan", desc=False)
-        .order("jam_mulai", desc=False)
+        .in_("status_pengajuan", ["terjadwal", "menunggu_pembayaran"])
+        .order("created_at", desc=True)
         .execute()
     )
     
