@@ -43,7 +43,7 @@ export default function KnowledgeDetailPage() {
 
         const chunks = chunksData?.data || (Array.isArray(chunksData) ? chunksData : []);
         const total = chunksData?.total || chunks.length;
-        const totalPages = Math.max(1, Math.ceil(total / 50));
+        const totalPages = Math.max(1, Math.ceil(total / 1000));
         const meta = chunks.length > 0 ? chunks[0] : null;
 
         const filteredChunks = chunks.filter(c =>
