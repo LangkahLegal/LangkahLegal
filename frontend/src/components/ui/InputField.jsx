@@ -6,6 +6,7 @@ export function InputField({
   name,
   type = "text",
   className = "",
+  "data-testid": dataTestId,
   ...props
 }) {
   const inputId = id || name;
@@ -24,6 +25,7 @@ export function InputField({
         id={inputId}
         name={name}
         type={type}
+        data-testid={dataTestId}
         className={`
           w-full font-headline text-sm 
           bg-input border border-surface rounded-xl 

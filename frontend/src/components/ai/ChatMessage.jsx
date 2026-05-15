@@ -9,6 +9,7 @@ export default function ChatMessage({ message }) {
   return (
     <div
       className={`flex ${isAI ? "justify-start" : "justify-end"} items-end gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300`}
+      data-testid={isAI ? "ai-message" : "user-message"}
     >
       {isAI && (
         /* REFACTOR: bg-input & border-surface agar adaptif */
