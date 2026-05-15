@@ -17,9 +17,9 @@ export default function SignupForm({ onSubmit, isLoading, errorMsg }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" data-testid="signup-form">
       {errorMsg && (
-        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl" data-testid="signup-error-msg">
           {errorMsg}
         </div>
       )}
@@ -32,6 +32,7 @@ export default function SignupForm({ onSubmit, isLoading, errorMsg }) {
         value={formData.name}
         onChange={handleChange}
         required
+        data-testid="signup-name-input"
       />
 
       <InputField
@@ -42,6 +43,7 @@ export default function SignupForm({ onSubmit, isLoading, errorMsg }) {
         value={formData.email}
         onChange={handleChange}
         required
+        data-testid="signup-email-input"
       />
 
       <PasswordField
@@ -50,9 +52,10 @@ export default function SignupForm({ onSubmit, isLoading, errorMsg }) {
         value={formData.password}
         onChange={handleChange}
         required
+        data-testid="signup-password-input"
       />
 
-      <Button type="submit" className="mt-4 w-full" disabled={isLoading}>
+      <Button type="submit" className="mt-4 w-full" disabled={isLoading} data-testid="signup-submit-btn">
         {isLoading ? "Mengirim OTP..." : "Daftar"}
       </Button>
     </form>

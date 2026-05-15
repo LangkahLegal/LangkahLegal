@@ -9,6 +9,7 @@ export function PasswordField({
   id = "password",
   name = "password",
   className = "",
+  "data-testid": dataTestId,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +30,7 @@ export function PasswordField({
           id={id}
           name={name}
           type={showPassword ? "text" : "password"}
+          data-testid={dataTestId}
           className={`
             w-full font-headline text-sm 
             bg-input border border-surface rounded-xl 
