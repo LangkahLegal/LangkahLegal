@@ -73,7 +73,7 @@ function AddSlotModalContent({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-md px-6 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-md px-6 animate-in fade-in duration-300" data-testid="add-slot-modal">
       <div className="bg-card rounded-[2.5rem] p-8 w-full max-w-sm border border-surface shadow-soft animate-in zoom-in-95 duration-300 flex flex-col max-h-[90dvh]">
         {/* Header - Tetap di atas (shrink-0 agar tidak mengecil) */}
         <div className="flex justify-between items-center mb-8 shrink-0">
@@ -161,6 +161,7 @@ function AddSlotModalContent({
               fullWidth
               onClick={handleSave}
               className="py-4 shadow-soft"
+              data-testid="schedule-save-btn"
             >
               {isNewData ? "Tambah Slot" : "Simpan Perubahan"}
             </Button>

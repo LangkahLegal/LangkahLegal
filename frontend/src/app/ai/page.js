@@ -183,7 +183,7 @@ export default function TanyaAIPage() {
   };
 
   return (
-    <div className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500">
+    <div className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500" data-testid="ai-chat-page">
       {/* Main navigation sidebar */}
       <Sidebar />
 
@@ -213,6 +213,7 @@ export default function TanyaAIPage() {
         <main
           ref={scrollRef}
           className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth"
+          data-testid="ai-chat-messages"
         >
           <div className="max-w-5xl mx-auto w-full space-y-8">
             {/* Loading state when switching sessions */}

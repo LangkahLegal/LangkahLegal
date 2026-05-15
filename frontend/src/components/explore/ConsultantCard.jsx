@@ -24,7 +24,7 @@ export default function ConsultantCard({ consultant }) {
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
 
   return (
-    <div className="bg-card/60 border border-surface p-5 rounded-3xl flex items-center justify-between group hover:border-primary-light/40 transition-all duration-300 shadow-lg">
+    <div className="bg-card/60 border border-surface p-5 rounded-3xl flex items-center justify-between group hover:border-primary-light/40 transition-all duration-300 shadow-lg" data-testid="consultant-card">
       <div className="flex items-center gap-5">
         {/* Avatar with Status Dot */}
         <div className="relative shrink-0">

@@ -15,7 +15,7 @@ export default function FullCalendar({
   const weekLabels = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   return (
-    <section className="w-full max-w-md mx-auto">
+    <section className="w-full max-w-md mx-auto" data-testid="monthly-calendar">
       {/* Container Utama: Menggunakan bg-card dan shadow-soft */}
       <div className="bg-card/60 backdrop-blur-xl rounded-[2.5rem] p-8 border border-surface shadow-soft">
         {/* Header: Ikon + Bulan + Navigasi */}
