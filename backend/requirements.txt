@@ -65,3 +65,5 @@ midtransclient
 google-genai
 PyPDF2
 voyageai
+PyMuPDF
+slowapi
