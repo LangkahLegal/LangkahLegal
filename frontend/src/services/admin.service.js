@@ -65,9 +65,9 @@ export const getAdminDocuments = async (page = 1, search = "", kategori = "") =>
  * Mengambil isi pasal-pasal (chunks) di dalam satu UU berdasarkan URI
  * Menggunakan endpoint: GET /admin/documents/chunks
  */
-export const getDocumentChunks = async (frbrUri, page = 1) => {
+export const getDocumentChunks = async (frbrUri, page = 1, pageSize = 50) => {
   const response = await api.get("/admin/documents/chunks", {
-    params: { frbr_uri: frbrUri, page, page_size: 1000 },
+    params: { frbr_uri: frbrUri, page, page_size: pageSize },
   });
   return response.data;
 };

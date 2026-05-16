@@ -6,7 +6,7 @@ const formatDate = (dateStr) => {
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' • ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
 };
 
-export default function MetadataCard({ meta, totalChunks }) {
+export default function DocumentCard({ meta, totalChunks }) {
     if (!meta) return null;
     
     return (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import PageHeader from "@/components/layout/PageHeader";
@@ -11,56 +11,35 @@ import BottomNav from "@/components/layout/BottomNav";
 import SearchBar from "@/components/layout/SearchBar";
 import CategoryList from "@/components/dashboard/CategoryList";
 import StatCard from "@/components/dashboard/StatCard";
-import KnowledgeTable, { Badge } from "@/components/knowledge/KnowledgeTable";
-import { FileUpload } from "@/components/ui/FileUpload";
+import KnowledgeTable from "@/components/knowledge/KnowledgeTable";
 
-import {
-  getAdminDocuments,
-  deleteFullDocumentByUri,
-  uploadDocumentPdf,
-  replaceDocumentPdf,
-  getJobStatus,
-} from "@/services/admin.service";
+import { getAdminDocuments } from "@/services/admin.service";
 
-import Modal from "@/components/knowledge/Modal";
-
-
-
-// --- Main Page Component ---
+import UploadDocumentModal from "@/components/knowledge/modals/UploadDocumentModal";
+import ReplaceDocumentModal from "@/components/knowledge/modals/ReplaceDocumentModal";
+import DeleteDocumentModal from "@/components/knowledge/modals/DeleteDocumentModal";
 
 export default function KnowledgeBasePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
   const [toastMsg, setToastMsg] = useState(null);
-  
+
   // Background Job State
   const [activeJobId, setActiveJobId] = useState(null);
-
-  const queryClient = useQueryClient();
 
   // Modals
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState(null);
 
-  // Upload State
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [fileToUpload, setFileToUpload] = useState(null);
-  const [uploading, setUploading] = useState(false);
 
-  // Replace Modal State
   const [replaceModalOpen, setReplaceModalOpen] = useState(false);
   const [docToReplace, setDocToReplace] = useState(null);
-  const [fileToReplace, setFileToReplace] = useState(null);
-  const [replacing, setReplacing] = useState(false);
-
-  const handleReplaceClick = (doc) => {
-    setDocToReplace(doc);
-    setFileToReplace(null);
-    setReplaceModalOpen(true);
-  };
 
   // Debounce search input
   useEffect(() => {
@@ -71,9 +50,9 @@ export default function KnowledgeBasePage() {
     return () => clearTimeout(handler);
   }, [searchInput]);
 
-  // Show Toast Logic (Simple inline toast to match lack of external lib)
-  const showToast = (msg) => {
-    setToastMsg(msg);
+  // Show Toast Logic
+  const showToast = (msg, type = "success") => {
+    setToastMsg({ text: msg, type });
     setTimeout(() => setToastMsg(null), 3000);
   };
 
@@ -85,124 +64,21 @@ export default function KnowledgeBasePage() {
 
   const documents = docsData?.data || [];
   const totalDocs = docsData?.total || 0;
-  // Based on admin.service.js which uses page_size=20
   const totalPages = Math.max(1, Math.ceil(totalDocs / 20));
 
-  // Mutations
-  const deleteMutation = useMutation({
-    mutationFn: (uri) => deleteFullDocumentByUri(uri),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["documents"]);
-      showToast("Dokumen berhasil dihapus!");
-      setConfirmModalOpen(false);
-      setDocToDelete(null);
-    },
-    onError: () => {
-      alert("Gagal menghapus dokumen");
-      setConfirmModalOpen(false);
-    },
-  });
-
+  // Handlers
   const handleDeleteClick = (doc) => {
     setDocToDelete(doc);
     setConfirmModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (docToDelete) {
-      deleteMutation.mutate(docToDelete.frbr_uri);
-    }
+  const handleReplaceClick = (doc) => {
+    setDocToReplace(doc);
+    setReplaceModalOpen(true);
   };
 
   const handleDetailClick = (doc) => {
     router.push(`/knowledge/detail?uri=${encodeURIComponent(doc.frbr_uri)}`);
-  };
-
-  const handleUploadFile = async () => {
-    if (!fileToUpload) return;
-    try {
-      setUploading(true);
-      const res = await uploadDocumentPdf(fileToUpload);
-      setUploadModalOpen(false);
-      setFileToUpload(null);
-
-      showToast("File diterima, sedang memproses di background...");
-
-      // Poll status
-      const jobId = res.job_id;
-      setActiveJobId(jobId);
-      
-      const poll = setInterval(async () => {
-        try {
-          const statusRes = await getJobStatus(jobId);
-          if (statusRes.status === "completed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            showToast(statusRes.message || "Proses dokumen selesai!");
-            queryClient.invalidateQueries(["documents"]);
-          } else if (statusRes.status === "failed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            alert(`Gagal memproses dokumen: ${statusRes.error}`);
-          }
-        } catch (e) {
-          console.error("Gagal mengecek status", e);
-          clearInterval(poll);
-          setActiveJobId(null);
-          alert("Gagal mengecek status proses dari server.");
-        }
-      }, 3000);
-
-    } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.detail || "Gagal mengunggah dokumen.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleReplaceFile = async () => {
-    if (!fileToReplace || !docToReplace) return;
-    try {
-      setReplacing(true);
-      const res = await replaceDocumentPdf(fileToReplace, docToReplace.frbr_uri);
-      setReplaceModalOpen(false);
-      setFileToReplace(null);
-      setDocToReplace(null);
-
-      showToast("File diterima, sedang mengganti dokumen di background...");
-
-      // Poll status
-      const jobId = res.job_id;
-      setActiveJobId(jobId);
-      
-      const poll = setInterval(async () => {
-        try {
-          const statusRes = await getJobStatus(jobId);
-          if (statusRes.status === "completed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            showToast(statusRes.message || "Proses ganti dokumen selesai!");
-            queryClient.invalidateQueries(["documents"]);
-          } else if (statusRes.status === "failed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            alert(`Gagal mengganti dokumen: ${statusRes.error}`);
-          }
-        } catch (e) {
-          console.error("Gagal mengecek status", e);
-          clearInterval(poll);
-          setActiveJobId(null);
-          alert("Gagal mengecek status proses dari server.");
-        }
-      }, 3000);
-
-    } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.detail || "Gagal mengganti dokumen.");
-    } finally {
-      setReplacing(false);
-    }
   };
 
   const categories = [
@@ -218,10 +94,14 @@ export default function KnowledgeBasePage() {
 
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-          <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-lg font-bold text-sm flex items-center gap-2">
-            <MaterialIcon name="check_circle" className="text-xl" />
-            {toastMsg}
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
+          <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
+            toastMsg.type === 'error' 
+              ? 'bg-danger/10 border-danger/30 text-danger' 
+              : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
+          }`}>
+            <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
+            {toastMsg.text}
           </div>
         </div>
       )}
@@ -245,7 +125,7 @@ export default function KnowledgeBasePage() {
                 <p className="text-muted text-sm mt-1">Kelola dokumen hukum dan data referensi untuk AI.</p>
               </div>
               <div className="flex gap-3">
-                <Button variant="primary" onClick={() => { setFileToUpload(null); setUploadModalOpen(true); }}>
+                <Button variant="primary" onClick={() => setUploadModalOpen(true)}>
                   <MaterialIcon name="add" className="text-lg" />
                   Tambah Dokumen
                 </Button>
@@ -290,108 +170,31 @@ export default function KnowledgeBasePage() {
         </div>
       </div>
 
-      {/* Confirm Delete Modal */}
-      <Modal
-        open={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
-        title="Hapus Dokumen?"
-      >
-        <div className="space-y-6">
-          <p className="text-sm text-muted">
-            Yakin ingin menghapus dokumen <span className="font-bold text-main">{docToDelete?.nama_uu}</span>?
-            Semua pasal yang terkait akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
-          </p>
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setConfirmModalOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="danger"
-              className="flex-1 font-bold !bg-danger !text-white !border-danger hover:!brightness-110"
-              onClick={confirmDelete}
-              isLoading={deleteMutation.isPending}
-            >
-              Ya, Hapus
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Replace Modal */}
-      <Modal
-        open={replaceModalOpen}
-        onClose={() => setReplaceModalOpen(false)}
-        title="Ganti Dokumen (Replace)"
-        description={`Upload PDF baru untuk menggantikan ${docToReplace?.nama_uu}`}
-      >
-        <div className="space-y-6">
-          <FileUpload
-            file={fileToReplace}
-            onChange={(file) => setFileToReplace(file)}
-            accept=".pdf"
-            maxSizeMB={50}
-          />
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => setReplaceModalOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleReplaceFile}
-              disabled={!fileToReplace || replacing}
-              isLoading={replacing}
-            >
-              Replace
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-
-
-      {/* Upload Modal */}
-      <Modal
+      <UploadDocumentModal
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
-        title="Upload Dokumen Baru"
-        description="Unggah file PDF dokumen hukum."
-      >
-        <div className="space-y-6">
-          <FileUpload
-            file={fileToUpload}
-            onChange={(file) => setFileToUpload(file)}
-            accept=".pdf"
-            maxSizeMB={50}
-          />
+        setActiveJobId={setActiveJobId}
+        showToast={showToast}
+      />
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => setUploadModalOpen(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleUploadFile}
-              disabled={!fileToUpload || uploading}
-              isLoading={uploading}
-            >
-              Upload
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <ReplaceDocumentModal
+        open={replaceModalOpen}
+        onClose={() => setReplaceModalOpen(false)}
+        docToReplace={docToReplace}
+        setActiveJobId={setActiveJobId}
+        showToast={showToast}
+      />
 
+      <DeleteDocumentModal
+        open={confirmModalOpen}
+        onClose={() => {
+          setConfirmModalOpen(false);
+          setDocToDelete(null);
+        }}
+        docToDelete={docToDelete}
+        showToast={showToast}
+      />
     </div>
   );
 }
+

@@ -1,5 +1,6 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
+import Pagination from "./Pagination";
 
 export function Badge({ children, variant = "default" }) {
   const variants = {
@@ -117,29 +118,12 @@ export default function KnowledgeTable({
       
       {/* Pagination */}
       {!loadingDocs && documents.length > 0 && (
-        <div className="p-4 border-t border-surface flex items-center justify-between bg-surface/10">
-          <span className="text-[11px] font-bold text-muted uppercase tracking-widest">
-            Halaman {page} dari {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="!py-2 !px-4 !text-xs"
-              disabled={page <= 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              Prev
-            </Button>
-            <Button 
-              variant="outline" 
-              className="!py-2 !px-4 !text-xs"
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <Pagination 
+          page={page} 
+          totalPages={totalPages} 
+          setPage={setPage} 
+          className="p-4 border-t border-surface bg-surface/10"
+        />
       )}
     </div>
   );
