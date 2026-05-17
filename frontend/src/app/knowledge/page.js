@@ -13,7 +13,7 @@ import CategoryList from "@/components/dashboard/CategoryList";
 import StatCard from "@/components/dashboard/StatCard";
 import KnowledgeTable from "@/components/knowledge/KnowledgeTable";
 
-import { getAdminDocuments } from "@/services/admin.service";
+import { getAdminDocuments, getJobStatus } from "@/services/admin.service";
 
 import UploadDocumentModal from "@/components/knowledge/modals/UploadDocumentModal";
 import ReplaceDocumentModal from "@/components/knowledge/modals/ReplaceDocumentModal";
@@ -66,6 +66,40 @@ export default function KnowledgeBasePage() {
   const totalDocs = docsData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalDocs / 20));
 
+  // Polling Job Status
+  const { data: jobStatusData, isError: jobStatusError } = useQuery({
+    queryKey: ["jobStatus", activeJobId],
+    queryFn: () => getJobStatus(activeJobId),
+    enabled: !!activeJobId,
+    refetchInterval: (query) => {
+      const data = query.state?.data;
+      if (!data) return 3000;
+      if (data.status === "completed" || data.status === "failed") return false;
+      return 3000;
+    },
+  });
+
+  useEffect(() => {
+    if (!jobStatusData && !jobStatusError) return;
+
+    // Defer state updates out of the synchronous effect body to avoid cascading renders
+    const timer = setTimeout(() => {
+      if (jobStatusData?.status === "completed") {
+        setActiveJobId(null);
+        showToast(jobStatusData.message || "Proses dokumen selesai!");
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
+      } else if (jobStatusData?.status === "failed") {
+        setActiveJobId(null);
+        showToast(`Gagal memproses dokumen: ${jobStatusData.error}`, "error");
+      } else if (jobStatusError) {
+        setActiveJobId(null);
+        showToast("Gagal mengecek status proses dari server.", "error");
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [jobStatusData, jobStatusError, queryClient]);
+
   // Handlers
   const handleDeleteClick = (doc) => {
     setDocToDelete(doc);
@@ -85,7 +119,22 @@ export default function KnowledgeBasePage() {
     { id: "", label: "Semua Kategori" },
     { id: "pidana", label: "Pidana" },
     { id: "perdata", label: "Perdata" },
+    { id: "agama", label: "Agama" },
+    { id: "umum", label: "Umum" },
+    { id: "ketenagakerjaan", label: "Ketenagakerjaan" },
+    { id: "perusahaan", label: "Perusahaan" },
+    { id: "konsumen", label: "Konsumen" },
+    { id: "pajak", label: "Pajak" },
+    { id: "internasional", label: "Internasional" },
+    { id: "tata_usaha_negara", label: "Tata Usaha Negara" },
+    { id: "lingkungan", label: "Lingkungan" },
+    { id: "hak_asasi_manusia", label: "Hak Asasi Manusia" },
+    { id: "kesehatan", label: "Kesehatan" },
     { id: "teknologi_informasi", label: "Teknologi Informasi" },
+    { id: "kekayaan_intelektual", label: "Kekayaan Intelektual" },
+    { id: "maritim", label: "Maritim" },
+    { id: "agraria", label: "Agraria" },
+    { id: "lainnya", label: "Lainnya" },
   ];
 
   return (
@@ -95,11 +144,10 @@ export default function KnowledgeBasePage() {
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
-          <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
-            toastMsg.type === 'error' 
-              ? 'bg-danger/10 border-danger/30 text-danger' 
+          <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${toastMsg.type === 'error'
+              ? 'bg-danger/10 border-danger/30 text-danger'
               : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
-          }`}>
+            }`}>
             <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
             {toastMsg.text}
           </div>
@@ -144,7 +192,10 @@ export default function KnowledgeBasePage() {
                   title=" "
                   categories={categories}
                   activeCategory={activeCategory}
-                  onCategoryChange={setActiveCategory}
+                  onCategoryChange={(newCategory) => {
+                    setActiveCategory(newCategory);
+                    setPage(1);
+                  }}
                 />
               </div>
               <StatCard label="Total Dokumen" val={totalDocs} icon="library_books" variant="horizontal" />

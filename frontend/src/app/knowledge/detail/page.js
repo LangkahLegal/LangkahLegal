@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
@@ -16,7 +16,7 @@ import SearchBar from "@/components/layout/SearchBar";
 
 import { getDocumentChunks, updateChunk } from "@/services/admin.service";
 
-export default function KnowledgeDetailPage() {
+function KnowledgeDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const uri = searchParams.get("uri");
@@ -150,7 +150,7 @@ export default function KnowledgeDetailPage() {
                                     <div className="flex flex-col items-center justify-center py-20 text-muted">
                                         <MaterialIcon name="search_off" className="text-4xl mb-2 opacity-50" />
                                         <h3 className="text-lg font-bold text-main">Tidak Ditemukan</h3>
-                                        <p className="text-sm text-muted mt-2 max-w-sm text-center">"{searchChunk}" tidak ditemukan pada dokumen ini.</p>
+                                        <p className="text-sm text-muted mt-2 max-w-sm text-center">&quot;{searchChunk}&quot; tidak ditemukan pada dokumen ini.</p>
                                     </div>
                                 ) : (
                                     <div className={`space-y-3 transition-opacity duration-300 ${isFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
@@ -192,3 +192,18 @@ export default function KnowledgeDetailPage() {
         </div>
     );
 }
+
+export default function KnowledgeDetailPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex items-center justify-center min-h-screen bg-bg">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+            }
+        >
+            <KnowledgeDetailContent />
+        </Suspense>
+    );
+}
+
