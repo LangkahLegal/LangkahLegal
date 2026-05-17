@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { Dropdown } from "@/components/ui/Dropdown";
+import { InputField } from "@/components/ui/InputField";
 import Modal from "@/components/knowledge/Modal";
 import { uploadDocumentPdf, getJobStatus } from "@/services/admin.service";
 
@@ -11,8 +13,18 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
   const [fileToUpload, setFileToUpload] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  const [formData, setFormData] = useState({
+    nama_uu: "",
+    nomor_uu: "",
+    tahun_uu: "",
+    kategori: "",
+    status_hukum: "",
+  });
+
+  const isFormValid = fileToUpload && formData.nama_uu && formData.nomor_uu && formData.tahun_uu && formData.kategori && formData.status_hukum;
+
   const handleUploadFile = async () => {
-    if (!fileToUpload) return;
+    if (!isFormValid) return;
     try {
       setUploading(true);
       const res = await uploadDocumentPdf(fileToUpload);
@@ -21,31 +33,8 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
 
       showToast("File diterima, sedang memproses di background...");
 
-      // Poll status
       const jobId = res.job_id;
       setActiveJobId(jobId);
-
-      const poll = setInterval(async () => {
-        try {
-          const statusRes = await getJobStatus(jobId);
-          if (statusRes.status === "completed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            showToast(statusRes.message || "Proses dokumen selesai!");
-            queryClient.invalidateQueries(["documents"]);
-          } else if (statusRes.status === "failed") {
-            clearInterval(poll);
-            setActiveJobId(null);
-            console.error(`Gagal memproses dokumen: ${statusRes.error}`);
-            showToast(`Gagal memproses dokumen: ${statusRes.error}`, "error");
-          }
-        } catch (e) {
-          console.error("Gagal mengecek status", e);
-          clearInterval(poll);
-          setActiveJobId(null);
-          showToast("Gagal mengecek status proses dari server.", "error");
-        }
-      }, 3000);
     } catch (error) {
       console.error(error);
       showToast(error.response?.data?.detail || "Gagal mengunggah dokumen.", "error");
@@ -58,29 +47,98 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
     <Modal
       open={open}
       onClose={onClose}
+      maxWidth="max-w-2xl"
       title="Unggah Dokumen Baru"
       description="Unggah file PDF dokumen hukum."
     >
       <div className="space-y-6">
-        <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 text-xs text-muted">
-          <p className="font-bold text-main mb-2 flex items-center gap-1">
-            <MaterialIcon name="gavel" className="text-[14px]" />
-            Kriteria Dokumen Hukum:
-          </p>
-          <ul className="list-disc list-inside space-y-1">
-            <li><strong>Berisi Teks Digital:</strong> File tidak boleh hasil <em>scan</em> gambar. Teks wajib bisa di-blok/di-copy.</li>
-            <li><strong>Identitas Resmi:</strong> Harus memiliki judul dan nomor resmi (misal: UU RI Nomor 1 Tahun 2024) untuk pembuatan metadata AI.</li>
-            <li><strong>Struktur Pasal:</strong> Wajib memiliki struktur "Pasal" atau "Bab" yang jelas agar proses <em>chunking</em> berhasil.</li>
-            <li><strong>Dokumen Baru:</strong> Pastikan dokumen ini belum ada di sistem. Gunakan <strong>Ganti</strong> jika hanya ingin memperbarui dokumen lama.</li>
-          </ul>
+        <div className="space-y-4">
+          <InputField
+            label="Nama Lengkap Dokumen/UU"
+            placeholder="Contoh: Undang-Undang Perlindungan Data Pribadi"
+            value={formData.nama_uu}
+            onChange={(e) => setFormData({ ...formData, nama_uu: e.target.value })}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              label="Nomor Dokumen/UU"
+              placeholder="Contoh: 27"
+              value={formData.nomor_uu}
+              onChange={(e) => setFormData({ ...formData, nomor_uu: e.target.value })}
+            />
+            <InputField
+              label="Tahun"
+              type="number"
+              placeholder="Contoh: 2022"
+              value={formData.tahun_uu}
+              min={1945}
+              max={new Date().getFullYear()}
+              onChange={(e) => setFormData({ ...formData, tahun_uu: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Dropdown
+              label="Kategori Hukum"
+              placeholder="Pilih Kategori"
+              value={formData.kategori}
+              onChange={(val) => setFormData({ ...formData, kategori: val })}
+              options={[
+                { value: "pidana", label: "Pidana" },
+                { value: "perdata", label: "Perdata" },
+                { value: "agama", label: "Agama" },
+                { value: "umum", label: "Umum" },
+                { value: "ketenagakerjaan", label: "Ketenagakerjaan" },
+                { value: "perusahaan", label: "Perusahaan" },
+                { value: "konsumen", label: "Konsumen" },
+                { value: "pajak", label: "Pajak" },
+                { value: "internasional", label: "Internasional" },
+                { value: "tata_usaha_negara", label: "Tata Usaha Negara" },
+                { value: "lingkungan", label: "Lingkungan" },
+                { value: "hak_asasi_manusia", label: "Hak Asasi Manusia" },
+                { value: "kesehatan", label: "Kesehatan" },
+                { value: "teknologi_informasi", label: "Teknologi Informasi" },
+                { value: "kekayaan_intelektual", label: "Kekayaan Intelektual" },
+                { value: "maritim", label: "Maritim" },
+                { value: "agraria", label: "Agraria" },
+                { value: "lainnya", label: "Lainnya" },
+              ]}
+            />
+            <Dropdown
+              label="Status Hukum"
+              placeholder="Pilih Status Hukum"
+              value={formData.status_hukum}
+              onChange={(val) => setFormData({ ...formData, status_hukum: val })}
+              options={[
+                { value: "Berlaku", label: "Berlaku" },
+                { value: "Tidak Berlaku", label: "Tidak Berlaku" },
+                { value: "Informasi", label: "Informasi" },
+              ]}
+            />
+          </div>
         </div>
 
-        <FileUpload
-          file={fileToUpload}
-          onChange={(file) => setFileToUpload(file)}
-          accept=".pdf"
-          maxSizeMB={50}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FileUpload
+            file={fileToUpload}
+            onChange={(file) => setFileToUpload(file)}
+            accept=".pdf"
+            maxSizeMB={50}
+            className="!py-5 !px-4 h-full"
+          />
+          <div className="text-[11px] text-muted flex flex-col justify-center h-full pl-2">
+            <p className="font-bold text-main mb-2 flex items-center gap-1.5 text-xs">
+              <MaterialIcon name="info" className="text-[16px] text-primary" />
+              Syarat Berkas AI
+            </p>
+            <ul className="list-disc list-outside ml-4 space-y-2 marker:text-muted/40 leading-relaxed">
+              <li><strong>Teks Digital:</strong> File wajib bisa di-blok/di-copy, bukan hasil foto/scan gambar.</li>
+              <li><strong>Identitas Resmi:</strong> Mencantumkan nomor dan tahun dengan jelas.</li>
+              <li><strong>Struktur Teks:</strong> Memiliki format Bab/Pasal yang rapi agar sistem ekstraksi berfungsi optimal.</li>
+            </ul>
+          </div>
+        </div>
 
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="secondary" onClick={onClose}>
@@ -89,7 +147,7 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
           <Button
             variant="primary"
             onClick={handleUploadFile}
-            disabled={!fileToUpload || uploading}
+            disabled={!isFormValid || uploading}
             isLoading={uploading}
           >
             Unggah

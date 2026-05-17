@@ -56,7 +56,7 @@ export const getAdminDocuments = async (page = 1, search = "", kategori = "") =>
   const params = { page, page_size: 20 };
   if (search) params.search = search;
   if (kategori) params.kategori = kategori;
-  
+
   const response = await api.get("/admin/documents/", { params });
   return response.data;
 };
@@ -106,7 +106,7 @@ export const deleteFullDocumentByUri = async (frbrUri) => {
 export const uploadDocumentPdf = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
-  
+
   const response = await api.post("/admin/documents/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -120,7 +120,7 @@ export const replaceDocumentPdf = async (file, frbrUri) => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("frbr_uri", frbrUri);
-  
+
   const response = await api.put("/admin/documents/replace", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
