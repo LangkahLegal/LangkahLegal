@@ -334,10 +334,11 @@ def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECON
     return all_embeddings
 
 
-def process_pdf_to_records(pdf_bytes: bytes) -> tuple[list[dict], dict]:
+def process_pdf_to_records(pdf_bytes: bytes, manual_metadata: dict | None = None) -> tuple[list[dict], dict]:
     """
     Pipeline lengkap: PDF bytes → records siap insert.
-    Returns (records_tanpa_embedding, ai_metadata).
+    Jika manual_metadata disupply, lewati tahap ekstraksi AI.
+    Returns (records_tanpa_embedding, metadata).
     """
     # 1. Extract
     log.info("[DOC_SERVICE] Step 1/4: Ekstraksi teks dari PDF...")
@@ -349,9 +350,14 @@ def process_pdf_to_records(pdf_bytes: bytes) -> tuple[list[dict], dict]:
     log.info("[DOC_SERVICE] Step 2/4: Membersihkan noise OCR...")
     cleaned = clean_ocr_text(raw_text)
 
-    # 3. AI Metadata
-    log.info("[DOC_SERVICE] Step 3/4: Mengekstrak metadata via AI...")
-    metadata = extract_metadata_with_ai(cleaned)
+    # 3. Metadata
+    if manual_metadata:
+        log.info("[DOC_SERVICE] Step 3/4: Menggunakan metadata manual (bypass AI)...")
+        metadata = manual_metadata
+    else:
+        log.info("[DOC_SERVICE] Step 3/4: Mengekstrak metadata via AI...")
+        metadata = extract_metadata_with_ai(cleaned)
+        
     log.info(f"[DOC_SERVICE] Metadata: {metadata.get('nama_uu')} | {metadata.get('kategori')}")
 
     # 4. Chunk

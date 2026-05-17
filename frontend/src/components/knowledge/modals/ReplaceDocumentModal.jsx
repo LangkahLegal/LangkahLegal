@@ -40,7 +40,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
     if (!isFormValid || !docToReplace) return;
     try {
       setReplacing(true);
-      const res = await replaceDocumentPdf(fileToReplace, docToReplace.frbr_uri);
+      const res = await replaceDocumentPdf(fileToReplace, docToReplace.frbr_uri, formData);
       onClose();
       setFileToReplace(null);
 

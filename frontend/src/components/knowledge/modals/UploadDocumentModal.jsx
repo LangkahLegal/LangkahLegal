@@ -27,7 +27,7 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
     if (!isFormValid) return;
     try {
       setUploading(true);
-      const res = await uploadDocumentPdf(fileToUpload);
+      const res = await uploadDocumentPdf(fileToUpload, formData);
       onClose();
       setFileToUpload(null);
 
