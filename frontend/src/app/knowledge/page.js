@@ -32,6 +32,23 @@ export default function KnowledgeBasePage() {
   // Background Job State
   const [activeJobId, setActiveJobId] = useState(null);
 
+  // Load activeJobId from localStorage on mount
+  useEffect(() => {
+    const savedJobId = localStorage.getItem("activeJobId");
+    if (savedJobId) {
+      setActiveJobId(savedJobId);
+    }
+  }, []);
+
+  // Sync activeJobId to localStorage whenever it changes
+  useEffect(() => {
+    if (activeJobId) {
+      localStorage.setItem("activeJobId", activeJobId);
+    } else {
+      localStorage.removeItem("activeJobId");
+    }
+  }, [activeJobId]);
+
   // Modals
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState(null);

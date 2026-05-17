@@ -64,7 +64,7 @@ def _embed_single(text: str) -> list[float]:
 
 # ── Background Task: Process & Insert PDF ──────────────
 
-def _bg_process_pdf(job_id: str, pdf_bytes: bytes, replace_uri: str | None = None):
+def _bg_process_pdf(job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None):
     """
     Background task: proses PDF dari awal sampai insert ke DB.
     Jika replace_uri diberikan, hapus dokumen lama dulu.
@@ -75,9 +75,9 @@ def _bg_process_pdf(job_id: str, pdf_bytes: bytes, replace_uri: str | None = Non
 
     try:
         # 1. PDF → records + metadata
-        job["message"] = "Mengekstrak teks dan metadata dari PDF..."
-        records, metadata = process_pdf_to_records(pdf_bytes)
-        frbr_uri = metadata.get("frbr_uri", "/akn/id/act/unknown")
+        job["message"] = "Mengekstrak teks dan memproses metadata dari PDF..."
+        records, extracted_metadata = process_pdf_to_records(pdf_bytes, manual_metadata=metadata)
+        frbr_uri = extracted_metadata.get("frbr_uri", "/akn/id/act/unknown")
         job["frbr_uri"] = frbr_uri
 
         # 2. Embed semua teks
@@ -121,7 +121,7 @@ def _bg_process_pdf(job_id: str, pdf_bytes: bytes, replace_uri: str | None = Non
 
         job["status"] = "completed"
         job["total_chunks"] = total_inserted
-        job["message"] = f"Berhasil! {total_inserted} pasal dari '{metadata.get('nama_uu')}' telah disimpan."
+        job["message"] = f"Berhasil! {total_inserted} pasal dari '{extracted_metadata.get('nama_uu', 'Dokumen')}' telah disimpan."
         log.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {frbr_uri}")
 
     except Exception as e:
@@ -152,14 +152,19 @@ Endpoint ini langsung mereturn HTTP 202 Accepted beserta `job_id` yang bisa dipo
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="File PDF dokumen hukum"),
+    nama_uu: str = Form(..., description="Nama lengkap undang-undang"),
+    nomor_uu: str | None = Form(None, description="Nomor undang-undang"),
+    tahun_uu: int | None = Form(None, description="Tahun undang-undang"),
+    kategori: str = Form(..., description="Kategori hukum"),
+    status_hukum: str = Form(..., description="Status hukum"),
     user: dict = Depends(get_current_user),
 ):
     """
-    Upload file PDF → sistem memproses di background:
-    OCR → AI Metadata Extraction → Chunking → Embedding → Insert DB.
-
+    Upload file PDF beserta metadata secara manual → sistem memproses di background:
+    Teks Ekstraksi → Chunking → Embedding → Insert DB.
+    
+    Proses AI Extraction di-bypass jika metadata manual disediakan.
     Response langsung 202 Accepted dengan job_id.
-    Gunakan GET /jobs/{job_id} untuk cek status.
     """
     _require_admin(user)
 
@@ -172,6 +177,21 @@ async def upload_document(
     if len(pdf_bytes) > 50 * 1024 * 1024:  # 50MB limit
         raise HTTPException(400, "File PDF terlalu besar (maks 50MB).")
 
+    # Generate frbr_uri if nomor_uu and tahun_uu are present
+    frbr_uri = None
+    if nomor_uu and tahun_uu:
+        nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()
+        frbr_uri = f"/akn/id/act/uu-{nomor_clean}-{tahun_uu}"
+
+    manual_metadata = {
+        "nama_uu": nama_uu,
+        "nomor_uu": f"UU No. {nomor_uu} Tahun {tahun_uu}" if nomor_uu and tahun_uu else None,
+        "tahun_uu": tahun_uu,
+        "kategori": kategori,
+        "status_hukum": status_hukum,
+        "frbr_uri": frbr_uri
+    }
+
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {
         "job_id": job_id,
@@ -182,8 +202,8 @@ async def upload_document(
         "error": None,
     }
 
-    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes)
-    log.info(f"[ADMIN_DOCS] Job {job_id} queued for '{file.filename}' ({len(pdf_bytes):,} bytes)")
+    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes, manual_metadata)
+    log.info(f"[ADMIN_DOCS] Job {job_id} queued for '{file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
 
     return _jobs[job_id]
 
@@ -268,24 +288,26 @@ def list_chunks(
     frbr_uri: str = Query(..., description="FRBR URI dokumen"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=1000),
+    search: Optional[str] = Query(None, description="Pencarian isi teks atau nomor pasal"),
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     _require_admin(user)
 
-    count_result = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen", count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .execute()
-    )
+    count_query = db.table("dokumen_hukum").select("id_dokumen", count="exact").eq("frbr_uri", frbr_uri)
+    data_query = db.table("dokumen_hukum").select(SELECT_COLS).eq("frbr_uri", frbr_uri)
+
+    if search:
+        search_filter = f"pasal_bagian.ilike.%{search}%,isi_teks.ilike.%{search}%"
+        count_query = count_query.or_(search_filter)
+        data_query = data_query.or_(search_filter)
+
+    count_result = count_query.execute()
     total = count_result.count or 0
 
     offset = (page - 1) * page_size
     result = (
-        db.table("dokumen_hukum")
-        .select(SELECT_COLS)
-        .eq("frbr_uri", frbr_uri)
+        data_query
         .order("id_dokumen")
         .range(offset, offset + page_size - 1)
         .execute()
@@ -400,6 +422,11 @@ async def replace_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="File PDF pengganti"),
     frbr_uri: str = Form(..., description="FRBR URI dokumen yang akan di-replace"),
+    nama_uu: str = Form(..., description="Nama lengkap undang-undang"),
+    nomor_uu: str | None = Form(None, description="Nomor undang-undang"),
+    tahun_uu: int | None = Form(None, description="Tahun undang-undang"),
+    kategori: str = Form(..., description="Kategori hukum"),
+    status_hukum: str = Form(..., description="Status hukum"),
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
@@ -436,7 +463,22 @@ async def replace_document(
         "error": None,
     }
 
-    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes, replace_uri=frbr_uri)
+    # Generate new frbr_uri in case nomor/tahun changed
+    new_frbr_uri = frbr_uri
+    if nomor_uu and tahun_uu:
+        nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()
+        new_frbr_uri = f"/akn/id/act/uu-{nomor_clean}-{tahun_uu}"
+
+    manual_metadata = {
+        "nama_uu": nama_uu,
+        "nomor_uu": f"UU No. {nomor_uu} Tahun {tahun_uu}" if nomor_uu and tahun_uu else None,
+        "tahun_uu": tahun_uu,
+        "kategori": kategori,
+        "status_hukum": status_hukum,
+        "frbr_uri": new_frbr_uri
+    }
+
+    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes, manual_metadata=manual_metadata, replace_uri=frbr_uri)
     log.info(f"[ADMIN_DOCS] Replace job {job_id} queued for {frbr_uri}")
 
     return _jobs[job_id]

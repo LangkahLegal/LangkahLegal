@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
@@ -24,11 +24,25 @@ function KnowledgeDetailContent() {
     const queryClient = useQueryClient();
     const [toastMsg, setToastMsg] = useState(null);
     const [searchChunk, setSearchChunk] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [allExpanded, setAllExpanded] = useState(false);
     const [page, setPage] = useState(1);
 
     const [activeSaveId, setActiveSaveId] = useState(null);
     const [saveCallback, setSaveCallback] = useState(null);
+
+
+    
+    // Debounce search effect
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchChunk), 500);
+        return () => clearTimeout(timer);
+    }, [searchChunk]);
+
+    // Reset page to 1 when search changes
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
 
     const showToast = (msg, type = "success") => {
         setToastMsg({ text: msg, type });
@@ -36,8 +50,8 @@ function KnowledgeDetailContent() {
     };
 
     const { data: chunksData, isLoading, isFetching } = useQuery({
-        queryKey: ["chunks", uri, page, 50],
-        queryFn: () => getDocumentChunks(uri, page, 50),
+        queryKey: ["chunks", uri, page, 50, debouncedSearch],
+        queryFn: () => getDocumentChunks(uri, page, 50, debouncedSearch),
         enabled: !!uri,
         placeholderData: (previousData) => previousData,
     });
@@ -47,10 +61,7 @@ function KnowledgeDetailContent() {
     const totalPages = Math.max(1, Math.ceil(total / 50));
     const meta = chunks.length > 0 ? chunks[0] : null;
 
-    const filteredChunks = chunks.filter(c =>
-        (c.pasal_bagian && c.pasal_bagian.toLowerCase().includes(searchChunk.toLowerCase())) ||
-        (c.isi_teks && c.isi_teks.toLowerCase().includes(searchChunk.toLowerCase()))
-    );
+    const filteredChunks = chunks;
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => updateChunk(id, data),

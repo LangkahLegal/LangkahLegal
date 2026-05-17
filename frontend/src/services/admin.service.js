@@ -65,10 +65,10 @@ export const getAdminDocuments = async (page = 1, search = "", kategori = "") =>
  * Mengambil isi pasal-pasal (chunks) di dalam satu UU berdasarkan URI
  * Menggunakan endpoint: GET /admin/documents/chunks
  */
-export const getDocumentChunks = async (frbrUri, page = 1, pageSize = 50) => {
-  const response = await api.get("/admin/documents/chunks", {
-    params: { frbr_uri: frbrUri, page, page_size: pageSize },
-  });
+export const getDocumentChunks = async (frbrUri, page = 1, pageSize = 50, search = "") => {
+  const params = { frbr_uri: frbrUri, page, page_size: pageSize };
+  if (search) params.search = search;
+  const response = await api.get("/admin/documents/chunks", { params });
   return response.data;
 };
 
@@ -103,10 +103,18 @@ export const deleteFullDocumentByUri = async (frbrUri) => {
  * Upload PDF Baru (Async)
  * Menggunakan FormData karena mengirim file binary
  */
-export const uploadDocumentPdf = async (file) => {
+export const uploadDocumentPdf = async (file, metadata) => {
   const formData = new FormData();
   formData.append("file", file);
-
+  
+  if (metadata) {
+    formData.append("nama_uu", metadata.nama_uu);
+    if (metadata.nomor_uu) formData.append("nomor_uu", metadata.nomor_uu);
+    if (metadata.tahun_uu) formData.append("tahun_uu", metadata.tahun_uu);
+    formData.append("kategori", metadata.kategori);
+    formData.append("status_hukum", metadata.status_hukum);
+  }
+  
   const response = await api.post("/admin/documents/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -116,10 +124,18 @@ export const uploadDocumentPdf = async (file) => {
 /**
  * Replace Dokumen Lama dengan PDF Baru (Async)
  */
-export const replaceDocumentPdf = async (file, frbrUri) => {
+export const replaceDocumentPdf = async (file, frbrUri, metadata = {}) => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("frbr_uri", frbrUri);
+  
+  if (metadata.nama_uu) {
+    formData.append("nama_uu", metadata.nama_uu);
+    formData.append("nomor_uu", metadata.nomor_uu || "");
+    formData.append("tahun_uu", metadata.tahun_uu || "");
+    formData.append("kategori", metadata.kategori);
+    formData.append("status_hukum", metadata.status_hukum);
+  }
 
   const response = await api.put("/admin/documents/replace", formData, {
     headers: { "Content-Type": "multipart/form-data" },
