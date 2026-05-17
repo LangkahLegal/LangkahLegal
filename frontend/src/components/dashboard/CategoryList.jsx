@@ -12,12 +12,22 @@ export default function CategoryList({
   categories = [],
   activeCategory,
   onCategoryChange,
+  useStyledTitle = false,
 }) {
   return (
     <section className="w-full space-y-6">
-      <h2 className="text-xl font-headline font-black text-main px-1 tracking-tight">
-        {title}
-      </h2>
+      {useStyledTitle ? (
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
+          <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline">
+            {title}
+          </h2>
+        </div>
+      ) : (
+        <h2 className="text-xl font-headline font-black text-main px-1 tracking-tight">
+          {title}
+        </h2>
+      )}
 
       {/* Container dengan scroll horizontal halus */}
       <div className="flex items-center gap-3 overflow-x-auto pb-4 -mb-4 no-scrollbar scroll-smooth px-1">

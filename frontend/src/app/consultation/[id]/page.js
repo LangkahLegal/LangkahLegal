@@ -16,17 +16,16 @@ import ZoomLinkCard from "@/components/consultation/ZoomLinkCard";
 
 // Services
 import { consultationService } from "@/services/consultation.service";
+import { userService } from "@/services/user.service";
 
 const getUserRoleSnapshot = () => {
   if (typeof window === "undefined") return "client";
-  // Cek beberapa kemungkinan key yang digunakan untuk menyimpan role
   const role = localStorage.getItem("userRole") || 
                localStorage.getItem("role") || 
                localStorage.getItem("user_role");
   
   if (!role) return "client";
   
-  // Normalisasi: pastikan return "konsultan" atau "client"
   const normalized = role.toLowerCase();
   if (normalized.includes("konsultan") || normalized.includes("consultant")) return "konsultan";
   return "client";
@@ -56,12 +55,7 @@ export default function ConsultationDetail() {
   // --- 1. FETCH USER PROFILE ---
   const { data: userProfile } = useQuery({
     queryKey: ["userProfile"],
-    queryFn: async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
-      });
-      return res.json();
-    }
+    queryFn: userService.getFullProfile,
   });
 
   // --- 2. FETCH DATA DETAIL ---
@@ -98,11 +92,15 @@ export default function ConsultationDetail() {
 
   // --- 3. DERIVE FINAL ROLE ---
   const derivedRole = useMemo(() => {
-    // Jika ID Konsultan di data cocok dengan profil konsultan user, maka dia adalah konsultan
-    if (requestData && userProfile?.data?.konsultan?.id_konsultan === requestData.id_konsultan) {
+    const profileRole = userProfile?.data?.role?.toLowerCase() || userProfile?.role?.toLowerCase() || "";
+    
+    if (
+      profileRole.includes("konsultan") || 
+      profileRole.includes("consultant") ||
+      (requestData && (userProfile?.id_konsultan == requestData.id_konsultan || userProfile?.data?.konsultan?.id_konsultan == requestData.id_konsultan))
+    ) {
       return "konsultan";
     }
-    // Fallback ke localStorage jika data belum lengkap
     return userRole;
   }, [requestData, userProfile, userRole]);
 
@@ -170,6 +168,7 @@ export default function ConsultationDetail() {
               /* REFACTOR: text-[#aca8c1] -> text-muted */
               titleClassName="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2"
               allowDelete={false}
+              showEmptyState={true}
             />
 
             <ZoomLinkCard
