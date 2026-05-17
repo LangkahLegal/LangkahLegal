@@ -23,6 +23,9 @@ export default function HistoryCard({ item, role = "client" }) {
     case "Pending":
       statusClasses = "bg-cyan-500/10 text-cyan-400";
       break;
+    case "Menunggu Konsultan":
+      statusClasses = "bg-sky-500/10 text-sky-400";
+      break;
     case "Menunggu Pembayaran":
       statusClasses = "bg-amber-500/10 text-amber-400";
       break;
@@ -38,14 +41,16 @@ export default function HistoryCard({ item, role = "client" }) {
   }
 
   const subtitle =
-    role === "konsultan"
-      ? `Rp${item.price?.toLocaleString("id-ID") || "0"}`
-      : item.role;
+    item.status === "Menunggu Konsultan"
+      ? "Kasus dipublikasikan ke Bursa"
+      : role === "konsultan"
+        ? `Rp${item.price?.toLocaleString("id-ID") || "0"}`
+        : item.role;
 
   return (
     <div
       className={`group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 ${isActive
-          ? "bg-primary/5 border-primary/20 shadow-soft"
+        ? "bg-primary/5 border-primary/20 shadow-soft"
           : "bg-card border-surface hover:border-primary/20"
         } ${isDimmed ? "opacity-60 grayscale-[30%]" : ""}`}
     >

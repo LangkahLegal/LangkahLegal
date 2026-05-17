@@ -326,6 +326,7 @@ def get_detail_pengajuan(
     
     # Ambil tarif: dari jadwal konsultan ATAU direct konsultan join (bursa)
     tarif_skrg = konsultan_via_jadwal.get("tarif_per_sesi") or konsultan_direct.get("tarif_per_sesi", 0)
+    tarif_skrg = int(tarif_skrg) if tarif_skrg else 0
     data["total_harga"] = tarif_skrg * jumlah_sesi
 
     # link_dokumen: prioritaskan kolom langsung (dari GDrive URL), fallback ke file upload pertama

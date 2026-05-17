@@ -15,13 +15,13 @@ export const caseService = {
       formData.append("dokumen_pendukung_files", file);
     });
 
-    const { data } = await api.post("/cases", formData);
+    const { data } = await api.post("/cases/", formData);
     return data;
   },
 
   // Konsultan: melihat semua kasus open di bursa
   listOpenCases: async () => {
-    const response = await api.get("/cases");
+    const response = await api.get("/cases/");
     return response.data.data;
   },
 

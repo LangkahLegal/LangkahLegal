@@ -6,17 +6,19 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button"; // Menggunakan komponen Button Anda
 
 export default function AttachedDocuments({
-  documents,
+  documents = [],
   title,
   showCount = false,
   titleClassName = "font-bold text-lg lg:text-xl text-main", // Ganti text-white ke text-main
   allowDelete = false,
   onDelete = () => {},
+  useStyledTitle = false,
+  showEmptyState = false,
 }) {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [isLoadingFile, setIsLoadingFile] = useState(true);
 
-  if (!documents || documents.length === 0) return null;
+  if (!documents || (documents.length === 0 && !showEmptyState && !title)) return null;
 
   const isImage = (url, type) => {
     return type === "image" || !!url?.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
@@ -28,7 +30,18 @@ export default function AttachedDocuments({
         {/* Header Section */}
         {(title || showCount) && (
           <div className="flex items-center justify-between gap-4">
-            {title && <h2 className={titleClassName}>{title}</h2>}
+            {title && (
+              useStyledTitle ? (
+                <div className="flex items-center gap-3 px-1">
+                  <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
+                  <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline">
+                    {title}
+                  </h2>
+                </div>
+              ) : (
+                <h2 className={titleClassName}>{title}</h2>
+              )
+            )}
 
             {showCount && (
               <span className="bg-primary/10 text-primary-light text-[10px] font-bold px-3 py-1 rounded-full border border-primary/20 uppercase tracking-widest shrink-0">
@@ -38,21 +51,32 @@ export default function AttachedDocuments({
           </div>
         )}
 
-        {/* File List */}
-        <div className="grid grid-cols-1 gap-3">
-          {documents.map((doc) => (
-            <FileItem
-              key={doc.id}
-              file={doc}
-              onClick={() => {
-                setPreviewDoc(doc);
-                setIsLoadingFile(true);
-              }}
-              allowDelete={allowDelete}
-              onDelete={() => onDelete(doc.id)}
-            />
-          ))}
-        </div>
+        {/* File List or Empty State */}
+        {documents && documents.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3">
+            {documents.map((doc) => (
+              <FileItem
+                key={doc.id}
+                file={doc}
+                onClick={() => {
+                  setPreviewDoc(doc);
+                  setIsLoadingFile(true);
+                }}
+                allowDelete={allowDelete}
+                onDelete={() => onDelete(doc.id)}
+              />
+            ))}
+          </div>
+        ) : showEmptyState ? (
+          <div className="bg-card border border-dashed border-surface rounded-3xl p-8 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-4">
+              <MaterialIcon name="folder_off" className="text-3xl text-muted" />
+            </div>
+            <p className="text-main font-bold mb-1">Belum ada dokumen</p>
+            <p className="text-muted text-xs">Klien tidak melampirkan dokumen pendukung apa pun pada pengajuan ini.</p>
+          </div>
+        ) : null}
+
       </section>
 
       {/* --- MODAL PREVIEW DOKUMEN --- */}

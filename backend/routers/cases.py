@@ -186,7 +186,39 @@ def klaim_kasus(
             detail="Kasus ini sudah diklaim oleh konsultan lain",
         )
 
-    # 3. Tutup bursa → status menjadi 'closed'
+    # 3. Cek bentrok jadwal untuk konsultan
+    kasus_date = (kasus_data.get("tanggal_konsultasi") or "").split("T")[0]
+    kasus_start = kasus_data.get("jam_mulai", "00:00")[:5]
+    kasus_end = kasus_data.get("jam_selesai", "00:00")[:5]
+    
+    if kasus_date and kasus_start and kasus_end:
+        active_consultations = (
+            db.table("pengajuan_konsultasi")
+            .select("jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan")
+            .eq("id_konsultan", real_id_konsultan)
+            .in_("status_pengajuan", ["pending", "menunggu_pembayaran", "terjadwal"])
+            .execute()
+        )
+        
+        for active in active_consultations.data:
+            active_jadwal = active.get("jadwal_ketersediaan") or {}
+            
+            a_date_raw = active_jadwal.get("tanggal") or active.get("tanggal_pengajuan")
+            a_date = (a_date_raw or "").split("T")[0]
+            
+            if not a_date or a_date != kasus_date:
+                continue
+                
+            a_start = (active.get("jam_mulai") or active_jadwal.get("jam_mulai") or "00:00")[:5]
+            a_end = (active.get("jam_selesai") or active_jadwal.get("jam_selesai") or "00:00")[:5]
+            
+            if kasus_start < a_end and kasus_end > a_start:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Gagal klaim: Anda sudah memiliki jadwal konsultasi aktif yang bertabrakan pada {kasus_date} jam {a_start}-{a_end}."
+                )
+
+    # 4. Tutup bursa → status menjadi 'closed'
     db.table("bursa_kasus").update({"status_bursa": "closed"}).eq(
         "id_bursa", id_bursa
     ).execute()

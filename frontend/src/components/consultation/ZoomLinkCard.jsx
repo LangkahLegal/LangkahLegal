@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
@@ -15,36 +15,7 @@ export default function ZoomLinkCard({
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [zoomInput, setZoomInput] = useState(link || "");
-  const [internalRole, setInternalRole] = useState(role);
   const queryClient = useQueryClient();
-
-  // Secondary check for role to ensure we didn't miss it
-  useEffect(() => {
-    if (role === "client") {
-      const storageRole = localStorage.getItem("userRole") || 
-                         localStorage.getItem("role") || 
-                         localStorage.getItem("user_role");
-      if (storageRole) {
-        const normalized = storageRole.toLowerCase();
-        if (normalized.includes("konsultan") || normalized.includes("consultant")) {
-          setInternalRole("konsultan");
-        }
-      }
-    } else {
-      setInternalRole(role);
-    }
-  }, [role]);
-
-  // 1. FILTER STATUS - Izinkan juga saat menunggu pembayaran agar bisa siap-siap
-  const allowedStatuses = ["terjadwal", "selesai", "menunggu_pembayaran"];
-  if (!allowedStatuses.includes(status)) {
-    return null;
-  }
-
-  // 2. CHECK ROLE - Pastikan fleksibel terhadap string role
-  const isKonsultan = internalRole === "konsultan" || internalRole === "consultant";
-
-  // 2. MUTATION: Save Zoom Link
   const zoomMutation = useMutation({
     mutationFn: (newLink) =>
       consultationService.updateZoomLink(consultationId, newLink),
@@ -58,6 +29,21 @@ export default function ZoomLinkCard({
       alert(err?.response?.data?.detail || "Gagal menyimpan link Zoom");
     },
   });
+
+  // Secondary check for role to ensure we didn't miss it
+  const localRole = typeof window !== "undefined" ? localStorage.getItem("userRole") || localStorage.getItem("role") || "" : "";
+  const normalizedLocal = localRole.toLowerCase();
+  const isKonsultan = 
+    role === "konsultan" || 
+    role === "consultant" || 
+    normalizedLocal.includes("konsultan") || 
+    normalizedLocal.includes("consultant");
+
+  // 1. FILTER STATUS
+  const restrictedStatuses = ["dibatalkan", "ditolak", "kedaluwarsa"];
+  if (restrictedStatuses.includes(status?.toLowerCase())) {
+    return null;
+  }
 
   // 3. HANDLER
   const handleCopyLink = async () => {
@@ -103,29 +89,27 @@ export default function ZoomLinkCard({
             value={zoomInput}
             onChange={(e) => setZoomInput(e.target.value)}
             placeholder="https://zoom.us/j/123456789"
-            className="w-full bg-input border border-surface rounded-xl px-4 py-3 text-main text-sm placeholder:text-muted/50 focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
+            className="w-full bg-input border border-surface rounded-xl px-4 py-2.5 text-main text-sm placeholder:text-muted/50 focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
           />
-          <div className="flex gap-2">
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleSaveZoom}
-              isLoading={zoomMutation.isPending}
-              disabled={!zoomInput.trim()}
-              className="!rounded-xl !py-3"
-            >
-              <MaterialIcon name="save" className="text-lg" />
-              Simpan
-            </Button>
+          <div className="flex items-center justify-end gap-2 pt-1">
             <Button
               variant="secondary"
               onClick={() => {
                 setIsEditing(false);
                 setZoomInput(link || "");
               }}
-              className="!rounded-xl !py-3"
+              className="!rounded-lg !py-2 !px-4 text-xs font-semibold"
             >
               Batal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveZoom}
+              isLoading={zoomMutation.isPending}
+              disabled={!zoomInput.trim()}
+              className="!rounded-lg !py-2 !px-4 text-xs font-semibold"
+            >
+              Simpan
             </Button>
           </div>
         </div>
@@ -175,8 +159,8 @@ export default function ZoomLinkCard({
               </div>
             )}
 
-            {/* Tombol Edit (Konsultan only) */}
-            {isKonsultan && (
+            {/* Tombol Edit (Konsultan only & Terjadwal) */}
+            {isKonsultan && status?.toLowerCase() === "terjadwal" && (
               <button
                 onClick={() => {
                   setZoomInput(link || "");
