@@ -29,16 +29,10 @@ export default function KnowledgeBasePage() {
   const [page, setPage] = useState(1);
   const [toastMsg, setToastMsg] = useState(null);
 
-  // Background Job State
-  const [activeJobId, setActiveJobId] = useState(null);
-
-  // Load activeJobId from localStorage on mount
-  useEffect(() => {
-    const savedJobId = localStorage.getItem("activeJobId");
-    if (savedJobId) {
-      setActiveJobId(savedJobId);
-    }
-  }, []);
+  // Background Job State — initialised directly from localStorage (lazy initializer avoids an effect just for reading)
+  const [activeJobId, setActiveJobId] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem("activeJobId") || null : null
+  );
 
   // Sync activeJobId to localStorage whenever it changes
   useEffect(() => {
