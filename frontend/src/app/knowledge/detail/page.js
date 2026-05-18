@@ -33,16 +33,14 @@ function KnowledgeDetailContent() {
 
 
     
-    // Debounce search effect
+    // Debounce search effect — also resets page inside the callback to avoid a synchronous setState in effect
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchChunk), 500);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchChunk);
+            setPage(1);
+        }, 500);
         return () => clearTimeout(timer);
     }, [searchChunk]);
-
-    // Reset page to 1 when search changes
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch]);
 
     const showToast = (msg, type = "success") => {
         setToastMsg({ text: msg, type });
