@@ -91,6 +91,7 @@ export default function RolePage() {
             onClick={handleContinue}
             className="w-full py-4 text-lg"
             isLoading={isLoading}
+            data-testid="role-continue-btn"
           >
             Lanjutkan
           </Button>

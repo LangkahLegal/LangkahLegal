@@ -4,7 +4,7 @@ import { MaterialIcon } from "../ui";
 
 export default function RoleCard({ role, isActive, onSelect }) {
   return (
-    <label className="group relative block cursor-pointer outline-none">
+    <label className="group relative block cursor-pointer outline-none" data-testid={`role-card-${role.value}`}>
       <input
         type="radio"
         name="role"

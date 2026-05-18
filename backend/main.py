@@ -1,6 +1,8 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin
+from slowapi.errors import RateLimitExceeded
+from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs
 from dependencies import get_current_user
 
 # Mengambil fungsi dari file yang sudah ada
@@ -41,6 +43,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(RateLimitExceeded)
+async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."}
+    )
+
 # 2. HEALTH CHECK ENDPOINT
 @app.get("/health", tags=["System"])
 def health_check(settings: Settings = Depends(get_settings)):
@@ -67,3 +76,4 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["Users / Profile"
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Pembayaran"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
 app.include_router(chatbot.router, prefix="/api/v1/chatbot", tags=["Chatbot AI"])
+app.include_router(admin_docs.router, prefix="/api/v1/admin/documents", tags=["Admin - Dokumen Hukum"])

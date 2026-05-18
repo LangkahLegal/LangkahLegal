@@ -97,7 +97,7 @@ export default function PaymentPage() {
   if (isError || !consultation) return <ErrorState />;
 
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500">
+    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500" data-testid="payment-page">
       <Script
         src={midtransScriptUrl}
         data-client-key={midtransClientKey}
@@ -139,6 +139,7 @@ export default function PaymentPage() {
                 isLoading={transactionMutation.isPending}
                 onClick={() => transactionMutation.mutate()}
                 className="py-6 rounded-2xl"
+                data-testid="payment-pay-btn"
               >
                 <div className="flex items-center gap-3">
                   <MaterialIcon name="account_balance_wallet" />

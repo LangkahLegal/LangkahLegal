@@ -63,6 +63,7 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Tulis pertanyaan hukum Anda... (Shift+Enter untuk baris baru)"
+            data-testid="ai-chat-input"
             className="flex-1 bg-transparent border-none outline-none text-main text-sm lg:text-base placeholder:text-muted/40 py-3 px-4 resize-none min-h-[48px] max-h-[150px] overflow-y-auto"
             rows={1}
           />

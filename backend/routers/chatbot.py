@@ -17,9 +17,10 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from supabase import Client
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database import get_supabase_client
 from dependencies import get_current_user
@@ -27,6 +28,7 @@ from rag_service import triage
 
 log = logging.getLogger(__name__)
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 
@@ -40,27 +42,27 @@ from schemas.chatbot import (
     TriageResponse,
 )
 
-def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 10) -> list[dict]:
-    """
-    Ambil riwayat chat dari database berdasarkan session_id.
-    Menggantikan pengiriman chat_history dari frontend.
-    """
+def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 30) -> list[dict]:
+    """Ambil riwayat chat dari DB, termasuk metadata (untuk konteks konsultan)."""
     try:
         result = (
             supabase.table("chat_messages")
-            .select("role, content")
+            .select("role, content, metadata")
             .eq("session_id", session_id)
             .order("created_at", desc=False)
             .limit(limit)
             .execute()
         )
-        # Convert ke format yang diharapkan rag_service
         return [
-            {"role": msg["role"], "text": msg["content"]}
+            {
+                "role": msg["role"],
+                "content": msg["content"],
+                "metadata": msg.get("metadata"),
+            }
             for msg in (result.data or [])
         ]
     except Exception as e:
-        log.warning(f"[CHATBOT] Failed to get history for session {session_id}: {e}")
+        log.warning(f"[CHATBOT] Gagal ambil history session {session_id}: {e}")
         return []
 
 
@@ -267,8 +269,10 @@ mencari pasal-pasal yang relevan, dan menghasilkan jawaban AI.
 - Jika `session_id` kosong, backend membuat sesi baru secara otomatis
 """,
 )
+@limiter.limit("3/minute")
 async def chatbot_triage(
-    request: TriageRequest,
+    request: Request,
+    payload: TriageRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -281,7 +285,7 @@ async def chatbot_triage(
     """
     try:
         supabase = get_supabase_client()
-        session_id = request.session_id
+        session_id = payload.session_id
         is_new_session = False
         
         if not session_id:
@@ -315,18 +319,18 @@ async def chatbot_triage(
             )
             is_new_session = (msg_count.count or 0) == 0
         
-        chat_history = _get_chat_history_from_db(supabase, session_id, limit=10)
+        chat_history = _get_chat_history_from_db(supabase, session_id, limit=30)
         
         result = triage(
-            query=request.query,
+            query=payload.query,
             supabase=supabase,
-            kategori=request.kategori,
+            kategori=payload.kategori,
             chat_history=chat_history,
         )
         
         response_type = result.get("type", "text")
         
-        _save_message(supabase, session_id, "user", request.query)
+        _save_message(supabase, session_id, "user", payload.query)
         
         ai_metadata = {
             "type": response_type,
@@ -345,7 +349,7 @@ async def chatbot_triage(
         )
         
         if is_new_session:
-            _auto_generate_title(supabase, session_id, request.query)
+            _auto_generate_title(supabase, session_id, payload.query)
         
         return TriageResponse(
             session_id=session_id,
@@ -359,6 +363,15 @@ async def chatbot_triage(
     except HTTPException:
         raise
     except Exception as e:
+        if "429" in str(e):
+            return TriageResponse(
+                session_id=session_id if 'session_id' in locals() and session_id else "",
+                type="error",
+                jawaban="Sistem kami sedang melayani banyak antrean. Mohon tunggu sekitar 20 detik sebelum mengirim pesan lagi ya!",
+                pasal_referensi=[],
+                disclaimer="",
+            )
+            
         log.error(f"[CHATBOT] Error processing triage: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
