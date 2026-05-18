@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { MaterialIcon } from "./Icons";
-import { Button } from "./Button";
 
 export function Dropdown({
   label,
@@ -26,99 +25,143 @@ export function Dropdown({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedOption = options.find((opt) => (opt.value || opt) === value);
+  const selectedOption = options.find((opt) => (opt.value ?? opt) === value);
   const displayLabel = selectedOption
-    ? selectedOption.label || selectedOption
+    ? selectedOption.label ?? selectedOption
     : placeholder;
 
   return (
     <div
       ref={dropdownRef}
-      /* SOLUSI ANTI-KETIMPA: 
-         Z-index harus dipasang di wrapper (div) ini. 
-         Kalau terbuka kasih z-50, kalau tutup z-10.
-      */
-      className={`flex flex-col gap-2 relative transition-all duration-300 ${
+      className={`space-y-3 relative transition-all duration-300 ${
         isOpen ? "z-[100]" : "z-10"
       } ${className}`}
     >
+      {/* Label */}
       {label && (
-        <label className="block font-headline text-[11px] font-bold uppercase tracking-[0.12em] text-muted ml-1">
-          {label}
-        </label>
+        <div className="flex items-center gap-2 ml-1">
+          <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">
+            {label}
+          </label>
+        </div>
       )}
 
-      {/* TRIGGER: Menggunakan Button UI */}
-      <Button
-        type="button"
-        variant="secondary"
+      {/* Trigger */}
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`
-          !justify-between !px-4 !py-4 !font-bold !bg-input !border-surface
-          ${isOpen ? "!border-primary ring-2 ring-primary/10 shadow-lg" : ""}
-        `}
+        className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
+          isOpen
+            ? "bg-input border-primary ring-2 ring-primary/10"
+            : "bg-input/50 border-surface hover:border-primary/30"
+        }`}
       >
         <span
-          className={`truncate ${!selectedOption ? "text-muted/40" : "text-main"}`}
+          className={`text-sm truncate ${
+            !selectedOption ? "text-muted/40" : "text-main"
+          }`}
         >
           {displayLabel}
         </span>
         <MaterialIcon
           name="expand_more"
-          className={`text-[22px] transition-transform duration-300 ${
+          className={`text-xl transition-transform duration-300 shrink-0 ml-2 ${
             isOpen ? "rotate-180 text-primary" : "text-muted"
           }`}
         />
-      </Button>
+      </div>
 
-      {/* MENU: Melayang & Solid */}
+      {/* Menu */}
       {isOpen && (
-        <div
-          className={`
-            absolute top-[calc(100%+8px)] left-0 w-full 
-            z-[110] /* Harus lebih tinggi dari trigger */
-            bg-dropdown border border-surface rounded-xl shadow-2xl py-2 
-            max-h-60 overflow-y-auto animate-fade-in
-            
-            /* SCROLLBAR */
-            [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:bg-transparent
-            [&::-webkit-scrollbar-thumb]:bg-muted/30
-            [&::-webkit-scrollbar-thumb]:rounded-full
-          `}
-        >
-          {options.map((opt) => {
-            const optValue = opt.value || opt;
-            const isSelected = optValue === value;
+        <div className="absolute top-[calc(100%+12px)] left-0 right-0 bg-dropdown border border-surface rounded-2xl shadow-2xl z-[110] overflow-hidden animate-fade-in backdrop-blur-xl">
+          <div className="max-h-60 overflow-y-auto py-2 scrollbar-thin">
+            {options.map((opt) => {
+              const optValue = opt.value ?? opt;
+              const isSelected = optValue === value;
 
-            return (
-              <div
-                key={optValue}
-                onClick={() => {
-                  onChange(optValue);
-                  setIsOpen(false);
-                }}
-                className={`
-                  mx-2 px-4 py-3 text-sm font-headline flex items-center justify-between cursor-pointer rounded-lg transition-all
-                  ${
+              return (
+                <div
+                  key={optValue}
+                  onClick={() => {
+                    onChange(optValue);
+                    setIsOpen(false);
+                  }}
+                  className={`px-6 py-3 text-sm flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-primary text-white font-bold shadow-md"
-                      : "text-main hover:bg-white/10 active:bg-white/20"
-                  }
-                `}
-              >
-                <div className="flex-1 truncate">
-                  {renderItem ? renderItem(opt) : opt.label || opt}
+                      ? "bg-primary text-white font-bold"
+                      : "text-main hover:bg-surface"
+                  }`}
+                >
+                  <div className="flex-1 truncate font-headline">
+                    {renderItem ? renderItem(opt) : opt.label ?? opt}
+                  </div>
+                  {isSelected && (
+                    <MaterialIcon name="check" className="text-sm shrink-0 ml-2" />
+                  )}
                 </div>
-                {isSelected && (
-                  <MaterialIcon
-                    name="check"
-                    className="text-[18px] shrink-0 ml-2"
-                  />
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SelectDropdown({ label, value, options, isOpen, onToggle, onSelect, className = "" }) {
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div className={`space-y-3 relative ${isOpen ? "z-[100]" : "z-10"} ${className}`}>
+      {label && (
+        <div className="flex items-center gap-2 ml-1">
+          <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">
+            {label}
+          </label>
+        </div>
+      )}
+
+      <div
+        onClick={onToggle}
+        className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
+          isOpen
+            ? "bg-input border-primary ring-2 ring-primary/10"
+            : "bg-input/50 border-surface hover:border-primary/30"
+        }`}
+      >
+        <span className="text-sm font-bold text-main">
+          {selected?.label ?? "—"}
+        </span>
+        <MaterialIcon
+          name="expand_more"
+          className={`text-xl transition-transform duration-300 shrink-0 ml-2 ${
+            isOpen ? "rotate-180 text-primary" : "text-muted"
+          }`}
+        />
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-[calc(100%+12px)] left-0 right-0 bg-dropdown border border-surface rounded-2xl shadow-2xl z-[110] overflow-hidden animate-fade-in backdrop-blur-xl">
+          <div className="max-h-52 overflow-y-auto py-2 scrollbar-thin">
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => onSelect?.(opt.value)}
+                  className={`px-6 py-3 text-sm flex items-center justify-between transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-primary text-white font-bold"
+                      : "text-main hover:bg-surface"
+                  }`}
+                >
+                  <span className="font-headline">{opt.label}</span>
+                  {isSelected && (
+                    <MaterialIcon name="check" className="text-sm" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
