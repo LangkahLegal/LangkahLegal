@@ -194,6 +194,7 @@ export default function ConsultantDetailPage() {
                 showCount={true}
                 allowDelete={true}
                 onDelete={handleRemoveFile}
+                useStyledTitle={true}
               />
               <FileUpload
                 onChange={handleFileChange}
