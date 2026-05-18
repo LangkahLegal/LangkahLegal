@@ -15,8 +15,6 @@ env/
 .vscode/
 .idea/
 
-# QA Purpose
-tests
 scripts
 qa-fixtures
 postman

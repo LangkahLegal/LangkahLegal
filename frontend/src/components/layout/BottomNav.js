@@ -20,7 +20,7 @@ const CONSULTANT_NAV = [
 
 const ADMIN_NAV = [
   { label: "Verifikasi", icon: "verified_user", path: "/verification" },
-  { label: "Knowledge", icon: "menu_book", path: "/rag" },
+  { label: "Knowledge", icon: "menu_book", path: "/knowledge" },
 ];
 
 // Menambahkan prop className agar instruksi dari luar (seperti lg:hidden) bisa masuk

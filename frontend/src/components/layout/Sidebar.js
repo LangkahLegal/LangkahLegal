@@ -18,7 +18,7 @@ export default function Sidebar({ role = "client" }) {
       : role === "admin"
       ? [
           { label: "Verifikasi", icon: "verified_user", path: "/verification" },
-          { label: "Knowledge", icon: "menu_book", path: "/rag" },
+          { label: "Knowledge", icon: "menu_book", path: "/knowledge" },
         ]
       : [
           { label: "Konsultasi", icon: "gavel", path: "/explore" },

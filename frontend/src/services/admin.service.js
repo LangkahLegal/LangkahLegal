@@ -45,3 +45,108 @@ export const getTransactionSummary = async () => {
   const response = await api.get("/admin/transactions/summary");
   return response.data;
 };
+
+// ─── Manajemen Dokumen & Chunks (RAG) ──────────────────────────────────────
+
+/**
+ * Mengambil list dokumen (UU) yang dikelompokkan (Grouped)
+ * Menggunakan endpoint: GET /admin/documents/
+ */
+export const getAdminDocuments = async (page = 1, search = "", kategori = "") => {
+  const params = { page, page_size: 20 };
+  if (search) params.search = search;
+  if (kategori) params.kategori = kategori;
+
+  const response = await api.get("/admin/documents/", { params });
+  return response.data;
+};
+
+/**
+ * Mengambil isi pasal-pasal (chunks) di dalam satu UU berdasarkan URI
+ * Menggunakan endpoint: GET /admin/documents/chunks
+ */
+export const getDocumentChunks = async (frbrUri, page = 1, pageSize = 50, search = "") => {
+  const params = { frbr_uri: frbrUri, page, page_size: pageSize };
+  if (search) params.search = search;
+  const response = await api.get("/admin/documents/chunks", { params });
+  return response.data;
+};
+
+/**
+ * Mengambil detail satu chunk berdasarkan ID
+ */
+export const getChunkDetail = async (id) => {
+  const response = await api.get(`/admin/documents/chunks/${id}`);
+  return response.data;
+};
+
+/**
+ * Update data chunk/pasal
+ * Gunakan PATCH sesuai dokumentasi. Jika 'isi_teks' berubah, embedding akan di-update.
+ */
+export const updateChunk = async (id, data) => {
+  const response = await api.patch(`/admin/documents/chunks/${id}`, data);
+  return response.data;
+};
+
+/**
+ * Menghapus satu UU utuh beserta semua pasalnya berdasarkan URI
+ */
+export const deleteFullDocumentByUri = async (frbrUri) => {
+  const response = await api.delete("/admin/documents/by-uri", {
+    params: { frbr_uri: frbrUri },
+  });
+  return response.data;
+};
+
+/**
+ * Upload PDF Baru (Async)
+ * Menggunakan FormData karena mengirim file binary
+ */
+export const uploadDocumentPdf = async (file, metadata) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  if (metadata) {
+    formData.append("nama_uu", metadata.nama_uu);
+    if (metadata.nomor_uu) formData.append("nomor_uu", metadata.nomor_uu);
+    if (metadata.tahun_uu) formData.append("tahun_uu", metadata.tahun_uu);
+    formData.append("kategori", metadata.kategori);
+    formData.append("status_hukum", metadata.status_hukum);
+  }
+  
+  const response = await api.post("/admin/documents/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data; // Mengembalikan { job_id, status, ... }
+};
+
+/**
+ * Replace Dokumen Lama dengan PDF Baru (Async)
+ */
+export const replaceDocumentPdf = async (file, frbrUri, metadata = {}) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("frbr_uri", frbrUri);
+  
+  if (metadata.nama_uu) {
+    formData.append("nama_uu", metadata.nama_uu);
+    formData.append("nomor_uu", metadata.nomor_uu || "");
+    formData.append("tahun_uu", metadata.tahun_uu || "");
+    formData.append("kategori", metadata.kategori);
+    formData.append("status_hukum", metadata.status_hukum);
+  }
+
+  const response = await api.put("/admin/documents/replace", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+/**
+ * Cek Status Job (Polling)
+ */
+export const getJobStatus = async (jobId) => {
+  const response = await api.get(`/admin/documents/jobs/${jobId}`);
+  return response.data;
+};
