@@ -5,20 +5,24 @@ import { MaterialIcon } from "@/components/ui";
  * @param {string} value - Nilai input saat ini
  * @param {function} onChange - Handler untuk perubahan input
  * @param {string} placeholder - Teks placeholder
+ * @param {string} className - Override wrapper class
+ * @param {string} inputClassName - Override input class
  */
 export default function SearchBar({
   value,
   onChange,
   placeholder = "Cari keahlian atau nama...",
+  className = "",
+  inputClassName = "",
 }) {
   return (
-    <section className="w-full transition-all duration-300">
-      <div className="relative group">
+    <section className={`w-full transition-all duration-300 ${className}`}>
+      <div className="relative group h-full">
         {/* Search Icon Overlay */}
         <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
           <MaterialIcon
             name="search"
-            className="text-muted group-focus-within:text-primary group-hover:text-primary-light transition-colors duration-300 text-2xl"
+            className={`text-muted group-focus-within:text-primary group-hover:text-primary-light transition-colors duration-300 ${inputClassName ? '' : 'text-2xl'}`}
           />
         </div>
 
@@ -29,7 +33,7 @@ export default function SearchBar({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           data-testid="explore-search-input"
-          className="w-full bg-input border border-muted/30 rounded-2xl py-4 pl-14 pr-16 text-main placeholder:text-muted/6 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-muted/5 transition-all duration-30 shadow-inner"
+          className={`w-full bg-input border border-muted/30 rounded-2xl py-4 pl-14 pr-16 text-main placeholder:text-muted/6 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-muted/5 transition-all duration-30 shadow-inner ${inputClassName}`}
         />
       </div>
     </section>
