@@ -219,6 +219,7 @@ def get_pending_requests(
             tanggal_pengajuan, 
             jam_mulai, 
             jam_selesai,
+            id_bursa,
             users ( 
                 nama, 
                 foto_profil 
@@ -227,7 +228,7 @@ def get_pending_requests(
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
         .eq("status_pengajuan", "pending")
-        .order("created_at", desc=True) # Senior tip: Biasakan kasih order biar rapi di UI
+        .order("created_at", desc=True)
         .execute()
     )
     
@@ -271,14 +272,13 @@ def get_active_requests(
             tanggal_pengajuan, 
             jam_mulai, 
             jam_selesai,
+            id_bursa,
             users ( nama, foto_profil )
         """
         )
         .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .eq("status_pengajuan", "terjadwal")
-        # Opsional: Urutkan agar yang paling dekat muncul di atas
-        .order("tanggal_pengajuan", desc=False)
-        .order("jam_mulai", desc=False)
+        .in_("status_pengajuan", ["terjadwal", "menunggu_pembayaran"])
+        .order("created_at", desc=True)
         .execute()
     )
     
@@ -661,11 +661,14 @@ def get_riwayat_konsultan(
 
         formatted_data.append({
             "id_pengajuan": req["id_pengajuan"],
+            "id_bursa": req.get("id_bursa"),
             "nama_klien": req.get("users", {}).get("nama"),
             "foto_profil": req.get("users", {}).get("foto_profil"),
-            "status_akhir": status_akhir,
-            "tanggal_konsultasi": jadwal.get("tanggal", ""),
             "rentang_waktu": f"{jm} - {js}" if jm and js else "",
+            "status": status_akhir,
+            "tanggal_konsultasi": jadwal.get("tanggal") or req.get("tanggal_pengajuan", ""),
+            "jam_mulai": jm,
+            "jam_selesai": js,
             "nominal_konsultan": nominal
         })
         
@@ -673,7 +676,7 @@ def get_riwayat_konsultan(
     formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
 
     # Hitung hanya yang berstatus 'selesai'
-    total_selesai = sum(1 for item in formatted_data if item["status_akhir"] == "selesai")
+    total_selesai = sum(1 for item in formatted_data if item["status"] == "selesai")
 
     return {
         "total_sesi_selesai": total_selesai,

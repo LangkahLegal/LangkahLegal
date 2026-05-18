@@ -56,7 +56,7 @@ export function Dropdown({
         }`}
       >
         <span
-          className={`text-sm truncate ${
+          className={`text-sm font-bold truncate ${
             !selectedOption ? "text-muted/40" : "text-main"
           }`}
         >

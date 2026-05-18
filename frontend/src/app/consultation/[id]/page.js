@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
@@ -16,10 +16,19 @@ import ZoomLinkCard from "@/components/consultation/ZoomLinkCard";
 
 // Services
 import { consultationService } from "@/services/consultation.service";
+import { userService } from "@/services/user.service";
 
 const getUserRoleSnapshot = () => {
   if (typeof window === "undefined") return "client";
-  return localStorage.getItem("userRole") || "client";
+  const role = localStorage.getItem("userRole") || 
+               localStorage.getItem("role") || 
+               localStorage.getItem("user_role");
+  
+  if (!role) return "client";
+  
+  const normalized = role.toLowerCase();
+  if (normalized.includes("konsultan") || normalized.includes("consultant")) return "konsultan";
+  return "client";
 };
 
 const getUserRoleServerSnapshot = () => "client";
@@ -27,7 +36,7 @@ const getUserRoleServerSnapshot = () => "client";
 const subscribeToUserRole = (callback) => {
   if (typeof window === "undefined") return () => {};
   const handleStorage = (event) => {
-    if (!event || event.key === "userRole") {
+    if (!event || ["userRole", "role", "user_role"].includes(event.key)) {
       callback();
     }
   };
@@ -43,7 +52,13 @@ export default function ConsultationDetail() {
     getUserRoleServerSnapshot,
   );
 
-  // --- 1. FETCH DATA DETAIL (TanStack Query) ---
+  // --- 1. FETCH USER PROFILE ---
+  const { data: userProfile } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: userService.getFullProfile,
+  });
+
+  // --- 2. FETCH DATA DETAIL ---
   const {
     data: requestData,
     isLoading,
@@ -53,6 +68,7 @@ export default function ConsultationDetail() {
     queryFn: () => consultationService.getConsultationDetail(id),
     enabled: !!id,
     select: (data) => ({
+      id_konsultan: data.id_konsultan,
       clientName: data.nama_klien,
       fotoProfil: data.foto_profil,
       createdAt: data.created_at,
@@ -73,6 +89,20 @@ export default function ConsultationDetail() {
         })) || [],
     }),
   });
+
+  // --- 3. DERIVE FINAL ROLE ---
+  const derivedRole = useMemo(() => {
+    const profileRole = userProfile?.data?.role?.toLowerCase() || userProfile?.role?.toLowerCase() || "";
+    
+    if (
+      profileRole.includes("konsultan") || 
+      profileRole.includes("consultant") ||
+      (requestData && (userProfile?.id_konsultan == requestData.id_konsultan || userProfile?.data?.konsultan?.id_konsultan == requestData.id_konsultan))
+    ) {
+      return "konsultan";
+    }
+    return userRole;
+  }, [requestData, userProfile, userRole]);
 
   // --- 2. LOADING STATE ---
   if (isLoading) {
@@ -112,7 +142,7 @@ export default function ConsultationDetail() {
   return (
     /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex transition-colors duration-500 font-primary">
-      <Sidebar role={userRole} />
+      <Sidebar role={derivedRole} />
 
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Detail Konsultasi" />
@@ -138,13 +168,15 @@ export default function ConsultationDetail() {
               /* REFACTOR: text-[#aca8c1] -> text-muted */
               titleClassName="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2"
               allowDelete={false}
+              showEmptyState={true}
             />
 
             <ZoomLinkCard
               link={requestData.zoomLink}
               password={requestData.zoomPassword}
               status={requestData.status}
-              role={userRole}
+              role={derivedRole}
+              consultationId={id}
             />
           </div>
         </main>

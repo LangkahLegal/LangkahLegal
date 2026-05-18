@@ -7,6 +7,9 @@ export default function SuccessView({
   title = "Permintaan Booking Berhasil Terkirim!",
   description = "Mohon tunggu konfirmasi dari Konsultan, anda akan menerima email segera setelah jadwal dikonfirmasi.",
   onAction = () => {}, // Safety: fallback fungsi kosong
+  actionLabel = "Kembali ke Dashboard",
+  onSecondaryAction = null,
+  secondaryActionLabel = "",
 }) {
   // Variasi untuk container teks agar muncul setelah ikon
   const containerVariants = {
@@ -122,15 +125,26 @@ export default function SuccessView({
         </motion.p>
 
         {/* 3. TOMBOL AKSI */}
-        <motion.div variants={itemVariants} className="w-full sm:w-[280px]">
+        <motion.div variants={itemVariants} className="w-full sm:w-[280px] flex flex-col gap-3">
           <Button
             onClick={onAction}
             fullWidth
             /* REFACTOR: bg-card | hover:bg-input | border-surface | text-main */
-            className="py-5 !rounded-full bg-card hover:bg-input border border-surface text-main font-bold transition-all shadow-lg"
+            className="py-5 !rounded-full bg-primary/10 hover:bg-primary/20 border border-surface text-main font-bold transition-all shadow-lg"
           >
-            Kembali ke Dashboard
+            {actionLabel}
           </Button>
+          
+          {onSecondaryAction && (
+            <Button
+              onClick={onSecondaryAction}
+              variant="secondary"
+              fullWidth
+              className="py-5 !rounded-full bg-card hover:bg-input border border-surface text-main font-bold transition-all shadow-lg"
+            >
+              {secondaryActionLabel}
+            </Button>
+          )}
         </motion.div>
       </motion.div>
     </motion.div>

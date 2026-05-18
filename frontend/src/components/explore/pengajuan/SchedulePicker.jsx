@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
+import { SelectDropdown } from "@/components/ui/Dropdown";
 
-// Helper untuk mendapatkan YYYY-MM-DD waktu lokal (Bukan UTC)
+// Helper: YYYY-MM-DD lokal (bukan UTC)
 const getLocalDateString = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -18,9 +19,7 @@ const timeToMinutes = (time = "00:00") => {
 };
 
 const minutesToTime = (totalMin = 0) => {
-  const h = Math.floor(totalMin / 60)
-    .toString()
-    .padStart(2, "0");
+  const h = Math.floor(totalMin / 60).toString().padStart(2, "0");
   const m = (totalMin % 60).toString().padStart(2, "0");
   return `${h}:${m}`;
 };
@@ -35,6 +34,22 @@ const TIME_SLOTS = (() => {
   return slots;
 })();
 
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+const ALL_MONTH_OPTIONS = MONTH_NAMES_ID.map((name, idx) => ({
+  value: idx,
+  label: name,
+}));
+
+// Hasilkan daftar tahun: tahun ini s.d. 2 tahun ke depan
+const YEAR_OPTIONS = (() => {
+  const thisYear = new Date().getFullYear();
+  return [thisYear, thisYear + 1, thisYear + 2].map((y) => ({ value: y, label: String(y) }));
+})();
+
 export default function SchedulePicker({
   rawSchedules = [],
   bookedSlots = [],
@@ -44,59 +59,164 @@ export default function SchedulePicker({
   onStartTimeChange,
   endTime = "00:00",
   onEndTimeChange,
+  isPublic = false,
 }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const containerRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const firstAvailableRef = useRef(null);
 
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const thisYear = today.getFullYear();
+  const thisMonth = today.getMonth();
+
+  // State bulan & tahun yang sedang ditampilkan
+  const [viewMonth, setViewMonth] = useState(thisMonth); // 0-based
+  const [viewYear, setViewYear] = useState(thisYear);
+
+  // Kalau bukan mode publik: geser tampilan ke tanggal pertama konsultan available
+  useEffect(() => {
+    if (isPublic || !rawSchedules.length) return;
+    const sorted = [...rawSchedules].sort((a, b) =>
+      a.tanggal > b.tanggal ? 1 : -1
+    );
+    const first = sorted.find((s) => s.tanggal >= getLocalDateString(today));
+    if (!first) return;
+    const [y, m] = first.tanggal.split("-").map(Number);
+    setViewYear(y);
+    setViewMonth(m - 1); // 0-based
+  }, [rawSchedules, isPublic, today]);
+
+  // Scroll spesifik HANYA secara horizontal ke tanggal pertama yang available
+  // Tanpa memaksa halaman lompat ke bawah
+  useEffect(() => {
+    if (!firstAvailableRef.current || !scrollContainerRef.current) return;
+    const timer = setTimeout(() => {
+      if (firstAvailableRef.current && scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        const item = firstAvailableRef.current;
+        container.scrollTo({
+          left: item.offsetLeft - container.offsetLeft - 20,
+          behavior: "smooth",
+        });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [viewMonth, viewYear]);
+
+  // Filter bulan: kalau tahun sekarang, jangan tampilkan bulan yang sudah lewat
+  const availableMonthOptions = useMemo(() => {
+    if (viewYear === thisYear) {
+      return ALL_MONTH_OPTIONS.filter((m) => m.value >= thisMonth);
+    }
+    return ALL_MONTH_OPTIONS;
+  }, [viewYear, thisYear, thisMonth]);
+
+  // Hitung semua tanggal yang valid (>= hari ini) di bulan & tahun yang dipilih
   const displayDates = useMemo(() => {
     const days = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-
-      // FIX: Jangan gunakan toISOString().split('T')[0]
-      const localDate = getLocalDateString(d);
-
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(viewYear, viewMonth, day);
+      d.setHours(0, 0, 0, 0);
+      if (d < today) continue; // lewati tanggal yang sudah terlewat
       days.push({
-        fullDate: localDate,
-        dayName: d
-          .toLocaleDateString("id-ID", { weekday: "short" })
-          .toUpperCase(),
-        dayNumber: d.getDate().toString(),
+        fullDate: getLocalDateString(d),
+        dayName: d.toLocaleDateString("id-ID", { weekday: "short" }).toUpperCase(),
+        dayNumber: String(day),
       });
     }
     return days;
-  }, []);
+  }, [viewMonth, viewYear, today]);
 
   const getSlotStatus = (time, type) => {
     if (!selectedDate) return "disabled";
 
-    // Safety check matching tanggal
+    const timeMin = timeToMinutes(time);
+    const selectedStartMin = timeToMinutes(startTime);
+
+    const now = new Date();
+    const todayStr = getLocalDateString(now);
+    const isToday = selectedDate === todayStr;
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+
+    if (isPublic) {
+      if (type === "end") {
+        if (timeMin <= selectedStartMin) return "disabled";
+        const hasOverlap = bookedSlots.some((b) => {
+          const bDateRaw = b.jadwal_ketersediaan?.tanggal || b.tanggal_pengajuan;
+          const bDate = bDateRaw ? bDateRaw.split("T")[0] : "";
+          if (bDate !== selectedDate) return false;
+          const bJamMulai = b.jam_mulai || b.jadwal_ketersediaan?.jam_mulai;
+          const bStart = timeToMinutes(bJamMulai?.substring(0, 5));
+          return bStart > selectedStartMin && bStart < timeMin;
+        });
+        if (hasOverlap) return "disabled";
+      } else {
+        if (isToday && timeMin <= currentMin) return "disabled";
+
+        const isStartBooked = bookedSlots.some((b) => {
+          const bDateRaw = b.jadwal_ketersediaan?.tanggal || b.tanggal_pengajuan;
+          const bDate = bDateRaw ? bDateRaw.split("T")[0] : "";
+          if (bDate !== selectedDate) return false;
+          const bJamMulai = b.jam_mulai || b.jadwal_ketersediaan?.jam_mulai;
+          const bJamSelesai = b.jam_selesai || b.jadwal_ketersediaan?.jam_selesai;
+          const bStart = timeToMinutes(bJamMulai?.substring(0, 5));
+          const bEnd = timeToMinutes(bJamSelesai?.substring(0, 5));
+          return timeMin >= bStart && timeMin < bEnd;
+        });
+        if (isStartBooked) return "booked";
+      }
+
+      const isBooked = bookedSlots.some((b) => {
+        const bDateRaw = b.jadwal_ketersediaan?.tanggal || b.tanggal_pengajuan;
+        const bDate = bDateRaw ? bDateRaw.split("T")[0] : "";
+        if (bDate !== selectedDate) return false;
+        const bJamMulai = b.jam_mulai || b.jadwal_ketersediaan?.jam_mulai;
+        const bJamSelesai = b.jam_selesai || b.jadwal_ketersediaan?.jam_selesai;
+        const bStart = bJamMulai?.substring(0, 5);
+        const bEnd = bJamSelesai?.substring(0, 5);
+        return time >= bStart && time < bEnd;
+      });
+
+      return isBooked ? "booked" : "available";
+    }
+
     const daySchedule = rawSchedules.find((s) => s.tanggal === selectedDate);
     if (!daySchedule) return "disabled";
 
     const openMin = timeToMinutes(daySchedule.jam_mulai?.substring(0, 5));
     const closeMin = timeToMinutes(daySchedule.jam_selesai?.substring(0, 5));
-    const timeMin = timeToMinutes(time);
 
     if (type === "start") {
       if (timeMin < openMin || timeMin > closeMin - 30) return "disabled";
+      if (isToday && timeMin <= currentMin) return "disabled";
     } else {
-      const selectedStartMin = timeToMinutes(startTime);
       if (timeMin <= selectedStartMin || timeMin > closeMin) return "disabled";
-
       const hasOverlap = bookedSlots.some((b) => {
-        if (b.tanggal_pengajuan !== selectedDate) return false;
-        const bStart = timeToMinutes(b.jam_mulai?.substring(0, 5));
+        const bDateRaw = b.jadwal_ketersediaan?.tanggal || b.tanggal_pengajuan;
+        const bDate = bDateRaw ? bDateRaw.split("T")[0] : "";
+        if (bDate !== selectedDate) return false;
+        const bJamMulai = b.jam_mulai || b.jadwal_ketersediaan?.jam_mulai;
+        const bStart = timeToMinutes(bJamMulai?.substring(0, 5));
         return bStart > selectedStartMin && bStart < timeMin;
       });
       if (hasOverlap) return "disabled";
     }
 
     const isBooked = bookedSlots.some((b) => {
-      if (b.tanggal_pengajuan !== selectedDate) return false;
-      const bStart = b.jam_mulai?.substring(0, 5);
-      const bEnd = b.jam_selesai?.substring(0, 5);
+      const bDateRaw = b.jadwal_ketersediaan?.tanggal || b.tanggal_pengajuan;
+      const bDate = bDateRaw ? bDateRaw.split("T")[0] : "";
+      if (bDate !== selectedDate) return false;
+      const bJamMulai = b.jam_mulai || b.jadwal_ketersediaan?.jam_mulai;
+      const bJamSelesai = b.jam_selesai || b.jadwal_ketersediaan?.jam_selesai;
+      const bStart = bJamMulai?.substring(0, 5);
+      const bEnd = bJamSelesai?.substring(0, 5);
       return time >= bStart && time < bEnd;
     });
 
@@ -114,6 +234,7 @@ export default function SchedulePicker({
 
   return (
     <section className="space-y-6 w-full" ref={containerRef}>
+      {/* Judul */}
       <div className="flex items-center gap-3 px-1">
         <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
         <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline">
@@ -121,45 +242,96 @@ export default function SchedulePicker({
         </h2>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pt-2 pb-4 no-scrollbar -mx-5 px-5 snap-x">
-        {displayDates.map((d) => {
-          // Sekarang perbandingan tanggal sudah akurat (Lokal vs Lokal)
-          const isAvailableDay = rawSchedules.some(
-            (s) => s.tanggal === d.fullDate,
-          );
-          const isSelected = selectedDate === d.fullDate;
-
-          return (
-            <Button
-              key={d.fullDate}
-              variant={isSelected ? "primary" : "secondary"}
-              disabled={!isAvailableDay}
-              onClick={() => onDateSelect?.(d.fullDate)}
-              className={`
-                flex-shrink-0 !w-16 !h-auto !py-4 !rounded-2xl !flex-col !gap-1 snap-center border transition-all duration-300
-                ${
-                  isSelected
-                    ? "shadow-lg shadow-primary/20 scale-105 z-10"
-                    : "!bg-input !border-surface text-muted hover:!border-primary/40"
-                }
-                ${!isAvailableDay && "opacity-20 !bg-transparent !border-dashed"}
-              `}
-            >
-              <span
-                className={`text-[9px] font-black uppercase tracking-widest ${isSelected ? "text-white/70" : "text-muted"}`}
-              >
-                {d.dayName}
-              </span>
-              <span
-                className={`text-xl font-black ${isSelected ? "text-white" : "text-main"}`}
-              >
-                {d.dayNumber}
-              </span>
-            </Button>
-          );
-        })}
+      {/* Dropdown Bulan & Tahun*/}
+      <div className="grid grid-cols-2 gap-3">
+        <SelectDropdown
+          label="Bulan"
+          value={viewMonth}
+          options={availableMonthOptions}
+          isOpen={activeDropdown === "month"}
+          onToggle={() => setActiveDropdown(activeDropdown === "month" ? null : "month")}
+          onSelect={(val) => {
+            setViewMonth(val);
+            onDateSelect?.("");
+            setActiveDropdown(null);
+          }}
+        />
+        <SelectDropdown
+          label="Tahun"
+          value={viewYear}
+          options={YEAR_OPTIONS}
+          isOpen={activeDropdown === "year"}
+          onToggle={() => setActiveDropdown(activeDropdown === "year" ? null : "year")}
+          onSelect={(val) => {
+            setViewYear(val);
+            if (val === thisYear && viewMonth < thisMonth) {
+              setViewMonth(thisMonth);
+            }
+            onDateSelect?.("");
+            setActiveDropdown(null);
+          }}
+        />
       </div>
 
+      {/* Daftar Tanggal */}
+      {displayDates.length === 0 ? (
+        <p className="text-muted text-sm italic px-1">
+          Tidak ada tanggal tersedia di bulan ini.
+        </p>
+      ) : (
+        <div
+          ref={scrollContainerRef}
+          className="flex gap-3 overflow-x-auto pt-2 pb-4 no-scrollbar px-1 snap-x"
+        >
+          {displayDates.map((d, idx) => {
+            const isAvailableDay =
+              isPublic ||
+              rawSchedules.some((s) => s.tanggal === d.fullDate);
+            const isSelected = selectedDate === d.fullDate;
+            // Ref ke tombol PERTAMA yang available (untuk scroll otomatis)
+            const isFirstAvailable = !isPublic && isAvailableDay && idx === displayDates.findIndex(
+              (x) => rawSchedules.some((s) => s.tanggal === x.fullDate)
+            );
+
+            return (
+              <div key={d.fullDate} ref={isFirstAvailable ? firstAvailableRef : null} className="snap-center flex-shrink-0">
+                <Button
+                  variant={isSelected ? "primary" : "secondary"}
+                  disabled={!isAvailableDay}
+                  onClick={() => onDateSelect?.(d.fullDate)}
+                  className={`
+                    !w-16 !h-auto !py-4 !rounded-2xl !flex-col !gap-1 border transition-all duration-300
+                    ${
+                      isSelected
+                        ? "shadow-lg shadow-primary/20 scale-105 z-10"
+                        : "!bg-input !border-surface text-muted hover:!border-primary/40"
+                    }
+                    ${!isAvailableDay && "opacity-20 !bg-transparent !border-dashed"}
+                  `}
+                >
+                  <span
+                    className={`text-[9px] font-black uppercase tracking-widest ${
+                      isSelected ? "text-white/70" : "text-muted"
+                    }`}
+                  >
+                    {d.dayName}
+                  </span>
+                  <span
+                    className={`text-xl font-black ${
+                      isSelected ? "text-white" : "text-main"
+                    }`}
+                  >
+                    {d.dayNumber}
+                  </span>
+                </Button>
+              </div>
+            );
+
+          })}
+        </div>
+      )}
+
+      {/* Jam Mulai & Jam Selesai */}
       <div className="bg-card border border-surface rounded-[2.5rem] p-6 shadow-soft relative transition-colors duration-500">
         <div className="grid grid-cols-2 gap-4">
           <TimeDropdown
@@ -181,7 +353,7 @@ export default function SchedulePicker({
           <TimeDropdown
             label="Jam Selesai"
             value={endTime}
-            icon="calendar_today"
+            icon="schedule"
             isOpen={activeDropdown === "end"}
             onToggle={() =>
               setActiveDropdown(activeDropdown === "end" ? null : "end")
@@ -196,7 +368,6 @@ export default function SchedulePicker({
       </div>
     </section>
   );
-}
 
 function TimeDropdown({
   label,
@@ -227,7 +398,9 @@ function TimeDropdown({
         <span className="text-sm font-bold text-main">{value || "--:--"}</span>
         <MaterialIcon
           name="expand_more"
-          className={`text-xl transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : "text-muted"}`}
+          className={`text-xl transition-transform duration-300 ${
+            isOpen ? "rotate-180 text-primary" : "text-muted"
+          }`}
         />
       </div>
 
@@ -270,4 +443,5 @@ function TimeDropdown({
       )}
     </div>
   );
+}
 }

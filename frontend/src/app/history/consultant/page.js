@@ -40,7 +40,7 @@ export default function ConsultantHistoryPage() {
     const formatted = rawData
       .filter(
         (req) =>
-          (req.status_pengajuan || req.status_akhir)?.toLowerCase() !==
+          (req.status)?.toLowerCase() !==
           "pending",
       )
       .sort((a, b) => {
@@ -54,12 +54,17 @@ export default function ConsultantHistoryPage() {
       })
       .map((req) => ({
         id_pengajuan: req.id_pengajuan,
-        status_pengajuan: req.status_pengajuan || req.status_akhir,
+        id_bursa: req.id_bursa || null,
+        status_pengajuan: req.status,
         nominal_consultant: req.nominal_konsultan || 0,
-        jam_mulai: req.jam_mulai || req.rentang_waktu?.split(" - ")[0],
-        jam_selesai: req.jam_selesai || req.rentang_waktu?.split(" - ")[1],
+        jam_mulai: req.jam_mulai || null,
+        jam_selesai: req.jam_selesai || null,
+        tanggal_pengajuan: req.tanggal_konsultasi || null, // fallback
+        tanggal_konsultasi: req.tanggal_konsultasi || null,
         jadwal_ketersediaan: {
-          tanggal: req.tanggal_konsultasi,
+          tanggal: req.tanggal_konsultasi || null,
+          jam_mulai: req.jam_mulai || null,
+          jam_selesai: req.jam_selesai || null,
           konsultan: {
             nama_lengkap: req.nama_klien || "Klien Anonim",
             foto_profil:
