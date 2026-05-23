@@ -5,14 +5,18 @@ from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Cookie
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
 from config import get_settings
 from database import get_supabase_client
+from limiter import limiter
 
 from schemas.auth import (
+    ForgotPasswordPayload,
+    ResetPasswordPayload,
     OAuthPayload,
     OtpLoginPayload,
     PasswordLoginPayload,
@@ -24,7 +28,51 @@ from schemas.auth import (
 )
 
 router = APIRouter()
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+def get_token_from_request(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    ll_token: Optional[str] = Cookie(None)
+) -> str:
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    if ll_token:
+        return ll_token
+    raise HTTPException(status_code=401, detail="Token tidak valid atau tidak ditemukan")
+
+def _set_auth_cookies(response: Response, session_data: dict):
+    if not isinstance(session_data, dict):
+        return
+        
+    access_token = session_data.get("access_token")
+    refresh_token = session_data.get("refresh_token")
+    expires_in = session_data.get("expires_in", 3600)
+    
+    if access_token:
+        response.set_cookie(
+            key="ll_token",
+            value=access_token,
+            max_age=expires_in,
+            httponly=True,
+            samesite="lax",
+            path="/"
+        )
+    
+    if refresh_token:
+        response.set_cookie(
+            key="ll_refresh",
+            value=refresh_token,
+            max_age=30 * 24 * 60 * 60,
+            httponly=True,
+            samesite="lax",
+            path="/"
+        )
+
+def _clear_auth_cookies(response: Response):
+    response.delete_cookie("ll_token", path="/")
+    response.delete_cookie("ll_refresh", path="/")
+    response.delete_cookie("ll_oauth_verifier", path="/")
+    response.delete_cookie("ll_role", path="/")
 
 def _get_service_headers() -> dict:
     settings = get_settings()
@@ -92,9 +140,9 @@ async def _post_auth(
 @router.post(
     "/signup",
     summary="Daftar akun baru",
-    description="Mendaftarkan user baru menggunakan email/password. Dapat mengirim metadata role pada proses signup.",
+    description="Mendaftarkan user baru menggunakan email/password.",
 )
-async def sign_up(payload: SignUpPayload):
+async def sign_up(payload: SignUpPayload, response: Response):
     options = {
         "data": {
             "full_name": payload.name,
@@ -112,10 +160,14 @@ async def sign_up(payload: SignUpPayload):
             "options": options,
         },
     )
+    
+    session = data.get("session")
+    if session:
+        _set_auth_cookies(response, session)
 
     return {
         "data": {
-            "session": data.get("session"),
+            "session": session,
             "user": data.get("user"),
         }
     }
@@ -126,7 +178,8 @@ async def sign_up(payload: SignUpPayload):
     summary="Kirim OTP login ke email",
     description="Mengirim OTP login ke email yang sudah terdaftar. Endpoint ini tidak membuat user baru.",
 )
-async def send_otp_login(payload: OtpLoginPayload):
+@limiter.limit("3/minute")
+async def send_otp_login(request: Request, payload: OtpLoginPayload):
     options = {
         "should_create_user": False,
     }
@@ -149,7 +202,8 @@ async def send_otp_login(payload: OtpLoginPayload):
     summary="Kirim ulang OTP signup",
     description="Mengirim ulang OTP verifikasi email pada flow signup.",
 )
-async def resend_signup_otp(payload: ResendOtpPayload):
+@limiter.limit("3/minute")
+async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
     options = {}
     if payload.emailRedirectTo:
         options["email_redirect_to"] = payload.emailRedirectTo
@@ -171,7 +225,7 @@ async def resend_signup_otp(payload: ResendOtpPayload):
     summary="Verifikasi OTP",
     description="Memverifikasi token OTP dan mengembalikan session/access token bila berhasil.",
 )
-async def verify_otp(payload: VerifyOtpPayload):
+async def verify_otp(payload: VerifyOtpPayload, response: Response):
     data = await _post_auth(
         "/auth/v1/verify",
         {
@@ -182,6 +236,7 @@ async def verify_otp(payload: VerifyOtpPayload):
     )
 
     session_payload = data.get("session") or data
+    _set_auth_cookies(response, session_payload)
 
     return {
         "data": {
@@ -196,7 +251,7 @@ async def verify_otp(payload: VerifyOtpPayload):
     summary="Login dengan email & password",
     description="Login standar berbasis password. Mengembalikan session lengkap (access token + refresh token).",
 )
-async def login_with_password(payload: PasswordLoginPayload):
+async def login_with_password(payload: PasswordLoginPayload, response: Response):
     data = await _post_auth(
         "/auth/v1/token",
         {
@@ -205,6 +260,8 @@ async def login_with_password(payload: PasswordLoginPayload):
         },
         params={"grant_type": "password"},
     )
+
+    _set_auth_cookies(response, data)
 
     return {
         "data": {
@@ -217,9 +274,9 @@ async def login_with_password(payload: PasswordLoginPayload):
 @router.post(
     "/oauth/google",
     summary="Generate OAuth URL Google",
-    description="Menghasilkan URL OAuth Google + PKCE verifier untuk flow login social pada frontend.",
+    description="Menghasilkan URL OAuth Google + PKCE verifier.",
 )
-async def sign_in_with_google(payload: OAuthPayload):
+async def sign_in_with_google(payload: OAuthPayload, response: Response):
     code_verifier, code_challenge = _generate_pkce_pair()
     params = {
         "provider": payload.provider or "google",
@@ -230,23 +287,40 @@ async def sign_in_with_google(payload: OAuthPayload):
     settings = get_settings()
     url = f"{settings.supabase_url}/auth/v1/authorize?{urlencode(params)}"
 
+    response.set_cookie(
+        key="ll_oauth_verifier",
+        value=code_verifier,
+        max_age=3600,
+        httponly=True,
+        samesite="lax",
+        path="/"
+    )
+
     return {
         "data": {
-            "url": url,
-            "code_verifier": code_verifier,
+            "url": url
         }
     }
 
 
-@router.get(
-    "/session",
-    summary="Exchange OAuth code ke session",
-    description="Menukar `code` OAuth + `code_verifier` PKCE menjadi session/access token.",
+@router.post(
+    "/exchange-code",
+    summary="Tukar OAuth Code dengan Session",
+    description="Menukar code dari URL callback dengan session/access token.",
 )
-async def exchange_oauth_session(code: str, code_verifier: str):
-    if not code or not code_verifier:
-        raise HTTPException(status_code=400, detail="Kode OAuth tidak lengkap.")
-
+async def exchange_code(
+    request: Request,
+    response: Response,
+    payload: dict,
+):
+    code = payload.get("code")
+    code_verifier = request.cookies.get("ll_oauth_verifier")
+    
+    if not code:
+        raise HTTPException(status_code=400, detail="Code tidak ditemukan.")
+    if not code_verifier:
+        raise HTTPException(status_code=400, detail="Session login (PKCE verifier) tidak ditemukan atau sudah kadaluarsa. Silakan ulangi login.")
+        
     data = await _post_auth(
         "/auth/v1/token",
         {
@@ -255,7 +329,10 @@ async def exchange_oauth_session(code: str, code_verifier: str):
         },
         params={"grant_type": "pkce"},
     )
-
+    
+    _set_auth_cookies(response, data)
+    response.delete_cookie("ll_oauth_verifier", path="/")
+    
     return {
         "data": {
             "session": data,
@@ -269,17 +346,23 @@ async def exchange_oauth_session(code: str, code_verifier: str):
     summary="Refresh access token",
     description="Menukar refresh token untuk mendapatkan session/access token baru.",
 )
-async def refresh_session(payload: RefreshTokenPayload):
-    if not payload.refresh_token:
+async def refresh_session(request: Request, response: Response, payload: dict = None):
+    refresh_token = request.cookies.get("ll_refresh")
+    if payload and payload.get("refresh_token"):
+        refresh_token = payload.get("refresh_token")
+        
+    if not refresh_token:
         raise HTTPException(status_code=400, detail="Refresh token tidak tersedia.")
 
     data = await _post_auth(
         "/auth/v1/token",
         {
-            "refresh_token": payload.refresh_token,
+            "refresh_token": refresh_token,
         },
         params={"grant_type": "refresh_token"},
     )
+
+    _set_auth_cookies(response, data)
 
     return {
         "data": {
@@ -306,13 +389,13 @@ def _get_auth_user(token: str, db: Client) -> dict:
 @router.get(
     "/profile",
     summary="Ambil profil user berdasarkan bearer token",
-    description="Validasi access token ke Supabase lalu kembalikan profile user lokal (sinkronisasi auth_user_id jika dibutuhkan).",
+    description="Validasi access token ke Supabase lalu kembalikan profile user lokal.",
 )
 def get_profile(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    response: Response,
+    token: str = Depends(get_token_from_request),
     db: Client = Depends(get_supabase_client),
 ):
-    token = credentials.credentials
     user = _get_auth_user(token, db)
 
     result = (
@@ -336,25 +419,27 @@ def get_profile(
                 ).execute()
                 profile = email_result.data[0]
                 profile["auth_user_id"] = user.id
+                response.set_cookie("ll_role", profile["role"], max_age=30*24*3600, path="/", samesite="lax")
                 return {"data": profile}
 
         return {"data": None}
 
     profile = result.data[0]
+    response.set_cookie("ll_role", profile["role"], max_age=30*24*3600, path="/", samesite="lax")
     return {"data": profile}
 
 
 @router.post(
     "/role",
     summary="Set role user setelah login",
-    description="Menyimpan atau memperbarui role user (`client`/`konsultan`) pada tabel users lokal.",
+    description="Menyimpan atau memperbarui role user.",
 )
 def update_role(
     payload: RolePayload,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    response: Response,
+    token: str = Depends(get_token_from_request),
     db: Client = Depends(get_supabase_client),
 ):
-    token = credentials.credentials
     user = _get_auth_user(token, db)
 
     metadata = user.user_metadata or {}
@@ -372,30 +457,104 @@ def update_role(
         "role": payload.role,
     }
 
-    db.table("users").upsert(payload_data, on_conflict="email").execute()
+    result_existing = db.table("users").select("id_user").eq("auth_user_id", user.id).execute()
+    
+    if result_existing.data:
+        profile = result_existing.data[0]
+        db.table("users").update(payload_data).eq("id_user", profile["id_user"]).execute()
+        response.set_cookie("ll_role", payload.role, max_age=30*24*3600, path="/", samesite="lax")
+        return {"data": {**payload_data, "id_user": profile["id_user"]}}
 
-    result = db.table("users").select("role").eq("auth_user_id", user.id).execute()
+    result = db.table("users").insert(payload_data).execute()
+    
+    if result.data:
+        response.set_cookie("ll_role", payload.role, max_age=30*24*3600, path="/", samesite="lax")
+        return {"data": result.data[0]}
 
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Gagal memperbarui role.")
-
-    return {"data": result.data[0]}
+    raise HTTPException(status_code=500, detail="Gagal memperbarui role.")
 
 
 @router.post(
     "/logout",
     summary="Logout session user",
-    description="Mencabut session/token aktif user pada Supabase Auth.",
+    description="Mencabut session/token aktif user pada Supabase Auth dan menghapus cookie.",
 )
-async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
+async def logout(response: Response, token: str = Depends(get_token_from_request)):
     settings = get_settings()
     url = f"{settings.supabase_url}/auth/v1/logout"
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(url, headers=_get_user_headers(token))
+        res = await client.post(url, headers=_get_user_headers(token))
 
-    if response.status_code >= 400:
-        _raise_auth_error(response)
+    _clear_auth_cookies(response)
+
+    if res.status_code >= 400:
+        _raise_auth_error(res)
 
     return {"data": {"logout": True}}
+
+
+@router.post(
+    "/forgot-password",
+    summary="Kirim tautan reset password",
+    description="Mengirimkan tautan reset password ke email user.",
+)
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, payload: ForgotPasswordPayload, response: Response):
+    code_verifier, code_challenge = _generate_pkce_pair()
+    
+    body = {
+        "email": payload.email,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "s256",
+    }
+    
+    params = {}
+    if payload.emailRedirectTo:
+        params["redirect_to"] = payload.emailRedirectTo
+
+    await _post_auth(
+        "/auth/v1/recover",
+        payload=body,
+        params=params,
+    )
+
+    response.set_cookie(
+        key="ll_oauth_verifier",
+        value=code_verifier,
+        max_age=3600,
+        httponly=True,
+        samesite="lax",
+        path="/"
+    )
+
+    return {"data": {"sent": True}}
+
+
+@router.post(
+    "/reset-password",
+    summary="Reset password user",
+    description="Mengubah password user setelah berhasil memverifikasi tautan reset.",
+)
+async def reset_password(
+    payload: ResetPasswordPayload,
+    response: Response,
+    token: str = Depends(get_token_from_request),
+):
+    settings = get_settings()
+    url = f"{settings.supabase_url}/auth/v1/user"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        res = await client.put(
+            url,
+            headers=_get_user_headers(token),
+            json={"password": payload.new_password},
+        )
+
+    if res.status_code >= 400:
+        _raise_auth_error(res)
+
+    _clear_auth_cookies(response)
+
+    return {"data": {"updated": True}}
+

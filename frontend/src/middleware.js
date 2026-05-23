@@ -68,6 +68,7 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const isAuthPath = pathname.startsWith("/auth");
   const isAuthRolePath = pathname.startsWith("/auth/role");
+  const isResetPasswordPath = pathname.startsWith("/auth/reset-password");
 
   // 1. Cek apakah path saat ini masuk dalam daftar proteksi
   const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
@@ -113,6 +114,11 @@ export async function middleware(request) {
 
   if (isAuthPath) {
     if (!hasSession) return NextResponse.next();
+    
+    // Izinkan akses bebas ke reset-password meskipun sudah ada session
+    if (isResetPasswordPath) {
+      return applySessionCookies(NextResponse.next());
+    }
 
     if (!role && !isAuthRolePath) {
       return applySessionCookies(

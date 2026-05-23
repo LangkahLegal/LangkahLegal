@@ -16,7 +16,15 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const finalizeLogin = async () => {
       try {
-        const session = await authService.getSession();
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+
+        if (!code) {
+          router.replace("/auth/login");
+          return;
+        }
+
+        const session = await authService.exchangeCode(code);
 
         if (!session) {
           router.replace("/auth/login");
@@ -30,6 +38,12 @@ export default function AuthCallbackPage() {
             await authService.updateRole(role);
           }
           sessionStorage.removeItem("pending_auth");
+        }
+
+        const nextPath = urlParams.get("next");
+        if (nextPath) {
+          router.replace(nextPath);
+          return;
         }
 
         const profile = await authService.getProfile();

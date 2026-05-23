@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { InputField, PasswordField, Button } from "@/components/ui";
+import Link from "next/link";
 
 export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -31,13 +32,20 @@ export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
         data-testid="login-email-input"
       />
 
-      <PasswordField
-        name="password"
-        placeholder="••••••••"
-        value={formData.password}
-        onChange={handleChange}
-        data-testid="login-password-input"
-      />
+      <div className="space-y-1">
+        <PasswordField
+          name="password"
+          placeholder="••••••••"
+          value={formData.password}
+          onChange={handleChange}
+          data-testid="login-password-input"
+        />
+        <div className="flex justify-end">
+          <Link href="/auth/forgot-password" className="text-xs font-medium text-muted hover:text-main transition-colors">
+            Lupa Password?
+          </Link>
+        </div>
+      </div>
 
       <Button type="submit" className="mt-2 w-full" disabled={isLoading} data-testid="login-submit-btn">
         {isLoading ? "Memverifikasi..." : "Masuk"}
