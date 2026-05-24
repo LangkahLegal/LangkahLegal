@@ -34,6 +34,8 @@ export default function RolePage() {
     setError("");
 
     try {
+      // Simpan role di cookie agar bisa dicek oleh middleware
+      document.cookie = `pending_role=${selectedRole}; path=/; max-age=3600; SameSite=Lax`;
       sessionStorage.setItem("pending_role", selectedRole);
       router.push("/auth/signup");
     } catch (err) {
