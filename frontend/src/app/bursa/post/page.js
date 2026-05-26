@@ -20,7 +20,7 @@ import { MaterialIcon } from "@/components/ui/Icons";
 const KATEGORI_OPTIONS = [
   { id: "umum", label: "Umum" },
   { id: "pidana", label: "Pidana" },
-  { id: "perdata", label: "Perdata" }
+  { id: "perdata", label: "Perdata" },
 ];
 
 export default function PostCasePage() {
@@ -44,7 +44,8 @@ export default function PostCasePage() {
   const bookedSlots = useMemo(() => {
     // Hanya filter yang masih pending atau terjadwal
     return myConsultations.filter(
-      (c) => c.status_pengajuan !== "selesai" && c.status_pengajuan !== "dibatalkan"
+      (c) =>
+        c.status_pengajuan !== "selesai" && c.status_pengajuan !== "dibatalkan",
     );
   }, [myConsultations]);
 
@@ -81,7 +82,9 @@ export default function PostCasePage() {
 
   const handleSubmit = () => {
     if (!deskripsi.trim() || !tanggal || !jamMulai || !jamSelesai) {
-        return alert("Mohon lengkapi semua data pengajuan (deskripsi, tanggal, dan jam).");
+      return alert(
+        "Mohon lengkapi semua data pengajuan (deskripsi, tanggal, dan jam).",
+      );
     }
 
     postMutation.mutate({
@@ -109,14 +112,16 @@ export default function PostCasePage() {
 
   // --- NORMAL STATE ---
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500">
+    <div
+      className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500"
+      data-testid="bursa-post-page"
+    >
       <Sidebar role="client" />
       <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Pengajuan Anonim" backHref="/dashboard/client" />
 
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10 animate-fade-in">
-            
             {/* Header Form bergaya Hero */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-6 rounded-3xl border border-surface shadow-soft rounded-3xl p-6 lg:p-8">
               <div className="flex items-start gap-4">
@@ -128,12 +133,14 @@ export default function PostCasePage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-main tracking-tight font-headline">
-                Ajukan Kasus ke Ruang Publik
-              </h2>
-              <p className="text-muted text-sm leading-relaxed">
-                Identitas Anda akan disamarkan. Konsultan ahli kami akan melihat rincian kasus dan menjadwalkan konsultasi dengan Anda.
-              </p>
-            </div>
+                    Ajukan Kasus ke Ruang Publik
+                  </h2>
+                  <p className="text-muted text-sm leading-relaxed">
+                    Identitas Anda akan disamarkan. Konsultan ahli kami akan
+                    melihat rincian kasus dan menjadwalkan konsultasi dengan
+                    Anda.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -150,6 +157,7 @@ export default function PostCasePage() {
             <ConsultationForm
               description={deskripsi}
               onDescriptionChange={setDeskripsi}
+              descriptionTestId="bursa-description-input"
             />
 
             {/* Schedule Picker */}
@@ -188,8 +196,10 @@ export default function PostCasePage() {
                 className="text-primary-light text-xl mt-0.5 shrink-0"
               />
               <p className="text-xs text-muted leading-relaxed">
-                Kasus Anda akan diposting <strong className="text-main">secara anonim</strong>. Konsultan hanya akan
-                melihat kategori, deskripsi, dan jadwal — bukan identitas Anda.
+                Kasus Anda akan diposting{" "}
+                <strong className="text-main">secara anonim</strong>. Konsultan
+                hanya akan melihat kategori, deskripsi, dan jadwal — bukan
+                identitas Anda.
               </p>
             </div>
 
@@ -200,11 +210,11 @@ export default function PostCasePage() {
                 isLoading={postMutation.isPending}
                 onClick={handleSubmit}
                 className="py-5 rounded-xl shadow-lg shadow-primary/20"
+                data-testid="bursa-post-submit-btn"
               >
                 Posting ke Ruang Publik
               </Button>
             </div>
-
           </div>
         </main>
 

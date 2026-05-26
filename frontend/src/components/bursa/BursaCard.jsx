@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/Button";
 function timeAgo(dateString) {
   if (!dateString) return "";
   // Pastikan string dibaca sebagai UTC (mengatasi selisih 7 jam di waktu lokal)
-  const safeDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+  const safeDateString = dateString.endsWith("Z")
+    ? dateString
+    : `${dateString}Z`;
   const now = new Date();
   const date = new Date(safeDateString);
   const diffMs = now - date;
@@ -22,15 +24,35 @@ function timeAgo(dateString) {
 }
 
 const KATEGORI_META = {
-  pidana: { icon: "gavel", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
-  perdata: { icon: "handshake", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-  umum: { icon: "description", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  pidana: {
+    icon: "gavel",
+    color: "text-red-400",
+    bg: "bg-red-500/10",
+    border: "border-red-500/20",
+  },
+  perdata: {
+    icon: "handshake",
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+  },
+  umum: {
+    icon: "description",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+  },
 };
 
 function getKategoriMeta(kategori) {
-  return KATEGORI_META[kategori?.toLowerCase()] || {
-    icon: "folder", color: "text-muted", bg: "bg-surface", border: "border-surface",
-  };
+  return (
+    KATEGORI_META[kategori?.toLowerCase()] || {
+      icon: "folder",
+      color: "text-muted",
+      bg: "bg-surface",
+      border: "border-surface",
+    }
+  );
 }
 
 export default function BursaCard({
@@ -39,7 +61,7 @@ export default function BursaCard({
   isExpanded,
   toggleDesc,
   onClaim,
-  isClaiming
+  isClaiming,
 }) {
   const meta = getKategoriMeta(kasus.kategori_hukum);
   const rawDesc = kasus.deskripsi_kasus_awam || "";
@@ -48,6 +70,8 @@ export default function BursaCard({
   return (
     <motion.div
       key={kasus.id_bursa}
+      data-testid="bursa-card"
+      data-case-id={kasus.id_bursa}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -73,7 +97,8 @@ export default function BursaCard({
               Klien Anonim
             </h3>
             <p className="text-[10px] sm:text-xs truncate font-semibold uppercase tracking-wider text-muted mt-1">
-              {kasus.kategori_hukum || "Umum"} <span className="mx-1">•</span> {timeAgo(kasus.created_at)}
+              {kasus.kategori_hukum || "Umum"} <span className="mx-1">•</span>{" "}
+              {timeAgo(kasus.created_at)}
             </p>
           </div>
         </div>
@@ -82,6 +107,7 @@ export default function BursaCard({
       {/* BAGIAN TENGAH: Deskripsi Kasus */}
       <div className="mt-4 sm:mt-5 px-1">
         <p
+          data-testid="bursa-card-description"
           className={`text-sm text-main leading-relaxed transition-all duration-300 ${!isExpanded && isLongText ? "line-clamp-3" : ""}`}
         >
           {rawDesc}
@@ -109,13 +135,16 @@ export default function BursaCard({
             <div className="flex items-center gap-1.5 text-muted text-[10px] sm:text-xs font-medium">
               <MaterialIcon name="event" className="text-sm" />
               <span className="truncate">
-                {new Date(kasus.tanggal_konsultasi + "T00:00:00").toLocaleDateString("id-ID", {
+                {new Date(
+                  kasus.tanggal_konsultasi + "T00:00:00",
+                ).toLocaleDateString("id-ID", {
                   day: "numeric",
                   month: "short",
                   year: "numeric",
                 })}
                 {" • "}
-                {kasus.jam_mulai?.substring(0, 5)} - {kasus.jam_selesai?.substring(0, 5)}
+                {kasus.jam_mulai?.substring(0, 5)} -{" "}
+                {kasus.jam_selesai?.substring(0, 5)}
               </span>
             </div>
           )}
@@ -138,8 +167,12 @@ export default function BursaCard({
           onClick={() => onClaim(kasus.id_bursa)}
           isLoading={isClaiming}
           className="!rounded-xl !px-4 !py-2 sm:!px-5 sm:!py-2.5 text-xs shrink-0"
+          data-testid="bursa-claim-btn"
         >
-          <MaterialIcon name="front_hand" className="text-base mr-1 hidden sm:block" />
+          <MaterialIcon
+            name="front_hand"
+            className="text-base mr-1 hidden sm:block"
+          />
           <span>Klaim Kasus</span>
         </Button>
       </div>

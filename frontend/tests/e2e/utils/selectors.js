@@ -60,6 +60,19 @@ export const PAYMENT = {
   PAY_BTN: '[data-testid="payment-pay-btn"]',
 };
 
+export const BURSA = {
+  PAGE: '[data-testid="bursa-page"]',
+  POST_PAGE: '[data-testid="bursa-post-page"]',
+  POST_SUBMIT_BTN: '[data-testid="bursa-post-submit-btn"]',
+  POST_DESCRIPTION: '[data-testid="bursa-description-input"]',
+  CARD: '[data-testid="bursa-card"]',
+  CARD_DESCRIPTION: '[data-testid="bursa-card-description"]',
+  CLAIM_BUTTON: '[data-testid="bursa-claim-btn"]',
+  CLAIM_MODAL: '[data-testid="bursa-claim-modal"]',
+  CLAIM_CONFIRM_BTN: '[data-testid="bursa-claim-confirm-btn"]',
+  CLAIM_CANCEL_BTN: '[data-testid="bursa-claim-cancel-btn"]',
+};
+
 export const AI_CHAT = {
   PAGE: '[data-testid="ai-chat-page"]',
   MESSAGES: '[data-testid="ai-chat-messages"]',

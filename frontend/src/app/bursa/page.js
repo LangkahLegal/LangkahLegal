@@ -26,7 +26,7 @@ const BURSA_CATEGORIES = [
 export default function BursaKasusPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  
+
   const [claimingId, setClaimingId] = useState(null);
   const [successData, setSuccessData] = useState(null);
   const [filterKategori, setFilterKategori] = useState("Semua");
@@ -71,17 +71,21 @@ export default function BursaKasusPage() {
   };
 
   // --- Filter logic ---
-  const filteredCases = filterKategori === "Semua"
-    ? cases
-    : cases.filter((c) => {
-        const kasusKat = c.kategori_hukum || "umum";
-        return kasusKat.toLowerCase() === filterKategori.toLowerCase();
-      });
+  const filteredCases =
+    filterKategori === "Semua"
+      ? cases
+      : cases.filter((c) => {
+          const kasusKat = c.kategori_hukum || "umum";
+          return kasusKat.toLowerCase() === filterKategori.toLowerCase();
+        });
 
   // --- SUCCESS VIEW ---
   if (successData) {
     return (
-      <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
+      <div
+        className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500"
+        data-testid="bursa-page"
+      >
         <Sidebar role="konsultan" />
         <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
           <PageHeader title="Bursa Kasus" backHref="/dashboard/consultant" />
@@ -105,7 +109,10 @@ export default function BursaKasusPage() {
   }
 
   return (
-    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
+    <div
+      className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500"
+      data-testid="bursa-page"
+    >
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
@@ -126,7 +133,7 @@ export default function BursaKasusPage() {
                     <span>Diperbarui otomatis tiap 15 detik</span>
                   </div>
                 </div>
-                
+
                 {/* Kanan: Badge "X KASUS" */}
                 <div className="px-3 py-1.5 bg-surface/60 border border-surface rounded-full flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-main">
@@ -162,7 +169,8 @@ export default function BursaKasusPage() {
                   className="text-danger text-4xl opacity-80"
                 />
                 <p className="text-sm text-danger font-medium max-w-xs">
-                  Gagal memuat data bursa. Pastikan Anda login sebagai konsultan.
+                  Gagal memuat data bursa. Pastikan Anda login sebagai
+                  konsultan.
                 </p>
               </div>
             )}
@@ -197,7 +205,10 @@ export default function BursaKasusPage() {
                         isExpanded={isExpanded}
                         toggleDesc={toggleDesc}
                         onClaim={handleClaim}
-                        isClaiming={claimMutation.isPending && claimingId === kasus.id_bursa}
+                        isClaiming={
+                          claimMutation.isPending &&
+                          claimingId === kasus.id_bursa
+                        }
                       />
                     );
                   })}
@@ -214,7 +225,7 @@ export default function BursaKasusPage() {
 
       {/* --- CONFIRM DIALOG --- */}
       <AnimatePresence>
-        <ClaimConfirmModal 
+        <ClaimConfirmModal
           isOpen={!!claimingId && !claimMutation.isPending}
           onClose={() => setClaimingId(null)}
           onConfirm={confirmClaim}

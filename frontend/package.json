@@ -15,6 +15,7 @@
     "test:e2e:explore": "playwright test --grep @explore",
     "test:e2e:consultation": "playwright test --grep @consultation",
     "test:e2e:schedule": "playwright test --grep @schedule",
+    "test:e2e:bursa": "playwright test --grep @bursa",
     "test:e2e:profile": "playwright test --grep @profile",
     "test:e2e:payment": "playwright test --grep @payment",
     "test:e2e:chatbot": "playwright test --grep @chatbot",
