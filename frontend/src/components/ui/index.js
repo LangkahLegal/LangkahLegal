@@ -6,4 +6,3 @@ export * from "./InputField";
 export * from "./PasswordField";
 export * from "./FileUpload";   
 export * from "./BrandLogo";
-export { default as LegalCard } from "./LegalCard";

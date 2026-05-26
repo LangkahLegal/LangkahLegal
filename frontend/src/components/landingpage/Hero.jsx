@@ -2,7 +2,7 @@ import { Button } from "../ui";
 
 export default function Hero({ onGetStarted, onLearnMore }) {
   return (
-    <section id="hero" className="relative px-6 py-20 lg:py-32 max-w-7xl mx-auto flex flex-col items-center text-center">
+    <section className="relative px-6 py-20 lg:py-32 max-w-7xl mx-auto flex flex-col items-center text-center">
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 

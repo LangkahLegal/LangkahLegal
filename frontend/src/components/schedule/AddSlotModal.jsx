@@ -133,7 +133,9 @@ function AddSlotModalContent({
           <div className="relative z-[30]">
             <Dropdown
               label="Status Slot"
-              value={formData.status}
+              value={
+                formData.status === "available" ? "Tersedia" : "Libur / Tutup"
+              }
               options={STATUS_OPTIONS}
               onChange={(val) => handleChange("status", val)}
               renderItem={(opt) => (
@@ -142,7 +144,7 @@ function AddSlotModalContent({
                     name={opt.icon}
                     className={`text-[20px] ${opt.value === "available" ? "text-emerald-500" : "text-danger"}`}
                   />
-                  <span className="font-bold text-sm tracking-wide">
+                  <span className="font-bold text-sm tracking-wide text-main">
                     {opt.label}
                   </span>
                 </div>

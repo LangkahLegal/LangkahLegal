@@ -30,9 +30,14 @@ export default function ZoomLinkCard({
     },
   });
 
+  // Secondary check for role to ensure we didn't miss it
+  const localRole = typeof window !== "undefined" ? localStorage.getItem("userRole") || localStorage.getItem("role") || "" : "";
+  const normalizedLocal = localRole.toLowerCase();
   const isKonsultan = 
     role === "konsultan" || 
-    role === "consultant";
+    role === "consultant" || 
+    normalizedLocal.includes("konsultan") || 
+    normalizedLocal.includes("consultant");
 
   // 1. FILTER STATUS
   const restrictedStatuses = ["dibatalkan", "ditolak", "kedaluwarsa"];
