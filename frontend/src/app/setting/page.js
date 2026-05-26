@@ -36,17 +36,33 @@ export default function SettingPage() {
   });
 
   // --- 2. Mutation untuk Logout ---
-  const logoutMutation = useMutation({
-    mutationFn: authService.logout,
-    onSuccess: () => {
-      queryClient.clear();
-      router.replace("/auth/login");
-    },
-    onError: (err) => {
-      console.error("Gagal logout:", err);
-      router.replace("/auth/login");
-    },
-  });
+const logoutMutation = useMutation({
+  mutationFn: authService.logout,
+  onSuccess: () => {
+    queryClient.clear();
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("auth-token")) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // --- UBAH DI SINI: Paksa Hard Reload ke halaman login ---
+      window.location.href = "/auth/login";
+    }
+  },
+  onError: (err) => {
+    console.error("Gagal logout:", err);
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      window.location.href = "/auth/login"; // --- UBAH JUGA DI SINI ---
+    }
+  },
+});
 
   const userRole = user?.role || "client";
 
@@ -142,7 +158,7 @@ export default function SettingPage() {
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
                   <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  <p className="text-[10px] font-bold tracking-widest text-muted uppercase animate-pulse">
+                  <p className="text-nav font-bold tracking-widest text-muted uppercase animate-pulse">
                     Loading Profile...
                   </p>
                 </div>
