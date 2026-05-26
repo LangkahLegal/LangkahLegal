@@ -26,7 +26,7 @@ cp .env.e2e .env.e2e.local  # Edit with real credentials
 # Terminal 1: Backend
 cd backend && uvicorn main:app --reload
 
-# Terminal 2: Frontend  
+# Terminal 2: Frontend
 cd frontend && npm run dev
 
 # 5. Run tests
@@ -35,21 +35,22 @@ npm run test:e2e
 
 ## Running Tests
 
-| Command | Description |
-|---------|-------------|
-| `npm run test:e2e` | Run all E2E tests (headless) |
-| `npm run test:e2e:headed` | Run with visible browser |
-| `npm run test:e2e:ui` | Interactive UI mode |
-| `npm run test:e2e:debug` | Debug mode with inspector |
-| `npm run test:e2e:auth` | Auth tests only |
-| `npm run test:e2e:explore` | Explore/directory tests only |
-| `npm run test:e2e:consultation` | Consultation tests only |
-| `npm run test:e2e:schedule` | Schedule tests only |
-| `npm run test:e2e:profile` | Profile tests only |
-| `npm run test:e2e:payment` | Payment flow tests only |
-| `npm run test:e2e:chatbot` | AI Chatbot tests only |
-| `npm run test:e2e:admin` | Admin dashboard tests only |
-| `npm run test:e2e:report` | Open HTML report |
+| Command                         | Description                    |
+| ------------------------------- | ------------------------------ |
+| `npm run test:e2e`              | Run all E2E tests (headless)   |
+| `npm run test:e2e:headed`       | Run with visible browser       |
+| `npm run test:e2e:ui`           | Interactive UI mode            |
+| `npm run test:e2e:debug`        | Debug mode with inspector      |
+| `npm run test:e2e:auth`         | Auth tests only                |
+| `npm run test:e2e:explore`      | Explore/directory tests only   |
+| `npm run test:e2e:consultation` | Consultation tests only        |
+| `npm run test:e2e:schedule`     | Schedule tests only            |
+| `npm run test:e2e:bursa`        | Bursa Kasus Probono tests only |
+| `npm run test:e2e:profile`      | Profile tests only             |
+| `npm run test:e2e:payment`      | Payment flow tests only        |
+| `npm run test:e2e:chatbot`      | AI Chatbot tests only          |
+| `npm run test:e2e:admin`        | Admin dashboard tests only     |
+| `npm run test:e2e:report`       | Open HTML report               |
 
 ## Project Structure
 
@@ -68,6 +69,8 @@ tests/e2e/
 │   ├── DashboardPage.js
 │   ├── DashboardPage.js
 │   ├── SchedulePage.js
+│   ├── BursaPage.js
+│   ├── BursaPostPage.js
 │   ├── PaymentPage.js
 │   ├── ChatbotPage.js
 │   └── AdminDashboardPage.js
@@ -77,6 +80,7 @@ tests/e2e/
 │   ├── explore.spec.js    # Consultant directory tests
 │   ├── consultation.spec.js # Booking flow tests
 │   ├── schedule.spec.js   # Schedule management tests
+│   ├── bursa.spec.js       # Bursa Kasus Probono tests
 │   ├── payment.spec.js    # Payment flow tests
 │   ├── chatbot.spec.js    # AI Chatbot tests
 │   └── admin.spec.js      # Admin dashboard tests
@@ -115,6 +119,7 @@ E2E_ADMIN_PASSWORD=...
 Tests run automatically via GitHub Actions on push/PR to `main`/`develop`. See `.github/workflows/e2e.yml`.
 
 Required GitHub Secrets:
+
 - `E2E_CLIENT_EMAIL`, `E2E_CLIENT_PASSWORD`
 - `E2E_CONSULTANT_EMAIL`, `E2E_CONSULTANT_PASSWORD`
 - `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`

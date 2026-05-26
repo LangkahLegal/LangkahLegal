@@ -5,6 +5,7 @@ export default function ConsultationForm({
   onDescriptionChange,
   driveLink = "", // Safety: default value string kosong
   onDriveLinkChange,
+  descriptionTestId,
 }) {
   return (
     <div className="space-y-10 w-full">
@@ -21,6 +22,7 @@ export default function ConsultationForm({
         </div>
 
         <textarea
+          data-testid={descriptionTestId}
           rows={4}
           value={description ?? ""} // Pastikan tidak pernah undefined
           onChange={(e) => onDescriptionChange?.(e.target.value)}

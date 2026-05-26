@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
 // Daftar path yang butuh login
-const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
+const PROTECTED_PATHS = [
+  "/dashboard",
+  "/konsultasi",
+  "/schedule",
+  "/setting",
+  "/bursa",
+];
 
 const normalizeRole = (role) => {
   if (role === "konsultan" || role === "consultant") return "konsultan";
@@ -151,20 +157,29 @@ export async function middleware(request) {
 
   // 4. Role Guard: Admin routes
   if (isAdminPath && role !== "admin") {
-    const fallback = role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client";
-    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
+    const fallback =
+      role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client";
+    return applySessionCookies(
+      NextResponse.redirect(new URL(fallback, request.url)),
+    );
   }
 
   // 5. Role Guard: Cegah Client masuk ke dashboard Konsultan
   if (isConsultantPath && role !== "konsultan") {
-    const fallback = role === "admin" ? "/dashboard/admin" : "/dashboard/client";
-    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
+    const fallback =
+      role === "admin" ? "/dashboard/admin" : "/dashboard/client";
+    return applySessionCookies(
+      NextResponse.redirect(new URL(fallback, request.url)),
+    );
   }
 
   // 5. Role Guard: Cegah Konsultan masuk ke dashboard Client
   if (isClientPath && role !== "client") {
-    const fallback = role === "admin" ? "/dashboard/admin" : "/dashboard/consultant";
-    return applySessionCookies(NextResponse.redirect(new URL(fallback, request.url)));
+    const fallback =
+      role === "admin" ? "/dashboard/admin" : "/dashboard/consultant";
+    return applySessionCookies(
+      NextResponse.redirect(new URL(fallback, request.url)),
+    );
   }
 
   // 6. Jika di /dashboard tapi belum pilih role (kasus langka)
@@ -184,6 +199,7 @@ export const config = {
     "/konsultasi/:path*",
     "/schedule/:path*",
     "/setting/:path*",
+    "/bursa/:path*",
     "/auth/:path*",
   ],
 };
