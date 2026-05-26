@@ -8,6 +8,7 @@ from dependencies import get_current_user
 # Mengambil fungsi dari file yang sudah ada
 from config import get_settings, Settings
 from database import check_db_connection
+from limiter import limiter
 
 app = FastAPI(
     title="LangkahLegal API",
@@ -33,6 +34,8 @@ Catatan integrasi frontend:
 """,
     version="1.0.0"
 )
+
+app.state.limiter = limiter
 
 # 1. SETUP CORS (Sangat penting agar Next.js bisa akses API ini)
 app.add_middleware(

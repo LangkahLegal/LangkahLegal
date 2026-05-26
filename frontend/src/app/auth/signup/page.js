@@ -54,6 +54,7 @@ export default function SignupPage() {
         }),
       );
       sessionStorage.removeItem("pending_role");
+      document.cookie = "pending_role=; path=/; max-age=0"; // Clear cookie
 
       router.push("/auth/verify");
     } catch (err) {

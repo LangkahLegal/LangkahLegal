@@ -41,3 +41,10 @@ class OAuthPayload(BaseModel):
 
 class RolePayload(BaseModel):
     role: str
+
+class ForgotPasswordPayload(BaseModel):
+    email: str
+    emailRedirectTo: Optional[str] = None
+
+class ResetPasswordPayload(BaseModel):
+    new_password: str

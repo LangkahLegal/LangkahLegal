@@ -74,6 +74,7 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const isAuthPath = pathname.startsWith("/auth");
   const isAuthRolePath = pathname.startsWith("/auth/role");
+  const isResetPasswordPath = pathname.startsWith("/auth/reset-password");
 
   // 1. Cek apakah path saat ini masuk dalam daftar proteksi
   const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
@@ -118,7 +119,20 @@ export async function middleware(request) {
   };
 
   if (isAuthPath) {
-    if (!hasSession) return NextResponse.next();
+    if (!hasSession) {
+      if (pathname.startsWith("/auth/signup")) {
+        const pendingRole = request.cookies.get("pending_role")?.value;
+        if (!pendingRole) {
+          return NextResponse.redirect(new URL("/auth/role", request.url));
+        }
+      }
+      return NextResponse.next();
+    }
+    
+    // Izinkan akses bebas ke reset-password meskipun sudah ada session
+    if (isResetPasswordPath) {
+      return applySessionCookies(NextResponse.next());
+    }
 
     if (!role && !isAuthRolePath) {
       return applySessionCookies(
