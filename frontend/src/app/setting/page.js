@@ -27,26 +27,40 @@ export default function SettingPage() {
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
     select: (data) => ({
-      name: data.nama || data.nama_lengkap,
-      email: data.email,
-      foto_profil: data.foto_profil || data.avatar || "",
-      role: data.role || "client",
-      status_verifikasi: data.status_verifikasi,
+      name: data?.nama || data?.nama_lengkap || "User",
+      email: data?.email || "",
+      foto_profil: data?.foto_profil || data?.avatar || "",
+      role: data?.role || "client",
+      status_verifikasi: data?.status_verifikasi,
     }),
   });
 
-  // --- 2. Mutation untuk Logout ---
-  const logoutMutation = useMutation({
-    mutationFn: authService.logout,
-    onSuccess: () => {
-      queryClient.clear();
-      router.replace("/auth/login");
-    },
-    onError: (err) => {
-      console.error("Gagal logout:", err);
-      router.replace("/auth/login");
-    },
-  });
+const logoutMutation = useMutation({
+  mutationFn: authService.logout,
+  onSuccess: () => {
+    queryClient.clear();
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("auth-token")) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      window.location.href = "/auth/login";
+    }
+  },
+  onError: (err) => {
+    console.error("Gagal logout:", err);
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      window.location.href = "/auth/login"; // --- UBAH JUGA DI SINI ---
+    }
+  },
+});
 
   const userRole = user?.role || "client";
 
@@ -83,12 +97,10 @@ export default function SettingPage() {
       id: "theme",
       icon: "contrast",
       label: "Tema Aplikasi",
-      // Deskripsi dinamis
       description:
         theme === "theme-white-modern"
           ? "Mode Terang (Aktif)"
           : "Mode Gelap (Aktif)",
-      // REFACTOR: Hapus 'path' dan ganti dengan 'onClick' agar tidak routing
       onClick: toggleTheme,
     },
     {
@@ -125,7 +137,7 @@ export default function SettingPage() {
   return (
     <div
       onClick={handleContainerClick}
-      className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500 cursor-default"
+      className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500 cursor-default font-primary"
     >
       <Sidebar role={userRole} />
 
@@ -137,7 +149,7 @@ export default function SettingPage() {
           />
 
           <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-            <div className="max-w-4xl mx-auto w-full space-y-8">
+            <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
               {/* --- Profile Section --- */}
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -149,7 +161,7 @@ export default function SettingPage() {
               ) : user ? (
                 <ProfileCard user={user} />
               ) : (
-                <div className="text-center py-10 text-muted">
+                <div className="text-center py-10 text-muted italic text-sm">
                   Profil tidak ditemukan.
                 </div>
               )}
