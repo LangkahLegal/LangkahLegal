@@ -374,3 +374,99 @@ def test_delete_document_not_found(app_client):
     response = client.delete("/api/v1/consultations/1/documents/999")
 
     assert response.status_code == 404
+
+
+def test_assign_schedule_forbidden(app_client):
+    client, _ = app_client(current_user={"id_user": 1, "role": "client"})
+
+    response = client.put(
+        "/api/v1/consultations/1/assign-schedule",
+        json={"id_jadwal": 5, "jam_mulai": "09:00", "jam_selesai": "10:00"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_assign_schedule_pengajuan_not_found(app_client):
+    table_responses = {
+        "konsultan": [[{"id_konsultan": 7}]],
+        "pengajuan_konsultasi": [[]],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "konsultan"},
+    )
+
+    response = client.put(
+        "/api/v1/consultations/1/assign-schedule",
+        json={"id_jadwal": 5, "jam_mulai": "09:00", "jam_selesai": "10:00"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_assign_schedule_invalid_time(app_client):
+    table_responses = {
+        "konsultan": [[{"id_konsultan": 7}]],
+        "pengajuan_konsultasi": [
+            [{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}]
+        ],
+        "jadwal_ketersediaan": [
+            [
+                {
+                    "id_jadwal": 5,
+                    "id_konsultan": 7,
+                    "tanggal": "2026-06-01",
+                    "jam_mulai": "09:00",
+                    "jam_selesai": "10:00",
+                    "status_tersedia": True,
+                }
+            ]
+        ],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "konsultan"},
+    )
+
+    response = client.put(
+        "/api/v1/consultations/1/assign-schedule",
+        json={"id_jadwal": 5, "jam_mulai": "08:00", "jam_selesai": "10:00"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_assign_schedule_success(app_client):
+    table_responses = {
+        "konsultan": [[{"id_konsultan": 7}]],
+        "pengajuan_konsultasi": [
+            [{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}],
+            [{"id_pengajuan": 1, "status_pengajuan": "menunggu_pembayaran"}],
+        ],
+        "jadwal_ketersediaan": [
+            [
+                {
+                    "id_jadwal": 5,
+                    "id_konsultan": 7,
+                    "tanggal": "2026-06-01",
+                    "jam_mulai": "09:00",
+                    "jam_selesai": "10:00",
+                    "status_tersedia": True,
+                }
+            ],
+            [],
+        ],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "konsultan"},
+    )
+
+    response = client.put(
+        "/api/v1/consultations/1/assign-schedule",
+        json={"id_jadwal": 5, "jam_mulai": "09:00", "jam_selesai": "10:00"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["status_pengajuan"] == "menunggu_pembayaran"
