@@ -16,46 +16,15 @@ import ZoomLinkCard from "@/components/consultation/ZoomLinkCard";
 
 // Services
 import { consultationService } from "@/services/consultation.service";
-import { userService } from "@/services/user.service";
-
-const getUserRoleSnapshot = () => {
-  if (typeof window === "undefined") return "client";
-  const role = localStorage.getItem("userRole") || 
-               localStorage.getItem("role") || 
-               localStorage.getItem("user_role");
-  
-  if (!role) return "client";
-  
-  const normalized = role.toLowerCase();
-  if (normalized.includes("konsultan") || normalized.includes("consultant")) return "konsultan";
-  return "client";
-};
-
-const getUserRoleServerSnapshot = () => "client";
-
-const subscribeToUserRole = (callback) => {
-  if (typeof window === "undefined") return () => {};
-  const handleStorage = (event) => {
-    if (!event || ["userRole", "role", "user_role"].includes(event.key)) {
-      callback();
-    }
-  };
-  window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
-};
+import { authService } from "@/services/auth.service";
 
 export default function ConsultationDetail() {
   const { id } = useParams();
-  const userRole = useSyncExternalStore(
-    subscribeToUserRole,
-    getUserRoleSnapshot,
-    getUserRoleServerSnapshot,
-  );
 
   // --- 1. FETCH USER PROFILE ---
   const { data: userProfile } = useQuery({
-    queryKey: ["userProfile"],
-    queryFn: userService.getFullProfile,
+    queryKey: ["authProfile"],
+    queryFn: authService.getProfile,
   });
 
   // --- 2. FETCH DATA DETAIL ---
@@ -101,8 +70,8 @@ export default function ConsultationDetail() {
     ) {
       return "konsultan";
     }
-    return userRole;
-  }, [requestData, userProfile, userRole]);
+    return profileRole || "client";
+  }, [requestData, userProfile]);
 
   // --- 2. LOADING STATE ---
   if (isLoading) {
@@ -182,7 +151,7 @@ export default function ConsultationDetail() {
         </main>
 
         <div className="lg:hidden">
-          <BottomNav role={userRole} />
+          <BottomNav role={derivedRole} />
         </div>
       </div>
     </div>
