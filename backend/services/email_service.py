@@ -58,3 +58,48 @@ def send_recovery_email(to_email: str, recovery_link: str) -> None:
     except Exception as e:
         logger.error(f"Gagal mengirim email SMTP: {str(e)}")
         raise e
+
+def send_notification_email(to_email: str, subject: str, message: str) -> None:
+    """
+    Mengirimkan email notifikasi secara native menggunakan SMTP backend.
+    """
+    settings = get_settings()
+    
+    if not settings.smtp_username or not settings.smtp_password:
+        logger.warning("SMTP username atau password tidak dikonfigurasi. Notifikasi gagal dikirim.")
+        return
+
+    body_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1a56db;">Pemberitahuan - LangkahLegal</h2>
+        <p>Halo,</p>
+        <p>{message}</p>
+        <br/>
+        <p>Terima kasih,<br/>Tim LangkahLegal</p>
+      </body>
+    </html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = settings.smtp_from_email
+    msg["To"] = to_email
+
+    msg.attach(MIMEText(body_html, "html"))
+
+    try:
+        if settings.smtp_port == 465:
+            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port)
+        else:
+            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
+            server.starttls()
+            
+        server.login(settings.smtp_username, settings.smtp_password)
+        server.sendmail(settings.smtp_from_email, to_email, msg.as_string())
+        server.quit()
+        logger.info(f"Berhasil mengirim email notifikasi ke {to_email}")
+    except Exception as e:
+        logger.error(f"Gagal mengirim email notifikasi SMTP: {str(e)}")
+        # Kita tidak re-raise Exception agar flow utama (seperti submit form) tidak gagal hanya karena email
+
