@@ -6,7 +6,6 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import EmptyConsultationCard from "@/components/dashboard/EmptyConsultationCard";
 import FeaturedServices from "@/components/dashboard/FeaturedServices";
-import CategoryList from "@/components/dashboard/CategoryList";
 import BottomNav from "@/components/layout/BottomNav";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -105,13 +104,6 @@ export default function DashboardPage() {
     );
   }
 
-  const DASHBOARD_CATEGORIES = [
-    { id: "semua", label: "Semua" },
-    { id: "pidana", label: "Pidana" },
-    { id: "perdata", label: "Perdata" },
-    { id: "umum", label: "Umum" },
-  ];
-
   return (
     /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
@@ -144,25 +136,23 @@ export default function DashboardPage() {
                   title: "Tanya AI Langkah",
                   description: "Jawaban hukum instan berbasis AI yang akurat.",
                   icon: "psychology",
+                  href: "/ai",
                 },
                 small_services: [
                   {
-                    title: "Litigasi",
-                    description: "Pendampingan sidang",
-                    icon: "gavel",
+                    title: "Eksplorasi Konsultan",
+                    description: "Temukan ahli hukum yang tepat",
+                    icon: "person_search",
+                    href: "/explore",
                   },
                   {
-                    title: "Review Akta",
-                    description: "Cek legalitas dokumen",
-                    icon: "description",
+                    title: "Ajukan Kasus Anonim",
+                    description: "Posting kasus ke Bursa Hukum",
+                    icon: "campaign",
+                    href: "/bursa/post",
                   },
                 ],
               }}
-            />
-
-            <CategoryList
-              categories={DASHBOARD_CATEGORIES}
-              activeCategory="semua"
             />
           </div>
         </main>

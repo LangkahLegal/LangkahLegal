@@ -9,21 +9,47 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // DETEKSI AREA: Logic untuk menentukan kemana tombol "Back" mengarah
   const isSettingArea = pathname.toLowerCase().includes("/setting");
   const isConsultantPage = pathname
     .toLowerCase()
     .includes("/dashboard/consultant");
 
-  let dynamicBack = isConsultantPage
-    ? "/dashboard/consultant"
-    : "/dashboard/client";
+  const getRoleFallback = () => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(new RegExp('(^|; )ll_role=([^;]*)'));
+      const role = match ? decodeURIComponent(match[2]) : "client";
+      if (role.toLowerCase().includes("konsultan") || role.toLowerCase().includes("consultant")) return "/dashboard/consultant";
+      if (role.toLowerCase() === "admin") return "/dashboard/admin";
+    }
+    return "/dashboard/client";
+  };
+
+  let dynamicBack = isConsultantPage ? "/dashboard/consultant" : getRoleFallback();
 
   if (isSettingArea && pathname !== "/setting" && pathname !== "/settings") {
     dynamicBack = "/setting";
   }
 
-  const finalBackHref = backHref || dynamicBack;
+  const handleBackClick = () => {
+    if (backHref) {
+      router.push(backHref);
+      return;
+    }
+
+    const segments = pathname.split("/").filter(Boolean);
+    const lastSegment = segments[segments.length - 1];
+
+    // Halaman dianggap sub-halaman jika memiliki kedalaman > 1 segment,
+    // bukan dashboard, dan bukan halaman utama khusus role (yang berakhiran 'client', 'consultant', atau 'post')
+    const isRolePage = ["client", "consultant", "post"].includes(lastSegment);
+    const isSubPage = segments.length > 1 && !pathname.includes("/dashboard") && !isRolePage;
+
+    if (isSubPage && typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(dynamicBack);
+    }
+  };
 
   const handleSettingsClick =
     onSettingsClick || (() => router.push("/setting"));
@@ -35,7 +61,7 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
           {/* TOMBOL BACK: Menggunakan Button variant ghost agar transparan tapi tetap punya interaksi scale */}
           <Button
             variant="ghost"
-            onClick={() => router.push(finalBackHref)}
+            onClick={handleBackClick}
             className="!p-0 !w-10 !h-10 lg:!w-12 lg:!h-12 !rounded-xl group/back border border-transparent hover:border-primary/30 hover:bg-primary/10"
           >
             <MaterialIcon

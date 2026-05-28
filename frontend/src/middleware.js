@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 
 // Daftar path yang butuh login
-const PROTECTED_PATHS = [
-  "/dashboard",
-  "/konsultasi",
-  "/schedule",
-  "/setting",
-  "/bursa",
-];
+const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
 
 const normalizeRole = (role) => {
   if (role === "konsultan" || role === "consultant") return "konsultan";
@@ -74,7 +68,6 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const isAuthPath = pathname.startsWith("/auth");
   const isAuthRolePath = pathname.startsWith("/auth/role");
-  const isResetPasswordPath = pathname.startsWith("/auth/reset-password");
 
   // 1. Cek apakah path saat ini masuk dalam daftar proteksi
   const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
@@ -82,57 +75,65 @@ export async function middleware(request) {
 
   // 2. Ambil token & role dari cookies
   let token = request.cookies.get("ll_token")?.value;
-  const rawRole = request.cookies.get("ll_role")?.value;
+  let rawRole = request.cookies.get("ll_role")?.value;
   const refreshToken = request.cookies.get("ll_refresh")?.value;
-  const role = normalizeRole(rawRole);
+
   let refreshedSession = null;
 
-  // 3. Jika token kosong atau sudah kedaluwarsa, coba refresh
+  // 3. Jika token kosong atau sudah kedaluwarsa, coba refresh sesi
   if (!token || isTokenExpired(token)) {
     if (refreshToken) {
       const session = await refreshSession(refreshToken);
       if (session?.access_token) {
         token = session.access_token;
         refreshedSession = session;
+
+        // AMANKAN ROLE: Ekstrak role langsung dari token baru hasil refresh jika cookie role hilang
+        const decoded = decodeJwtPayload(token);
+        const jwtRole = decoded?.user_metadata?.role || decoded?.role;
+        if (jwtRole) rawRole = jwtRole;
       }
     }
   }
 
+  const role = normalizeRole(rawRole);
   const isTokenValid = Boolean(token) && !isTokenExpired(token);
   const hasSession = isTokenValid || Boolean(refreshedSession);
 
+  // Perbaikan fungsi pemasangan cookie agar ll_role ikut ter-update secara berkala
   const applySessionCookies = (response) => {
     if (!refreshedSession) return response;
+
+    const cookieAge = refreshedSession.expires_in || 60 * 60;
+
     response.cookies.set(
       "ll_token",
       refreshedSession.access_token,
-      getCookieOptions(request, refreshedSession.expires_in || 60 * 60),
+      getCookieOptions(request, cookieAge),
     );
+
+    // SOLUSI BUG 1: Pastikan ll_role ikut ditulis ulang agar masa aktifnya sinkron
+    if (rawRole) {
+      response.cookies.set(
+        "ll_role",
+        rawRole,
+        getCookieOptions(request, cookieAge),
+      );
+    }
+
     if (refreshedSession.refresh_token) {
       response.cookies.set(
         "ll_refresh",
         refreshedSession.refresh_token,
-        getCookieOptions(request, 60 * 60 * 24 * 30),
+        getCookieOptions(request, 60 * 60 * 24 * 30), // 30 Hari
       );
     }
     return response;
   };
 
+  // 4. Logika rute auth (/auth/login, /auth/register, dll)
   if (isAuthPath) {
-    if (!hasSession) {
-      if (pathname.startsWith("/auth/signup")) {
-        const pendingRole = request.cookies.get("pending_role")?.value;
-        if (!pendingRole) {
-          return NextResponse.redirect(new URL("/auth/role", request.url));
-        }
-      }
-      return NextResponse.next();
-    }
-    
-    // Izinkan akses bebas ke reset-password meskipun sudah ada session
-    if (isResetPasswordPath) {
-      return applySessionCookies(NextResponse.next());
-    }
+    if (!hasSession) return NextResponse.next();
 
     if (!role && !isAuthRolePath) {
       return applySessionCookies(
@@ -161,15 +162,31 @@ export async function middleware(request) {
     return applySessionCookies(NextResponse.next());
   }
 
+  // Jika tidak punya sesi aktif, bersihkan sisa sampah cookies dan lempar ke login
   if (!hasSession) {
     return redirectWithClearCookies(request, "/auth/login");
+  }
+
+  // SOLUSI BUG 2: Pengalihan otomatis jika menembak rute "/dashboard" secara pas/persis
+  if (pathname === "/dashboard") {
+    if (role === "admin")
+      return applySessionCookies(
+        NextResponse.redirect(new URL("/dashboard/admin", request.url)),
+      );
+    if (role === "konsultan")
+      return applySessionCookies(
+        NextResponse.redirect(new URL("/dashboard/consultant", request.url)),
+      );
+    return applySessionCookies(
+      NextResponse.redirect(new URL("/dashboard/client", request.url)),
+    );
   }
 
   const isConsultantPath = pathname.startsWith("/dashboard/consultant");
   const isClientPath = pathname.startsWith("/dashboard/client");
   const isAdminPath = pathname.startsWith("/dashboard/admin");
 
-  // 4. Role Guard: Admin routes
+  // 5. Role Guard: Admin routes
   if (isAdminPath && role !== "admin") {
     const fallback =
       role === "konsultan" ? "/dashboard/consultant" : "/dashboard/client";
@@ -178,7 +195,7 @@ export async function middleware(request) {
     );
   }
 
-  // 5. Role Guard: Cegah Client masuk ke dashboard Konsultan
+  // 6. Role Guard: Cegah Client masuk ke dashboard Konsultan
   if (isConsultantPath && role !== "konsultan") {
     const fallback =
       role === "admin" ? "/dashboard/admin" : "/dashboard/client";
@@ -187,7 +204,7 @@ export async function middleware(request) {
     );
   }
 
-  // 5. Role Guard: Cegah Konsultan masuk ke dashboard Client
+  // 7. Role Guard: Cegah Konsultan masuk ke dashboard Client
   if (isClientPath && role !== "client") {
     const fallback =
       role === "admin" ? "/dashboard/admin" : "/dashboard/consultant";
@@ -196,24 +213,32 @@ export async function middleware(request) {
     );
   }
 
-  // 6. Jika di /dashboard tapi belum pilih role (kasus langka)
-  if (pathname.startsWith("/dashboard") && !role) {
+  // 8. Jika di rute terproteksi lain tapi belum pilih role
+  if (!role) {
     return applySessionCookies(
       NextResponse.redirect(new URL("/auth/role", request.url)),
     );
   }
 
-  return applySessionCookies(NextResponse.next());
+  // --- REFACTOR UTAMA: ANTI-BFCACHE UNTUK HALAMAN PROTECTED ---
+  const response = applySessionCookies(NextResponse.next());
+
+  if (isProtected) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, max-age=0, must-revalidate",
+    );
+  }
+
+  return response;
 }
 
 export const config = {
-  // Matcher yang lebih clean
   matcher: [
     "/dashboard/:path*",
     "/konsultasi/:path*",
     "/schedule/:path*",
     "/setting/:path*",
-    "/bursa/:path*",
     "/auth/:path*",
   ],
 };

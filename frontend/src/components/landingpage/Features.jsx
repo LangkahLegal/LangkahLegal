@@ -10,7 +10,7 @@ const FEATURES = [
   {
     title: "Proses Kilat",
     icon: "speed",
-    offset: "md:translate-y-8",
+    offset: "",
     desc: "Otomasi dokumen hukum yang memangkas waktu tunggu dari mingguan menjadi hitungan jam saja.",
   },
   {
