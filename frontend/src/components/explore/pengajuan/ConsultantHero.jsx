@@ -10,6 +10,7 @@ export default function ConsultantHero({
   avatar,
   portofolioUrl,
   linkedinUrl,
+  status_verifikasi,
 }) {
   const { theme } = useTheme();
   const currentTheme = theme || "dark-tech";
@@ -58,15 +59,28 @@ export default function ConsultantHero({
         </div>
 
         {/* Badge Verified - REFACTOR: border-bg & bg-primary */}
-        <div className="absolute bottom-2 right-2 bg-primary text-white w-8 h-8 sm:w-11 sm:h-11 rounded-full border-[4px] border-bg flex items-center justify-center shadow-xl">
-          <MaterialIcon name="verified" className="text-xs sm:text-lg" />
-        </div>
+        {status_verifikasi === "terverifikasi" && (
+          <div className="absolute bottom-2 right-2 bg-primary text-white w-8 h-8 sm:w-11 sm:h-11 rounded-full border-[4px] border-bg flex items-center justify-center shadow-xl">
+            <MaterialIcon name="verified" className="text-xs sm:text-lg" title="Verified Consultant" />
+          </div>
+        )}
       </div>
 
       {/* Name - REFACTOR: text-main */}
-      <h1 className="text-xl sm:text-2xl font-extrabold text-main mb-2 leading-tight tracking-tight px-2 transition-colors duration-500">
-        {safeName}
-      </h1>
+      <div className="flex flex-col items-center gap-2 mb-2">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-main leading-tight tracking-tight px-2 transition-colors duration-500 flex items-center justify-center gap-2">
+          {safeName}
+        </h1>
+        {status_verifikasi === "terverifikasi" ? (
+          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            ✅ Verified
+          </span>
+        ) : (
+          <span className="text-[10px] bg-zinc-500/10 text-muted border border-surface px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            Belum Verified
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center justify-center gap-3 flex-wrap px-4 mb-3">
         <div className="flex items-center gap-1 whitespace-nowrap">

@@ -56,8 +56,8 @@ export const consultationService = {
     return response.data;
   },
 
-  rateConsultation: async (id, payload) => {
-    const response = await api.post(`/consultations/${id}/rating`, payload);
+  markConsultationComplete: async (id) => {
+    const response = await api.put(`/consultations/${id}/complete`);
     return response.data;
   },
 
@@ -140,6 +140,14 @@ export const consultationService = {
     const response = await api.put(
       `/consultations/${id_pengajuan}/zoom-link`,
       formData,
+    );
+    return response.data;
+  },
+
+  submitRating: async (id_pengajuan, payload) => {
+    const response = await api.post(
+      `/consultations/${id_pengajuan}/rating`,
+      payload,
     );
     return response.data;
   },

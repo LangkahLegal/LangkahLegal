@@ -248,6 +248,36 @@ def klaim_kasus(
             detail="Gagal membuat draf konsultasi. Silakan coba lagi.",
         )
 
+    # 5. Kirim Notifikasi Email ke Klien
+    try:
+        from services.email_service import send_notification_email
+        client_res = db.table("users").select("email, nama").eq("id_user", kasus_data["id_user"]).single().execute()
+        if client_res.data:
+            client_email = client_res.data["email"]
+            client_nama = client_res.data["nama"]
+            
+            kons_res = db.table("konsultan").select("nama_lengkap").eq("id_konsultan", real_id_konsultan).single().execute()
+            kons_nama = kons_res.data["nama_lengkap"] if kons_res.data else "Seorang konsultan"
+            
+            id_pengajuan = insert_response.data[0]['id_pengajuan']
+            
+            subject = "Kabar Baik! Kasus Anda di Bursa Telah Diambil"
+            message = f"""Halo {client_nama},
+
+Kasus hukum yang Anda posting di bursa (ID Bursa: {id_bursa}) telah diambil oleh {kons_nama}.
+
+Sebuah pengajuan konsultasi telah dibuat secara otomatis untuk Anda (ID Pengajuan: {id_pengajuan}).
+Konsultan akan segera mengatur jadwal untuk sesi Anda. Silakan pantau halaman Dashboard atau halaman Konsultasi di aplikasi LangkahLegal.
+
+Tautan untuk memantau status pengajuan:
+http://localhost:3000/consultation/{id_pengajuan}
+
+Terima kasih.
+"""
+            send_notification_email(client_email, subject, message)
+    except Exception as e:
+        print(f"[EMAIL ERROR] Gagal kirim email bursa diklaim: {e}")
+
     return {
         "message": "Kasus berhasil diklaim. Draf konsultasi telah dibuat.",
         "data": insert_response.data[0],

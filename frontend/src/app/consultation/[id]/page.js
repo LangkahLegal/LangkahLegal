@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Layout & UI
 import Sidebar from "@/components/layout/Sidebar";
@@ -13,6 +13,7 @@ import InfoGrid from "@/components/request/InfoGrid";
 import CaseDescription from "@/components/request/CaseDescription";
 import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import ZoomLinkCard from "@/components/consultation/ZoomLinkCard";
+import RatingModal from "@/components/history/RatingModal";
 
 // Services
 import { consultationService } from "@/services/consultation.service";
@@ -20,6 +21,19 @@ import { authService } from "@/services/auth.service";
 
 export default function ConsultationDetail() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+
+  const submitRatingMutation = useMutation({
+    mutationFn: (payload) => consultationService.submitRating(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["consultationRequest", id]);
+      setIsRatingModalOpen(false);
+    },
+    onError: (err) => {
+      alert("Gagal menyimpan ulasan: " + (err?.response?.data?.detail || err.message));
+    }
+  });
 
   // --- 1. FETCH USER PROFILE ---
   const { data: userProfile } = useQuery({
@@ -118,6 +132,19 @@ export default function ConsultationDetail() {
 
         <main className="flex-1 overflow-y-auto w-full">
           <div className="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-8 animate-fade-in">
+            {/* Status Badge */}
+            <div className="flex justify-start">
+              <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
+                requestData.status === "selesai" ? "bg-primary/10 text-primary-light" :
+                requestData.status === "terjadwal" ? "bg-emerald-500/10 text-emerald-500" :
+                requestData.status === "menunggu_pembayaran" ? "bg-amber-500/10 text-amber-400" :
+                requestData.status === "ditolak" || requestData.status === "dibatalkan" ? "bg-danger/10 text-danger" :
+                "bg-cyan-500/10 text-cyan-400"
+              }`}>
+                {requestData.status?.replace("_", " ")}
+              </div>
+            </div>
+
             <ClientCard
               name={requestData.clientName}
               createdAt={requestData.createdAt}
@@ -147,8 +174,29 @@ export default function ConsultationDetail() {
               role={derivedRole}
               consultationId={id}
             />
+
+            {derivedRole === "client" && requestData.status === "terjadwal" && (
+              <div className="pt-4 animate-fade-in-up flex flex-col items-center">
+                <button
+                  onClick={() => setIsRatingModalOpen(true)}
+                  className="w-full px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                >
+                  Beri Ulasan & Selesaikan
+                </button>
+                <p className="text-xs text-muted mt-3 text-center">Tekan tombol ini hanya jika Anda telah menyelesaikan sesi konsultasi secara penuh dengan konsultan.</p>
+              </div>
+            )}
           </div>
         </main>
+
+        <RatingModal
+          isOpen={isRatingModalOpen}
+          onClose={() => setIsRatingModalOpen(false)}
+          isSubmitting={submitRatingMutation.isPending}
+          onSubmit={(skor_rating, ulasan_teks) => {
+            submitRatingMutation.mutate({ skor_rating, ulasan_teks });
+          }}
+        />
 
         <div className="lg:hidden">
           <BottomNav role={derivedRole} />

@@ -9,6 +9,7 @@ from config import Settings, get_settings
 from database import get_supabase_client
 from dependencies import get_current_user
 from schemas.payments import CreateTransactionRequest
+from services.email_service import send_notification_email
 
 router = APIRouter()
 
@@ -352,6 +353,67 @@ async def midtrans_notification(
         }).eq("id_pengajuan", id_pengajuan).execute()
         print(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
 
+    # 8. Kirim Notifikasi Email jika Pembayaran Berhasil (Settlement)
+    if new_payment_status == "settlement":
+        try:
+            pengajuan_res = db.table("pengajuan_konsultasi").select("id_user, id_konsultan, link_zoom").eq("id_pengajuan", id_pengajuan).single().execute()
+            if pengajuan_res.data:
+                client_res = db.table("users").select("email, nama").eq("id_user", pengajuan_res.data["id_user"]).single().execute()
+                if client_res.data:
+                    client_email = client_res.data["email"]
+                    client_nama = client_res.data["nama"]
+                    zoom_link = pengajuan_res.data.get("link_zoom") or "Belum ditentukan"
+                    subject = "Receipt: Pembayaran Konsultasi Berhasil"
+                    
+                    # Ambil data receipt
+                    gross_amount = tx.get("gross_amount", 0)
+                    formatted_amount = f"Rp {int(gross_amount):,}".replace(",", ".")
+                    
+                    message = f"""Halo {client_nama},
+
+Terima kasih! Pembayaran Anda untuk pengajuan (ID: {id_pengajuan}) telah berhasil dikonfirmasi.
+
+====================================
+BUKTI PEMBAYARAN (RECEIPT)
+====================================
+Order ID         : {order_id}
+Nominal          : {formatted_amount}
+Metode Pembayaran: {payment_type}
+Waktu Bayar      : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+====================================
+
+Link Zoom Anda: {zoom_link}
+(Mohon cek website secara berkala jika link Zoom masih belum ditentukan oleh konsultan).
+
+Salam,
+LangkahLegal
+"""
+                    send_notification_email(client_email, subject, message)
+                
+                # Kirim ke Konsultan
+                kons_res = db.table("konsultan").select("id_user, nama_lengkap").eq("id_konsultan", pengajuan_res.data["id_konsultan"]).single().execute()
+                if kons_res.data:
+                    kons_user_res = db.table("users").select("email").eq("id_user", kons_res.data["id_user"]).single().execute()
+                    if kons_user_res.data:
+                        kons_email = kons_user_res.data["email"]
+                        kons_nama = kons_res.data["nama_lengkap"]
+                        kons_subject = "Klien Telah Membayar - Segera Isi Link Zoom"
+                        kons_message = f"""Halo {kons_nama},
+
+Klien telah berhasil menyelesaikan pembayaran untuk pengajuan konsultasi (ID: {id_pengajuan}).
+Status pengajuan kini menjadi 'Terjadwal'.
+
+Langkah selanjutnya:
+Mohon segera cek detail pengajuan dan masukkan tautan (Link) Zoom untuk konsultasi ini melalui aplikasi LangkahLegal.
+Tautan untuk mengelola pengajuan:
+http://localhost:3000/consultation/{id_pengajuan}
+
+Terima kasih atas kerja samanya.
+"""
+                        send_notification_email(kons_email, kons_subject, kons_message)
+        except Exception as e:
+            print(f"[EMAIL ERROR] Gagal kirim email webhook settlement: {e}")
+
     return {"status": "ok"}
 
 
@@ -527,6 +589,65 @@ def sync_payment_status(
             }).eq("id_pengajuan", id_pengajuan).execute()
 
         print(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
+
+        if new_payment_status == "settlement":
+            try:
+                pengajuan_res = db.table("pengajuan_konsultasi").select("id_user, id_konsultan, link_zoom").eq("id_pengajuan", id_pengajuan).single().execute()
+                if pengajuan_res.data:
+                    client_res = db.table("users").select("email, nama").eq("id_user", pengajuan_res.data["id_user"]).single().execute()
+                    if client_res.data:
+                        client_email = client_res.data["email"]
+                        client_nama = client_res.data["nama"]
+                        zoom_link = pengajuan_res.data.get("link_zoom") or "Belum ditentukan"
+                        subject = "Receipt: Pembayaran Konsultasi Berhasil"
+                        
+                        gross_amount = tx.get("gross_amount", 0)
+                        formatted_amount = f"Rp {int(gross_amount):,}".replace(",", ".")
+                        
+                        message = f"""Halo {client_nama},
+
+Terima kasih! Pembayaran Anda untuk pengajuan (ID: {id_pengajuan}) telah berhasil dikonfirmasi.
+
+====================================
+BUKTI PEMBAYARAN (RECEIPT)
+====================================
+Order ID         : {order_id}
+Nominal          : {formatted_amount}
+Metode Pembayaran: {payment_type}
+Waktu Bayar      : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+====================================
+
+Link Zoom Anda: {zoom_link}
+(Mohon cek website secara berkala jika link Zoom masih belum ditentukan oleh konsultan).
+
+Salam,
+LangkahLegal
+"""
+                        send_notification_email(client_email, subject, message)
+                    
+                    # Kirim ke Konsultan
+                    kons_res = db.table("konsultan").select("id_user, nama_lengkap").eq("id_konsultan", pengajuan_res.data["id_konsultan"]).single().execute()
+                    if kons_res.data:
+                        kons_user_res = db.table("users").select("email").eq("id_user", kons_res.data["id_user"]).single().execute()
+                        if kons_user_res.data:
+                            kons_email = kons_user_res.data["email"]
+                            kons_nama = kons_res.data["nama_lengkap"]
+                            kons_subject = "Klien Telah Membayar - Segera Isi Link Zoom"
+                            kons_message = f"""Halo {kons_nama},
+
+Klien telah berhasil menyelesaikan pembayaran untuk pengajuan konsultasi (ID: {id_pengajuan}).
+Status pengajuan kini menjadi 'Terjadwal'.
+
+Langkah selanjutnya:
+Mohon segera cek detail pengajuan dan masukkan tautan (Link) Zoom untuk konsultasi ini melalui aplikasi LangkahLegal.
+Tautan untuk mengelola pengajuan:
+http://localhost:3000/consultation/{id_pengajuan}
+
+Terima kasih atas kerja samanya.
+"""
+                            send_notification_email(kons_email, kons_subject, kons_message)
+            except Exception as e:
+                print(f"[EMAIL ERROR] Gagal kirim email sync settlement: {e}")
 
         return {
             "synced": True,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTheme } from "@/providers/ThemeProvider"; // Import Hook Tema
 
 export default function ConsultantCard({ consultant }) {
-  const { name, spec, rating, reviews, status, foto_profil } = consultant;
+  const { name, spec, rating, reviews, status, foto_profil, status_verifikasi, tarif_per_sesi } = consultant;
   const { theme } = useTheme(); // Ambil state tema aktif
 
   const detailHref = consultant?.id ? `/explore/${consultant.id}` : "/explore";
@@ -51,20 +51,39 @@ export default function ConsultantCard({ consultant }) {
 
         {/* Details */}
         <div className="space-y-1">
-          <h3 className="font-headline font-bold text-main lg:text-lg leading-tight">
+          <h3 className="font-headline font-bold text-main lg:text-lg leading-tight flex items-center gap-2">
             {name}
+            {status_verifikasi === "terverifikasi" && (
+              <MaterialIcon name="verified" className="text-blue-500 text-lg" style={{ fontVariationSettings: "'FILL' 1" }} title="Verified" />
+            )}
           </h3>
           <p className="text-primary-light text-xs lg:text-sm font-medium">
             {spec}
           </p>
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <MaterialIcon
-              name="star"
-              className="text-amber-400 text-base"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            />
-            <span className="font-bold text-main">{rating}</span>
-            <span className="opacity-60">({reviews} Ulasan)</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <MaterialIcon
+                name="star"
+                className="text-amber-400 text-base"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              />
+              <span className="font-bold text-main">{rating}</span>
+              <span className="opacity-60">({reviews} Ulasan)</span>
+            </div>
+
+            {tarif_per_sesi > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted">
+                <MaterialIcon name="payments" className="text-emerald-500 text-base" />
+                <span className="font-bold text-main">
+                  Rp {tarif_per_sesi.toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
+            {tarif_per_sesi === 0 && (
+              <div className="flex items-center gap-1 text-xs text-emerald-500 font-bold">
+                Gratis
+              </div>
+            )}
           </div>
         </div>
       </div>
