@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   getStoredAccessToken,
@@ -32,19 +32,27 @@ export default function AuthGuard({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isReady, setIsReady] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
-  const [role, setRole] = useState(null);
+  const sessionSnapshot = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const accessToken = getStoredAccessToken();
+      const refreshToken = getStoredRefreshToken();
+      const storedRole = normalizeRole(getStoredRole());
 
-  useEffect(() => {
-    const accessToken = getStoredAccessToken();
-    const refreshToken = getStoredRefreshToken();
-    const storedRole = normalizeRole(getStoredRole());
+      return {
+        hasSession: Boolean(accessToken || refreshToken),
+        role: storedRole,
+        isReady: true,
+      };
+    },
+    () => ({
+      hasSession: false,
+      role: null,
+      isReady: false,
+    }),
+  );
 
-    setHasSession(Boolean(accessToken || refreshToken));
-    setRole(storedRole);
-    setIsReady(true);
-  }, []);
+  const { hasSession, role, isReady } = sessionSnapshot;
 
   useEffect(() => {
     if (!isReady) return;
