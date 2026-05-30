@@ -42,6 +42,8 @@ def get_all_consultants(
                 nama_lengkap,
                 spesialisasi,
                 is_active,
+                status_verifikasi,
+                tarif_per_sesi,
                 users (foto_profil),
                 rating_ulasan (skor_rating)
             """)
@@ -71,7 +73,9 @@ def get_all_consultants(
                 "rating": rating_avg,
                 "reviews": total_reviews,
                 "status": "online",
-                "foto_profil": user_data.get("foto_profil") # Ganti 'avatar' jadi 'foto_profil'
+                "foto_profil": user_data.get("foto_profil"), # Ganti 'avatar' jadi 'foto_profil'
+                "status_verifikasi": item.get("status_verifikasi"),
+                "tarif_per_sesi": item.get("tarif_per_sesi")
             }
             formatted_data.append(formatted_item)
 
