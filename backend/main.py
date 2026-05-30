@@ -41,7 +41,7 @@ app.state.limiter = limiter
 # Credentials + cookie tidak boleh dipakai bersama allow_origins=["*"] di browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:3000|http://127.0.0.1:3000",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.langkahlegal\.com|http://localhost:3000|http://127.0.0.1:3000",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

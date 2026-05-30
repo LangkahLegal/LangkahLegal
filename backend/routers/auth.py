@@ -34,10 +34,12 @@ security = HTTPBearer(auto_error=False)
 def _get_cookie_flags() -> dict:
     settings = get_settings()
     is_production = settings.app_env.lower() == "production"
+    cookie_domain = settings.cookie_domain.strip() or None
 
     return {
         "samesite": "none" if is_production else "lax",
         "secure": is_production,
+        "domain": cookie_domain,
     }
 
 def get_token_from_request(
@@ -68,6 +70,7 @@ def _set_auth_cookies(response: Response, session_data: dict):
             httponly=True,
             samesite=cookie_flags["samesite"],
             secure=cookie_flags["secure"],
+            domain=cookie_flags["domain"],
             path="/"
         )
     
@@ -79,14 +82,16 @@ def _set_auth_cookies(response: Response, session_data: dict):
             httponly=True,
             samesite=cookie_flags["samesite"],
             secure=cookie_flags["secure"],
+            domain=cookie_flags["domain"],
             path="/"
         )
 
 def _clear_auth_cookies(response: Response):
-    response.delete_cookie("ll_token", path="/")
-    response.delete_cookie("ll_refresh", path="/")
-    response.delete_cookie("ll_oauth_verifier", path="/")
-    response.delete_cookie("ll_role", path="/")
+    cookie_flags = _get_cookie_flags()
+    response.delete_cookie("ll_token", path="/", domain=cookie_flags["domain"])
+    response.delete_cookie("ll_refresh", path="/", domain=cookie_flags["domain"])
+    response.delete_cookie("ll_oauth_verifier", path="/", domain=cookie_flags["domain"])
+    response.delete_cookie("ll_role", path="/", domain=cookie_flags["domain"])
 
 def _get_service_headers() -> dict:
     settings = get_settings()
@@ -309,6 +314,7 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
         httponly=True,
         samesite=cookie_flags["samesite"],
         secure=cookie_flags["secure"],
+        domain=cookie_flags["domain"],
         path="/"
     )
 
@@ -347,7 +353,7 @@ async def exchange_code(
     )
     
     _set_auth_cookies(response, data)
-    response.delete_cookie("ll_oauth_verifier", path="/")
+    response.delete_cookie("ll_oauth_verifier", path="/", domain=_get_cookie_flags()["domain"])
     
     return {
         "data": {

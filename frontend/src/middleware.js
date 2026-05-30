@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 // Daftar path yang butuh login
 const PROTECTED_PATHS = ["/dashboard", "/konsultasi", "/schedule", "/setting"];
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN?.trim() || null;
 
 const normalizeRole = (role) => {
   if (role === "konsultan" || role === "consultant") return "konsultan";
@@ -30,9 +31,9 @@ const isTokenExpired = (token) => {
 
 const redirectWithClearCookies = (request, pathname) => {
   const response = NextResponse.redirect(new URL(pathname, request.url));
-  response.cookies.set("ll_token", "", { maxAge: 0, path: "/" });
-  response.cookies.set("ll_role", "", { maxAge: 0, path: "/" });
-  response.cookies.set("ll_refresh", "", { maxAge: 0, path: "/" });
+  response.cookies.set("ll_token", "", { maxAge: 0, path: "/", domain: COOKIE_DOMAIN || undefined });
+  response.cookies.set("ll_role", "", { maxAge: 0, path: "/", domain: COOKIE_DOMAIN || undefined });
+  response.cookies.set("ll_refresh", "", { maxAge: 0, path: "/", domain: COOKIE_DOMAIN || undefined });
   return response;
 };
 
@@ -44,6 +45,7 @@ const getCookieOptions = (request, maxAgeSeconds) => ({
   path: "/",
   sameSite: "lax",
   secure: request.nextUrl?.protocol === "https:",
+  domain: COOKIE_DOMAIN || undefined,
 });
 
 const refreshSession = async (refreshToken) => {
