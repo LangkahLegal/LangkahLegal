@@ -47,6 +47,7 @@ const readSessionSnapshot = () => {
 
 export default function AuthGuard({
   children,
+  requireAuth = true,
   requireRole = false,
   redirectToRoleHome = false,
 }) {
@@ -60,6 +61,7 @@ export default function AuthGuard({
     if (!isReady) return;
 
     if (!hasSession) {
+      if (!requireAuth) return;
       router.replace("/auth/login");
       return;
     }
@@ -78,6 +80,7 @@ export default function AuthGuard({
   }, [
     hasSession,
     isReady,
+    requireAuth,
     pathname,
     requireRole,
     redirectToRoleHome,
@@ -86,7 +89,7 @@ export default function AuthGuard({
   ]);
 
   const content = useMemo(() => {
-    if (!isReady || (!hasSession && pathname !== "/auth/role")) {
+    if (!isReady || (requireAuth && !hasSession && pathname !== "/auth/role")) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-bg text-main">
           <div className="flex flex-col items-center gap-3">
@@ -100,7 +103,7 @@ export default function AuthGuard({
     }
 
     return children;
-  }, [children, hasSession, isReady, pathname]);
+  }, [children, hasSession, isReady, pathname, requireAuth]);
 
   return content;
 }
