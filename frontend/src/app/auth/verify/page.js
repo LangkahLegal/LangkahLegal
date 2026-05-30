@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 // Komponen Layout
 import PageHeader from "@/components/layout/PageHeader";
@@ -105,12 +106,12 @@ export default function EmailVerificationPage() {
       if (flow === "signup") {
         await authService.resendSignupOtp({
           email,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${getAppOrigin()}/auth/callback`,
         });
       } else {
         await authService.sendOtpLogin({
           email,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${getAppOrigin()}/auth/callback`,
         });
       }
       setCode(Array(6).fill(""));

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 // Import Komponen Signup
 import SignupHeader from "@/components/auth/signup/SignupHeader";
@@ -42,7 +43,7 @@ export default function SignupPage() {
       await authService.signUpWithPassword({
         ...formData,
         role: selectedRole,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getAppOrigin()}/auth/callback`,
       });
 
       sessionStorage.setItem(
@@ -76,7 +77,7 @@ export default function SignupPage() {
         );
       }
       await authService.signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${getAppOrigin()}/auth/callback`,
       });
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login dengan Google.");

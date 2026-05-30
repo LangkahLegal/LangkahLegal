@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 // Import Komponen Baru
 import LoginHeader from "@/components/auth/login/LoginHeader";
@@ -59,7 +60,7 @@ export default function LoginPage() {
     setErrorMsg("");
     try {
       await authService.signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${getAppOrigin()}/auth/callback`,
       });
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login dengan Google.");
