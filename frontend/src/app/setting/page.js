@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService } from "@/services/auth.service";
 import { userService } from "@/services/user.service";
+import { clearAuthSession } from "@/lib/authStorage";
 
 // Import Layout Components
 import Sidebar from "@/components/layout/Sidebar";
@@ -39,26 +40,13 @@ const logoutMutation = useMutation({
   mutationFn: authService.logout,
   onSuccess: () => {
     queryClient.clear();
-
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("refresh_token");
-
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("sb-") || key.includes("auth-token")) {
-          localStorage.removeItem(key);
-        }
-      });
-
-      window.location.href = "/auth/login";
-    }
+    clearAuthSession();
+    window.location.href = "/auth/login";
   },
   onError: (err) => {
     console.error("Gagal logout:", err);
-    if (typeof window !== "undefined") {
-      localStorage.clear();
-      window.location.href = "/auth/login"; // --- UBAH JUGA DI SINI ---
-    }
+    clearAuthSession();
+    window.location.href = "/auth/login";
   },
 });
 

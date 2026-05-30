@@ -34,8 +34,6 @@ export default function RolePage() {
     setError("");
 
     try {
-      // Simpan role di cookie agar bisa dicek oleh middleware
-      document.cookie = `pending_role=${selectedRole}; path=/; max-age=3600; SameSite=Lax`;
       sessionStorage.setItem("pending_role", selectedRole);
       router.push("/auth/signup");
     } catch (err) {
@@ -46,9 +44,7 @@ export default function RolePage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan transition-colors */
     <div className="relative min-h-screen bg-bg text-main flex flex-col overflow-x-hidden transition-colors duration-500">
-      {/* Background Ornaments */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 blur-[120px] rounded-full" />
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary/10 blur-[120px] rounded-full" />
@@ -58,13 +54,11 @@ export default function RolePage() {
 
       <main className="relative z-10 flex-grow flex flex-col px-6 pt-8 pb-20 max-w-md mx-auto w-full">
         <div className="mb-10">
-          {/* REFACTOR: text-white -> text-main agar otomatis gelap di Light Mode */}
           <h2 className="font-headline text-3xl font-extrabold text-main mb-4 tracking-tight">
             Pilih Peran Anda
           </h2>
 
           {error && (
-            /* REFACTOR: Menggunakan skema warna danger theme */
             <div className="mb-4 p-4 text-sm text-danger bg-danger/10 border border-danger/20 rounded-2xl">
               {error}
             </div>
@@ -75,7 +69,6 @@ export default function RolePage() {
           </p>
         </div>
 
-        {/* Roles List */}
         <div className="space-y-6">
           {ROLES_DATA.map((role) => (
             <RoleCard
@@ -87,7 +80,6 @@ export default function RolePage() {
           ))}
         </div>
 
-        {/* Tombol Lanjutkan */}
         <div className="mt-12">
           <Button
             onClick={handleContinue}

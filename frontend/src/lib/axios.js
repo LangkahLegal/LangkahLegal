@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  clearAuthSession,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setAuthSession,
+} from "@/lib/authStorage";
 
 /**
  * Konfigurasi Dasar Axios
@@ -9,7 +15,7 @@ const API_BASE_URL =
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 let refreshPromise = null;
@@ -18,20 +24,28 @@ const refreshSession = async () => {
   if (typeof window === "undefined") return null;
   if (refreshPromise) return refreshPromise;
 
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return null;
+
   refreshPromise = (async () => {
     try {
-      // Backend akan otomatis membaca ll_refresh dari cookie
       const response = await axios.post(
         `${API_BASE_URL}/auth/refresh`,
-        {},
-        { 
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" } 
+        { refresh_token: refreshToken },
+        {
+          withCredentials: false,
+          headers: { "Content-Type": "application/json" },
         },
       );
 
-      return response?.data?.data?.session || null;
+      const session = response?.data?.data?.session || null;
+      if (session) {
+        setAuthSession(session);
+      }
+
+      return session;
     } catch {
+      clearAuthSession();
       return null;
     }
   })();
@@ -45,12 +59,18 @@ const refreshSession = async () => {
 
 /**
  * Request Interceptor
- * Karena kita menggunakan BFF pattern dengan HttpOnly cookies, 
- * kita tidak perlu lagi menyisipkan Authorization header.
- * Axios akan otomatis mengirim cookie ll_token karena withCredentials: true.
+ * Token disimpan di browser storage dan dikirim via Authorization header.
  */
 api.interceptors.request.use(
   async (config) => {
+    if (typeof window !== "undefined") {
+      const accessToken = getStoredAccessToken();
+      if (accessToken) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -71,7 +91,6 @@ api.interceptors.response.use(
       error.config._retry = true;
       const session = await refreshSession();
       if (session) {
-        // Karena cookies otomatis dikirim, kita cukup retry requestnya
         return api(error.config);
       }
     }

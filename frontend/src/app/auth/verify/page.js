@@ -122,7 +122,6 @@ export default function EmailVerificationPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main | font-primary */
     <div className="bg-bg text-main min-h-screen flex flex-col items-center font-primary transition-colors duration-500">
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
@@ -137,7 +136,6 @@ export default function EmailVerificationPage() {
         <VerifyHero />
 
         {errorMsg && (
-          /* REFACTOR: Menggunakan skema warna danger theme agar kontras */
           <div className="w-full mb-6 p-3 text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl text-center font-medium">
             {errorMsg}
           </div>

@@ -68,7 +68,6 @@ export default function LoginPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
     <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-8 bg-bg text-main overflow-hidden transition-colors duration-500">
       <main className="relative z-10 w-full max-w-[400px] mx-auto">
         <LoginHeader />

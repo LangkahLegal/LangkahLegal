@@ -55,7 +55,6 @@ export default function SignupPage() {
         }),
       );
       sessionStorage.removeItem("pending_role");
-      document.cookie = "pending_role=; path=/; max-age=0"; // Clear cookie
 
       router.push("/auth/verify");
     } catch (err) {
@@ -85,7 +84,6 @@ export default function SignupPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
     <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-12 bg-bg text-main overflow-x-hidden transition-colors duration-500">
       <main className="relative z-10 w-full max-w-[400px] mx-auto my-auto">
         <SignupHeader

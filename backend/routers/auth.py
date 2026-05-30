@@ -320,7 +320,8 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
 
     return {
         "data": {
-            "url": url
+            "url": url,
+            "code_verifier": code_verifier,
         }
     }
 
@@ -336,7 +337,7 @@ async def exchange_code(
     payload: dict,
 ):
     code = payload.get("code")
-    code_verifier = request.cookies.get("ll_oauth_verifier")
+    code_verifier = payload.get("code_verifier") or request.cookies.get("ll_oauth_verifier")
     
     if not code:
         raise HTTPException(status_code=400, detail="Code tidak ditemukan.")
