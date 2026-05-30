@@ -5,6 +5,7 @@ __pycache__/
 
 # Environment Variables
 .env
+.env.*
 
 # Virtual Environment
 venv/
@@ -15,8 +16,6 @@ env/
 .vscode/
 .idea/
 
-# QA Purpose
-tests
 scripts
 qa-fixtures
 postman

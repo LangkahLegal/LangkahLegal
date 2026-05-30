@@ -1,12 +1,13 @@
 """
-LangkahLegal RAG Service — Agentic Pipeline
-=============================================
-Handles the core RAG + Agentic pipeline:
-  1. Rewrite user query using conversation context (query augmentation)
-  2. Embed optimized query via Voyage AI (voyage-law-2, input_type="query")
-  3. Retrieve relevant pasals from Supabase (match_dokumen_hukum RPC)
-  4. Call Gemini with Tools (function calling) for agentic response
-  5. Route response: text answer OR consultant_list (tool call)
+RAG + Agentic pipeline untuk chatbot LangkahLegal.
+
+Flow:
+  1. Rewrite query user (bahasa awam → istilah hukum)
+  2. Embed via Voyage AI (voyage-law-2)
+  3. Retrieve pasal relevan dari Supabase RPC
+  4. Bangun multi-turn contents + panggil Gemini dengan Tool
+  5. Jika Gemini minta tool call → eksekusi → kirim FunctionResponse balik
+  6. Return jawaban final (text biasa ATAU consultant_list)
 """
 
 import json
@@ -22,134 +23,113 @@ from config import get_settings
 
 log = logging.getLogger(__name__)
 
+# ── Config ──────────────────────────────────────────────────
+
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
 LLM_MODEL = "gemini-2.5-flash"
 
-# --- Query Rewriter Prompt ---
-# Translates casual/emotional user input into a precise legal search query
-QUERY_REWRITER_PROMPT = """Kamu adalah ahli hukum Indonesia. Tugasmu adalah menerjemahkan pertanyaan dari orang awam menjadi query pencarian hukum yang presisi.
-
-ATURAN:
-1. Ubah bahasa sehari-hari/emosional menjadi istilah hukum yang tepat.
-2. Jika ada riwayat percakapan, GABUNGKAN konteks dari pesan sebelumnya.
-3. Hasilkan HANYA query pencarian (1-2 kalimat), tanpa penjelasan.
-4. Sertakan istilah hukum Indonesia yang relevan (misal: "tindak pidana", "perlindungan saksi", "hak korban").
-5. Jika user berbicara tentang ketakutan/keraguan melapor, arahkan ke "perlindungan saksi dan korban" atau "hak korban dalam proses hukum".
-
-CONTOH:
-- User: "tapi saya takut melapor..." (konteks: kekerasan seksual)
-  → "perlindungan korban kekerasan seksual hak pelapor jaminan kerahasiaan identitas UU TPKS"
-- User: "tetangga saya ribut terus tiap malam"
-  → "tindak pidana kebisingan gangguan ketertiban umum tetangga"
-- User: "bos saya tidak bayar gaji 3 bulan"
-  → "pelanggaran pembayaran upah ketenagakerjaan hak pekerja PHK sepihak"
-"""
-
-# --- Agentic System Prompt (SOP 4-Step) ---
-SYSTEM_PROMPT = """Kamu adalah "Kia", paralegal virtual di LangkahLegal — konsultan hukum AI yang hangat, empatik, dan sangat terstruktur.
-Tugasmu adalah melakukan "triase hukum" layaknya seorang paralegal profesional yang mewawancarai klien sebelum menghubungkan mereka dengan advokat.
-
-═══════════════════════════════════════
-KEPRIBADIAN
-═══════════════════════════════════════
-- Bicara seperti paralegal yang ramah dan suportif, BUKAN robot pembaca pasal.
-- Validasi perasaan pengguna terlebih dahulu sebelum masuk ke hukum.
-- Gunakan bahasa sehari-hari yang mudah dipahami, jelaskan istilah hukum jika muncul.
-- Berikan rasa aman — pengguna mungkin sedang dalam situasi sulit.
-
-═══════════════════════════════════════
-SOP WAWANCARA (WAJIB DIIKUTI)
-═══════════════════════════════════════
-
-Kamu WAJIB mengikuti alur wawancara ini secara BERURUTAN. JANGAN melompati tahap.
-
-1. STEP 1 — GALI INFORMASI
-Saat klien pertama kali menceritakan masalah, JANGAN langsung memberikan kesimpulan hukum atau memanggil tool.
-Lakukan:
-- Validasi perasaan klien jika topiknya sensitif.
-- Tanyakan detail kronologi: kapan kejadian, siapa pihak terlibat, di mana lokasi.
-- Tanyakan apa yang sudah dilakukan klien sejauh ini.
-Contoh: "Terima kasih sudah menceritakan ini. Untuk membantu lebih baik, boleh ceritakan lebih detail kronologinya? Kapan kejadiannya, dan siapa saja pihak yang terlibat?"
-
-2. STEP 2 — VALIDASI KASUS (GUNAKAN KONTEKS PASAL)
-Setelah info cukup, jelaskan kepada klien:
-- Pelanggaran hukum apa yang MUNGKIN terjadi berdasarkan kronologi mereka.
-- Gunakan informasi dari KONTEKS PASAL yang diberikan, tapi JANGAN membacakan pasal mentah — jelaskan maknanya.
-- Sebutkan dasar hukum (nama UU dan pasal) sebagai referensi pendukung.
-Contoh: "Berdasarkan cerita Anda, tindakan ini BISA dikategorikan sebagai tindak pidana penggelapan berdasarkan Pasal 372 KUHP..."
-
-3. STEP 3 — VALIDASI DOKUMEN / BUKTI
-Setelah klien memahami posisi hukumnya, tanyakan apakah mereka memiliki bukti:
-- Kontrak/Surat Perjanjian
-- Foto/Video/Rekaman
-- Laporan Polisi/Surat Pengaduan
-- Kwitansi/Bukti Transfer
-- Saksi
-Contoh: "Sebelum melangkah lebih jauh, apakah Anda memiliki bukti-bukti berikut? Ini akan sangat membantu jika kasus ini akan ditindaklanjuti secara hukum..."
-
-4. STEP 4 — TAWARKAN KONSULTAN (TOOL CALL)
-Panggil fungsi `search_consultants` HANYA jika:
-1. Tahap 1-3 sudah selesai dilalui, DAN kamu yakin klien siap berkonsultasi lebih lanjut, ATAU
-2. Klien secara EKSPLISIT meminta: "Carikan pengacara", "Saya butuh advokat", "Hubungkan saya dengan konsultan", dll.
-
-Saat memanggil tool, tentukan parameter `kategori` berdasarkan analisis kasusnya (Pidana/Perdata/Ketenagakerjaan/dll).
-
-═══════════════════════════════════════
-ATURAN MENJAWAB
-═══════════════════════════════════════
-1. Jawab dalam Bahasa Indonesia yang sederhana.
-2. Gunakan poin-poin bernomor untuk langkah-langkah konkret.
-3. Jangan pernah memberikan nasihat untuk melakukan tindakan ilegal.
-4. Akhiri dengan pertanyaan lanjutan ATAU saran langkah selanjutnya.
-
-YANG TIDAK BOLEH DILAKUKAN:
-- Jangan menyebutkan "Sumber 1", "Sumber 2" — itu internal.
-- Jangan bilang "berdasarkan konteks pasal yang diberikan" — itu terasa robot.
-- Jangan bilang "cukup jelas" jika pasal hanya bertuliskan itu.
-- Jangan memperkenalkan diri di setiap jawaban.
-- JANGAN panggil search_consultants sebelum minimal Step 1 dan Step 2 selesai, KECUALI user secara eksplisit memintanya.
-"""
+# Batas token kasar untuk smart truncation.
+# Gemini 2.5 Flash punya context window ~1M token,
+# tapi kita batasi history agar response tetap cepat.
+MAX_HISTORY_CHARS = 60_000  # ~15k token (1 token ≈ 4 chars)
+MAX_TOOL_LOOP = 3
 
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
-NO_RESULTS_MSG = (
-    "Saya memahami kekhawatiran Anda. Sayangnya, saya belum menemukan pasal yang secara spesifik "
-    "membahas hal ini dalam database kami. Namun, saya sangat menyarankan Anda untuk:\n\n"
-    "1. **Menghubungi LBH (Lembaga Bantuan Hukum)** terdekat untuk konsultasi gratis\n"
-    "2. **Hubungi hotline bantuan hukum**: 021-3145508 (YLBHI)\n"
-    "3. **Konsultasi dengan advokat** melalui fitur konsultasi di LangkahLegal\n\n"
-    "Anda tidak sendirian, dan ada banyak pihak yang siap membantu."
-)
+# ── Prompts ─────────────────────────────────────────────────
 
-# TOOL DEFINITION — Gemini Function Calling
+QUERY_REWRITER_PROMPT = """Kamu ahli hukum Indonesia. Tugasmu: ubah pertanyaan awam jadi query pencarian hukum yang presisi.
 
-SEARCH_CONSULTANTS_TOOL = types.Tool(
+Aturan:
+1. Ubah bahasa emosional/sehari-hari → istilah hukum (misal "dipecat" → "PHK sepihak ketenagakerjaan").
+2. Gabungkan konteks dari riwayat percakapan jika ada.
+3. Output HANYA query pencarian (1-2 kalimat), tanpa penjelasan lain.
+4. Sertakan istilah hukum Indonesia yang relevan.
+
+Contoh:
+- "tapi saya takut melapor..." (konteks: kekerasan seksual)
+  → "perlindungan korban kekerasan seksual hak pelapor jaminan kerahasiaan identitas UU TPKS"
+- "bos saya tidak bayar gaji 3 bulan"
+  → "pelanggaran pembayaran upah ketenagakerjaan hak pekerja PHK sepihak"
+"""
+
+SYSTEM_PROMPT = """Kamu adalah "Kia", paralegal virtual di LangkahLegal.
+
+KEPRIBADIAN:
+- Hangat, empatik, suportif — bukan robot pembaca pasal.
+- Validasi perasaan user terlebih dahulu, terutama kalau topiknya sensitif.
+- Pakai bahasa sehari-hari, jelaskan istilah hukum kalau muncul.
+- Jangan perkenalkan diri di setiap jawaban.
+
+SOP WAWANCARA (WAJIB URUT — jangan loncat tahap):
+
+STEP 1 — GALI KRONOLOGI
+Saat klien menceritakan masalah, JANGAN langsung kasih kesimpulan hukum.
+- Validasi perasaan mereka.
+- Tanyakan detail: kapan kejadian, siapa pihak terlibat, di mana, sudah lakukan apa.
+
+STEP 2 — ANALISIS HUKUM
+Setelah info cukup:
+- Jelaskan pelanggaran hukum apa yang MUNGKIN terjadi.
+- Gunakan konteks pasal yang diberikan, tapi JANGAN baca mentah — jelaskan maknanya.
+- Sebutkan dasar hukum (UU + pasal) sebagai referensi.
+
+STEP 3 — VALIDASI BUKTI
+Sebelum tawarkan konsultan, WAJIB tanyakan apakah klien punya bukti:
+- Kontrak/Surat Perjanjian, Foto/Video/Rekaman, Laporan Polisi
+- Kwitansi/Bukti Transfer, Saksi
+Ingatkan bahwa bukti SANGAT PENTING untuk kelanjutan kasus.
+
+STEP 4 — TAWARKAN KONSULTAN (TOOL CALL)
+Panggil search_consultants HANYA jika:
+a) Step 1-3 sudah dilalui DAN klien siap berkonsultasi lebih lanjut, ATAU
+b) Klien EKSPLISIT minta: "carikan pengacara", "saya butuh advokat", dll.
+
+Tentukan parameter `kategori` berdasarkan analisis kasus.
+
+ATURAN JAWAB:
+- Bahasa Indonesia sederhana.
+- Pakai poin bernomor untuk langkah konkret.
+- Jangan kasih nasihat ilegal.
+- Akhiri dengan pertanyaan lanjutan ATAU saran langkah berikutnya.
+
+LARANGAN:
+- Jangan sebut "Sumber 1", "Sumber 2" — itu internal.
+- Jangan bilang "berdasarkan konteks pasal yang diberikan" — kedengeran robot.
+- Jangan panggil search_consultants sebelum minimal Step 1 & Step 2, kecuali user eksplisit minta.
+"""
+
+# ── Tool Definition ─────────────────────────────────────────
+
+CONSULTANT_TOOL = types.Tool(
     function_declarations=[
         types.FunctionDeclaration(
             name="search_consultants",
             description=(
-                "Cari konsultan hukum/advokat yang tersedia di LangkahLegal berdasarkan spesialisasi dan budget. "
-                "Panggil fungsi ini HANYA jika klien sudah melewati tahap wawancara (Step 1-3) "
-                "ATAU secara eksplisit meminta untuk dihubungkan dengan konsultan/pengacara/advokat."
+                "Cari konsultan hukum/advokat di LangkahLegal berdasarkan spesialisasi dan budget. "
+                "HANYA panggil setelah tahap wawancara selesai ATAU klien eksplisit minta."
             ),
             parameters_json_schema={
                 "type": "object",
                 "properties": {
                     "kategori": {
                         "type": "string",
-                        "description": (
-                            "Kategori spesialisasi hukum konsultan yang dicari. "
-                            "Pilih salah satu: Pidana, Perdata, Ketenagakerjaan, Teknologi Informasi, HAM, Umum. "
-                            "Tentukan berdasarkan analisis kasus klien."
-                        ),
-                        "enum": ["Pidana", "Perdata", "Ketenagakerjaan", "Teknologi Informasi", "HAM", "Umum"],
+                        "description": "Spesialisasi hukum konsultan. Pilih SALAH SATU dari enum.",
+                        "enum": [
+                            "Pidana",
+                            "Perdata",
+                            "Ketenagakerjaan",
+                            "Teknologi Informasi",
+                            "HAM",
+                            "Umum",
+                        ],
                     },
                     "max_budget": {
                         "type": "integer",
                         "description": (
-                            "Budget maksimal klien per sesi konsultasi dalam Rupiah. "
-                            "Jika klien tidak menyebutkan budget, JANGAN sertakan parameter ini."
+                            "Budget maksimal per sesi (Rupiah). "
+                            "Jangan sertakan kalau klien tidak menyebut budget."
                         ),
                     },
                 },
@@ -160,46 +140,43 @@ SEARCH_CONSULTANTS_TOOL = types.Tool(
 )
 
 
-# CORE FUNCTIONS
+# ── Client Helpers ──────────────────────────────────────────
 
 def _get_voyage_client() -> voyageai.Client:
-    """Initialize Voyage AI client. Uses VOYAGE_API_KEY env var automatically."""
     return voyageai.Client()
 
 
 def _get_gemini_client() -> genai.Client:
-    """Initialize Google GenAI client with API key."""
     settings = get_settings()
     return genai.Client(api_key=settings.google_api_key)
 
 
+# ── Query Rewriting ─────────────────────────────────────────
+
 def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
-    """
-    Use Gemini to translate a casual/emotional user query into a precise 
-    legal search query, incorporating conversation history for context.
-    """
+    """Terjemahkan query awam → query hukum presisi, dengan konteks history."""
     client = _get_gemini_client()
-    
-    # Build conversation context
-    history_text = ""
+
+    # Bangun konteks singkat dari history terakhir (untuk rewriter saja).
+    # Ini boleh pakai format sederhana karena tujuannya cuma bikin search query,
+    # bukan percakapan multi-turn.
+    history_snippet = ""
     if chat_history:
-        recent = chat_history[-6:]  
-        history_parts = []
-        for msg in recent:
-            role_label = "User" if msg.get("role") == "user" else "Kia"
-            history_parts.append(f"{role_label}: {msg.get('text', '')[:300]}")
-        history_text = "\n".join(history_parts)
-    
-    prompt = f"""RIWAYAT PERCAKAPAN:
-{history_text if history_text else "(Tidak ada riwayat)"}
+        lines = []
+        for msg in chat_history[-6:]:
+            role = "User" if msg.get("role") == "user" else "Kia"
+            content = msg.get("content", msg.get("text", ""))
+            lines.append(f"{role}: {content[:300]}")
+        history_snippet = "\n".join(lines)
 
-PESAN TERBARU USER:
-{raw_query}
-
-Tuliskan query pencarian hukum yang optimal untuk menemukan pasal relevan:"""
+    prompt = (
+        f"RIWAYAT PERCAKAPAN:\n{history_snippet or '(Tidak ada)'}\n\n"
+        f"PESAN TERBARU USER:\n{raw_query}\n\n"
+        f"Tuliskan query pencarian hukum yang optimal:"
+    )
 
     try:
-        response = client.models.generate_content(
+        resp = client.models.generate_content(
             model=LLM_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -208,22 +185,20 @@ Tuliskan query pencarian hukum yang optimal untuk menemukan pasal relevan:"""
                 max_output_tokens=150,
             ),
         )
-        rewritten = response.text.strip().strip('"').strip("'")
-        log.info(f"[RAG] Query rewritten: '{raw_query[:50]}...' → '{rewritten[:80]}...'")
+        rewritten = resp.text.strip().strip('"').strip("'")
+        log.info(f"[REWRITE] '{raw_query[:50]}' → '{rewritten[:80]}'")
         return rewritten
     except Exception as e:
-        log.warning(f"[RAG] Query rewrite failed, using original: {e}")
+        log.warning(f"[REWRITE] Gagal, pakai query asli: {e}")
         return raw_query
 
 
+# ── Embedding & Retrieval ───────────────────────────────────
+
 def embed_query(query: str) -> list[float]:
-    """Embed a user query using Voyage AI with input_type='query'."""
+    """Embed query pakai Voyage AI (input_type=query)."""
     client = _get_voyage_client()
-    result = client.embed(
-        [query],
-        model=EMBEDDING_MODEL,
-        input_type="query",
-    )
+    result = client.embed([query], model=EMBEDDING_MODEL, input_type="query")
     return result.embeddings[0]
 
 
@@ -234,7 +209,7 @@ def retrieve_pasals(
     match_threshold: float = 0.5,
     filter_kategori: Optional[str] = None,
 ) -> list[dict]:
-    """Call the match_dokumen_hukum RPC to retrieve relevant pasals."""
+    """Panggil RPC match_dokumen_hukum untuk ambil pasal relevan."""
     params = {
         "query_embedding": query_embedding,
         "match_threshold": match_threshold,
@@ -248,44 +223,46 @@ def retrieve_pasals(
 
 
 def _build_context(pasals: list[dict]) -> str:
-    """Build a context string from retrieved pasals for Gemini prompt."""
+    """Rangkai teks konteks pasal untuk disisipkan ke prompt."""
     if not pasals:
         return ""
-    
-    context_parts = []
+
+    parts = []
     for i, p in enumerate(pasals, 1):
-        similarity_pct = round(p.get("similarity", 0) * 100, 1)
-        header = f"[Sumber {i}] {p.get('nama_uu', 'N/A')} — {p.get('pasal_bagian', 'N/A')}"
+        sim = round(p.get("similarity", 0) * 100, 1)
+        header = f"[Sumber {i}] {p.get('nama_uu', '')} — {p.get('pasal_bagian', '')}"
         if p.get("judul_bab"):
             header += f" ({p['judul_bab']})"
-        header += f" [Relevansi: {similarity_pct}%]"
-        
-        context_parts.append(f"{header}\n{p.get('isi_teks', '')}")
-    
-    return "\n\n---\n\n".join(context_parts)
+        header += f" [Relevansi: {sim}%]"
+        parts.append(f"{header}\n{p.get('isi_teks', '')}")
+
+    return "\n\n---\n\n".join(parts)
 
 
 def _build_references(pasals: list[dict]) -> list[dict]:
-    """Build the pasal_referensi list from retrieved pasals."""
-    refs = []
-    for p in pasals:
-        refs.append({
+    """Bangun list referensi pasal untuk response frontend."""
+    return [
+        {
             "nama_uu": p.get("nama_uu", ""),
             "nomor_uu": p.get("nomor_uu", ""),
             "pasal_bagian": p.get("pasal_bagian", ""),
             "judul_bab": p.get("judul_bab", ""),
             "similarity": round(p.get("similarity", 0), 4),
-        })
-    return refs
+        }
+        for p in pasals
+    ]
 
-# TOOL EXECUTION — search_consultants
 
-def search_consultants(supabase: Client, kategori: str, max_budget: int = None) -> list[dict]:
-    """
-    Search for available legal consultants from the database.
-    Called by Gemini via function calling when Kia determines
-    the client is ready for a consultant referral.
-    """
+# ── Tool Execution ──────────────────────────────────────────
+
+def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
+    """Eksekusi tool call dari Gemini, return dict untuk FunctionResponse."""
+    if fn_name != "search_consultants":
+        return {"error": f"Unknown tool: {fn_name}"}
+
+    kategori = fn_args.get("kategori", "Umum")
+    max_budget = fn_args.get("max_budget")
+
     params = {}
     if kategori:
         params["p_spesialisasi"] = kategori
@@ -295,13 +272,100 @@ def search_consultants(supabase: Client, kategori: str, max_budget: int = None) 
     try:
         result = supabase.rpc("search_consultants_by_category", params).execute()
         consultants = result.data or []
-        log.info(f"[AGENT] Found {len(consultants)} consultants for kategori='{kategori}', budget={max_budget}")
-        return consultants
+        log.info(f"[TOOL] search_consultants → {len(consultants)} hasil (kategori={kategori})")
+        return {"consultants": consultants, "count": len(consultants)}
     except Exception as e:
-        log.error(f"[AGENT] Consultant search failed: {e}")
-        return []
+        log.error(f"[TOOL] search_consultants gagal: {e}")
+        return {"error": str(e), "consultants": []}
 
-# AGENTIC GENERATION — Gemini with Tools
+
+# ── Contents Builder ────────────────────────────────────────
+
+def _summarize_consultants(consultants: list[dict]) -> str:
+    """Bikin ringkasan singkat daftar konsultan untuk konteks history."""
+    if not consultants:
+        return "Tidak ditemukan konsultan."
+    names = [c.get("nama_lengkap", "?") for c in consultants[:5]]
+    return f"Ditemukan {len(consultants)} konsultan: {', '.join(names)}"
+
+
+def _build_contents(
+    chat_history: list[dict],
+    user_query: str,
+    pasal_context: str,
+) -> list[types.Content]:
+    """
+    Konversi chat history dari DB + query terbaru → list[types.Content]
+    yang siap dikirim ke Gemini.
+
+    Setiap pesan jadi Content terpisah dengan role user/model.
+    Pesan AI yang punya metadata consultant_list ditambahkan ringkasan
+    agar Gemini tau "oh, saya sudah pernah kasih rekomendasi konsultan."
+    """
+    contents: list[types.Content] = []
+
+    for msg in chat_history:
+        raw_role = msg.get("role", "user")
+        role = "user" if raw_role == "user" else "model"
+        text = msg.get("content", msg.get("text", ""))
+
+        # Kalau ini pesan AI yang mengandung hasil konsultan, tambahin ringkasan
+        meta = msg.get("metadata") or {}
+        if role == "model" and meta.get("type") == "consultant_list":
+            consultant_data = meta.get("consultants", [])
+            summary = _summarize_consultants(consultant_data)
+            text = f"{text}\n\n[Konteks internal: {summary}]"
+
+        if text.strip():
+            contents.append(
+                types.Content(role=role, parts=[types.Part.from_text(text=text)])
+            )
+
+    # Pesan user terbaru — query dan konteks pasal jadi Part terpisah
+    # supaya user input terisolasi dari instruksi (defense prompt injection)
+    user_parts = [types.Part.from_text(text=user_query)]
+    if pasal_context:
+        user_parts.append(
+            types.Part.from_text(
+                text=f"\n---\nKONTEKS PASAL HUKUM YANG RELEVAN:\n{pasal_context}"
+            )
+        )
+    contents.append(types.Content(role="user", parts=user_parts))
+
+    return contents
+
+
+def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
+    """
+    Potong pesan history dari AWAL (oldest-first) kalau total karakter
+    melebihi batas. Pesan terakhir (query user terbaru) TIDAK pernah dipotong.
+    """
+    if not contents:
+        return contents
+
+    # Pesan terakhir = query user terbaru, jangan disentuh
+    last_msg = contents[-1]
+    history = contents[:-1]
+
+    total_chars = sum(
+        sum(len(p.text or "") for p in c.parts if hasattr(p, "text"))
+        for c in history
+    )
+
+    # Buang dari awal sampai di bawah limit
+    while total_chars > MAX_HISTORY_CHARS and history:
+        removed = history.pop(0)
+        removed_chars = sum(
+            len(p.text or "") for p in removed.parts if hasattr(p, "text")
+        )
+        total_chars -= removed_chars
+        log.info(f"[TRUNCATE] Buang 1 pesan lama ({removed_chars} chars), sisa {total_chars}")
+
+    return history + [last_msg]
+
+
+# ── Agentic Generation ──────────────────────────────────────
+
 def agentic_generate(
     query: str,
     context: str,
@@ -309,85 +373,112 @@ def agentic_generate(
     supabase: Client = None,
 ) -> dict:
     """
-    Call Gemini with function calling tools enabled.
-    
-    Returns:
-        dict with either:
-        - {"type": "text", "jawaban": "..."} for normal text responses
-        - {"type": "consultant_list", "jawaban": "...", "consultants": [...]} for tool calls
+    Panggil Gemini dengan Tool support. Kalau Gemini minta tool call,
+    eksekusi fungsinya lalu kirim FunctionResponse balik ke Gemini
+    (true agentic loop). Gemini yang merangkai jawaban final.
+
+    Return dict:
+      - {"type": "text", "jawaban": "..."}
+      - {"type": "consultant_list", "jawaban": "...", "consultants": [...]}
     """
     client = _get_gemini_client()
-    
-    # Build conversation history
-    history_text = ""
-    if chat_history:
-        recent = chat_history[-6:]
-        history_parts = []
-        for msg in recent:
-            role_label = "User" if msg.get("role") == "user" else "Kia"
-            history_parts.append(f"{role_label}: {msg.get('text', '')[:500]}")
-        history_text = "RIWAYAT PERCAKAPAN:\n" + "\n".join(history_parts) + "\n\n"
-    
-    user_prompt = f"""{history_text}PESAN TERBARU USER:
-{query}
 
-KONTEKS PASAL HUKUM YANG RELEVAN:
-{context if context else "(Tidak ada pasal yang ditemukan)"}
+    # Bangun contents array (structured multi-turn)
+    contents = _build_contents(chat_history or [], query, context)
+    contents = _smart_truncate(contents)
 
-Jawab pesan user sesuai SOP wawancara. Jika sudah siap rekomendasikan konsultan, panggil fungsi search_consultants."""
-
-    response = client.models.generate_content(
-        model=LLM_MODEL,
-        contents=user_prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.4,
-            max_output_tokens=2048,
-            tools=[SEARCH_CONSULTANTS_TOOL],
-        ),
+    config = types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        temperature=0.4,
+        max_output_tokens=2048,
+        tools=[CONSULTANT_TOOL],
     )
-    
-    # Check if Gemini wants to call a function
-    if response.function_calls:
-        fc = response.function_calls[0]
-        log.info(f"[AGENT] Tool call detected: {fc.name}({fc.args})")
-        
-        if fc.name == "search_consultants" and supabase:
-            args = fc.args or {}
-            consultants = search_consultants(
-                supabase=supabase,
-                kategori=args.get("kategori", "Umum"),
-                max_budget=args.get("max_budget"),
-            )
-            
-            if consultants:
-                # Build a human-readable summary to accompany the cards
-                consultant_names = [c.get("nama_lengkap", "N/A") for c in consultants]
-                summary = (
-                    f"Berdasarkan analisis kasus Anda, saya menemukan {len(consultants)} konsultan hukum "
-                    f"dengan spesialisasi **{args.get('kategori', 'Umum')}** yang bisa membantu lebih lanjut. "
-                    f"Silakan pilih konsultan yang sesuai dengan kebutuhan Anda dan jadwalkan konsultasi."
-                )
-            else:
-                summary = (
-                    f"Mohon maaf, saat ini belum ada konsultan dengan spesialisasi "
-                    f"**{args.get('kategori', 'Umum')}** yang tersedia. "
-                    f"Silakan coba lagi nanti atau hubungi LBH terdekat untuk bantuan hukum gratis."
-                )
-            
-            return {
-                "type": "consultant_list",
-                "jawaban": summary,
-                "consultants": consultants,
-            }
-    
-    # Normal text response
-    return {
-        "type": "text",
-        "jawaban": response.text,
-    }
 
-# MAIN RAG PIPELINE (AGENTIC)
+    consultants_found = []
+    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
+
+    # Agentic loop — maksimal MAX_TOOL_LOOP iterasi
+    for iteration in range(MAX_TOOL_LOOP):
+        log.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
+
+        response = None
+        for model_name in AVAILABLE_MODELS:
+            try:
+                log.info(f"[AGENT] Mencoba model: {model_name}")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                )
+                break # Berhasil
+            except Exception as e:
+                if "429" in str(e):
+                    log.warning(f"[AGENT] Model {model_name} terkena limit 429. Mencoba fallback...")
+                    continue
+                else:
+                    raise e # Lempar jika bukan 429
+        
+        if response is None:
+            # Semua model di loop terkena 429
+            raise Exception("429 RESOURCE_EXHAUSTED: Semua model fallback terkena limit.")
+
+        # Kalau tidak ada function call, berarti Gemini sudah punya jawaban final
+        if not response.function_calls:
+            break
+
+        # Gemini minta panggil tool
+        fc = response.function_calls[0]
+        log.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
+
+        if not supabase:
+            log.error("[AGENT] Tool call tapi supabase client None, skip")
+            break
+
+        # Eksekusi tool
+        tool_result = _execute_tool(supabase, fc.name, fc.args or {})
+
+        # Simpan konsultan kalau ada
+        if fc.name == "search_consultants":
+            consultants_found = tool_result.get("consultants", [])
+
+        # Append turn model (function call) + turn tool (function response)
+        # ke contents, lalu loop lagi biar Gemini baca hasilnya
+        contents.append(response.candidates[0].content)
+        contents.append(
+            types.Content(
+                role="tool",
+                parts=[
+                    types.Part.from_function_response(
+                        name=fc.name,
+                        response=tool_result,
+                    )
+                ],
+            )
+        )
+    else:
+        # Loop habis tanpa break = Gemini terus-terusan minta tool call
+        log.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
+
+    # Ambil text jawaban dari response terakhir
+    jawaban = ""
+    try:
+        jawaban = response.text or ""
+    except Exception:
+        # response.text bisa raise kalau isinya cuma function_call tanpa text
+        jawaban = "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
+
+    # Tentukan tipe response
+    if consultants_found:
+        return {
+            "type": "consultant_list",
+            "jawaban": jawaban,
+            "consultants": consultants_found,
+        }
+
+    return {"type": "text", "jawaban": jawaban}
+
+
+# ── Main Triage Pipeline ────────────────────────────────────
 
 def triage(
     query: str,
@@ -396,24 +487,28 @@ def triage(
     chat_history: list[dict] = None,
 ) -> dict:
     """
-    Main Agentic RAG triage pipeline.
-    
-    1. Rewrite query using conversation context (casual → legal terms)
-    2. Embed rewritten query
-    3. Retrieve relevant pasals (with retry at lower threshold)
-    4. Call Gemini with Tools for agentic response
-    5. Return structured response (text OR consultant_list)
+    Pipeline utama RAG + Agentic.
+      1. Rewrite query
+      2. Embed
+      3. Retrieve pasal (threshold 0.5 only, no fallback)
+      4. Agentic generate
+      5. Return structured response
     """
-    log.info(f"[RAG] Raw query: {query[:100]}...")
-    
-    # Step 1: Rewrite query for better retrieval
-    search_query = rewrite_query(query, chat_history)
-    
-    # Step 2: Embed the rewritten query
+    log.info(f"[TRIAGE] Query masuk: {query[:100]}")
+
+    # 1. Rewrite (Conditional)
+    if len(query.split()) < 5:
+        log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
+        search_query = rewrite_query(query, chat_history)
+    else:
+        log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
+        search_query = query
+
+    # 2. Embed
     query_embedding = embed_query(search_query)
-    log.info(f"[RAG] Search query embedded (dim={len(query_embedding)})")
-    
-    # Step 3: Retrieve pasals with primary threshold
+    log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
+
+    # 3. Retrieve — single threshold, no fallback cocoklogi
     pasals = retrieve_pasals(
         supabase=supabase,
         query_embedding=query_embedding,
@@ -421,52 +516,26 @@ def triage(
         match_threshold=0.5,
         filter_kategori=kategori,
     )
-    log.info(f"[RAG] Retrieved {len(pasals)} pasals (threshold=0.5)")
-    
-    # Step 3b: Retry with lower threshold if < 3 results
-    if len(pasals) < 3:
-        log.info("[RAG] Too few results, retrying with threshold=0.35...")
-        pasals = retrieve_pasals(
-            supabase=supabase,
-            query_embedding=query_embedding,
-            match_count=5,
-            match_threshold=0.35,
-            filter_kategori=kategori,
-        )
-        log.info(f"[RAG] Retry retrieved {len(pasals)} pasals (threshold=0.35)")
-    
-    # Step 4: Build context from retrieved pasals
+    log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
+
+    # 4. Build context & references
     context = _build_context(pasals)
-    references = _build_references(pasals) if pasals else []
-    
-    # Step 5: Agentic generation (Gemini with Tools)
-    agent_result = agentic_generate(
+    references = _build_references(pasals)
+
+    # 5. Agentic generate
+    result = agentic_generate(
         query=query,
         context=context,
         chat_history=chat_history,
         supabase=supabase,
     )
-    
-    log.info(f"[RAG] Agent result type: {agent_result['type']}")
-    
-    # Step 6: Build final response
-    if agent_result["type"] == "consultant_list":
-        return {
-            "type": "consultant_list",
-            "jawaban": agent_result["jawaban"],
-            "consultants": agent_result.get("consultants", []),
-            "pasal_referensi": references,
-            "disclaimer": DISCLAIMER,
-        }
-    else:
-        # Handle no pasal results with fallback message
-        jawaban = agent_result["jawaban"]
-        if not pasals and not chat_history:
-            jawaban = NO_RESULTS_MSG
-        
-        return {
-            "type": "text",
-            "jawaban": jawaban,
-            "pasal_referensi": references,
-            "disclaimer": DISCLAIMER,
-        }
+    log.info(f"[TRIAGE] Result type: {result['type']}")
+
+    # 6. Return
+    return {
+        "type": result["type"],
+        "jawaban": result["jawaban"],
+        "consultants": result.get("consultants", []),
+        "pasal_referensi": references,
+        "disclaimer": DISCLAIMER,
+    }

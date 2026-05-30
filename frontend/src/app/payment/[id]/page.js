@@ -76,7 +76,9 @@ export default function PaymentPage() {
   });
 
   // --- 4. DERIVED STATE ---
-  const konsultan = consultation?.jadwal_ketersediaan?.konsultan || {};
+  const konsultanViaJadwal = consultation?.jadwal_ketersediaan?.konsultan || {};
+  const konsultanDirect = consultation?.konsultan || {};
+  const konsultan = konsultanViaJadwal.nama_lengkap ? konsultanViaJadwal : konsultanDirect;
   const isSettled = paymentStatus?.status_pembayaran === "settlement";
 
   // --- 5. RENDER LOGIC ---
@@ -95,7 +97,7 @@ export default function PaymentPage() {
   if (isError || !consultation) return <ErrorState />;
 
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500">
+    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500" data-testid="payment-page">
       <Script
         src={midtransScriptUrl}
         data-client-key={midtransClientKey}
@@ -137,6 +139,7 @@ export default function PaymentPage() {
                 isLoading={transactionMutation.isPending}
                 onClick={() => transactionMutation.mutate()}
                 className="py-6 rounded-2xl"
+                data-testid="payment-pay-btn"
               >
                 <div className="flex items-center gap-3">
                   <MaterialIcon name="account_balance_wallet" />

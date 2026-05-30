@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { InputField, PasswordField, Button } from "@/components/ui";
+import Link from "next/link";
 
 export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -13,9 +14,9 @@ export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
       {errorMsg && (
-        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl" data-testid="login-error-msg">
           {errorMsg}
         </div>
       )}
@@ -28,16 +29,25 @@ export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
         value={formData.email}
         onChange={handleChange}
         required
+        data-testid="login-email-input"
       />
 
-      <PasswordField
-        name="password"
-        placeholder="••••••••"
-        value={formData.password}
-        onChange={handleChange}
-      />
+      <div className="space-y-1">
+        <PasswordField
+          name="password"
+          placeholder="••••••••"
+          value={formData.password}
+          onChange={handleChange}
+          data-testid="login-password-input"
+        />
+        <div className="flex justify-end">
+          <Link href="/auth/forgot-password" className="text-xs font-medium text-muted hover:text-main transition-colors">
+            Lupa Password?
+          </Link>
+        </div>
+      </div>
 
-      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+      <Button type="submit" className="mt-2 w-full" disabled={isLoading} data-testid="login-submit-btn">
         {isLoading ? "Memverifikasi..." : "Masuk"}
       </Button>
     </form>

@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/tests/e2e/results/
+/test-results/
+/blob-report/
+/playwright-report/
 
 # next.js
 /.next/
@@ -31,7 +35,9 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.e2e
+.env.*
 
 # vercel
 .vercel

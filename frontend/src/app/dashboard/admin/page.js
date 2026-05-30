@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
     .slice(0, 1);
 
   return (
-    <div className="bg-bg text-main min-h-screen flex transition-colors duration-500">
+    <div className="bg-bg text-main min-h-screen flex transition-colors duration-500" data-testid="admin-dashboard">
       <Sidebar role="admin" />
 
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-all overflow-x-hidden">

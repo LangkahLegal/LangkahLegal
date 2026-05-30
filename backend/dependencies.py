@@ -1,12 +1,12 @@
 import os
 import httpx
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
 from database import get_supabase_client
 
 # Skema otorisasi standar (Bearer Token)
-security = HTTPBearer()
+# Di-override di bawah agar tidak error otomatis jika header kosong
 
 def _get_supabase_config() -> tuple[str, str]:
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
@@ -78,12 +78,25 @@ def _get_supabase_user(token: str) -> dict:
     }
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Client = Depends(get_supabase_client)):
+security = HTTPBearer(auto_error=False)
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    ll_token: str | None = Cookie(default=None),
+    db: Client = Depends(get_supabase_client)
+):
     """
     Refactor: Validasi token menggunakan API resmi Supabase.
-    Backend tidak lagi membuat/mengecek JWT sendiri.
+    Membaca token dari Cookie (ll_token) atau dari header Authorization.
     """
-    token = credentials.credentials
+    token = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif ll_token:
+        token = ll_token
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Token tidak ditemukan di cookie maupun header.")
     try:
         # 1. Validasi token langsung ke Supabase Cloud
         user_res = db.auth.get_user(token)

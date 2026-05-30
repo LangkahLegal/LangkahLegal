@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
+import { authService } from "@/services/auth.service";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui";
@@ -20,18 +21,29 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (formData.newPassword.length < 6) {
+      alert("Kata sandi minimal 6 karakter.");
+      return;
+    }
+
     if (formData.newPassword !== formData.confirmPassword) {
       alert("Konfirmasi password baru tidak cocok.");
       return;
     }
 
     setIsLoading(true);
-    // Simulasi API call
-    setTimeout(() => {
+    try {
+      await authService.resetPassword({
+        newPassword: formData.newPassword,
+      });
+      alert("Kata sandi berhasil diperbarui! Silakan login kembali dengan sandi baru Anda.");
+      router.replace("/auth/login");
+    } catch (err) {
+      alert(err?.message || "Gagal memperbarui kata sandi.");
+    } finally {
       setIsLoading(false);
-      alert("Kata sandi berhasil diperbarui!");
-      router.back();
-    }, 2000);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -65,16 +77,8 @@ export default function ChangePasswordPage() {
             {/* Form Section */}
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-6">
-                <PasswordField
-                  label="Kata Sandi Saat Ini"
-                  id="currentPassword"
-                  name="currentPassword"
-                  value={formData.currentPassword}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  required
-                />
-
+                {/* Kolom 'Kata Sandi Saat Ini' dihapus agar pengguna yang mendaftar via Google (OAuth)
+                    tetap dapat membuat kata sandi tanpa terhalang validasi kata sandi lama. */}
                 <PasswordField
                   label="Kata Sandi Baru"
                   id="newPassword"

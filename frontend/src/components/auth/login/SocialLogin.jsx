@@ -17,7 +17,7 @@ export default function SocialLogin({ onGoogleLogin }) {
         <div className="flex-grow h-px bg-muted/20" />
       </div>
 
-      <Button variant="social" type="button" fullWidth onClick={onGoogleLogin}>
+      <Button variant="social" type="button" fullWidth onClick={onGoogleLogin} data-testid="google-login-btn">
         <GoogleIcon />
         <span>Masuk dengan Google</span>
       </Button>

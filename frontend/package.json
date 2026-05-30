@@ -6,7 +6,21 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:auth": "playwright test --grep @auth",
+    "test:e2e:explore": "playwright test --grep @explore",
+    "test:e2e:consultation": "playwright test --grep @consultation",
+    "test:e2e:schedule": "playwright test --grep @schedule",
+    "test:e2e:bursa": "playwright test --grep @bursa",
+    "test:e2e:profile": "playwright test --grep @profile",
+    "test:e2e:payment": "playwright test --grep @payment",
+    "test:e2e:chatbot": "playwright test --grep @chatbot",
+    "test:e2e:admin": "playwright test --grep @admin",
+    "test:e2e:report": "playwright show-report tests/e2e/results/html-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
@@ -16,7 +30,7 @@
     "axios": "^1.14.0",
     "framer-motion": "^12.38.0",
     "lightningcss": "^1.32.0",
-    "next": "^16.2.4",
+    "next": "15.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
@@ -25,8 +39,10 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4"

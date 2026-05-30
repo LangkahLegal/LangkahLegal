@@ -1,62 +1,12 @@
 import api from "@/lib/axios";
 
-const getCookieBase = (maxAgeSeconds) => {
-  const parts = [`max-age=${maxAgeSeconds}`, "path=/", "samesite=lax"];
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    parts.push("secure");
-  }
-  return parts.join("; ");
-};
-
-const setCookie = (name, value, maxAgeSeconds = 60 * 60 * 24 * 7) => {
-  if (typeof document === "undefined") return;
-  const encodedValue = encodeURIComponent(value || "");
-  document.cookie = `${name}=${encodedValue}; ${getCookieBase(maxAgeSeconds)}`;
-};
+// Catatan: BFF Pattern - Frontend tidak lagi berurusan dengan penyimpanan token!
+// Cookie (ll_token, ll_refresh) dikelola sepenuhnya oleh Backend secara HttpOnly.
 
 const getCookieValue = (name) => {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
   return match ? decodeURIComponent(match[2]) : null;
-};
-
-const clearCookie = (name) => {
-  if (typeof document === "undefined") return;
-  document.cookie = `${name}=; max-age=0; path=/; samesite=lax`;
-};
-
-const saveSessionTokens = (session) => {
-  if (typeof window === "undefined") return;
-  if (session?.access_token) {
-    localStorage.setItem("token", session.access_token);
-    setCookie("ll_token", session.access_token, session.expires_in || 60 * 60);
-  }
-  if (session?.refresh_token) {
-    localStorage.setItem("refresh_token", session.refresh_token);
-    setCookie("ll_refresh", session.refresh_token, 60 * 60 * 24 * 30);
-  }
-};
-
-const getRefreshToken = () => {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("refresh_token") || getCookieValue("ll_refresh");
-};
-
-const clearAuthStorage = () => {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
-  localStorage.removeItem("refresh_token");
-  clearCookie("ll_token");
-  clearCookie("ll_role");
-  clearCookie("ll_refresh");
-};
-
-const saveRoleCookie = (role) => {
-  if (!role) {
-    clearCookie("ll_role");
-    return;
-  }
-  setCookie("ll_role", role);
 };
 
 export const authService = {
@@ -76,9 +26,7 @@ export const authService = {
         emailRedirectTo,
       });
 
-      const data = response?.data?.data;
-      saveSessionTokens(data?.session);
-      return data;
+      return response?.data?.data;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal mendaftar.");
@@ -117,9 +65,7 @@ export const authService = {
         type,
       });
 
-      const data = response?.data?.data;
-      saveSessionTokens(data?.session);
-      return data;
+      return response?.data?.data;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Kode OTP tidak valid.");
@@ -133,9 +79,7 @@ export const authService = {
         password,
       });
 
-      const data = response?.data?.data;
-      saveSessionTokens(data?.session);
-      return data?.session;
+      return response?.data?.data?.session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal login.");
@@ -152,7 +96,6 @@ export const authService = {
         throw new Error("Gagal menyiapkan login Google.");
       }
       if (typeof window !== "undefined") {
-        sessionStorage.setItem("ll_oauth_verifier", data.code_verifier || "");
         window.location.href = data.url;
       }
     } catch (error) {
@@ -161,39 +104,20 @@ export const authService = {
     }
   },
 
-  getSession: async () => {
+  exchangeCode: async (code) => {
     try {
-      if (typeof window === "undefined") return null;
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code") || "";
-      const codeVerifier = sessionStorage.getItem("ll_oauth_verifier") || "";
-
-      if (!code || !codeVerifier) return null;
-
-      const response = await api.get("/auth/session", {
-        params: {
-          code,
-          code_verifier: codeVerifier,
-        },
-      });
-
-      sessionStorage.removeItem("ll_oauth_verifier");
-
-      const data = response?.data?.data;
-      saveSessionTokens(data?.session);
-      return data?.session;
+      const response = await api.post("/auth/exchange-code", { code });
+      return response?.data?.data?.session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
-      throw new Error(message || "Gagal mengambil sesi.");
+      throw new Error(message || "Gagal memverifikasi login.");
     }
   },
 
   getProfile: async () => {
     try {
       const response = await api.get("/auth/profile");
-      const data = response?.data?.data || null;
-      saveRoleCookie(data?.role);
-      return data;
+      return response?.data?.data || null;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal mengambil profil.");
@@ -202,16 +126,9 @@ export const authService = {
 
   refreshSession: async () => {
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) return null;
-
-      const response = await api.post("/auth/refresh", {
-        refresh_token: refreshToken,
-      });
-
-      const data = response?.data?.data;
-      saveSessionTokens(data?.session);
-      return data?.session;
+      // Backend akan otomatis membaca ll_refresh dari cookie HttpOnly
+      const response = await api.post("/auth/refresh");
+      return response?.data?.data?.session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memperbarui sesi.");
@@ -221,9 +138,7 @@ export const authService = {
   updateRole: async (role) => {
     try {
       const response = await api.post("/auth/role", { role });
-      const data = response?.data?.data || null;
-      saveRoleCookie(role);
-      return data;
+      return response?.data?.data || null;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memperbarui role.");
@@ -232,12 +147,38 @@ export const authService = {
 
   logout: async () => {
     try {
+      // Backend otomatis menghapus cookies saat endpoint ini dipanggil
       await api.post("/auth/logout");
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal logout.");
-    } finally {
-      clearAuthStorage();
+    }
+  },
+
+  forgotPassword: async ({ email, emailRedirectTo }) => {
+    try {
+      await api.post("/auth/forgot-password", {
+        email,
+        emailRedirectTo,
+      });
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.message;
+      throw new Error(message || "Gagal mengirim link reset password.");
+    }
+  },
+
+  resetPassword: async ({ newPassword }) => {
+    try {
+      await api.post("/auth/reset-password", {
+        new_password: newPassword,
+      });
+    } catch (error) {
+      let message = error?.response?.data?.detail || error?.message;
+      // Handle array of errors from FastAPI 422 Unprocessable Entity
+      if (Array.isArray(message)) {
+        message = message.map(err => err.msg).join(", ");
+      }
+      throw new Error(message || "Gagal reset password.");
     }
   },
 };
