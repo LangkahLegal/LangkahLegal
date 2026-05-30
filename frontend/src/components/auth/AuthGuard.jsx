@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   getStoredAccessToken,
@@ -25,6 +25,26 @@ const normalizeRole = (role) => {
   return null;
 };
 
+const readSessionSnapshot = () => {
+  if (typeof window === "undefined") {
+    return {
+      hasSession: false,
+      role: null,
+      isReady: false,
+    };
+  }
+
+  const accessToken = getStoredAccessToken();
+  const refreshToken = getStoredRefreshToken();
+  const storedRole = normalizeRole(getStoredRole());
+
+  return {
+    hasSession: Boolean(accessToken || refreshToken),
+    role: storedRole,
+    isReady: true,
+  };
+};
+
 export default function AuthGuard({
   children,
   requireRole = false,
@@ -32,25 +52,7 @@ export default function AuthGuard({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const sessionSnapshot = useSyncExternalStore(
-    () => () => {},
-    () => {
-      const accessToken = getStoredAccessToken();
-      const refreshToken = getStoredRefreshToken();
-      const storedRole = normalizeRole(getStoredRole());
-
-      return {
-        hasSession: Boolean(accessToken || refreshToken),
-        role: storedRole,
-        isReady: true,
-      };
-    },
-    () => ({
-      hasSession: false,
-      role: null,
-      isReady: false,
-    }),
-  );
+  const sessionSnapshot = useMemo(() => readSessionSnapshot(), []);
 
   const { hasSession, role, isReady } = sessionSnapshot;
 
