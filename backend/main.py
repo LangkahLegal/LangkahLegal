@@ -38,9 +38,10 @@ Catatan integrasi frontend:
 app.state.limiter = limiter
 
 # 1. SETUP CORS (Sangat penting agar Next.js bisa akses API ini)
+# Credentials + cookie tidak boleh dipakai bersama allow_origins=["*"] di browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Bisa diganti ["http://localhost:3000"] saat development ketat
+    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:3000|http://127.0.0.1:3000",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
