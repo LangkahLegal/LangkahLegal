@@ -30,6 +30,16 @@ from schemas.auth import (
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
 
+
+def _get_cookie_flags() -> dict:
+    settings = get_settings()
+    is_production = settings.app_env.lower() == "production"
+
+    return {
+        "samesite": "none" if is_production else "lax",
+        "secure": is_production,
+    }
+
 def get_token_from_request(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     ll_token: Optional[str] = Cookie(None)
@@ -43,6 +53,8 @@ def get_token_from_request(
 def _set_auth_cookies(response: Response, session_data: dict):
     if not isinstance(session_data, dict):
         return
+
+    cookie_flags = _get_cookie_flags()
         
     access_token = session_data.get("access_token")
     refresh_token = session_data.get("refresh_token")
@@ -54,7 +66,8 @@ def _set_auth_cookies(response: Response, session_data: dict):
             value=access_token,
             max_age=expires_in,
             httponly=True,
-            samesite="lax",
+            samesite=cookie_flags["samesite"],
+            secure=cookie_flags["secure"],
             path="/"
         )
     
@@ -64,7 +77,8 @@ def _set_auth_cookies(response: Response, session_data: dict):
             value=refresh_token,
             max_age=30 * 24 * 60 * 60,
             httponly=True,
-            samesite="lax",
+            samesite=cookie_flags["samesite"],
+            secure=cookie_flags["secure"],
             path="/"
         )
 
@@ -286,13 +300,15 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
     }
     settings = get_settings()
     url = f"{settings.supabase_url}/auth/v1/authorize?{urlencode(params)}"
+    cookie_flags = _get_cookie_flags()
 
     response.set_cookie(
         key="ll_oauth_verifier",
         value=code_verifier,
         max_age=3600,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_flags["samesite"],
+        secure=cookie_flags["secure"],
         path="/"
     )
 
