@@ -10,8 +10,25 @@ import {
  * Konfigurasi Dasar Axios
  * Mengambil base URL dari environment variable (.env.local)
  */
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const normalizeApiBaseUrl = (rawUrl) => {
+  if (!rawUrl) return "http://localhost:8000/api/v1";
+
+  try {
+    const parsed = new URL(rawUrl);
+    const isLocalhost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+
+    if (!isLocalhost && parsed.protocol === "http:") {
+      parsed.protocol = "https:";
+    }
+
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return rawUrl;
+  }
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
