@@ -3,6 +3,35 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import { useTheme } from "@/providers/ThemeProvider";
 
+const getSafeAvatarSrc = (url, fallbackUrl) => {
+  if (!url) return fallbackUrl;
+
+  try {
+    const parsed = new URL(url);
+    const safeHosts = new Set([
+      "ui-avatars.com",
+      "lh3.googleusercontent.com",
+      "images.unsplash.com",
+      "supabase.co",
+      "*.supabase.co",
+      "storage.googleapis.com",
+      "res.cloudinary.com",
+    ]);
+
+    if (parsed.hostname === "i.ibb.co" || parsed.hostname.endsWith(".ibb.co")) {
+      return fallbackUrl;
+    }
+
+    const isSafeHost =
+      safeHosts.has(parsed.hostname) ||
+      parsed.hostname.endsWith(".supabase.co");
+
+    return parsed.protocol === "https:" && isSafeHost ? url : fallbackUrl;
+  } catch {
+    return fallbackUrl;
+  }
+};
+
 export default function ConsultantHero({
   name = "User",
   specialization = "",
@@ -28,6 +57,7 @@ export default function ConsultantHero({
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     safeName,
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=256&bold=true`;
+  const avatarSrc = getSafeAvatarSrc(avatar, fallbackUrl);
 
   // Memastikan URL diawali dengan protokol
   const handleOpenLink = (url) => {
@@ -48,7 +78,7 @@ export default function ConsultantHero({
           {/* REFACTOR: border-primary */}
           <div className="w-full h-full rounded-full border-[3px] border-primary p-1.5 overflow-hidden">
             <img
-              src={avatar || fallbackUrl}
+              src={avatarSrc}
               className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
               alt={safeName}
               onError={(e) => {

@@ -4,6 +4,35 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import { useTheme } from "@/providers/ThemeProvider";
 
+const getSafeAvatarSrc = (url, fallbackUrl) => {
+  if (!url) return fallbackUrl;
+
+  try {
+    const parsed = new URL(url);
+    const safeHosts = new Set([
+      "ui-avatars.com",
+      "lh3.googleusercontent.com",
+      "images.unsplash.com",
+      "supabase.co",
+      "*.supabase.co",
+      "storage.googleapis.com",
+      "res.cloudinary.com",
+    ]);
+
+    if (parsed.hostname === "i.ibb.co" || parsed.hostname.endsWith(".ibb.co")) {
+      return fallbackUrl;
+    }
+
+    const isSafeHost =
+      safeHosts.has(parsed.hostname) ||
+      parsed.hostname.endsWith(".supabase.co");
+
+    return parsed.protocol === "https:" && isSafeHost ? url : fallbackUrl;
+  } catch {
+    return fallbackUrl;
+  }
+};
+
 export default function VerificationCard({ item, onDetail, onReject }) {
   const { theme } = useTheme();
   const currentTheme = theme || "dark-tech";
@@ -18,6 +47,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     item.nama_lengkap || "User",
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=128&bold=true`;
+  const avatarSrc = getSafeAvatarSrc(item.foto_profil, fallbackUrl);
 
   const isPending = item.status === "pending";
 
@@ -57,7 +87,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
                 }`}
             >
               <img
-                src={item.foto_profil || fallbackUrl}
+                src={avatarSrc}
                 alt={item.nama_lengkap}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 onError={(e) => {
