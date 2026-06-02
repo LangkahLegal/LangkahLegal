@@ -495,47 +495,58 @@ def triage(
       5. Return structured response
     """
     log.info(f"[TRIAGE] Query masuk: {query[:100]}")
+    current_step = "init"
 
-    # 1. Rewrite (Conditional)
-    if len(query.split()) < 5:
-        log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
-        search_query = rewrite_query(query, chat_history)
-    else:
-        log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
-        search_query = query
+    try:
+        # 1. Rewrite (Conditional)
+        current_step = "rewrite"
+        if len(query.split()) < 5:
+            log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
+            search_query = rewrite_query(query, chat_history)
+        else:
+            log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
+            search_query = query
 
-    # 2. Embed
-    query_embedding = embed_query(search_query)
-    log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
+        # 2. Embed
+        current_step = "embed"
+        query_embedding = embed_query(search_query)
+        log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
 
-    # 3. Retrieve — single threshold, no fallback cocoklogi
-    pasals = retrieve_pasals(
-        supabase=supabase,
-        query_embedding=query_embedding,
-        match_count=5,
-        match_threshold=0.5,
-        filter_kategori=kategori,
-    )
-    log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
+        # 3. Retrieve — single threshold, no fallback cocoklogi
+        current_step = "retrieve"
+        pasals = retrieve_pasals(
+            supabase=supabase,
+            query_embedding=query_embedding,
+            match_count=5,
+            match_threshold=0.5,
+            filter_kategori=kategori,
+        )
+        log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
 
-    # 4. Build context & references
-    context = _build_context(pasals)
-    references = _build_references(pasals)
+        # 4. Build context & references
+        current_step = "build_context"
+        context = _build_context(pasals)
+        references = _build_references(pasals)
 
-    # 5. Agentic generate
-    result = agentic_generate(
-        query=query,
-        context=context,
-        chat_history=chat_history,
-        supabase=supabase,
-    )
-    log.info(f"[TRIAGE] Result type: {result['type']}")
+        # 5. Agentic generate
+        current_step = "agentic_generate"
+        result = agentic_generate(
+            query=query,
+            context=context,
+            chat_history=chat_history,
+            supabase=supabase,
+        )
+        log.info(f"[TRIAGE] Result type: {result['type']}")
 
-    # 6. Return
-    return {
-        "type": result["type"],
-        "jawaban": result["jawaban"],
-        "consultants": result.get("consultants", []),
-        "pasal_referensi": references,
-        "disclaimer": DISCLAIMER,
-    }
+        # 6. Return
+        return {
+            "type": result["type"],
+            "jawaban": result["jawaban"],
+            "consultants": result.get("consultants", []),
+            "pasal_referensi": references,
+            "disclaimer": DISCLAIMER,
+        }
+    except Exception as e:
+        log.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)
+        raise RuntimeError(f"RAG pipeline failed at step '{current_step}': {type(e).__name__}: {str(e)[:200]}") from e
+

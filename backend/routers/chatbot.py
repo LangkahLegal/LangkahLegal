@@ -287,7 +287,9 @@ async def chatbot_triage(
         supabase = get_supabase_client()
         session_id = payload.session_id
         is_new_session = False
+        current_step = "init"
         
+        current_step = "session_resolve"
         if not session_id:
             session_result = (
                 supabase.table("chat_sessions")
@@ -319,8 +321,10 @@ async def chatbot_triage(
             )
             is_new_session = (msg_count.count or 0) == 0
         
+        current_step = "load_history"
         chat_history = _get_chat_history_from_db(supabase, session_id, limit=30)
         
+        current_step = "rag_triage"
         result = triage(
             query=payload.query,
             supabase=supabase,
@@ -328,10 +332,12 @@ async def chatbot_triage(
             chat_history=chat_history,
         )
         
+        current_step = "save_user_msg"
         response_type = result.get("type", "text")
         
         _save_message(supabase, session_id, "user", payload.query)
         
+        current_step = "save_ai_msg"
         ai_metadata = {
             "type": response_type,
             "pasal_referensi": result.get("pasal_referensi", []),
@@ -348,9 +354,11 @@ async def chatbot_triage(
             metadata=ai_metadata,
         )
         
+        current_step = "auto_title"
         if is_new_session:
             _auto_generate_title(supabase, session_id, payload.query)
         
+        current_step = "build_response"
         return TriageResponse(
             session_id=session_id,
             type=response_type,
@@ -372,8 +380,9 @@ async def chatbot_triage(
                 disclaimer="",
             )
             
-        log.error(f"[CHATBOT] Error processing triage: {e}", exc_info=True)
+        step_info = current_step if 'current_step' in locals() else 'unknown'
+        log.error(f"[CHATBOT] Error at step '{step_info}': {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi.",
+            detail=f"Terjadi kesalahan saat memproses pertanyaan Anda (step: {step_info}). Error: {type(e).__name__}: {str(e)[:300]}",
         )
