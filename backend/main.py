@@ -39,6 +39,15 @@ app.state.limiter = limiter
 
 # 1. SETUP CORS (Sangat penting agar Next.js bisa akses API ini)
 # Credentials + cookie tidak boleh dipakai bersama allow_origins=["*"] di browser.
+# Middleware untuk menangani X-Forwarded-Proto dari Railway reverse proxy.
+# Ini memastikan request.url.scheme = "https" sehingga redirect apapun
+# tetap menggunakan HTTPS, bukan HTTP.
+@app.middleware("http")
+async def force_https_scheme(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.langkahlegal\.com|http://localhost:3000|http://127.0.0.1:3000",

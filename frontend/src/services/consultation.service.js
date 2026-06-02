@@ -13,7 +13,7 @@ export const consultationService = {
     try {
       const params =
         spesialisasi && spesialisasi !== "semua" ? { spesialisasi } : {};
-      const response = await api.get("/consultants", { params });
+      const response = await api.get("/consultants/", { params });
       return response.data.data;
     } catch (error) {
       console.error("Gagal memuat katalog:", error);
