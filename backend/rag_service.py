@@ -395,32 +395,45 @@ def agentic_generate(
     )
 
     consultants_found = []
-    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
+    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+    MAX_RETRIES = 2  # Retry sampai 2x kalau semua model 503
 
     # Agentic loop — maksimal MAX_TOOL_LOOP iterasi
     for iteration in range(MAX_TOOL_LOOP):
         log.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
 
         response = None
-        for model_name in AVAILABLE_MODELS:
-            try:
-                log.info(f"[AGENT] Mencoba model: {model_name}")
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                )
-                break # Berhasil
-            except Exception as e:
-                if "429" in str(e):
-                    log.warning(f"[AGENT] Model {model_name} terkena limit 429. Mencoba fallback...")
-                    continue
-                else:
-                    raise e # Lempar jika bukan 429
+        for retry in range(MAX_RETRIES + 1):
+            for model_name in AVAILABLE_MODELS:
+                try:
+                    log.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                    break  # Berhasil
+                except Exception as e:
+                    err_str = str(e)
+                    if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                        log.warning(f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback...")
+                        continue
+                    else:
+                        raise e
+            
+            if response is not None:
+                break  # Berhasil, keluar dari retry loop
+            
+            # Semua model gagal, tunggu sebelum retry
+            if retry < MAX_RETRIES:
+                import time
+                wait_time = 2 * (retry + 1)  # 2s, 4s
+                log.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
+                time.sleep(wait_time)
         
         if response is None:
-            # Semua model di loop terkena 429
-            raise Exception("429 RESOURCE_EXHAUSTED: Semua model fallback terkena limit.")
+            # Semua model dan retry habis
+            raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
 
         # Kalau tidak ada function call, berarti Gemini sudah punya jawaban final
         if not response.function_calls:

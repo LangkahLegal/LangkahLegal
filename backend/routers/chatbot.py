@@ -371,11 +371,12 @@ async def chatbot_triage(
     except HTTPException:
         raise
     except Exception as e:
-        if "429" in str(e):
+        err_str = str(e)
+        if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str or "RESOURCE_EXHAUSTED" in err_str:
             return TriageResponse(
                 session_id=session_id if 'session_id' in locals() and session_id else "",
                 type="error",
-                jawaban="Sistem kami sedang melayani banyak antrean. Mohon tunggu sekitar 20 detik sebelum mengirim pesan lagi ya!",
+                jawaban="Sistem AI kami sedang mengalami lonjakan permintaan. Mohon tunggu sekitar 30 detik lalu coba lagi ya! 🙏",
                 pasal_referensi=[],
                 disclaimer="",
             )
