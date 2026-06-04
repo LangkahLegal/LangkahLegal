@@ -43,18 +43,22 @@ export default function TanyaAIPage() {
   ];
   const [loadingStep, setLoadingStep] = useState(0);
 
-  useEffect(() => {
-    let interval;
-    if (isTyping) {
-      setLoadingStep(0);
-      interval = setInterval(() => {
-        setLoadingStep((prev) => (prev + 1) % loadingTexts.length);
-      }, 2000);
-    } else {
-      setLoadingStep(0);
-    }
-    return () => clearInterval(interval);
-  }, [isTyping]);
+  useEffect(
+    () => {
+      let interval;
+      if (isTyping) {
+        setLoadingStep(0);
+        interval = setInterval(() => {
+          setLoadingStep((prev) => (prev + 1) % loadingTexts.length);
+        }, 2000);
+      } else {
+        setLoadingStep(0);
+      }
+      return () => clearInterval(interval);
+    },
+    [isTyping],
+    loadingTexts.length,
+  );
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -203,8 +207,7 @@ export default function TanyaAIPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
         <ChatHeader
-          name="Kia"
-          avatarUrl="/images/visi.png"
+          name="Visi"
           status="Online"
           onToggleSidebar={() => setShowSidebar((p) => !p)}
           showSidebarToggle

@@ -17,12 +17,18 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
 
   const getRoleFallback = () => {
     const role = getStoredRole() || "client";
-    if (role.toLowerCase().includes("konsultan") || role.toLowerCase().includes("consultant")) return "/dashboard/consultant";
+    if (
+      role.toLowerCase().includes("konsultan") ||
+      role.toLowerCase().includes("consultant")
+    )
+      return "/dashboard/consultant";
     if (role.toLowerCase() === "admin") return "/dashboard/admin";
     return "/dashboard/client";
   };
 
-  let dynamicBack = isConsultantPage ? "/dashboard/consultant" : getRoleFallback();
+  let dynamicBack = isConsultantPage
+    ? "/dashboard/consultant"
+    : getRoleFallback();
 
   if (isSettingArea && pathname !== "/setting" && pathname !== "/settings") {
     dynamicBack = "/setting";
@@ -40,9 +46,14 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
     // Halaman dianggap sub-halaman jika memiliki kedalaman > 1 segment,
     // bukan dashboard, dan bukan halaman utama khusus role (yang berakhiran 'client', 'consultant', atau 'post')
     const isRolePage = ["client", "consultant", "post"].includes(lastSegment);
-    const isSubPage = segments.length > 1 && !pathname.includes("/dashboard") && !isRolePage;
+    const isSubPage =
+      segments.length > 1 && !pathname.includes("/dashboard") && !isRolePage;
 
-    if (isSubPage && typeof window !== "undefined" && window.history.length > 1) {
+    if (
+      isSubPage &&
+      typeof window !== "undefined" &&
+      window.history.length > 1
+    ) {
       router.back();
     } else {
       router.push(dynamicBack);
@@ -53,17 +64,19 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
     onSettingsClick || (() => router.push("/setting"));
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-5 lg:px-12 transition-all duration-300">
+    // Mengubah py-5 menjadi py-2.5 untuk mengurangi tinggi header
+    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-2.5 lg:px-12 transition-all duration-300">
       <div className="flex justify-between items-center max-w-[1600px] mx-auto">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             onClick={handleBackClick}
-            className="!p-0 !w-10 !h-10 lg:!w-12 lg:!h-12 !rounded-xl group/back border border-transparent hover:border-primary/30 hover:bg-primary/10"
+            // Menyesuaikan ukuran tombol agar lebih proporsional dengan padding yang baru
+            className="!p-0 !w-9 !h-9 lg:!w-10 lg:!h-10 !rounded-xl group/back border border-transparent hover:border-primary/30 hover:bg-primary/10"
           >
             <MaterialIcon
               name="west"
-              className="text-muted group-hover/back:text-primary group-hover/back:-translate-x-1 transition-all text-2xl lg:text-3xl"
+              className="text-muted group-hover/back:text-primary group-hover/back:-translate-x-1 transition-all text-xl lg:text-2xl"
             />
           </Button>
 
@@ -85,7 +98,8 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
             />
           </Button>
         ) : (
-          <div className="w-10 h-10 lg:w-12 lg:h-12" />
+          // Menyamakan ukuran div placeholder dengan tombol Back yang baru
+          <div className="w-9 h-9 lg:w-10 lg:h-10" />
         )}
       </div>
     </header>

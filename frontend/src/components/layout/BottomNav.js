@@ -23,18 +23,21 @@ const ADMIN_NAV = [
   { label: "Knowledge", icon: "menu_book", path: "/knowledge" },
 ];
 
-// Menambahkan prop className agar instruksi dari luar (seperti lg:hidden) bisa masuk
 export default function BottomNav({ role = "client", className = "" }) {
   const pathname = usePathname();
-  const navItems = role === "admin" ? ADMIN_NAV : role === "konsultan" ? CONSULTANT_NAV : CLIENT_NAV;
+  const navItems =
+    role === "admin"
+      ? ADMIN_NAV
+      : role === "konsultan"
+        ? CONSULTANT_NAV
+        : CLIENT_NAV;
 
   return (
-    // Tambahkan lg:hidden di sini agar secara default hilang di desktop
-    // Dan gabungkan dengan ${className} untuk fleksibilitas
     <footer
       className={`fixed bottom-0 left-0 right-0 bg-dark/90 border-t border-muted/30 z-50 backdrop-blur-xl lg:hidden ${className}`}
     >
-      <div className="max-w-md mx-auto flex items-center justify-around w-full px-4 py-4">
+      {/* Mengubah py-4 menjadi py-2.5 agar height navbar lebih ramping */}
+      <div className="max-w-md mx-auto flex items-center justify-around w-full px-4 py-2.5">
         {navItems.map((item, idx) => {
           const isActive = pathname === item.path;
 
@@ -42,7 +45,8 @@ export default function BottomNav({ role = "client", className = "" }) {
             <Link
               key={idx}
               href={item.path}
-              className={`flex flex-col items-center gap-1.5 transition-all duration-300 group w-16 ${
+              // Mengubah gap-1.5 menjadi gap-1 agar jarak ikon dan teks lebih dekat
+              className={`flex flex-col items-center gap-1 transition-all duration-300 group w-16 ${
                 isActive ? "text-main" : "text-muted hover:text-main"
               }`}
             >

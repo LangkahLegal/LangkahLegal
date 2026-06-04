@@ -195,7 +195,7 @@ export default function ConsultationCard({
       </div>
 
       {/* Footer Section */}
-      <div className="mt-6 pt-4 border-t border-surface flex justify-between items-center gap-4">
+      <div className="mt-1 pt-2 border-t border-surface flex justify-between items-center gap-4">
         <div className="flex items-center gap-2 text-muted text-[10px] sm:text-xs font-semibold">
           <MaterialIcon name="calendar_today" className="text-sm opacity-70" />
           <span className="truncate">

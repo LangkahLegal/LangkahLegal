@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 
 export default function ChatHeader({
   name = "Kia",
-  avatarUrl,
   status = "Online",
   onToggleSidebar,
   showSidebarToggle = false,
@@ -19,8 +18,8 @@ export default function ChatHeader({
   const isOnline = status.toLowerCase() === "online";
 
   return (
-    <header className="flex justify-between items-center px-6 py-5 border-b border-surface bg-bg/80 backdrop-blur-md sticky top-0 z-30 transition-all duration-300">
-      <div className="flex items-center gap-4">
+    <header className="flex justify-between items-center py-5 border-b border-surface bg-bg/80 backdrop-blur-md sticky top-0 z-30 transition-all duration-300">
+      <div className="flex items-center">
         {/* Sidebar toggle — visible on all screens */}
         {showSidebarToggle && (
           <Button
@@ -32,25 +31,6 @@ export default function ChatHeader({
             <MaterialIcon name="menu" className="text-xl" />
           </Button>
         )}
-
-        <div className="relative group/avatar">
-          {/* Avatar Container: Menggunakan bg-input dan border-primary/30 */}
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full overflow-hidden border-2 border-primary/30 bg-input shadow-soft">
-            <img
-              src={avatarUrl || fallbackUrl}
-              alt={name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover/avatar:scale-110"
-              onError={(e) => {
-                e.target.src = fallbackUrl;
-              }}
-            />
-          </div>
-
-          {/* Status Indicator: Border menggunakan border-bg agar menyatu dengan header */}
-          {isOnline && (
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-bg rounded-full animate-pulse shadow-sm" />
-          )}
-        </div>
 
         <div>
           <h1 className="text-main font-headline font-bold text-lg lg:text-xl leading-tight">
