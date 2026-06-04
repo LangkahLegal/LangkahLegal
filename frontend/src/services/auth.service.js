@@ -1,13 +1,12 @@
 import api from "@/lib/axios";
-
-// Catatan: BFF Pattern - Frontend tidak lagi berurusan dengan penyimpanan token!
-// Cookie (ll_token, ll_refresh) dikelola sepenuhnya oleh Backend secara HttpOnly.
-
-const getCookieValue = (name) => {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[2]) : null;
-};
+import {
+  clearAuthSession,
+  getStoredOAuthVerifier,
+  getStoredRefreshToken,
+  setAuthSession,
+  setStoredOAuthVerifier,
+  setStoredRole,
+} from "@/lib/authStorage";
 
 export const authService = {
   signUpWithPassword: async ({
@@ -26,7 +25,12 @@ export const authService = {
         emailRedirectTo,
       });
 
-      return response?.data?.data;
+      const data = response?.data?.data;
+      if (data?.session) {
+        setAuthSession(data.session);
+      }
+
+      return data;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal mendaftar.");
@@ -65,7 +69,12 @@ export const authService = {
         type,
       });
 
-      return response?.data?.data;
+      const data = response?.data?.data;
+      if (data?.session) {
+        setAuthSession(data.session);
+      }
+
+      return data;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Kode OTP tidak valid.");
@@ -79,7 +88,12 @@ export const authService = {
         password,
       });
 
-      return response?.data?.data?.session;
+      const session = response?.data?.data?.session || null;
+      if (session) {
+        setAuthSession(session);
+      }
+
+      return session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal login.");
@@ -95,6 +109,9 @@ export const authService = {
       if (!data?.url) {
         throw new Error("Gagal menyiapkan login Google.");
       }
+      if (data?.code_verifier) {
+        setStoredOAuthVerifier(data.code_verifier);
+      }
       if (typeof window !== "undefined") {
         window.location.href = data.url;
       }
@@ -106,8 +123,17 @@ export const authService = {
 
   exchangeCode: async (code) => {
     try {
-      const response = await api.post("/auth/exchange-code", { code });
-      return response?.data?.data?.session;
+      const code_verifier = getStoredOAuthVerifier();
+      const response = await api.post("/auth/exchange-code", {
+        code,
+        code_verifier,
+      });
+      const session = response?.data?.data?.session || null;
+      if (session) {
+        setAuthSession(session);
+        setStoredOAuthVerifier(null);
+      }
+      return session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memverifikasi login.");
@@ -117,7 +143,11 @@ export const authService = {
   getProfile: async () => {
     try {
       const response = await api.get("/auth/profile");
-      return response?.data?.data || null;
+      const profile = response?.data?.data || null;
+      if (profile?.role) {
+        setStoredRole(profile.role);
+      }
+      return profile;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal mengambil profil.");
@@ -126,9 +156,15 @@ export const authService = {
 
   refreshSession: async () => {
     try {
-      // Backend akan otomatis membaca ll_refresh dari cookie HttpOnly
-      const response = await api.post("/auth/refresh");
-      return response?.data?.data?.session;
+      const refreshToken = getStoredRefreshToken();
+      const response = await api.post("/auth/refresh", {
+        refresh_token: refreshToken,
+      });
+      const session = response?.data?.data?.session || null;
+      if (session) {
+        setAuthSession(session);
+      }
+      return session;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memperbarui sesi.");
@@ -138,6 +174,9 @@ export const authService = {
   updateRole: async (role) => {
     try {
       const response = await api.post("/auth/role", { role });
+      if (role) {
+        setStoredRole(role);
+      }
       return response?.data?.data || null;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
@@ -147,9 +186,10 @@ export const authService = {
 
   logout: async () => {
     try {
-      // Backend otomatis menghapus cookies saat endpoint ini dipanggil
       await api.post("/auth/logout");
+      clearAuthSession();
     } catch (error) {
+      clearAuthSession();
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal logout.");
     }

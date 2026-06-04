@@ -9,6 +9,8 @@ load_dotenv()
 class Settings:
 	app_env: str
 	app_name: str
+	frontend_url: str
+	cookie_domain: str
 	supabase_url: str
 	supabase_key: str
 	supabase_portofolio_bucket: str
@@ -28,6 +30,8 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+	frontend_url = os.getenv("FRONTEND_URL", "").strip()
+	cookie_domain = os.getenv("COOKIE_DOMAIN", "").strip()
 	supabase_url = os.getenv("SUPABASE_URL", "").strip()
 	supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() or os.getenv("SUPABASE_KEY", "").strip()
 	imgbb_api_key = os.getenv("IMGBB_API_KEY", "").strip()
@@ -54,6 +58,8 @@ def get_settings() -> Settings:
 	return Settings(
 		app_env=os.getenv("APP_ENV", "development").strip(),
 		app_name=os.getenv("APP_NAME", "LangkahLegal Backend").strip(),
+		frontend_url=frontend_url,
+		cookie_domain=cookie_domain,
 		supabase_url=supabase_url,
 		supabase_key=supabase_key,
 		supabase_portofolio_bucket=portofolio_bucket,

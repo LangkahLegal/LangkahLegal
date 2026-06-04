@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 // Import Komponen Baru
 import LoginHeader from "@/components/auth/login/LoginHeader";
@@ -59,7 +60,7 @@ export default function LoginPage() {
     setErrorMsg("");
     try {
       await authService.signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${getAppOrigin()}/auth/callback`,
       });
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login dengan Google.");
@@ -67,7 +68,6 @@ export default function LoginPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
     <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-8 bg-bg text-main overflow-hidden transition-colors duration-500">
       <main className="relative z-10 w-full max-w-[400px] mx-auto">
         <LoginHeader />

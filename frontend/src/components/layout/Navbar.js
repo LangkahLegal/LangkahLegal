@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button, MaterialIcon, BrandLogo } from "../ui";
+import { getStoredAccessToken, getStoredRole } from "@/lib/authStorage";
 
 const NAV_LINKS = [
   { label: "Home", href: "#hero", sectionId: "hero" },
@@ -19,10 +19,8 @@ export default function Navbar() {
 
   useEffect(() => {
     const checkSession = () => {
-      const matchToken = document.cookie.match(/(^|; )ll_token=([^;]*)/);
-      const matchRole = document.cookie.match(/(^|; )ll_role=([^;]*)/);
-      const token = localStorage.getItem("token") || matchToken?.[2];
-      const role = matchRole ? decodeURIComponent(matchRole[2]) : null;
+      const token = getStoredAccessToken();
+      const role = getStoredRole();
 
       setSession({ isLoggedIn: Boolean(token), role });
     };

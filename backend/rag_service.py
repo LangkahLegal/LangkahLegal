@@ -395,32 +395,45 @@ def agentic_generate(
     )
 
     consultants_found = []
-    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
+    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+    MAX_RETRIES = 2  # Retry sampai 2x kalau semua model 503
 
     # Agentic loop — maksimal MAX_TOOL_LOOP iterasi
     for iteration in range(MAX_TOOL_LOOP):
         log.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
 
         response = None
-        for model_name in AVAILABLE_MODELS:
-            try:
-                log.info(f"[AGENT] Mencoba model: {model_name}")
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                )
-                break # Berhasil
-            except Exception as e:
-                if "429" in str(e):
-                    log.warning(f"[AGENT] Model {model_name} terkena limit 429. Mencoba fallback...")
-                    continue
-                else:
-                    raise e # Lempar jika bukan 429
+        for retry in range(MAX_RETRIES + 1):
+            for model_name in AVAILABLE_MODELS:
+                try:
+                    log.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                    break  # Berhasil
+                except Exception as e:
+                    err_str = str(e)
+                    if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                        log.warning(f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback...")
+                        continue
+                    else:
+                        raise e
+            
+            if response is not None:
+                break  # Berhasil, keluar dari retry loop
+            
+            # Semua model gagal, tunggu sebelum retry
+            if retry < MAX_RETRIES:
+                import time
+                wait_time = 2 * (retry + 1)  # 2s, 4s
+                log.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
+                time.sleep(wait_time)
         
         if response is None:
-            # Semua model di loop terkena 429
-            raise Exception("429 RESOURCE_EXHAUSTED: Semua model fallback terkena limit.")
+            # Semua model dan retry habis
+            raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
 
         # Kalau tidak ada function call, berarti Gemini sudah punya jawaban final
         if not response.function_calls:
@@ -495,47 +508,58 @@ def triage(
       5. Return structured response
     """
     log.info(f"[TRIAGE] Query masuk: {query[:100]}")
+    current_step = "init"
 
-    # 1. Rewrite (Conditional)
-    if len(query.split()) < 5:
-        log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
-        search_query = rewrite_query(query, chat_history)
-    else:
-        log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
-        search_query = query
+    try:
+        # 1. Rewrite (Conditional)
+        current_step = "rewrite"
+        if len(query.split()) < 5:
+            log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
+            search_query = rewrite_query(query, chat_history)
+        else:
+            log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
+            search_query = query
 
-    # 2. Embed
-    query_embedding = embed_query(search_query)
-    log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
+        # 2. Embed
+        current_step = "embed"
+        query_embedding = embed_query(search_query)
+        log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
 
-    # 3. Retrieve — single threshold, no fallback cocoklogi
-    pasals = retrieve_pasals(
-        supabase=supabase,
-        query_embedding=query_embedding,
-        match_count=5,
-        match_threshold=0.5,
-        filter_kategori=kategori,
-    )
-    log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
+        # 3. Retrieve — single threshold, no fallback cocoklogi
+        current_step = "retrieve"
+        pasals = retrieve_pasals(
+            supabase=supabase,
+            query_embedding=query_embedding,
+            match_count=5,
+            match_threshold=0.5,
+            filter_kategori=kategori,
+        )
+        log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
 
-    # 4. Build context & references
-    context = _build_context(pasals)
-    references = _build_references(pasals)
+        # 4. Build context & references
+        current_step = "build_context"
+        context = _build_context(pasals)
+        references = _build_references(pasals)
 
-    # 5. Agentic generate
-    result = agentic_generate(
-        query=query,
-        context=context,
-        chat_history=chat_history,
-        supabase=supabase,
-    )
-    log.info(f"[TRIAGE] Result type: {result['type']}")
+        # 5. Agentic generate
+        current_step = "agentic_generate"
+        result = agentic_generate(
+            query=query,
+            context=context,
+            chat_history=chat_history,
+            supabase=supabase,
+        )
+        log.info(f"[TRIAGE] Result type: {result['type']}")
 
-    # 6. Return
-    return {
-        "type": result["type"],
-        "jawaban": result["jawaban"],
-        "consultants": result.get("consultants", []),
-        "pasal_referensi": references,
-        "disclaimer": DISCLAIMER,
-    }
+        # 6. Return
+        return {
+            "type": result["type"],
+            "jawaban": result["jawaban"],
+            "consultants": result.get("consultants", []),
+            "pasal_referensi": references,
+            "disclaimer": DISCLAIMER,
+        }
+    except Exception as e:
+        log.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)
+        raise RuntimeError(f"RAG pipeline failed at step '{current_step}': {type(e).__name__}: {str(e)[:200]}") from e
+

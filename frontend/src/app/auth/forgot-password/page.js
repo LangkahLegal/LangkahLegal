@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 import ForgotPasswordHeader from "@/components/auth/forgot-password/ForgotPasswordHeader";
 import ForgotPasswordForm from "@/components/auth/forgot-password/ForgotPasswordForm";
@@ -23,7 +24,7 @@ export default function ForgotPasswordPage() {
     try {
       await authService.forgotPassword({
         email,
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+        emailRedirectTo: `${getAppOrigin()}/auth/callback?next=/auth/reset-password`,
       });
       setIsSuccess(true);
     } catch (err) {

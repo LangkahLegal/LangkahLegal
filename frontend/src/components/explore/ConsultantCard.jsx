@@ -4,6 +4,35 @@ import { MaterialIcon } from "@/components/ui";
 import Link from "next/link";
 import { useTheme } from "@/providers/ThemeProvider"; // Import Hook Tema
 
+const getSafeAvatarSrc = (url, fallbackUrl) => {
+  if (!url) return fallbackUrl;
+
+  try {
+    const parsed = new URL(url);
+    const safeHosts = new Set([
+      "ui-avatars.com",
+      "lh3.googleusercontent.com",
+      "images.unsplash.com",
+      "supabase.co",
+      "*.supabase.co",
+      "storage.googleapis.com",
+      "res.cloudinary.com",
+    ]);
+
+    if (parsed.hostname === "i.ibb.co" || parsed.hostname.endsWith(".ibb.co")) {
+      return fallbackUrl;
+    }
+
+    const isSafeHost =
+      safeHosts.has(parsed.hostname) ||
+      parsed.hostname.endsWith(".supabase.co");
+
+    return parsed.protocol === "https:" && isSafeHost ? url : fallbackUrl;
+  } catch {
+    return fallbackUrl;
+  }
+};
+
 export default function ConsultantCard({ consultant }) {
   const { name, spec, rating, reviews, status, foto_profil, status_verifikasi, tarif_per_sesi } = consultant;
   const { theme } = useTheme(); // Ambil state tema aktif
@@ -22,6 +51,7 @@ export default function ConsultantCard({ consultant }) {
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "Konsultan",
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
+  const avatarSrc = getSafeAvatarSrc(foto_profil, fallbackUrl);
 
   return (
     <div className="bg-card/60 border border-surface p-5 rounded-3xl flex items-center justify-between group hover:border-primary-light/40 transition-all duration-300 shadow-lg" data-testid="consultant-card">
@@ -31,7 +61,7 @@ export default function ConsultantCard({ consultant }) {
           <div className="w-16 h-16 rounded-2xl overflow-hidden border border-surface bg-bg">
             <img
               key={`${foto_profil}-${theme}`} // Key ditambahkan agar refresh saat tema ganti
-              src={foto_profil || fallbackUrl}
+              src={avatarSrc}
               alt={name}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {

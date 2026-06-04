@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { usePathname, useRouter } from "next/navigation";
+import { getStoredRole } from "@/lib/authStorage";
 
 export default function PageHeader({ title, backHref, onSettingsClick }) {
   const pathname = usePathname();
@@ -15,12 +16,9 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
     .includes("/dashboard/consultant");
 
   const getRoleFallback = () => {
-    if (typeof document !== "undefined") {
-      const match = document.cookie.match(new RegExp('(^|; )ll_role=([^;]*)'));
-      const role = match ? decodeURIComponent(match[2]) : "client";
-      if (role.toLowerCase().includes("konsultan") || role.toLowerCase().includes("consultant")) return "/dashboard/consultant";
-      if (role.toLowerCase() === "admin") return "/dashboard/admin";
-    }
+    const role = getStoredRole() || "client";
+    if (role.toLowerCase().includes("konsultan") || role.toLowerCase().includes("consultant")) return "/dashboard/consultant";
+    if (role.toLowerCase() === "admin") return "/dashboard/admin";
     return "/dashboard/client";
   };
 
@@ -58,7 +56,6 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
     <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-5 lg:px-12 transition-all duration-300">
       <div className="flex justify-between items-center max-w-[1600px] mx-auto">
         <div className="flex items-center gap-4">
-          {/* TOMBOL BACK: Menggunakan Button variant ghost agar transparan tapi tetap punya interaksi scale */}
           <Button
             variant="ghost"
             onClick={handleBackClick}

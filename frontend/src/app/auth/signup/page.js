@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAppOrigin } from "@/lib/appOrigin";
 
 // Import Komponen Signup
 import SignupHeader from "@/components/auth/signup/SignupHeader";
@@ -42,7 +43,7 @@ export default function SignupPage() {
       await authService.signUpWithPassword({
         ...formData,
         role: selectedRole,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getAppOrigin()}/auth/callback`,
       });
 
       sessionStorage.setItem(
@@ -54,7 +55,6 @@ export default function SignupPage() {
         }),
       );
       sessionStorage.removeItem("pending_role");
-      document.cookie = "pending_role=; path=/; max-age=0"; // Clear cookie
 
       router.push("/auth/verify");
     } catch (err) {
@@ -76,7 +76,7 @@ export default function SignupPage() {
         );
       }
       await authService.signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${getAppOrigin()}/auth/callback`,
       });
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login dengan Google.");
@@ -84,7 +84,6 @@ export default function SignupPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | Tambahkan text-main & transition */
     <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-12 bg-bg text-main overflow-x-hidden transition-colors duration-500">
       <main className="relative z-10 w-full max-w-[400px] mx-auto my-auto">
         <SignupHeader
