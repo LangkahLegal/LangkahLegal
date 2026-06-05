@@ -1,7 +1,8 @@
 "use client";
 
-import { MaterialIcon, BrandLogo } from "@/components/ui";
+import { MaterialIcon } from "@/components/ui"; // BrandLogo dihapus
 import Link from "next/link";
+import Image from "next/image"; // Ditambahkan untuk merender logo
 import { usePathname } from "next/navigation";
 
 export default function Sidebar({ role = "client" }) {
@@ -16,24 +17,43 @@ export default function Sidebar({ role = "client" }) {
           { label: "Jadwal", icon: "calendar_today", path: "/schedule" },
         ]
       : role === "admin"
-      ? [
-          { label: "Verifikasi", icon: "verified_user", path: "/verification" },
-          { label: "Knowledge", icon: "menu_book", path: "/knowledge" },
-        ]
-      : [
-          { label: "Konsultasi", icon: "gavel", path: "/explore" },
-          { label: "Bursa", icon: "storefront", path: "/bursa/post" },
-          { label: "Tanya AI", icon: "psychology", path: "/ai" },
-          { label: "Riwayat", icon: "history", path: "/history/client" },
-        ];
+        ? [
+            {
+              label: "Verifikasi",
+              icon: "verified_user",
+              path: "/verification",
+            },
+            { label: "Knowledge", icon: "menu_book", path: "/knowledge" },
+          ]
+        : [
+            { label: "Konsultasi", icon: "gavel", path: "/explore" },
+            { label: "Bursa", icon: "storefront", path: "/bursa/post" },
+            { label: "Tanya AI", icon: "psychology", path: "/ai" },
+            { label: "Riwayat", icon: "history", path: "/history/client" },
+          ];
 
   return (
     /* REFACTOR: bg-dark -> bg-bg | border-white/5 -> border-surface */
     <aside className="fixed left-0 top-0 h-screen w-64 bg-bg border-r border-surface p-6 z-50 hidden lg:flex flex-col transition-colors duration-500">
-      {/* Logo Area */}
-      <div className="mb-12 px-2">
-        <BrandLogo iconSize="text-3xl" textSize="text-xl" />
-      </div>
+      {/* REFACTOR: Logo Area menggunakan Image dan Link */}
+      <Link
+        href="/"
+        className="flex items-center gap-3 mb-12 px-2 group cursor-pointer"
+      >
+        <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
+          <Image
+            src="/images/icons.png"
+            alt="LangkahLegal Logo"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div>
+        {/* Teks Logo - Hapus span ini jika icons.png sudah berisi teks "LangkahLegal" */}
+        <span className="text-xl font-headline font-bold text-main tracking-tight">
+          LangkahLegal
+        </span>
+      </Link>
 
       {/* Navigation Menu */}
       <nav className="flex-1 space-y-2">

@@ -28,12 +28,12 @@ export default function LandingPage() {
   };
 
   return (
-    /* REFACTOR: selection:bg-primary/30 | bg-bg | Tambahkan transition agar smooth */
     <div className="relative selection:bg-primary/30 bg-bg min-h-screen transition-colors duration-500">
       {/* Layout: Top */}
       <Navbar />
 
-      <main className="pt-24 overflow-x-hidden">
+      {/* REFACTOR: Hapus pt-24 agar Hero bisa menyentuh ujung paling atas browser */}
+      <main className="overflow-x-hidden">
         {/* Section 1: Hero */}
         <Hero onGetStarted={handleGetStarted} onLearnMore={handleLearnMore} />
 

@@ -34,7 +34,6 @@ export default function TanyaAIPage() {
     bumpSession,
   } = useChatStore();
 
-  // --- Dynamic Loading Text ---
   const loadingTexts = [
     "Kia sedang membaca kronologi Anda...",
     "Menganalisis konteks hukum yang relevan...",
@@ -73,16 +72,23 @@ export default function TanyaAIPage() {
   }, [fetchSessions]);
 
   // Build display messages: welcome + stored messages
-  const displayMessages =
-    messages.length > 0 ? messages : [WELCOME_MESSAGE];
+  const displayMessages = messages.length > 0 ? messages : [WELCOME_MESSAGE];
 
   // Quick Replies Logic
   const lastMessage = displayMessages[displayMessages.length - 1];
   let suggestedActions = [];
   if (!isTyping && lastMessage && lastMessage.role === "ai") {
     const textLower = lastMessage.text.toLowerCase();
-    if (textLower.includes("mencarikan konsultan") || textLower.includes("butuh konsultan") || textLower.includes("carikan pengacara") || textLower.includes("rekomendasi konsultan")) {
-      suggestedActions = ["Ya, tolong carikan konsultan", "Belum perlu, terima kasih"];
+    if (
+      textLower.includes("mencarikan konsultan") ||
+      textLower.includes("butuh konsultan") ||
+      textLower.includes("carikan pengacara") ||
+      textLower.includes("rekomendasi konsultan")
+    ) {
+      suggestedActions = [
+        "Ya, tolong carikan konsultan",
+        "Belum perlu, terima kasih",
+      ];
     } else if (textLower.includes("bukti") || textLower.includes("dokumen")) {
       suggestedActions = ["Ya, saya punya buktinya", "Saya tidak punya bukti"];
     }
@@ -150,24 +156,30 @@ export default function TanyaAIPage() {
     } catch (error) {
       console.error("Chatbot error:", error);
 
-      let errorDesc = "Maaf, terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi dalam beberapa saat.";
+      let errorDesc =
+        "Maaf, terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi dalam beberapa saat.";
       if (error.response) {
         const status = error.response.status;
         if (status === 401) {
-          errorDesc = "Sesi Anda telah habis. Silakan login terlebih dahulu untuk menggunakan fitur Tanya AI.";
+          errorDesc =
+            "Sesi Anda telah habis. Silakan login terlebih dahulu untuk menggunakan fitur Tanya AI.";
         } else if (status === 429) {
-          errorDesc = "Maaf, server AI sedang melayani terlalu banyak permintaan. Mohon tunggu beberapa saat sebelum mencoba lagi.";
+          errorDesc =
+            "Maaf, server AI sedang melayani terlalu banyak permintaan. Mohon tunggu beberapa saat sebelum mencoba lagi.";
         } else if (status === 500) {
-          errorDesc = "Waduh, terjadi kendala pada sistem internal kami (mungkin server AI atau database sedang sibuk). Tim teknis kami akan segera memeriksanya!";
+          errorDesc =
+            "Waduh, terjadi kendala pada sistem internal kami (mungkin server AI atau database sedang sibuk). Tim teknis kami akan segera memeriksanya!";
         } else if (status === 404) {
           errorDesc = "Maaf, fitur ini sedang tidak dapat diakses (Not Found).";
         } else if (status === 307 || status === 308) {
-          errorDesc = "Terjadi pengalihan jaringan. Silakan coba kirim ulang pesan Anda.";
+          errorDesc =
+            "Terjadi pengalihan jaringan. Silakan coba kirim ulang pesan Anda.";
         } else {
           errorDesc = `Maaf, terjadi kesalahan (Kode: ${status}). Silakan coba lagi nanti.`;
         }
       } else if (error.request) {
-        errorDesc = "Koneksi terputus. Kia tidak bisa terhubung ke server. Pastikan internet Anda stabil ya!";
+        errorDesc =
+          "Koneksi terputus. Kia tidak bisa terhubung ke server. Pastikan internet Anda stabil ya!";
       }
 
       const errorMsg = {
@@ -187,7 +199,10 @@ export default function TanyaAIPage() {
   };
 
   return (
-    <div className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500" data-testid="ai-chat-page">
+    <div
+      className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500"
+      data-testid="ai-chat-page"
+    >
       {/* Main navigation sidebar */}
       <Sidebar />
 
@@ -250,10 +265,10 @@ export default function TanyaAIPage() {
           </div>
         </main>
 
-        <ChatInput 
-          input={input} 
-          setInput={setInput} 
-          onSend={() => handleSend()} 
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={() => handleSend()}
           suggestedActions={suggestedActions}
           onActionClick={handleSend}
         />
