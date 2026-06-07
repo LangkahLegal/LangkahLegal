@@ -88,24 +88,11 @@ export default function ConsultationDetail() {
   }, [requestData, userProfile]);
 
   // --- 2. LOADING STATE ---
-  if (isLoading) {
-    return (
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | border-[#6f59fe] -> border-primary | text-[#ada3ff] -> text-primary-light */
-      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-primary-light text-[10px] font-bold tracking-widest uppercase animate-pulse">
-            Synchronizing Detail...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // The loading state is now handled inside the main layout.
 
   // --- 3. ERROR STATE ---
-  if (isError || !requestData) {
+  if (!isLoading && (isError || !requestData)) {
     return (
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-white -> text-main | text-rose-400 -> text-danger | bg-white/10 -> bg-surface */
       <div className="bg-bg min-h-screen flex items-center justify-center text-main p-6 text-center transition-colors duration-500">
         <div>
           <p className="text-danger font-bold mb-4">
@@ -123,7 +110,6 @@ export default function ConsultationDetail() {
   }
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex transition-colors duration-500 font-primary">
       <Sidebar role={derivedRole} />
 
@@ -131,8 +117,17 @@ export default function ConsultationDetail() {
         <PageHeader title="Detail Konsultasi" />
 
         <main className="flex-1 overflow-y-auto w-full">
-          <div className="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-8 animate-fade-in">
-            {/* Status Badge */}
+          <div className="max-w-2xl mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                  Memuat Detail Konsultasi...
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-8 animate-fade-in">
+                {/* Status Badge */}
             <div className="flex justify-start">
               <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
                 requestData.status === "selesai" ? "bg-primary/10 text-primary-light" :
@@ -161,7 +156,6 @@ export default function ConsultationDetail() {
             <AttachedDocuments
               documents={requestData.documents}
               title="Dokumen Terlampir"
-              /* REFACTOR: text-[#aca8c1] -> text-muted */
               titleClassName="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2"
               allowDelete={false}
               showEmptyState={true}
@@ -183,9 +177,10 @@ export default function ConsultationDetail() {
                 >
                   Beri Ulasan & Selesaikan
                 </button>
-                <p className="text-xs text-muted mt-3 text-center">Tekan tombol ini hanya jika Anda telah menyelesaikan sesi konsultasi secara penuh dengan konsultan.</p>
-              </div>
-            )}
+                  <p className="text-xs text-muted mt-3 text-center">Tekan tombol ini hanya jika Anda telah menyelesaikan sesi konsultasi secara penuh dengan konsultan.</p>
+                </div>
+              )}
+            </div>)}
           </div>
         </main>
 

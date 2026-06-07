@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import Accordion from "@/components/knowledge/detail/Accordion";
 import DocumentCard from "@/components/knowledge/detail/DocumentCard";
 import Pagination from "@/components/knowledge/Pagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import PageHeader from "@/components/layout/PageHeader";
 import Sidebar from "@/components/layout/Sidebar";
@@ -108,17 +109,19 @@ function KnowledgeDetailContent() {
                     <div className="max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 animate-fade-in">
 
                         {isLoading ? (
-                            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            <div className="flex flex-col items-center justify-center py-20 gap-5">
+                                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
                                 <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
-                                    Memuat Data...
+                                    Memuat Data Knowledge Base...
                                 </p>
                             </div>
                         ) : !meta ? (
-                            <div className="py-20 text-center text-muted">
-                                <MaterialIcon name="error_outline" className="text-4xl mb-2 opacity-50" />
-                                <p>Dokumen tidak ditemukan atau belum ada pasal.</p>
-                            </div>
+                            <EmptyState
+                                icon="error_outline"
+                                title="Tidak Ada Data"
+                                description="Dokumen tidak ditemukan atau belum ada pasal."
+                                className="py-20"
+                            />
                         ) : (
                             <>
                                 <DocumentCard meta={meta} totalChunks={total} />
@@ -156,11 +159,12 @@ function KnowledgeDetailContent() {
 
                                 {/* Chunks List */}
                                 {filteredChunks.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 text-muted">
-                                        <MaterialIcon name="search_off" className="text-4xl mb-2 opacity-50" />
-                                        <h3 className="text-lg font-bold text-main">Tidak Ditemukan</h3>
-                                        <p className="text-sm text-muted mt-2 max-w-sm text-center">&quot;{searchChunk}&quot; tidak ditemukan pada dokumen ini.</p>
-                                    </div>
+                                    <EmptyState
+                                        icon="search_off"
+                                        title="Tidak Ditemukan"
+                                        description={`"${searchChunk}" tidak ditemukan pada dokumen ini.`}
+                                        className="py-12"
+                                    />
                                 ) : (
                                     <div className={`space-y-3 transition-opacity duration-300 ${isFetching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                                         {filteredChunks.map((chunk) => (
@@ -207,7 +211,12 @@ export default function KnowledgeDetailPage() {
         <Suspense
             fallback={
                 <div className="flex items-center justify-center min-h-screen bg-bg">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+                        <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                        <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                            Memuat Data Knowledge Base...
+                        </p>
+                    </div>
                 </div>
             }
         >

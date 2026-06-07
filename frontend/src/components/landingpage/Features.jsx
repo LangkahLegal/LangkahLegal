@@ -67,7 +67,6 @@ export default function Features() {
       className="px-6 py-24 bg-card relative z-10 overflow-hidden"
     >
       <div className="max-w-7xl mx-auto flex flex-col items-center">
-        {/* REFACTOR: Efek Kartu Domino (Asimetris) untuk Header */}
         <div className="relative w-full max-w-5xl mx-auto mb-24 md:mb-32">
           {/* Kartu 1 (Belakang): Gambar Kiri-Atas */}
           <div className="absolute top-0 left-0 w-[90%] md:w-[75%] h-[260px] md:h-[380px] rounded-[2.5rem] overflow-hidden shadow-2xl">
@@ -83,7 +82,6 @@ export default function Features() {
 
           {/* Kartu 2 (Depan): Teks Kanan-Bawah */}
           <div className="relative z-10 w-[90%] md:w-[65%] ml-auto mt-[160px] md:mt-[200px] bg-input/90 backdrop-blur-xl border border-surface p-6 sm:p-8 md:p-14 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl shadow-primary/10">
-            {/* REFACTOR: text-3xl untuk mobile, padding dikecilkan, dan ditambah break-words */}
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-headline font-bold text-main leading-tight mb-4 md:mb-6 break-words">
               Kenapa LangkahLegal?
             </h2>

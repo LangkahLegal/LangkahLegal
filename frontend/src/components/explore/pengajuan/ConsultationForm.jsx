@@ -12,10 +12,8 @@ export default function ConsultationForm({
       {/* Deskripsi */}
       <section className="space-y-4">
         <div className="flex items-center gap-3 px-1">
-          {/* REFACTOR: bg-[#6f59fe] -> bg-primary | shadow menggunakan primary-rgb */}
           <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
 
-          {/* REFACTOR: text-white -> text-main */}
           <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline transition-colors duration-500">
             Deskripsi Kasus
           </h2>

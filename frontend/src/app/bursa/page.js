@@ -14,6 +14,7 @@ import CategoryList from "@/components/dashboard/CategoryList";
 import BursaCard from "@/components/bursa/BursaCard";
 import SuccessView from "@/components/layout/SuccessView";
 import ClaimConfirmModal from "@/components/bursa/ClaimConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Daftar kategori statis sesuai format komponen CategoryList
 const BURSA_CATEGORIES = [
@@ -118,8 +119,8 @@ export default function BursaKasusPage() {
       <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
         <PageHeader title="Bursa Kasus" backHref="/dashboard/consultant" />
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
             {/* Header Info */}
             <div className="mb-6">
               <div className="flex items-center justify-between px-1">
@@ -153,9 +154,9 @@ export default function BursaKasusPage() {
 
             {/* LOADING STATE */}
             {isLoading && (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-primary-light text-[10px] font-black tracking-[0.2em] uppercase animate-pulse">
+              <div className="flex flex-col items-center justify-center py-20 gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
                   Memuat Bursa Kasus...
                 </p>
               </div>
@@ -177,17 +178,15 @@ export default function BursaKasusPage() {
 
             {/* EMPTY STATE */}
             {!isLoading && !isError && filteredCases.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-                <MaterialIcon
-                  name="inbox"
-                  className="text-5xl text-muted opacity-30"
-                />
-                <p className="text-sm text-muted font-medium leading-relaxed max-w-xs">
-                  {filterKategori !== "Semua"
+              <EmptyState
+                icon="work_off"
+                title="Bursa Kosong"
+                description={
+                  filterKategori !== "Semua"
                     ? `Tidak ada kasus "${filterKategori}" yang tersedia saat ini.`
-                    : "Belum ada kasus tersedia di bursa saat ini. Cek kembali nanti."}
-                </p>
-              </div>
+                    : "Belum ada kasus tersedia di bursa saat ini. Cek kembali nanti."
+                }
+              />
             )}
 
             {/* CASE CARDS */}

@@ -72,7 +72,7 @@ export default function ZoomLinkCard({
 
       {/* Consultant: Edit Mode */}
       {isKonsultan && isEditing ? (
-        <div className="bg-card rounded-2xl p-4 border border-surface space-y-3 transition-colors duration-500">
+        <div className="bg-card rounded-[2rem] p-4 border border-surface space-y-3 transition-colors duration-500">
           <div className="flex items-center gap-2 mb-1">
             <MaterialIcon name="videocam" className="text-primary-light text-base" />
             <span className="text-xs font-bold text-main uppercase tracking-wider">
@@ -111,7 +111,7 @@ export default function ZoomLinkCard({
       ) : (
         <>
           {/* Container Link */}
-          <div className="bg-card rounded-2xl p-3 border border-surface flex items-center gap-3 transition-colors duration-500">
+          <div className="bg-card rounded-[2rem] p-3 border border-surface flex items-center gap-3 transition-colors duration-500">
             {/* Icon Area */}
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${

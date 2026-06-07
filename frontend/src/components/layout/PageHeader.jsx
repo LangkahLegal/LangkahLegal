@@ -64,9 +64,8 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
     onSettingsClick || (() => router.push("/setting"));
 
   return (
-    // Mengubah py-5 menjadi py-2.5 untuk mengurangi tinggi header
-    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-2.5 lg:px-12 transition-all duration-300">
-      <div className="flex justify-between items-center max-w-[1600px] mx-auto">
+    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-3 lg:px-10 lg:py-4 transition-all duration-300">
+      <div className="flex justify-between items-center w-full">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"

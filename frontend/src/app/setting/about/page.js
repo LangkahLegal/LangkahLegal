@@ -29,11 +29,6 @@ export default function AboutPage() {
   }, []);
 
   return (
-    /* REFACTOR WARNA: 
-       - bg-[#0e0c1e] -> bg-bg 
-       - text-[#e8e2fc] -> text-main
-       - transition-colors duration-500 agar perpindahan tema smooth
-    */
     <div className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500 font-primary">
       {/* Sidebar untuk Desktop */}
       <Sidebar role={userRole} />
@@ -44,7 +39,7 @@ export default function AboutPage() {
           onSettingsClick={() => router.push("/setting")}
         />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
           {/* Animasi fade-in agar transisi antar halaman terasa lebih premium */}
           <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
             <AboutHero />
