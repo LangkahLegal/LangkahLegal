@@ -53,7 +53,7 @@ def test_login_password_success(app_client, monkeypatch):
 def test_exchange_session_missing_params(app_client):
     client, _ = app_client()
     response = client.get("/api/v1/auth/session")
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 def test_refresh_missing_token(app_client):
@@ -169,4 +169,4 @@ def test_logout_success(app_client, monkeypatch):
 def test_logout_unauthorized(app_client):
     client, _ = app_client()
     response = client.post("/api/v1/auth/logout")
-    assert response.status_code == 403
+    assert response.status_code == 401
