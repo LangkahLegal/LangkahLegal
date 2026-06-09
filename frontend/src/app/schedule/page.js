@@ -24,12 +24,12 @@ export default function SchedulePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // --- 1. DATA FETCHING ---
-  const { data: scheduleData = [] } = useQuery({
+  const { data: scheduleData = [], isLoading: isLoadingSchedules } = useQuery({
     queryKey: ["mySchedules"],
     queryFn: scheduleService.getMySchedules,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["consultantStats"],
     queryFn: consultantService.getDashboardStats,
   });
@@ -115,55 +115,65 @@ export default function SchedulePage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main | font-['Inter'] -> font-primary */
     <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="konsultan" />
 
       <div className="flex-1 flex flex-col relative min-w-0 w-full ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Kelola Jadwal" backHref="/dashboard/consultant" />
 
-        <main className="flex-1 overflow-y-auto px-6 pt-6 w-full">
-          <div className="max-w-2xl mx-auto w-full space-y-10 pb-32 animate-fade-in">
-            <AvailabilityToggle
-              isAvailable={stats?.is_active ?? true}
-              onChange={(s) =>
-                queryClient.setQueryData(["consultantStats"], (old) => ({
-                  ...old,
-                  is_active: s,
-                }))
-              }
-            />
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
+            {isLoadingSchedules || isLoadingStats ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                  Memuat Jadwal...
+                </p>
+              </div>
+            ) : (
+              <>
+                <AvailabilityToggle
+                  isAvailable={stats?.is_active ?? true}
+                  onChange={(s) =>
+                    queryClient.setQueryData(["consultantStats"], (old) => ({
+                      ...old,
+                      is_active: s,
+                    }))
+                  }
+                />
 
-            <MonthlyCalendar
-              days={calendarDays}
-              selectedDay={activeDateString}
-              onSelectDay={(date) => {
-                setSelectedDate(new Date(date));
-                setIsModalOpen(true);
-              }}
-              monthLabel={selectedDate.toLocaleDateString("id-ID", {
-                month: "long",
-                year: "numeric",
-              })}
-              onPrev={() =>
-                setSelectedDate(
-                  new Date(
-                    new Date(selectedDate).setMonth(
-                      selectedDate.getMonth() - 1,
-                    ),
-                  ),
-                )
-              }
-              onNext={() =>
-                setSelectedDate(
-                  new Date(
-                    new Date(selectedDate).setMonth(
-                      selectedDate.getMonth() + 1,
-                    ),
-                  ),
-                )
-              }
-            />
+                <MonthlyCalendar
+                  days={calendarDays}
+                  selectedDay={activeDateString}
+                  onSelectDay={(date) => {
+                    setSelectedDate(new Date(date));
+                    setIsModalOpen(true);
+                  }}
+                  monthLabel={selectedDate.toLocaleDateString("id-ID", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  onPrev={() =>
+                    setSelectedDate(
+                      new Date(
+                        new Date(selectedDate).setMonth(
+                          selectedDate.getMonth() - 1,
+                        ),
+                      ),
+                    )
+                  }
+                  onNext={() =>
+                    setSelectedDate(
+                      new Date(
+                        new Date(selectedDate).setMonth(
+                          selectedDate.getMonth() + 1,
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </>
+            )}
           </div>
         </main>
 

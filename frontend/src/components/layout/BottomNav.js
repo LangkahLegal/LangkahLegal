@@ -45,7 +45,6 @@ export default function BottomNav({ role = "client", className = "" }) {
             <Link
               key={idx}
               href={item.path}
-              // Mengubah gap-1.5 menjadi gap-1 agar jarak ikon dan teks lebih dekat
               className={`flex flex-col items-center gap-1 transition-all duration-300 group w-16 ${
                 isActive ? "text-main" : "text-muted hover:text-main"
               }`}

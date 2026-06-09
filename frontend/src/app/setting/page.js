@@ -136,8 +136,8 @@ const logoutMutation = useMutation({
             onSettingsClick={() => router.push("/setting")}
           />
 
-          <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-            <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
+          <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
+            <div className="max-w-[1600px] mx-auto w-full space-y-8 animate-fade-in">
               {/* --- Profile Section --- */}
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">

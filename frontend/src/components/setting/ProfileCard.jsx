@@ -16,7 +16,6 @@ export default function ProfileCard({ user }) {
 
   const { name, email, foto_profil, role, status_verifikasi } = user;
 
-  // Fallback URL pakai hex yang sesuai dengan tema saat ini
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User",
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
@@ -50,10 +49,6 @@ export default function ProfileCard({ user }) {
 
   return (
     <section>
-      {/* REFACTOR WARNA: 
-         1. bg-[#1f1d35] -> bg-card
-         2. border manual -> border-surface
-      */}
       <div className="bg-card border border-surface rounded-[2rem] p-6 shadow-soft relative overflow-hidden transition-colors duration-500">
         {/* Dekorasi Glow: bg-[#ada3ff]/10 -> bg-primary/10 */}
         <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-[50px] rounded-full" />

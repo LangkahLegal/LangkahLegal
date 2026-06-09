@@ -11,6 +11,7 @@ import { Button } from "@/components/ui";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { consultantService } from "@/services/consultant.service";
 import { useTheme } from "@/providers/ThemeProvider"; // Import Hook Tema
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function ConsultantHistoryPage() {
   const router = useRouter();
@@ -83,7 +84,6 @@ export default function ConsultantHistoryPage() {
   }, [historyData, activeColors]);
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="konsultan" />
 
@@ -92,19 +92,17 @@ export default function ConsultantHistoryPage() {
           title="Riwayat Sesi"
           rightElement={
             <Button variant="icon" className="!bg-transparent">
-              {/* REFACTOR: text-[#ada3ff] -> text-primary-light */}
               <MaterialIcon name="tune" className="text-primary-light" />
             </Button>
           }
         />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-8">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
             <div className="flex justify-between items-center px-2">
               <h2 className="text-xl font-bold text-main tracking-tight">
                 Semua Sesi
               </h2>
-              {/* REFACTOR: bg/border/text primary & primary-light */}
               <span className="bg-primary/10 text-primary-light text-[10px] font-black px-4 py-1.5 rounded-full border border-primary/20 uppercase tracking-widest transition-colors">
                 {isLoading ? "..." : `${totalSelesai} Selesai`}
               </span>
@@ -112,9 +110,9 @@ export default function ConsultantHistoryPage() {
 
             <div className="space-y-4">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm text-primary-light animate-pulse uppercase tracking-widest text-[10px] font-bold">
+                <div className="flex flex-col items-center justify-center py-20 gap-5">
+                  <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                  <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
                     Memuat Riwayat...
                   </p>
                 </div>
@@ -131,17 +129,12 @@ export default function ConsultantHistoryPage() {
                   ))}
                 </div>
               ) : (
-                /* REFACTOR: bg-[#1f1d35]/30 -> bg-card/30 | border-white/5 -> border-surface */
-                <div className="text-center py-16 bg-card/30 rounded-3xl border border-surface border-dashed">
-                  <MaterialIcon
-                    name="history"
-                    /* REFACTOR: text-[#48455a] -> text-muted/30 */
-                    className="text-5xl text-muted/30 mb-3"
-                  />
-                  <p className="text-muted text-sm font-medium">
-                    Belum ada riwayat sesi konsultasi.
-                  </p>
-                </div>
+                <EmptyState
+                  icon="history"
+                  title="Riwayat Kosong"
+                  description="Belum ada riwayat sesi konsultasi."
+                  className="py-12"
+                />
               )}
             </div>
           </div>

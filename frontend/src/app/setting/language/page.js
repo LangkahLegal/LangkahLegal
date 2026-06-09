@@ -30,7 +30,6 @@ export default function LanguageSettingsPage() {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main | font-primary */
     <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="client" />
 
@@ -40,15 +39,13 @@ export default function LanguageSettingsPage() {
         {/* Efek Glow Latar Belakang - Opacity disesuaikan agar tidak terlalu mencolok di light mode */}
         <div className="glow-top-left-purple opacity-10 dark:opacity-20" />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth w-full">
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
           <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
             {/* 1. Header Section */}
             <div className="space-y-3">
-              {/* REFACTOR: text-white -> text-main */}
               <h2 className="text-3xl font-extrabold text-main tracking-tight transition-colors duration-500">
                 Pilih Bahasa
               </h2>
-              {/* REFACTOR: text-[#aca8c1] -> text-muted */}
               <p className="text-sm leading-relaxed text-muted">
                 Pilih bahasa yang Anda inginkan untuk pengalaman layanan hukum
                 yang lebih nyaman.
@@ -63,10 +60,6 @@ export default function LanguageSettingsPage() {
                   <button
                     key={lang.id || "unknown"}
                     onClick={() => setSelectedLang(lang.id)}
-                    /* REFACTOR: 
-                        Active: bg-primary/10 border-primary
-                        Inactive: bg-card/30 border-surface 
-                    */
                     className={`w-full flex items-center justify-between p-5 rounded-[1.5rem] border transition-all duration-300 group ${
                       isActive
                         ? "bg-primary/10 border-primary shadow-lg shadow-primary/5"
@@ -75,7 +68,6 @@ export default function LanguageSettingsPage() {
                   >
                     <div className="text-left">
                       <p
-                        /* REFACTOR: text-main */
                         className={`font-bold transition-colors ${
                           isActive ? "text-primary-light" : "text-main"
                         }`}
@@ -89,7 +81,6 @@ export default function LanguageSettingsPage() {
 
                     {/* Radio / Check Icon */}
                     <div
-                      /* REFACTOR: bg-primary border-primary | border-muted/30 */
                       className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                         isActive
                           ? "bg-primary border-primary"

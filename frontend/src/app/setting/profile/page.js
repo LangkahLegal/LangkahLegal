@@ -19,11 +19,13 @@ export default function EditProfilePage() {
   });
   if (isQueryLoading)
     return (
-      <div className="bg-[#0e0c1e] text-white flex flex-col justify-center items-center h-screen gap-4">
-        <div className="w-10 h-10 border-4 border-[#ada3ff] border-t-transparent rounded-full animate-spin"></div>
-        <p className="animate-pulse text-[#aca8c1] text-[10px] font-bold tracking-widest uppercase">
-          Syncing Profile...
-        </p>
+      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
+        <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+          <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+            Memuat Profil...
+          </p>
+        </div>
       </div>
     );
 
@@ -116,7 +118,6 @@ function EditProfileContent({ profile, initialFormData }) {
   };
 
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
       <Sidebar role={userRole} />
 
@@ -124,7 +125,7 @@ function EditProfileContent({ profile, initialFormData }) {
         <PageHeader title="Edit Profil" />
 
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full px-5 pt-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
+          <div className="max-w-4xl mx-auto w-full px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 space-y-8 animate-fade-in">
             {/* NOTIFICATION: REJECTION ALERT */}
             {profile?.status_verifikasi === "ditolak" &&
               profile?.alasan_penolakan && (

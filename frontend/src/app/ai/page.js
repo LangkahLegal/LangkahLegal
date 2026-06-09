@@ -215,15 +215,17 @@ export default function TanyaAIPage() {
 
         <main
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth"
+          className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 space-y-8 pb-32 lg:pb-12 scroll-smooth"
           data-testid="ai-chat-messages"
         >
-          <div className="max-w-5xl mx-auto w-full space-y-8">
+          <div className="max-w-[1600px] mx-auto w-full space-y-8 animate-fade-in">
             {/* Loading state when switching sessions */}
             {isLoadingMessages ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <div className="w-8 h-8 border-3 border-primary-light/30 border-t-primary-light rounded-full animate-spin" />
-                <p className="text-sm text-muted">Memuat riwayat chat...</p>
+              <div className="flex flex-col items-center justify-center py-20 gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                  Memuat Riwayat Chat...
+                </p>
               </div>
             ) : (
               displayMessages.map((msg) => (
