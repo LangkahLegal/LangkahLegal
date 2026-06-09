@@ -950,4 +950,4 @@ def submit_rating(
     if data_pengajuan["status_pengajuan"] != "selesai":
         db.table("pengajuan_konsultasi").update({"status_pengajuan": "selesai"}).eq("id_pengajuan", id_pengajuan).execute()
 
-    return {"message": "Ulasan berhasil dikirim dan konsultasi telah selesai.", "data": insert_res.data[0]}
+    return {"message": "Ulasan berhasil dikirim dan konsultasi telah selesai.", "data": insert_res.data[0]}
