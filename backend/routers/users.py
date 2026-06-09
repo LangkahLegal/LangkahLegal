@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from supabase import Client
+from pydantic import ValidationError
 from database import get_supabase_client
 from dependencies import get_current_user
 from schemas.users import ProfileUpdatePayload
@@ -91,7 +92,10 @@ async def update_profile(
 
     if request.headers.get("content-type", "").startswith("application/json"):
         body = await request.json()
-        payload = ProfileUpdatePayload(**body)
+        try:
+            payload = ProfileUpdatePayload(**body)
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail=e.errors())
         nama = payload.nama
         foto_profil = payload.foto_profil
         bio_singkat = payload.bio_singkat

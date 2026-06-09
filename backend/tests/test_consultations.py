@@ -389,7 +389,7 @@ def test_assign_schedule_forbidden(app_client):
 
 def test_assign_schedule_pengajuan_not_found(app_client):
     table_responses = {
-        "konsultan": [[{"id_konsultan": 7}]],
+        "konsultan": [{"id_konsultan": 7}],
         "pengajuan_konsultasi": [[]],
     }
     client, _ = app_client(
@@ -407,7 +407,7 @@ def test_assign_schedule_pengajuan_not_found(app_client):
 
 def test_assign_schedule_invalid_time(app_client):
     table_responses = {
-        "konsultan": [[{"id_konsultan": 7}]],
+        "konsultan": [{"id_konsultan": 7}],
         "pengajuan_konsultasi": [
             [{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}]
         ],
@@ -439,7 +439,7 @@ def test_assign_schedule_invalid_time(app_client):
 
 def test_assign_schedule_success(app_client):
     table_responses = {
-        "konsultan": [[{"id_konsultan": 7}]],
+        "konsultan": [{"id_konsultan": 7}],
         "pengajuan_konsultasi": [
             [{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}],
             [{"id_pengajuan": 1, "status_pengajuan": "menunggu_pembayaran"}],
