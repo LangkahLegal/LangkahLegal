@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     try {
       await authService.forgotPassword({
         email,
-        emailRedirectTo: `${getAppOrigin()}/auth/callback?next=/auth/reset-password`,
+        emailRedirectTo: `${getAppOrigin()}/auth/reset-password`,
       });
       setIsSuccess(true);
     } catch (err) {
