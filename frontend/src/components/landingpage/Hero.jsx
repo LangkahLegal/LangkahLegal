@@ -1,57 +1,103 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Button } from "../ui";
+
+// Konfigurasi container untuk mengatur efek beruntun (stagger)
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1, // Jeda waktu sebelum elemen pertama mulai muncul
+      staggerChildren: 0.2, // Jeda waktu kemunculan antar elemen (0.2 detik)
+    },
+  },
+};
+
+// Konfigurasi animasi per-elemen (Fade In perlahan dengan sedikit pergeseran dari bawah)
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.8, ease: "easeOut" }, // durasi 0.8s agar terasa "pelan-pelan"
+  },
+};
 
 export default function Hero({ onGetStarted, onLearnMore }) {
   return (
-    <section id="hero" className="relative px-6 py-20 lg:py-32 max-w-7xl mx-auto flex flex-col items-center text-center">
+    <section
+      id="hero"
+      className="relative px-6 lg:py-32 max-w-7xl mx-auto flex flex-col items-center text-center"
+    >
+      {/* Ambient Glow Effects */}
       <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 
-      <div className="relative z-10 space-y-8 max-w-4xl">
-        <h1 className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.1] tracking-tight">
-          Solusi Hukum{" "}
-          <span
-            style={{
-              background:
-                "linear-gradient(to right, var(--primary-light), var(--primary))",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
+      {/* 
+        Bungkus konten utama dengan motion.div 
+        animate="visible" akan langsung memutar animasi saat halaman pertama kali dimuat
+      */}
+      <motion.div
+        className="relative z-10 w-full flex flex-col items-center"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="space-y-8 max-w-4xl flex flex-col items-center">
+          {/* HEADLINE */}
+          <motion.h1
+            variants={itemVariants}
+            className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.15] tracking-tight"
           >
-            Digital & Terpercaya
-          </span>
-        </h1>
-        <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto leading-relaxed">
-          Akses bantuan hukum profesional dengan satu sentuhan. Cepat,
-          transparan, dan terjangkau untuk kebutuhan personal maupun bisnis
-          Anda.
-        </p>
+            Akses Keadilan <br className="hidden sm:block" />
+            untuk Semua
+            <br />
+            <span
+              style={{
+                background:
+                  "linear-gradient(to right, var(--primary-light), var(--primary))",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                color: "transparent",
+              }}
+            ></span>
+          </motion.h1>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Button
-            onClick={onGetStarted}
-            className="!w-full sm:!w-auto px-10 py-4 text-lg"
+          {/* SUB-HEADLINE */}
+          <motion.p
+            variants={itemVariants}
+            className="text-base md:text-xl text-muted max-w-3xl mx-auto leading-relaxed px-2 md:px-0"
           >
-            Coba Sekarang
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onLearnMore}
-            className="!w-full sm:!w-auto px-10 py-4 text-lg"
+            Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.
+            Ceritakan masalah Anda pada Asisten AI kami untuk mendapatkan
+            &quot;P3K Hukum&quot;, temukan konsultan yang tepat, dan selesaikan
+            masalah hukum Anda dengan aman dan transparan.
+          </motion.p>
+
+          {/* CALL TO ACTION BUTTONS */}
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 w-full max-w-sm sm:max-w-none mx-auto"
           >
-            Pelajari Layanan
-          </Button>
+            <Button
+              onClick={onGetStarted}
+              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold"
+            >
+              Mulai Sekarang
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onLearnMore}
+              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold border-surface hover:bg-surface/50"
+            >
+              Pelajari Layanan
+            </Button>
+          </motion.div>
         </div>
-      </div>
-
-      <div className="mt-20 w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-primary-light/10 bg-input p-2 relative z-10">
-        <img
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEvueWKSnGkuhnVc-MbIOKmCpZ-4RcnjrRD9ObtzCKnRpLMnIjKW089uwG7-PIWBot5tZHBTGhDZuCu2j1qZ5aKireqEUDaDvGRq6SrK8lYIuzpoToD7aDOWPC-d6_eTb9KsFfBklx1bH6-qfVJN3usA8XYUsgQ1DM8Gv9yH1IPICTOIgR1Isd62iqwJJH_ks0cLit7eZf72RJGn4BNC9xDTfc6LUfSvryO1Qd3_tsx1qtel3DVl57bcw1-eTFITzlvNxTYfty4yKg"
-          alt="Legal workspace"
-          className="w-full h-[300px] md:h-[500px] object-cover rounded-2xl"
-        />
-      </div>
+      </motion.div>
     </section>
   );
 }

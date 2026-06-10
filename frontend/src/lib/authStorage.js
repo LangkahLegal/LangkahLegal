@@ -72,4 +72,5 @@ export const clearAuthSession = () => {
   window.sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
   window.sessionStorage.removeItem("pending_auth");
   window.sessionStorage.removeItem("pending_role");
+  window.localStorage.removeItem("ll_cached_profile");
 };

@@ -19,10 +19,6 @@ export default function PaymentBreakdown({
   };
 
   return (
-    /* REFACTOR: 
-       bg-[#151326] -> bg-card 
-       border-white/5 -> border-surface 
-    */
     <div className="w-full bg-card rounded-[2rem] p-8 border border-surface shadow-2xl transition-all duration-500">
       {/* Judul Seksi - REFACTOR: text-white -> text-main */}
       <h3 className="text-main text-lg font-bold mb-6 transition-colors">
@@ -32,12 +28,10 @@ export default function PaymentBreakdown({
       {/* Baris Rincian */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-1">
-          {/* REFACTOR: text-[#aca8c1] -> text-muted */}
           <span className="text-muted text-sm sm:text-base font-medium transition-colors">
             Harga Per Sesi ({sessionDuration} Menit)
           </span>
         </div>
-        {/* REFACTOR: text-white -> text-main */}
         <span className="text-main text-sm sm:text-base font-bold transition-colors">
           {formatCurrency(pricePerSession)} × {quantity}
         </span>
@@ -48,11 +42,9 @@ export default function PaymentBreakdown({
 
       {/* Baris Total */}
       <div className="flex justify-between items-center">
-        {/* REFACTOR: text-white -> text-main */}
         <span className="text-main text-lg font-bold transition-colors">
           Total Harga
         </span>
-        {/* REFACTOR: text-[#ada3ff] -> text-primary-light */}
         <span className="text-primary-light text-2xl font-black tracking-tight transition-colors">
           {formatCurrency(totalAmount)}
         </span>

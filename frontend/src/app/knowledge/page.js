@@ -175,8 +175,8 @@ export default function KnowledgeBasePage() {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 sm:space-y-8 animate-fade-in">
             {/* Header Area */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-6 rounded-3xl border border-surface shadow-soft">
               <div>

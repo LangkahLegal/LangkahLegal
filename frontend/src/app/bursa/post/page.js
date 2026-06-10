@@ -120,7 +120,7 @@ export default function PostCasePage() {
       <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Pengajuan Anonim" backHref="/dashboard/client" />
 
-        <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10 animate-fade-in">
             {/* Header Form bergaya Hero */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-6 rounded-3xl border border-surface shadow-soft rounded-3xl p-6 lg:p-8">

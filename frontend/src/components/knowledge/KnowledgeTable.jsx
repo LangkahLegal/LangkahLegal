@@ -1,6 +1,7 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import Pagination from "./Pagination";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function Badge({ children, variant = "default" }) {
   const variants = {
@@ -54,64 +55,88 @@ export default function KnowledgeTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-surface">
-            {documents.map((doc) => (
-              <tr 
-                key={doc.frbr_uri} 
-                className="hover:bg-surface/10 transition-colors group cursor-pointer"
-                onClick={() => handleDetailClick(doc)}
-              >
-                
-                {/* 1. KOLOM NAMA UU */}
-                <td className="px-4 py-3">
-                  <div className="max-w-[180px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[450px] relative group/title">
-                    <p className="font-bold text-main text-[10px] leading-relaxed line-clamp-2" title={doc.nama_uu}>
-                      {doc.nama_uu}
+            {loadingDocs ? (
+              <tr>
+                <td colSpan="6" className="py-20 text-center">
+                  <div className="flex flex-col items-center justify-center gap-5">
+                    <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                      Memuat Knowledge Base...
                     </p>
                   </div>
                 </td>
-
-                {/* 2. KOLOM NOMOR */}
-                <td className="px-4 py-3 text-[10px] text-main font-medium whitespace-nowrap">
-                  {doc.nomor_uu || doc.tahun_uu 
-                    ? `${doc.nomor_uu ?? ''} / ${doc.tahun_uu ?? ''}` 
-                    : <span className="text-muted opacity-50">-</span>
-                  }
-                </td>
-                
-                {/* 3. KOLOM PASAL*/}
-                <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
-                  <div className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-surface/40 text-main text-[10px] font-bold">
-                    {doc.total_chunks || 0}
-                  </div>
-                </td>
-                
-                {/* 4. KOLOM KATEGORI */}
-                <td className="px-4 py-3 align-middle whitespace-nowrap">
-                  <Badge variant="primary">{doc.kategori}</Badge>
-                </td>
-                
-                {/* 5. KOLOM STATUS */}
-                <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
-                  <StatusBadge status={doc.status_hukum} />
-                </td>
-                
-                {/* 6. KOLOM AKSI */}
-                <td className="px-4 py-3 align-middle whitespace-nowrap">
-                  <div className="flex items-center justify-end gap-0.5">
-                    <Button variant="ghost" className="!p-1 text-muted hover:bg-warning/10 hover:text-warning transition-colors" onClick={(e) => { e.stopPropagation(); handleReplaceClick(doc); }}>
-                      <MaterialIcon name="sync" className="text-[14px]" />
-                    </Button>
-                    <Button variant="ghost" className="!p-1 text-muted hover:bg-danger/10 hover:text-danger transition-colors" onClick={(e) => { e.stopPropagation(); handleDeleteClick(doc); }}>
-                      <MaterialIcon name="delete" className="text-[14px]" />
-                    </Button>
-                    <Button variant="ghost" className="!p-1 text-muted hover:bg-primary/10 hover:text-primary-light transition-colors" onClick={(e) => { e.stopPropagation(); handleDetailClick(doc); }}>
-                      <MaterialIcon name="arrow_forward" className="text-[14px]" />
-                    </Button>
-                  </div>
-                </td>
-                
               </tr>
-            ))}
+            ) : documents.length === 0 ? (
+              <tr>
+                <td colSpan="6">
+                  <EmptyState
+                    icon="folder_off"
+                    title="Kosong"
+                    description="Tidak ada dokumen hukum yang ditemukan."
+                    className="py-12"
+                  />
+                </td>
+              </tr>
+            ) : (
+              documents.map((doc) => (
+                <tr 
+                  key={doc.frbr_uri} 
+                  className="hover:bg-surface/10 transition-colors group cursor-pointer"
+                  onClick={() => handleDetailClick(doc)}
+                >
+                  
+                  {/* 1. KOLOM NAMA UU */}
+                  <td className="px-4 py-3">
+                    <div className="max-w-[180px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[450px] relative group/title">
+                      <p className="font-bold text-main text-[10px] leading-relaxed line-clamp-2" title={doc.nama_uu}>
+                        {doc.nama_uu}
+                      </p>
+                    </div>
+                  </td>
+  
+                  {/* 2. KOLOM NOMOR */}
+                  <td className="px-4 py-3 text-[10px] text-main font-medium whitespace-nowrap">
+                    {doc.nomor_uu || doc.tahun_uu 
+                      ? `${doc.nomor_uu ?? ''} / ${doc.tahun_uu ?? ''}` 
+                      : <span className="text-muted opacity-50">-</span>
+                    }
+                  </td>
+                  
+                  {/* 3. KOLOM PASAL*/}
+                  <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
+                    <div className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-surface/40 text-main text-[10px] font-bold">
+                      {doc.total_chunks || 0}
+                    </div>
+                  </td>
+                  
+                  {/* 4. KOLOM KATEGORI */}
+                  <td className="px-4 py-3 align-middle whitespace-nowrap">
+                    <Badge variant="primary">{doc.kategori}</Badge>
+                  </td>
+                  
+                  {/* 5. KOLOM STATUS */}
+                  <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
+                    <StatusBadge status={doc.status_hukum} />
+                  </td>
+                  
+                  {/* 6. KOLOM AKSI */}
+                  <td className="px-4 py-3 align-middle whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <Button variant="ghost" className="!p-1 text-muted hover:bg-warning/10 hover:text-warning transition-colors" onClick={(e) => { e.stopPropagation(); handleReplaceClick(doc); }}>
+                        <MaterialIcon name="sync" className="text-[14px]" />
+                      </Button>
+                      <Button variant="ghost" className="!p-1 text-muted hover:bg-danger/10 hover:text-danger transition-colors" onClick={(e) => { e.stopPropagation(); handleDeleteClick(doc); }}>
+                        <MaterialIcon name="delete" className="text-[14px]" />
+                      </Button>
+                      <Button variant="ghost" className="!p-1 text-muted hover:bg-primary/10 hover:text-primary-light transition-colors" onClick={(e) => { e.stopPropagation(); handleDetailClick(doc); }}>
+                        <MaterialIcon name="arrow_forward" className="text-[14px]" />
+                      </Button>
+                    </div>
+                  </td>
+                  
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

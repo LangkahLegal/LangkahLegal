@@ -1,7 +1,6 @@
 import { MaterialIcon } from "@/components/ui";
 
 export default function IncomeCard({ amount = "Rp 0" }) {
-  // REFACTOR: Container sekarang menggunakan bg-surface (warna dompet sebelumnya)
   const cardStyles = `
     relative overflow-hidden 
     bg-surface

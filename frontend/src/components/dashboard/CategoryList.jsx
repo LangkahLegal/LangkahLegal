@@ -48,17 +48,6 @@ export default function CategoryList({
                 }
               `}
             >
-              {/* Dot Indicator: Theme Aware */}
-              <span
-                className={`
-                  w-2 h-2 rounded-full transition-all duration-300
-                  ${
-                    isActive
-                      ? "bg-primary-light animate-pulse scale-110 shadow-[0_0_8px_var(--primary-light)]"
-                      : "bg-muted/30"
-                  }
-                `}
-              />
               <span className="tracking-wide uppercase text-[10px]">
                 {category.label}
               </span>

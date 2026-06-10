@@ -42,14 +42,7 @@ export default function PillDropdown({
           }
         `}
       >
-        {/* Dot indicator */}
-        <span
-          className={`w-2 h-2 rounded-full transition-all duration-300 ${
-            !isDefault
-              ? "bg-primary-light animate-pulse scale-110 shadow-[0_0_8px_var(--primary-light)]"
-              : "bg-muted/30"
-          }`}
-        />
+
 
         {icon && <MaterialIcon name={icon} className="text-sm -ml-0.5" />}
 

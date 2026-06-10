@@ -17,6 +17,13 @@ export default function AuthCallbackPage() {
     const finalizeLogin = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get("error_description") || urlParams.get("error");
+
+        if (errorParam) {
+          setError(decodeURIComponent(errorParam));
+          return;
+        }
+
         const code = urlParams.get("code");
 
         if (!code) {

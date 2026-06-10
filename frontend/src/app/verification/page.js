@@ -12,6 +12,7 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import ConsultantCard from "@/components/verification/VerificationCard";
 import CategoryList from "@/components/dashboard/CategoryList";
 import ConfirmActionModal from "@/components/verification/ConfirmActionModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { getConsultants, verifyConsultant } from "@/services/admin.service";
 import { useTheme } from "@/providers/ThemeProvider"; 
@@ -107,8 +108,8 @@ export default function VerificationListPage() {
       <div className="flex-1 flex flex-col relative min-w-0 w-full lg:ml-64 transition-all duration-300">
         <PageHeader title="Ajuan Verifikasi" backHref="/dashboard/admin" />
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-32 pt-8 scroll-smooth w-full">
-          <div className="max-w-4xl mx-auto w-full space-y-6 sm:space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 sm:space-y-8 animate-fade-in">
             <div className="space-y-4">
               <SearchBar value={search} onChange={setSearch} />
 
@@ -120,17 +121,19 @@ export default function VerificationListPage() {
               />
 
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                  <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex flex-col items-center justify-center py-20 gap-5">
+                  <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
                   <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
-                    Memuat Data...
+                    Memuat Data Verifikasi...
                   </p>
                 </div>
               ) : filteredConsultants.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-muted">
-                  <MaterialIcon name="search_off" className="text-4xl mb-2 opacity-50" />
-                  <p className="text-sm font-medium">Tidak ada data ditemukan</p>
-                </div>
+                <EmptyState
+                  icon="search_off"
+                  title="Tidak Ditemukan"
+                  description="Tidak ada data verifikasi yang sesuai."
+                  className="py-12"
+                />
               ) : (
                 <div className="mt-10 grid sm:grid-cols-2 gap-4 lg:gap-6">
                   {filteredConsultants.map((item) => (

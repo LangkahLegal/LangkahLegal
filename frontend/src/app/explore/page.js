@@ -6,10 +6,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import SearchBar from "@/components/layout/SearchBar";
+import { useRouter } from "next/navigation";
 import ConsultantCard from "@/components/explore/ConsultantCard";
 import PillDropdown from "@/components/explore/PillDropdown";
 import AIBanner from "@/components/explore/AIBanner";
 import { MaterialIcon } from "@/components/ui";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Import Service
 import { consultationService } from "@/services/consultation.service";
@@ -28,6 +30,7 @@ const VERIFIED_OPTIONS = [
 ];
 
 export default function KonsultasiPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("semua");
   const [filterVerified, setFilterVerified] = useState("semua");
@@ -88,7 +91,7 @@ export default function KonsultasiPage() {
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Cari Konsultan" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-8 lg:px-12 space-y-10 pb-32 lg:pb-12">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 space-y-10 pb-32 lg:pb-12 animate-fade-in">
           <SearchBar value={search} onChange={setSearch} />
 
           {/* ===== Filter Bar — compact horizontal row ===== */}
@@ -100,7 +103,6 @@ export default function KonsultasiPage() {
             <div className="flex items-center gap-3 px-1 flex-wrap relative z-20">
               {/* Kategori Dropdown */}
               <PillDropdown
-                icon="category"
                 options={CATEGORY_OPTIONS}
                 value={activeCategory}
                 onChange={setActiveCategory}
@@ -108,70 +110,77 @@ export default function KonsultasiPage() {
 
               {/* Verifikasi Dropdown */}
               <PillDropdown
-                icon="verified_user"
                 options={VERIFIED_OPTIONS}
                 value={filterVerified}
                 onChange={setFilterVerified}
               />
 
-              {/* Harga Min-Max — inline pill style */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-surface bg-input/50 shrink-0">
-                <MaterialIcon name="payments" className="text-sm text-muted" />
-                <span className="text-[10px] font-bold text-muted uppercase tracking-wide">Rp</span>
+              <button
+                onClick={resetFilters}
+                disabled={!hasActiveFilter}
+                className={`flex flex-1 md:flex-none items-center justify-center gap-1.5 px-4 py-3.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all duration-300 whitespace-nowrap ${
+                  hasActiveFilter
+                    ? "border-danger/30 text-danger bg-danger/5 hover:bg-danger/10"
+                    : "border-muted/30 text-muted bg-surface/50 opacity-50 cursor-not-allowed"
+                }`}
+              >
+                Reset
+              </button>
+
+              {/* Harga Min-Max — Width ditambah dan dibuat penuh (w-full) di tampilan mobile */}
+              <div className="flex flex-1 md:flex-none items-center justify-between gap-2 px-4 py-2.5 rounded-full border border-surface bg-input/50 shrink-0 w-full md:w-auto">
+                <span className="text-[10px] font-bold text-muted uppercase tracking-wide shrink-0">
+                  Rp
+                </span>
                 <input
                   type="number"
                   min="0"
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value)}
                   placeholder="Min"
-                  className="w-16 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
+                  // Menggunakan flex-1 dan menyesuaikan min/max width agar fleksibel
+                  className="flex-1 min-w-[60px] md:w-24 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
                 />
-                <span className="text-muted/50 text-[10px]">—</span>
+                <span className="text-muted/50 text-[10px] shrink-0">—</span>
                 <input
                   type="number"
                   min="0"
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
                   placeholder="Max"
-                  className="w-16 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
+                  className="flex-1 min-w-[60px] md:w-24 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
                 />
               </div>
-
-              {/* Reset Button */}
-              {hasActiveFilter && (
-                <button
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-wide border border-danger/30 text-danger bg-danger/5 hover:bg-danger/10 transition-all duration-300 whitespace-nowrap shrink-0"
-                >
-                  <MaterialIcon name="restart_alt" className="text-sm" />
-                  Reset
-                </button>
-              )}
             </div>
           </section>
 
           {/* ===== Consultant Grid ===== */}
           <div className="relative min-h-[400px]">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-primary-light font-bold animate-pulse uppercase text-[10px] tracking-widest">
-                  Mengambil Katalog...
+              <div className="flex flex-col items-center justify-center py-20 gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                  Memuat Katalog Konsultan...
                 </p>
               </div>
             ) : (
               <section
-                className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 w-full transition-opacity duration-300 ${isFetching ? "opacity-50" : "opacity-100"}`}
+                className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 w-full transition-opacity duration-300 ${
+                  isFetching ? "opacity-50" : "opacity-100"
+                }`}
               >
                 {filteredConsultants.length > 0 ? (
                   filteredConsultants.map((pro) => (
                     <ConsultantCard key={pro.id} consultant={pro} />
                   ))
                 ) : (
-                  <div className="col-span-full py-20 text-center bg-card/30 rounded-[2.5rem] border border-dashed border-surface shadow-sm">
-                    <p className="text-muted font-medium">
-                      Tidak ada konsultan yang ditemukan.
-                    </p>
+                  <div className="col-span-full">
+                    <EmptyState
+                      icon="search_off"
+                      title="Tidak Ditemukan"
+                      description="Tidak ada konsultan yang cocok dengan filter pencarian."
+                      className="py-12"
+                    />
                   </div>
                 )}
               </section>
@@ -184,7 +193,7 @@ export default function KonsultasiPage() {
             )}
           </div>
 
-          <AIBanner onAction={() => console.log("AI Chat Started")} />
+          <AIBanner onAction={() => router.push("/ai")} />
         </main>
 
         <div className="lg:hidden">

@@ -433,10 +433,10 @@ export default function RequestDetailPage() {
 
 const LoadingSpinner = () => (
   <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-    <div className="flex flex-col items-center gap-4">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary"></div>
-      <p className="text-primary-light text-[10px] font-bold tracking-widest uppercase animate-pulse">
-        Loading Detail...
+    <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+      <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+      <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+        Memuat Detail Permintaan...
       </p>
     </div>
   </div>

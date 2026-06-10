@@ -8,6 +8,7 @@ import EmptyConsultationCard from "@/components/dashboard/EmptyConsultationCard"
 import FeaturedServices from "@/components/dashboard/FeaturedServices";
 import BottomNav from "@/components/layout/BottomNav";
 import Sidebar from "@/components/layout/Sidebar";
+import { Spinner } from "@/components/ui/Spinner";
 
 import { userService } from "@/services/user.service";
 import { consultationService } from "@/services/consultation.service";
@@ -17,7 +18,7 @@ export default function DashboardPage() {
   const [tempHiddenIds, setTempHiddenIds] = useState([]);
 
   // --- 1. Fetch Profile ---
-  const { data: user } = useQuery({
+  const { data: user, isLoading: isLoadingUser } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userService.getFullProfile,
     select: (data) => ({
@@ -88,24 +89,7 @@ export default function DashboardPage() {
     cancelMutation.mutate(activeConsultation.id_pengajuan);
   };
 
-  // --- RENDER LOADING STATE (Theme Aware) ---
-  if (isLoading) {
-    return (
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#ada3ff] -> text-primary-light */
-      <div className="bg-bg min-h-screen flex items-center justify-center text-primary-light transition-colors duration-500">
-        <div className="flex flex-col items-center gap-4">
-          {/* REFACTOR: border-[#ada3ff] -> border-primary */}
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="animate-pulse font-bold text-[10px] tracking-widest uppercase">
-            Synchronizing Dashboard...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-[#e8e2fc] -> text-main */
     <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
       <Sidebar />
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
@@ -113,22 +97,31 @@ export default function DashboardPage() {
           <DashboardHeader
             userName={user?.nama}
             foto_profil={user?.foto_profil}
+            isLoading={isLoadingUser}
           />
         </header>
 
-        <main className="relative z-10 w-full px-4 py-6 md:px-8 lg:px-12 lg:py-12 pb-32 lg:pb-12">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12 animate-fade-in">
-            <div className="w-full">
-              {activeConsultation ? (
-                <ConsultationCard
-                  data={activeConsultation}
-                  onCancel={handleCancelConsultation}
-                  onHide={handleHideCard}
-                />
-              ) : (
-                <EmptyConsultationCard />
-              )}
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh]">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+              <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+              <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                Memuat Dashboard...
+              </p>
             </div>
+          ) : (
+            <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12 animate-fade-in">
+              <div className="w-full">
+                {activeConsultation ? (
+                  <ConsultationCard
+                    data={activeConsultation}
+                    onCancel={handleCancelConsultation}
+                    onHide={handleHideCard}
+                  />
+                ) : (
+                  <EmptyConsultationCard />
+                )}
+              </div>
 
             <FeaturedServices
               services={{
@@ -155,6 +148,7 @@ export default function DashboardPage() {
               }}
             />
           </div>
+          )}
         </main>
         <div className="lg:hidden">
           <BottomNav />

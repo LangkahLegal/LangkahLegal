@@ -28,7 +28,6 @@ export default function LandingPage() {
   };
 
   return (
-    /* REFACTOR: selection:bg-primary/30 | bg-bg | Tambahkan transition agar smooth */
     <div className="relative selection:bg-primary/30 bg-bg min-h-screen transition-colors duration-500">
       {/* Layout: Top */}
       <Navbar />
