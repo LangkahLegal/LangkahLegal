@@ -16,6 +16,22 @@ logger = logging.getLogger(__name__)
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
+def get_frontend_base_url() -> str:
+    """
+    Return the public frontend base URL based on APP_ENV.
+
+    Development and test environments use localhost, while other environments
+    use the production frontend domain.
+    """
+    settings = get_settings()
+    app_env = settings.app_env.strip().lower()
+
+    if app_env in {"development", "dev", "local", "test"}:
+        return "http://localhost:3000"
+
+    return "https://langkahlegal.vercel.app"
+
+
 def _send_via_brevo(to_email: str, subject: str, body_html: str) -> None:
     """
     Kirim email menggunakan Brevo HTTP API.

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import httpx
-from services.email_service import send_recovery_email, send_notification_email
+from services.email_service import get_frontend_base_url, send_recovery_email, send_notification_email
 from config import Settings
 
 
@@ -106,3 +106,37 @@ def test_send_email_exception_handling(mock_settings_with_key):
             # Should handle exception gracefully
             send_notification_email("user@example.com", "Test Title", "Test Message")
             mock_client.post.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "app_env, expected_url",
+    [
+        ("development", "http://localhost:3000"),
+        ("test", "http://localhost:3000"),
+        ("production", "https://langkahlegal.vercel.app"),
+        ("staging", "https://langkahlegal.vercel.app"),
+    ],
+)
+def test_get_frontend_base_url(app_env, expected_url):
+    settings = Settings(
+        app_env=app_env,
+        app_name="TestApp",
+        frontend_url="https://test.langkahlegal.com",
+        cookie_domain="localhost",
+        supabase_url="https://supabase.co",
+        supabase_key="key",
+        supabase_portofolio_bucket="port",
+        supabase_berkas_pendukung_bucket="berkas",
+        supabase_knowledge_bucket="kb",
+        imgbb_api_key="img",
+        midtrans_server_key="mid_server",
+        midtrans_client_key="mid_client",
+        midtrans_is_production=False,
+        voyage_api_key="voyage",
+        google_api_key="google",
+        brevo_api_key="xkeysib-test-key",
+        brevo_from_email="LangkahLegal <langkahlegal@gmail.com>",
+    )
+
+    with patch("services.email_service.get_settings", return_value=settings):
+        assert get_frontend_base_url() == expected_url
