@@ -11,7 +11,17 @@ import {
  * Mengambil base URL dari environment variable (.env.local)
  */
 const normalizeApiBaseUrl = (rawUrl) => {
-  if (!rawUrl) return "https://langkahlegal-production.up.railway.app/api/v1";
+  if (!rawUrl) {
+    // Gunakan backend localhost jika berjalan di development environment
+    const isDevNode = process.env.NODE_ENV === "development";
+    const isDevBrowser = typeof window !== "undefined" && 
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      
+    if (isDevNode || isDevBrowser) {
+      return "http://localhost:8000/api/v1";
+    }
+    return "https://langkahlegal-production.up.railway.app/api/v1";
+  }
 
   try {
     const parsed = new URL(rawUrl);
@@ -24,7 +34,7 @@ const normalizeApiBaseUrl = (rawUrl) => {
 
     return parsed.toString().replace(/\/$/, "");
   } catch {
-    if (typeof rawUrl === "string" && rawUrl.includes("langkahlegal-production.up.railway.app")) {
+    if (typeof rawUrl === "string" && rawUrl.includes("up.railway.app")) {
       return rawUrl.startsWith("http://")
         ? rawUrl.replace(/^http:\/\//, "https://")
         : rawUrl;

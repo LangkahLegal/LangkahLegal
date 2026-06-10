@@ -26,7 +26,6 @@ export default function AvatarUpload({
   
   const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
 
-  // Fallback URL menggunakan variabel warna yang sesuai dengan tema
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User",
   )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;

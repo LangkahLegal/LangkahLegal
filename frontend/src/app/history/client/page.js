@@ -10,6 +10,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import HistoryStats from "@/components/history/HistoryStats";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { consultationService } from "@/services/consultation.service";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function HistoryPage() {
   // --- 1. Fetch Data via TanStack Query ---
@@ -44,28 +45,26 @@ export default function HistoryPage() {
 
 
   return (
-    /* REFACTOR: bg-bg | text-main | font-primary */
     <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
       <Sidebar role="client" />
 
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 transition-all duration-300">
         <PageHeader title="Riwayat Konsultasi" />
 
-        <main className="flex-1 overflow-y-auto px-6 pb-32 pt-8 scroll-smooth">
-          <div className="max-w-3xl mx-auto space-y-8">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
             {/* Stats Section */}
-            <HistoryStats count={completedCount} />
+            <HistoryStats count={completedCount} isLoading={isLoading} />
 
             {/* List Section */}
             <div className="space-y-6">
-              {/* REFACTOR: text-muted */}
               <h3 className="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2">
                 Daftar Aktivitas
               </h3>
 
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                  <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex flex-col items-center justify-center py-20 gap-5">
+                  <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
                   <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
                     Memuat Riwayat...
                   </p>
@@ -82,13 +81,12 @@ export default function HistoryPage() {
                   ))}
                 </div>
               ) : (
-                /* REFACTOR: bg-card/30 | border-surface */
-                <div className="text-center py-20 bg-card/30 rounded-[2rem] border border-surface border-dashed">
-                  {/* REFACTOR: text-muted */}
-                  <p className="text-muted text-sm font-medium">
-                    Belum ada riwayat konsultasi.
-                  </p>
-                </div>
+                <EmptyState
+                  icon="history"
+                  title="Riwayat Kosong"
+                  description="Belum ada riwayat sesi konsultasi."
+                  className="py-12"
+                />
               )}
             </div>
           </div>

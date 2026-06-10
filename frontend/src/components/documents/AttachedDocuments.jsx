@@ -4,6 +4,7 @@ import { useState } from "react";
 import FileItem from "@/components/ui/FileItem";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button"; // Menggunakan komponen Button Anda
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function AttachedDocuments({
   documents = [],
@@ -68,13 +69,13 @@ export default function AttachedDocuments({
             ))}
           </div>
         ) : showEmptyState ? (
-          <div className="bg-card border border-dashed border-surface rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-4">
-              <MaterialIcon name="folder_off" className="text-3xl text-muted" />
-            </div>
-            <p className="text-main font-bold mb-1">Belum ada dokumen</p>
-            <p className="text-muted text-xs">Klien tidak melampirkan dokumen pendukung apa pun pada pengajuan ini.</p>
-          </div>
+          <EmptyState
+            icon="folder_off"
+            title="Belum Ada Dokumen"
+            description="Tidak ada dokumen pendukung yang dilampirkan pada pengajuan ini."
+            className="py-12"
+            variant="card"
+          />
         ) : null}
 
       </section>

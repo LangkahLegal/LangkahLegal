@@ -70,7 +70,6 @@ export default function ConsultationCard({
 
   const jadwal = data?.jadwal_ketersediaan;
   const konsultan = jadwal?.konsultan;
-  // Fallback chain: jadwal > direct konsultan join > users > fallback
   const displayName =
     konsultan?.nama_lengkap ||
     data?.konsultan?.nama_lengkap ||

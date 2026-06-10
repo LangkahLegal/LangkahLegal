@@ -7,7 +7,7 @@ from schemas.consultations import ConsultationCreate, ConsultationRespond, Assig
 from dependencies import get_current_user
 from config import get_settings
 from services import upload_supporting_document_to_supabase
-from services.email_service import send_notification_email
+from services.email_service import get_frontend_base_url, send_notification_email
 
 router = APIRouter()
     
@@ -127,12 +127,13 @@ async def buat_pengajuan_konsultasi(
                 konsultan_email = user_res.data["email"]
                 konsultan_nama = konsultan_res.data["nama_lengkap"]
                 subject = "Pengajuan Konsultasi Baru"
+                frontend_base_url = get_frontend_base_url()
                 message = f"""Halo {konsultan_nama},
 
 Anda memiliki pengajuan konsultasi baru yang menunggu persetujuan Anda.
 
 Silakan tinjau detail pengajuan dan tentukan tindakan Anda melalui tautan berikut:
-http://localhost:3000/request/{id_pengajuan}
+{frontend_base_url}/request/{id_pengajuan}
 
 Terima kasih.
 """
@@ -223,12 +224,13 @@ def update_consultation_status(
                 client_email = client_res.data["email"]
                 client_nama = client_res.data["nama"]
                 subject = "Jadwal Konsultasi Ditetapkan - Menunggu Pembayaran"
+                frontend_base_url = get_frontend_base_url()
                 message = f"""Halo {client_nama},
 
 Kabar baik! Pengajuan konsultasi Anda (ID: {id_pengajuan}) telah dikonfirmasi oleh konsultan.
 
 Silakan lanjutkan ke tahap pembayaran untuk mengamankan slot jadwal Anda. Anda dapat melakukan pembayaran melalui tautan berikut:
-http://localhost:3000/payment/{id_pengajuan}
+{frontend_base_url}/payment/{id_pengajuan}
 
 (Atau Anda dapat langsung mengecek menu Dashboard di aplikasi LangkahLegal).
 
@@ -543,7 +545,7 @@ def assign_schedule_to_claim(
 Jadwal konsultasi Anda telah dikonfirmasi dan ditetapkan oleh konsultan (ID Pengajuan: {id_pengajuan}).
 
 Silakan lanjutkan ke tahap pembayaran untuk mengamankan slot jadwal Anda. Anda dapat melakukan pembayaran melalui tautan berikut:
-http://localhost:3000/payment/{id_pengajuan}
+{frontend_base_url}/payment/{id_pengajuan}
 
 (Atau Anda dapat langsung mengecek menu Dashboard di aplikasi LangkahLegal).
 
@@ -622,11 +624,12 @@ def update_zoom_link(
                 client_email = client_res.data["email"]
                 client_nama = client_res.data["nama"]
                 subject = "Link Zoom Konsultasi Tersedia"
+                frontend_base_url = get_frontend_base_url()
                 message = f"""Halo {client_nama},
 
 Konsultan telah membagikan link Zoom untuk sesi konsultasi Anda.
 Silakan cek detail dan akses link tersebut melalui tautan berikut:
-http://localhost:3000/consultation/{id_pengajuan}
+{frontend_base_url}/consultation/{id_pengajuan}
 
 Terima kasih.
 """
@@ -950,4 +953,4 @@ def submit_rating(
     if data_pengajuan["status_pengajuan"] != "selesai":
         db.table("pengajuan_konsultasi").update({"status_pengajuan": "selesai"}).eq("id_pengajuan", id_pengajuan).execute()
 
-    return {"message": "Ulasan berhasil dikirim dan konsultasi telah selesai.", "data": insert_res.data[0]}
+    return {"message": "Ulasan berhasil dikirim dan konsultasi telah selesai.", "data": insert_res.data[0]}

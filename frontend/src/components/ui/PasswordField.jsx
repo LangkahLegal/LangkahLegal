@@ -42,7 +42,6 @@ export function PasswordField({
           {...props}
         />
 
-        {/* REFACTOR: Menggunakan komponen Button varian 'icon' */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
           <Button
             type="button"

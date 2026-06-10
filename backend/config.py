@@ -5,6 +5,7 @@ from functools import lru_cache
 from dotenv import load_dotenv
 
 load_dotenv()
+
 @dataclass(frozen=True)
 class Settings:
 	app_env: str
@@ -22,11 +23,8 @@ class Settings:
 	midtrans_is_production: bool
 	voyage_api_key: str
 	google_api_key: str
-	smtp_host: str
-	smtp_port: int
-	smtp_username: str
-	smtp_password: str
-	smtp_from_email: str
+	brevo_api_key: str
+	brevo_from_email: str
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -43,12 +41,8 @@ def get_settings() -> Settings:
 	midtrans_is_production = os.getenv("MIDTRANS_IS_PRODUCTION", "false").strip().lower() == "true"
 	voyage_api_key = os.getenv("VOYAGE_API_KEY", "").strip()
 	google_api_key = os.getenv("GOOGLE_API_KEY", "").strip()
-	
-	smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
-	smtp_port = int(os.getenv("SMTP_PORT", "465"))
-	smtp_username = os.getenv("SMTP_USERNAME", "").strip()
-	smtp_password = os.getenv("SMTP_PASSWORD", "").strip()
-	smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_username).strip()
+	brevo_api_key = os.getenv("BREVO_API_KEY", "").strip()
+	brevo_from_email = os.getenv("BREVO_FROM_EMAIL", "LangkahLegal <langkahlegal@gmail.com>").strip()
 
 	if not supabase_url or not supabase_key:
 		raise RuntimeError(
@@ -71,9 +65,6 @@ def get_settings() -> Settings:
 		midtrans_is_production=midtrans_is_production,
 		voyage_api_key=voyage_api_key,
 		google_api_key=google_api_key,
-		smtp_host=smtp_host,
-		smtp_port=smtp_port,
-		smtp_username=smtp_username,
-		smtp_password=smtp_password,
-		smtp_from_email=smtp_from_email,
+		brevo_api_key=brevo_api_key,
+		brevo_from_email=brevo_from_email,
 	)

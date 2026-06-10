@@ -10,6 +10,7 @@ const getSafeAvatarSrc = (url, fallbackUrl) => {
     const parsed = new URL(url);
     const safeHosts = new Set([
       "ui-avatars.com",
+      "i.ibb.co",
       "lh3.googleusercontent.com",
       "images.unsplash.com",
       "supabase.co",
@@ -17,10 +18,6 @@ const getSafeAvatarSrc = (url, fallbackUrl) => {
       "storage.googleapis.com",
       "res.cloudinary.com",
     ]);
-
-    if (parsed.hostname === "i.ibb.co" || parsed.hostname.endsWith(".ibb.co")) {
-      return fallbackUrl;
-    }
 
     const isSafeHost =
       safeHosts.has(parsed.hostname) ||
@@ -73,9 +70,7 @@ export default function ConsultantHero({
 
       {/* 2. Avatar Section */}
       <div className="relative mb-8 sm:mb-10 animate-fade-in">
-        {/* REFACTOR: border-primary/10 */}
         <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full border-[8px] border-primary/10 p-2 backdrop-blur-sm shadow-inner">
-          {/* REFACTOR: border-primary */}
           <div className="w-full h-full rounded-full border-[3px] border-primary p-1.5 overflow-hidden">
             <img
               src={avatarSrc}
@@ -115,7 +110,6 @@ export default function ConsultantHero({
       <div className="flex items-center justify-center gap-3 flex-wrap px-4 mb-3">
         <div className="flex items-center gap-1 whitespace-nowrap">
           <MaterialIcon name="star" className="text-amber-400 text-base" />
-          {/* REFACTOR: text-main */}
           <span className="text-[10px] sm:text-xs font-bold text-main opacity-80">
             {rating || "0.0"}
           </span>

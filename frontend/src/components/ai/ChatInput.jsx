@@ -29,8 +29,8 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
 
   return (
     /* Container dengan gradient theme-aware agar teks chat di belakangnya menghilang halus */
-    <div className="px-6 pb-28 lg:pb-10 pt-4 bg-gradient-to-t from-bg via-bg to-transparent flex flex-col gap-3">
-      <div className="max-w-5xl mx-auto w-full">
+    <div className="px-6 lg:px-10 pb-28 lg:pb-10 pt-4 bg-gradient-to-t from-bg via-bg to-transparent flex flex-col gap-3">
+      <div className="max-w-[1600px] mx-auto w-full">
         {/* Suggested Actions (Quick Replies) */}
         {suggestedActions.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">

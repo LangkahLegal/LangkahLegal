@@ -126,7 +126,12 @@ export default function ConsultantDetailPage() {
   if (isLoadingConsultant)
     return (
       <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+          <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+            Memuat Profil Konsultan...
+          </p>
+        </div>
       </div>
     );
 
@@ -148,7 +153,7 @@ export default function ConsultantDetailPage() {
       <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
         <PageHeader title="Profil Konsultan" />
 
-        <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10 animate-fade-in">
             {/* Konten Utama Profil */}
             <ConsultantHero
@@ -208,7 +213,6 @@ export default function ConsultantDetailPage() {
                 fullWidth
                 isLoading={bookingMutation.isPending}
                 onClick={handleBooking}
-                /* REFACTOR: Shadow mengikuti warna primer tema */
                 className="py-5 rounded-xl shadow-lg shadow-primary/20"
               >
                 Booking Konsultasi

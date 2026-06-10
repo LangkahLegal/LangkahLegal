@@ -46,10 +46,10 @@ export default function VerificationDetailPage() {
   if (isLoading) {
     return (
       <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary-light border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-primary-light text-[10px] font-bold uppercase animate-pulse">
-            Memuat Data...
+        <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+          <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+            Memuat Data Verifikasi...
           </p>
         </div>
       </div>

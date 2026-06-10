@@ -32,7 +32,6 @@ export default function SuccessView({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      /* REFACTOR: bg-[#0e0c1e] -> bg-bg | text-main */
       className="fixed inset-0 z-[999] bg-bg flex flex-col items-center justify-center px-8 text-center overflow-hidden transition-colors duration-500"
     >
       {/* 1. SEKSI IKON (Animasi Pop-up dari Bawah) */}
@@ -110,7 +109,6 @@ export default function SuccessView({
       >
         <motion.h2
           variants={itemVariants}
-          /* REFACTOR: text-white -> text-main */
           className="text-2xl sm:text-3xl font-bold text-main leading-tight mb-4 transition-colors duration-500"
         >
           {title}
@@ -118,7 +116,6 @@ export default function SuccessView({
 
         <motion.p
           variants={itemVariants}
-          /* REFACTOR: text-[#aca8c1] -> text-muted */
           className="text-muted text-sm sm:text-base leading-relaxed mb-12 px-2 transition-colors duration-500"
         >
           {description}
@@ -129,7 +126,6 @@ export default function SuccessView({
           <Button
             onClick={onAction}
             fullWidth
-            /* REFACTOR: bg-card | hover:bg-input | border-surface | text-main */
             className="py-5 !rounded-full bg-primary/10 hover:bg-primary/20 border border-surface text-main font-bold transition-all shadow-lg"
           >
             {actionLabel}

@@ -9,13 +9,11 @@ import React, {
 
 const ThemeContext = createContext(undefined);
 
-// REFACTOR 1: Ubah default theme ke light mode
 const DEFAULT_THEME = "theme-white-modern";
 const THEME_CLASSES = ["dark-tech", "theme-cyber-slate", "theme-white-modern"];
 
 const listeners = new Set();
 
-// REFACTOR 3: Logika validasi jadi lebih ringkas
 const isValidTheme = (value) => THEME_CLASSES.includes(value);
 
 const getStoredTheme = () => {
@@ -32,6 +30,18 @@ const applyThemeClass = (theme) => {
   root.classList.remove(...THEME_CLASSES);
 
   root.classList.add(theme);
+
+  // Update Favicon Color dynamically
+  const svgColor = theme === "theme-white-modern" ? "%232d1e17" : "%236f59fe";
+  const svgFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="${svgColor}"><path d="M160-120v-60h480v60H160Zm222-212L160-554l70-72 224 222-72 72Zm254-254L414-810l72-70 222 222-72 72Zm202 426L302-696l42-42 536 536-42 42Z"/></svg>`;
+  
+  let link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  link.href = `data:image/svg+xml;utf8,${svgFavicon}`;
 };
 
 const notify = () => {

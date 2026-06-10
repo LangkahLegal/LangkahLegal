@@ -12,11 +12,9 @@ export default function ChatMessage({ message }) {
       data-testid={isAI ? "ai-message" : "user-message"}
     >
       {isAI && (
-        /* REFACTOR: bg-input & border-surface agar adaptif */
         <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-input flex items-center justify-center border border-surface shrink-0 mb-6 shadow-soft">
           <MaterialIcon
             name="smart_toy"
-            /* REFACTOR: text-primary-light */
             className="text-primary-light text-sm lg:text-base"
           />
         </div>
@@ -26,9 +24,9 @@ export default function ChatMessage({ message }) {
         <div
           className={`px-6 py-4 rounded-[2rem] text-sm lg:text-base leading-relaxed shadow-soft transition-all ${
             !isAI
-              ? /* REFACTOR: User bubble pakai bg-primary */
+              ? 
                 "bg-primary text-white rounded-br-none shadow-primary/10"
-              : /* REFACTOR: AI bubble pakai bg-surface & text-main */
+              : 
                 "bg-surface text-main rounded-bl-none font-medium border border-surface"
           }`}
         >
@@ -102,7 +100,6 @@ export default function ChatMessage({ message }) {
         )}
 
         <p
-          /* REFACTOR: text-muted */
           className={`text-[10px] lg:text-xs text-muted font-medium px-4 ${!isAI ? "text-right" : "text-left"}`}
         >
           {message.time}

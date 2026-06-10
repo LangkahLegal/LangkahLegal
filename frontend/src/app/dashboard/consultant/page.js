@@ -12,6 +12,8 @@ import IncomeCard from "@/components/dashboard/IncomeCard";
 import StatCard from "@/components/dashboard/StatCard";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Services
 import { consultantService } from "@/services/consultant.service";
@@ -110,20 +112,9 @@ export default function ConsultantDashboardPage() {
       .map((req) => transformToCardData(req));
   }, [pendingRequests]);
 
-  // --- 3. LOADING GATE (Theme Aware) ---
-  if (isStatsLoading || isActiveLoading) {
-    return (
-      <div className="bg-bg min-h-screen flex items-center justify-center transition-colors duration-500">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-          <p className="text-primary-light text-[10px] font-black tracking-[0.2em] uppercase animate-pulse text-center">
-            Synchronizing Dashboard...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const isLoadingScreen = isStatsLoading || isActiveLoading || isPendingLoading;
 
+  // --- 3. LOGICA HIDE & SHOW DENGAN LOADING STATE ---
   return (
     <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
       <Sidebar role="konsultan" />
@@ -132,126 +123,125 @@ export default function ConsultantDashboardPage() {
         <DashboardHeader
           userName={user?.name}
           foto_profil={user?.foto_profil}
+          isLoading={!user}
         />
 
-        <main className="w-full max-w-[1600px] mx-auto px-6 py-8 space-y-10 pb-32 lg:pb-12 animate-fade-in">
-          {/* NOTIFICATION: REJECTION ALERT */}
-          {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
-            <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
-              <MaterialIcon
-                name="error"
-                className="text-danger text-2xl shrink-0 mt-0.5"
-              />
-              <div>
-                <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
-                  Pengajuan Verifikasi Ditolak
-                </h3>
-                <p className="text-main/80 text-xs md:text-sm leading-relaxed">
-                  Mohon maaf, pengajuan Anda tidak dapat disetujui karena:{" "}
-                  <strong>&quot;{user.alasan_penolakan}&quot;</strong>. Silakan
-                  lengkapi atau perbaiki profil Anda di menu{" "}
-                  <span
-                    className="font-semibold cursor-pointer underline hover:text-primary transition-colors"
-                    onClick={() => router.push("/setting/profile")}
-                  >
-                    Pengaturan Profil
-                  </span>
-                  .
-                </p>
-              </div>
+        <main className="w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh]">
+          {isLoadingScreen ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
+              <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+              <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                Memuat Dashboard...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-10 animate-fade-in">
+              {/* NOTIFICATION: REJECTION ALERT */}
+              {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+                  <MaterialIcon
+                    name="error"
+                    className="text-danger text-2xl shrink-0 mt-0.5"
+                  />
+                  <div>
+                    <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
+                      Pengajuan Verifikasi Ditolak
+                    </h3>
+                    <p className="text-main/80 text-xs md:text-sm leading-relaxed">
+                      Mohon maaf, pengajuan Anda tidak dapat disetujui karena:{" "}
+                      <strong>&quot;{user.alasan_penolakan}&quot;</strong>. Silakan
+                      lengkapi atau perbaiki profil Anda di menu{" "}
+                      <span
+                        className="font-semibold cursor-pointer underline hover:text-primary transition-colors"
+                        onClick={() => router.push("/setting/profile")}
+                      >
+                        Pengaturan Profil
+                      </span>
+                      .
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* INCOME SECTION */}
+              <IncomeCard amount={formatCurrency(stats?.income)} />
+
+              {/* STATS GRID */}
+              <section className="grid grid-cols-2 gap-4 lg:gap-8 w-full">
+                <StatCard
+                  label="Konsultasi Aktif"
+                  val={stats?.activeConsultations || 0}
+                  icon="gavel"
+                  variant="primary"
+                />
+                <StatCard
+                  label="Total Klien"
+                  val={stats?.totalClients || 0}
+                  icon="group"
+                  variant="secondary"
+                />
+              </section>
+
+              {/* JADWAL TERDEKAT */}
+              <section className="space-y-6 w-full">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="w-1.5 h-6 bg-primary rounded-full shadow-soft" />
+                  <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                    Jadwal Terdekat
+                  </h2>
+                </div>
+
+                <div className="w-full">
+                  {closestSession ? (
+                    <ConsultationCard
+                      data={closestSession}
+                      role="konsultan"
+                      onHide={() => {}}
+                      onCancel={() => {}}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon="event_busy"
+                      title="Jadwal Kosong"
+                      description="Tidak ada jadwal mendatang yang tersedia."
+                      className="py-12"
+                    />
+                  )}
+                </div>
+              </section>
+
+              {/* PERMINTAAN BARU */}
+              <section className="space-y-6 w-full">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="w-1.5 h-6 bg-primary-light rounded-full shadow-soft opacity-70" />
+                  <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                    Permintaan Baru
+                  </h2>
+                </div>
+
+                <div className="space-y-4 w-full">
+                  {mappedRequests.length > 0 ? (
+                    mappedRequests.map((req) => (
+                      <ConsultationCard
+                        key={req.id_pengajuan}
+                        data={req}
+                        role="konsultan"
+                        onHide={() => {}}
+                        onCancel={() => {}}
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      icon="inbox"
+                      title="Kotak Masuk Bersih"
+                      description="Tidak ada permintaan baru untuk waktu mendatang."
+                      className="py-12"
+                    />
+                  )}
+                </div>
+              </section>
             </div>
           )}
-
-          {/* INCOME SECTION */}
-          <IncomeCard amount={formatCurrency(stats?.income)} />
-
-          {/* STATS GRID */}
-          <section className="grid grid-cols-2 gap-4 lg:gap-8 w-full">
-            <StatCard
-              label="Konsultasi Aktif"
-              val={stats?.activeConsultations || 0}
-              icon="gavel"
-              variant="primary"
-            />
-            <StatCard
-              label="Total Klien"
-              val={stats?.totalClients || 0}
-              icon="group"
-              variant="secondary"
-            />
-          </section>
-
-          {/* JADWAL TERDEKAT */}
-          <section className="space-y-6 w-full">
-            <div className="flex items-center gap-2 px-1">
-              <div className="w-1.5 h-6 bg-primary rounded-full shadow-soft" />
-              <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
-                Jadwal Terdekat
-              </h2>
-            </div>
-
-            <div className="w-full">
-              {closestSession ? (
-                <ConsultationCard
-                  data={closestSession}
-                  role="konsultan"
-                  onHide={() => {}}
-                  onCancel={() => {}}
-                />
-              ) : (
-                <div className="bg-card border border-surface p-8 rounded-[2rem] text-sm text-muted italic flex items-center gap-4 shadow-soft">
-                  <MaterialIcon
-                    name="event_busy"
-                    className="text-2xl text-primary opacity-40"
-                  />
-                  <span className="font-medium">
-                    Tidak ada jadwal mendatang yang tersedia.
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* PERMINTAAN BARU */}
-          <section className="space-y-6 w-full">
-            <div className="flex items-center gap-2 px-1">
-              <div className="w-1.5 h-6 bg-primary-light rounded-full shadow-soft opacity-70" />
-              <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
-                Permintaan Baru
-              </h2>
-            </div>
-
-            <div className="space-y-4 w-full">
-              {isPendingLoading ? (
-                <div className="text-sm text-muted animate-pulse italic px-2">
-                  Memperbarui permintaan...
-                </div>
-              ) : mappedRequests.length > 0 ? (
-                mappedRequests.map((req) => (
-                  <ConsultationCard
-                    key={req.id_pengajuan}
-                    data={req}
-                    role="konsultan"
-                    onHide={() => {}}
-                    onCancel={() => {}}
-                  />
-                ))
-              ) : (
-                <div className="text-sm text-muted py-12 bg-card/30 rounded-[2.5rem] border border-dashed border-surface text-center flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-1">
-                    <MaterialIcon
-                      name="mail_outline"
-                      className="text-3xl text-muted opacity-30"
-                    />
-                  </div>
-                  <span className="max-w-xs font-medium">
-                    Kotak masuk bersih. Tidak ada permintaan baru yang valid
-                    untuk waktu mendatang.
-                  </span>
-                </div>
-              )}
-            </div>
-          </section>
         </main>
 
         <div className="lg:hidden">

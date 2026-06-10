@@ -1,21 +1,90 @@
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from email.utils import parseaddr
+import httpx
 from config import get_settings
 
 logger = logging.getLogger(__name__)
 
-def send_recovery_email(to_email: str, recovery_link: str) -> None:
+# ── Brevo HTTP API ──────────────────────────────────────────
+# Dokumentasi: https://developers.brevo.com/reference/sendtransacemail
+#
+# Alasan migrasi dari SMTP:
+#   Railway free tier memblokir outbound SMTP ports (25, 465, 587).
+#   Brevo HTTP API menggunakan HTTPS (port 443) yang tidak diblokir.
+#   Brevo mendukung Single Sender Verification (email personal @gmail.com).
+
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def get_frontend_base_url() -> str:
     """
-    Mengirimkan email Lupa Password secara native menggunakan SMTP backend.
+    Return the public frontend base URL based on APP_ENV.
+
+    Development and test environments use localhost, while other environments
+    use the production frontend domain.
     """
     settings = get_settings()
-    
-    if not settings.smtp_username or not settings.smtp_password:
-        logger.warning("SMTP username atau password tidak dikonfigurasi. Email gagal dikirim.")
+    app_env = settings.app_env.strip().lower()
+
+    if app_env in {"development", "dev", "local", "test"}:
+        return "http://localhost:3000"
+
+    return "https://langkahlegal.vercel.app"
+
+
+def _send_via_brevo(to_email: str, subject: str, body_html: str) -> None:
+    """
+    Kirim email menggunakan Brevo HTTP API.
+    Jika BREVO_API_KEY kosong, email akan di-skip (log warning).
+    """
+    settings = get_settings()
+
+    if not settings.brevo_api_key:
+        logger.warning("BREVO_API_KEY belum dikonfigurasi. Email tidak dikirim.")
         return
 
+    sender_name, sender_email = parseaddr(settings.brevo_from_email)
+
+    headers = {
+        "api-key": settings.brevo_api_key,
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "sender": {
+            "name": sender_name or "LangkahLegal",
+            "email": sender_email or "langkahlegal@gmail.com"
+        },
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": body_html,
+    }
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(BREVO_API_URL, headers=headers, json=payload)
+
+        if response.status_code in (200, 201, 202):
+            resp_data = response.json()
+            logger.info(f"Email terkirim ke {to_email} (messageId={resp_data.get('messageId', '?')})")
+        else:
+            logger.error(
+                f"Gagal kirim email ke {to_email} via Brevo: "
+                f"status={response.status_code}, body={response.text}"
+            )
+    except httpx.TimeoutException:
+        logger.error(f"Timeout saat kirim email ke {to_email} via Brevo")
+    except Exception as e:
+        logger.error(f"Error saat kirim email ke {to_email} via Brevo: {e}")
+
+
+# ── Public API (signature tetap sama agar caller tidak berubah) ──
+
+
+def send_recovery_email(to_email: str, recovery_link: str) -> None:
+    """
+    Mengirimkan email Lupa Password via Brevo HTTP API.
+    """
     subject = "Reset Password - LangkahLegal"
     body_html = f"""
     <html>
@@ -35,40 +104,13 @@ def send_recovery_email(to_email: str, recovery_link: str) -> None:
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = settings.smtp_from_email
-    msg["To"] = to_email
+    _send_via_brevo(to_email, subject, body_html)
 
-    msg.attach(MIMEText(body_html, "html"))
-
-    try:
-        if settings.smtp_port == 465:
-            # SSL
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port)
-        else:
-            # TLS
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
-            server.starttls()
-            
-        server.login(settings.smtp_username, settings.smtp_password)
-        server.sendmail(settings.smtp_from_email, to_email, msg.as_string())
-        server.quit()
-        logger.info(f"Berhasil mengirim email reset password ke {to_email}")
-    except Exception as e:
-        logger.error(f"Gagal mengirim email SMTP: {str(e)}")
-        raise e
 
 def send_notification_email(to_email: str, subject: str, message: str) -> None:
     """
-    Mengirimkan email notifikasi secara native menggunakan SMTP backend.
+    Mengirimkan email notifikasi via Brevo HTTP API.
     """
-    settings = get_settings()
-    
-    if not settings.smtp_username or not settings.smtp_password:
-        logger.warning("SMTP username atau password tidak dikonfigurasi. Notifikasi gagal dikirim.")
-        return
-
     body_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -81,25 +123,4 @@ def send_notification_email(to_email: str, subject: str, message: str) -> None:
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = settings.smtp_from_email
-    msg["To"] = to_email
-
-    msg.attach(MIMEText(body_html, "html"))
-
-    try:
-        if settings.smtp_port == 465:
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port)
-        else:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
-            server.starttls()
-            
-        server.login(settings.smtp_username, settings.smtp_password)
-        server.sendmail(settings.smtp_from_email, to_email, msg.as_string())
-        server.quit()
-        logger.info(f"Berhasil mengirim email notifikasi ke {to_email}")
-    except Exception as e:
-        logger.error(f"Gagal mengirim email notifikasi SMTP: {str(e)}")
-        # Kita tidak re-raise Exception agar flow utama (seperti submit form) tidak gagal hanya karena email
-
+    _send_via_brevo(to_email, subject, body_html)

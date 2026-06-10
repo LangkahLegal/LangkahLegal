@@ -2,7 +2,7 @@ import base64
 import hashlib
 import secrets
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Cookie
@@ -524,31 +524,17 @@ async def logout(response: Response, token: str = Depends(get_token_from_request
 )
 @limiter.limit("3/minute")
 async def forgot_password(request: Request, payload: ForgotPasswordPayload, response: Response):
-    code_verifier, code_challenge = _generate_pkce_pair()
-    
-    body = {
-        "email": payload.email,
-        "code_challenge": code_challenge,
-        "code_challenge_method": "s256",
-    }
-    
+    body = {"email": payload.email}
+
     params = {}
     if payload.emailRedirectTo:
-        params["redirect_to"] = payload.emailRedirectTo
+        separator = "&" if "?" in payload.emailRedirectTo else "?"
+        params["redirect_to"] = f"{payload.emailRedirectTo}{separator}email={quote(payload.email)}"
 
     await _post_auth(
         "/auth/v1/recover",
         payload=body,
         params=params,
-    )
-
-    response.set_cookie(
-        key="ll_oauth_verifier",
-        value=code_verifier,
-        max_age=3600,
-        httponly=True,
-        samesite="lax",
-        path="/"
     )
 
     return {"data": {"sent": True}}

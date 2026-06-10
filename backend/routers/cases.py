@@ -4,6 +4,7 @@ from database import get_supabase_client
 from dependencies import get_current_user
 from config import get_settings
 from services import upload_supporting_document_to_supabase
+from services.email_service import get_frontend_base_url
 from typing import Optional
 
 # Inisialisasi router HARUS di bagian atas sebelum digunakan oleh @router
@@ -255,6 +256,7 @@ def klaim_kasus(
         if client_res.data:
             client_email = client_res.data["email"]
             client_nama = client_res.data["nama"]
+            frontend_base_url = get_frontend_base_url()
             
             kons_res = db.table("konsultan").select("nama_lengkap").eq("id_konsultan", real_id_konsultan).single().execute()
             kons_nama = kons_res.data["nama_lengkap"] if kons_res.data else "Seorang konsultan"
@@ -270,7 +272,7 @@ Sebuah pengajuan konsultasi telah dibuat secara otomatis untuk Anda (ID Pengajua
 Konsultan akan segera mengatur jadwal untuk sesi Anda. Silakan pantau halaman Dashboard atau halaman Konsultasi di aplikasi LangkahLegal.
 
 Tautan untuk memantau status pengajuan:
-http://localhost:3000/consultation/{id_pengajuan}
+{frontend_base_url}/consultation/{id_pengajuan}
 
 Terima kasih.
 """
