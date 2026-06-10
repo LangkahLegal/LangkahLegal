@@ -5,37 +5,40 @@ import { Button } from "../ui";
 
 export default function CTA({ onGetStarted }) {
   return (
-    <section className="px-6 py-10 relative z-10">
-      {/* Menggunakan motion.div untuk animasi membesar (Zoom-in) */}
+    <section className="px-6 py-24 relative z-10">
       <motion.div
-        initial={{ opacity: 0, scale: 0.8 }} // Mulai dari transparan dan ukuran 80%
-        whileInView={{ opacity: 1, scale: 1 }} // Membesar ke ukuran 100% dan terlihat jelas
-        viewport={{ once: true, margin: "-50px" }} // Memicu animasi saat elemen masuk ke layar
-        transition={{ duration: 0.6, ease: [0.25, 0.8, 0.25, 1] }} // Transisi mulus (Cubic-bezier)
-        className="max-w-4xl mx-auto p-12 md:p-20 bg-input border border-surface rounded-[2.5rem] md:rounded-[3rem] text-center relative overflow-hidden shadow-2xl"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}
+        className="max-w-5xl mx-auto p-12 md:p-24 bg-[#0a0a0a] dark:bg-[#050505] rounded-[3rem] md:rounded-[4rem] text-center relative overflow-hidden shadow-2xl"
       >
-        {/* Ambient Glow / Decorative Blur */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-light/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -ml-32 -mb-32 pointer-events-none" />
+        {/* Background Gradients for the Dark Banner */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary-light/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/3 pointer-events-none" />
+        
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.03] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col items-center">
-          {/* Headline */}
-          <h2 className="text-3xl md:text-5xl font-headline font-bold text-main mb-6 leading-tight max-w-lg mx-auto">
-            Siap Memperjuangkan Hak Anda?
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-headline font-extrabold text-white mb-6 leading-tight max-w-2xl mx-auto">
+            Siap Memperjuangkan <br className="hidden md:block" />
+            Hak Anda?
           </h2>
 
-          {/* Deskripsi */}
-          <p className="text-muted mb-10 text-base md:text-lg max-w-lg mx-auto leading-relaxed">
+          <p className="text-gray-400 mb-12 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
             Bergabunglah dengan ekosistem LangkahLegal sekarang. Baik Anda
             masyarakat yang mencari keadilan, maupun advokat yang siap
             memberikan dampak sosial yang nyata.
           </p>
 
-          {/* Tombol */}
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto relative group">
+            {/* Glowing drop shadow that pulses */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary-light rounded-full blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse" />
+            
             <Button
               onClick={onGetStarted}
-              className="!w-full sm:!w-auto px-12 py-4 text-base md:text-lg font-bold hover:scale-105 transition-transform"
+              className="relative !w-full sm:!w-auto px-12 py-5 text-lg font-bold bg-white text-black hover:bg-gray-100 border-none transition-transform hover:scale-105"
             >
               Buat Akun Gratis
             </Button>
