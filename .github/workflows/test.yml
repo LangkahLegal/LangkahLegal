@@ -1,4 +1,4 @@
-name: Backend Pytest
+name: API Test
 
 on:
   push:
