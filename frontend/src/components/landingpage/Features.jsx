@@ -8,19 +8,31 @@ const FEATURES = [
     title: "Triase Hukum Berbasis AI",
     icon: "smart_toy",
     offset: "",
-    desc: "Tidak paham pasal? Ceritakan masalah Anda dengan bahasa sehari-hari. AI cerdas kami akan menganalisis dan menerjemahkannya ke ranah hukum yang tepat dalam hitungan detik.",
+    desc: (
+      <>
+        Tidak paham pasal? Ceritakan masalah Anda dengan bahasa sehari-hari. <strong className="text-main font-semibold">AI cerdas kami</strong> akan menerjemahkannya ke ranah hukum yang tepat dalam hitungan detik.
+      </>
+    ),
   },
   {
     title: "Privasi & Bursa Kasus Anonim",
     icon: "privacy_tip",
     offset: "",
-    desc: "Lindungi identitas Anda. Posting ringkasan kasus Anda ke Papan Kasus secara anonim, dan biarkan konsultan hukum yang tepat memberikan penawaran bantuan kepada Anda.",
+    desc: (
+      <>
+        Lindungi identitas Anda. Posting ringkasan kasus secara <strong className="text-main font-semibold">anonim</strong>, dan biarkan konsultan hukum memberikan penawaran bantuan.
+      </>
+    ),
   },
   {
     title: "Transparan & Opsi Pro-Bono",
     icon: "account_balance_wallet",
     offset: "",
-    desc: "Nikmati kemudahan pembayaran yang terintegrasi. Kami juga menyediakan filter khusus untuk menemukan bantuan hukum cuma-cuma (Pro-Bono).",
+    desc: (
+      <>
+        Nikmati pembayaran yang terintegrasi. Tersedia filter khusus untuk menemukan bantuan hukum <strong className="text-main font-semibold">cuma-cuma (Pro-Bono)</strong>.
+      </>
+    ),
   },
 ];
 export default function Features() {

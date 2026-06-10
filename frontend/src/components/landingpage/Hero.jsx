@@ -52,7 +52,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
             className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.15] tracking-tight"
           >
             Akses Keadilan <br className="hidden sm:block" />
-            untuk Semua
+            untuk Semua,
             <br />
             <span
               style={{
@@ -63,7 +63,9 @@ export default function Hero({ onGetStarted, onLearnMore }) {
                 backgroundClip: "text",
                 color: "transparent",
               }}
-            ></span>
+            >
+              Dimulai dari Sini.
+            </span>
           </motion.h1>
 
           {/* SUB-HEADLINE */}
@@ -71,10 +73,9 @@ export default function Hero({ onGetStarted, onLearnMore }) {
             variants={itemVariants}
             className="text-base md:text-xl text-muted max-w-3xl mx-auto leading-relaxed px-2 md:px-0"
           >
-            Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.
-            Ceritakan masalah Anda pada Asisten AI kami untuk mendapatkan
-            &quot;P3K Hukum&quot;, temukan konsultan yang tepat, dan selesaikan
-            masalah hukum Anda dengan aman dan transparan.
+            Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.<br className="hidden md:block" />
+            Ceritakan masalah Anda pada <strong className="text-primary-light font-semibold">Asisten AI</strong> kami untuk mendapatkan <strong className="text-main font-semibold">&quot;P3K Hukum&quot;</strong>, <br className="hidden lg:block" />
+            temukan <strong className="text-main font-semibold">konsultan yang tepat</strong>, dan selesaikan masalah Anda secara <strong className="text-main font-semibold">aman dan transparan</strong>.
           </motion.p>
 
           {/* CALL TO ACTION BUTTONS */}

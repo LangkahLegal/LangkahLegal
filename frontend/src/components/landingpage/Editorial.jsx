@@ -6,16 +6,28 @@ import { MaterialIcon } from "../ui";
 
 const EDITORIAL_FEATURES = [
   {
-    title: "Edukasi Hukum Instan:",
-    desc: "Pahami hak-hak Anda sebelum melangkah lebih jauh dengan bantuan Chatbot AI kami.",
+    title: "Edukasi Hukum Instan",
+    desc: (
+      <>
+        Pahami hak-hak Anda dengan bantuan <strong className="text-main font-semibold">Chatbot AI</strong> sebelum melangkah lebih jauh.
+      </>
+    ),
   },
   {
-    title: "Matchmaking:",
-    desc: "Temukan pengacara yang paling sesuai dengan spesialisasi kasus dan anggaran Anda.",
+    title: "Matchmaking Presisi",
+    desc: (
+      <>
+        Temukan pengacara yang paling sesuai dengan <strong className="text-main font-semibold">spesialisasi kasus</strong> dan <strong className="text-main font-semibold">anggaran</strong> Anda.
+      </>
+    ),
   },
   {
-    title: "Konsultasi Aman & Terjadwal:",
-    desc: "Lakukan pertemuan tatap muka virtual dan terjadwal langsung dari platform LangkahLegal.",
+    title: "Konsultasi Terjadwal",
+    desc: (
+      <>
+        Lakukan pertemuan tatap muka <strong className="text-main font-semibold">virtual dan aman</strong> langsung dari platform LangkahLegal.
+      </>
+    ),
   },
 ];
 
