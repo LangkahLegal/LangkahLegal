@@ -1,27 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "../ui";
+import { Button, MaterialIcon } from "../ui";
 
-// Konfigurasi container untuk mengatur efek beruntun (stagger)
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      delayChildren: 0.1, // Jeda waktu sebelum elemen pertama mulai muncul
-      staggerChildren: 0.2, // Jeda waktu kemunculan antar elemen (0.2 detik)
-    },
-  },
-};
-
-// Konfigurasi animasi per-elemen (Fade In perlahan dengan sedikit pergeseran dari bawah)
-const itemVariants = {
+const fadeUpVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.8, ease: "easeOut" }, // durasi 0.8s agar terasa "pelan-pelan"
+    transition: { duration: 0.6, ease: "easeOut" },
   },
 };
 
@@ -29,75 +16,75 @@ export default function Hero({ onGetStarted, onLearnMore }) {
   return (
     <section
       id="hero"
-      className="relative px-6 lg:py-32 max-w-7xl mx-auto flex flex-col items-center text-center"
+      className="relative z-0 px-6 pt-32 pb-12 lg:pt-40 lg:pb-20 w-full flex flex-col items-center justify-center overflow-hidden bg-bg min-h-[100vh]"
     >
-      {/* Ambient Glow Effects */}
-      <div className="glow-top-left-purple" />
-      <div className="glow-bottom-right-secondary" />
+      {/* Background Image with Blur & Overlay */}
+      <div 
+        className="absolute inset-0 w-full h-full -z-20 opacity-80 dark:opacity-60"
+        style={{
+          backgroundImage: "url('/images/consultation.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(1px)",
+        }}
+      />
+      {/* Light/Dark Overlay to ensure text readability without cutting off the image */}
+      <div className="absolute inset-0 bg-bg/70 -z-10" />
 
-      {/* 
-        Bungkus konten utama dengan motion.div 
-        animate="visible" akan langsung memutar animasi saat halaman pertama kali dimuat
-      */}
-      <motion.div
-        className="relative z-10 w-full flex flex-col items-center"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="space-y-8 max-w-4xl flex flex-col items-center">
-          {/* HEADLINE */}
-          <motion.h1
-            variants={itemVariants}
-            className="text-5xl md:text-7xl font-headline font-extrabold text-main leading-[1.15] tracking-tight"
-          >
-            Akses Keadilan <br className="hidden sm:block" />
-            untuk Semua
-            <br />
-            <span
-              style={{
-                background:
-                  "linear-gradient(to right, var(--primary-light), var(--primary))",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            ></span>
-          </motion.h1>
+      {/* Soft Glow Orbs */}
+      <div className="absolute top-[10%] left-[20%] w-[30vw] h-[30vw] rounded-full bg-primary-light/10 blur-[100px] -z-10" />
+      <div className="absolute bottom-[20%] right-[10%] w-[40vw] h-[40vw] rounded-full bg-primary/10 blur-[120px] -z-10" />
 
-          {/* SUB-HEADLINE */}
-          <motion.p
-            variants={itemVariants}
-            className="text-base md:text-xl text-muted max-w-3xl mx-auto leading-relaxed px-2 md:px-0"
-          >
-            Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.
-            Ceritakan masalah Anda pada Asisten AI kami untuk mendapatkan
-            &quot;P3K Hukum&quot;, temukan konsultan yang tepat, dan selesaikan
-            masalah hukum Anda dengan aman dan transparan.
-          </motion.p>
+      <div className="max-w-4xl mx-auto flex flex-col items-center text-center z-10 pt-8">
 
-          {/* CALL TO ACTION BUTTONS */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 w-full max-w-sm sm:max-w-none mx-auto"
+        {/* HEADLINE */}
+        <motion.h1
+          initial="hidden" animate="visible" variants={fadeUpVariants}
+          className="text-3xl sm:text-4xl lg:text-5xl font-headline font-bold text-main leading-tight tracking-tight mb-6 drop-shadow-md"
+        >
+          Akses Keadilan untuk Semua, <br className="hidden sm:block" />
+          <span
+            style={{
+              background: "linear-gradient(to right, var(--primary-light), var(--primary))",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
           >
-            <Button
-              onClick={onGetStarted}
-              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold"
-            >
-              Mulai Sekarang
-            </Button>
-            <Button
-              variant="outline"
-              onClick={onLearnMore}
-              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold border-surface hover:bg-surface/50"
-            >
-              Pelajari Layanan
-            </Button>
-          </motion.div>
-        </div>
-      </motion.div>
+            Dimulai dari Sini.
+          </span>
+        </motion.h1>
+
+        {/* SUB-HEADLINE */}
+        <motion.p
+          initial="hidden" animate="visible" variants={fadeUpVariants}
+          className="text-sm md:text-base text-muted max-w-2xl mx-auto leading-relaxed mb-8"
+        >
+          Selesaikan masalah hukum tanpa ribet. Mulai dari <strong className="text-main font-semibold">Analisis AI</strong> instan, 
+          hingga konsultasi aman dengan <strong className="text-main font-semibold">Pengacara Terpercaya</strong>.
+        </motion.p>
+
+        {/* CALL TO ACTION BUTTONS */}
+        <motion.div
+          initial="hidden" animate="visible" variants={fadeUpVariants}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto"
+        >
+          <Button
+            onClick={onGetStarted}
+            className="w-full sm:w-auto px-8 py-3 text-sm md:text-base font-bold shadow-md hover:shadow-lg transition-all"
+          >
+            Mulai Sekarang
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onLearnMore}
+            className="w-full sm:w-auto px-8 py-3 text-sm md:text-base font-semibold border-surface hover:bg-surface/50 transition-all bg-bg"
+          >
+            Pelajari Layanan
+          </Button>
+        </motion.div>
+      </div>
     </section>
   );
 }

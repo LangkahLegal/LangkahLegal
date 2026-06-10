@@ -32,7 +32,7 @@ export default function LandingPage() {
       {/* Layout: Top */}
       <Navbar />
 
-      <main className="pt-24 overflow-x-hidden">
+      <main className="overflow-x-hidden">
         {/* Section 1: Hero */}
         <Hero onGetStarted={handleGetStarted} onLearnMore={handleLearnMore} />
 
