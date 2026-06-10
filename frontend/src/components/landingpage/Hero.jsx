@@ -20,7 +20,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
     >
       {/* Background Image with Blur & Overlay */}
       <div 
-        className="absolute inset-0 w-full h-full -z-20 opacity-80 dark:opacity-60"
+        className="absolute inset-0 w-full h-full -z-20 opacity-100 dark:opacity-60"
         style={{
           backgroundImage: "url('/images/consultation.jpg')",
           backgroundSize: "cover",
