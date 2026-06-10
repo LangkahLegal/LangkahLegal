@@ -1,3 +1,6 @@
 {
-  "python.analysis.extraPaths": ["./backend"]
+  "python.analysis.extraPaths": [
+    "./backend"
+  ],
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }

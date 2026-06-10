@@ -10,6 +10,7 @@ const getSafeAvatarSrc = (url, fallbackUrl) => {
     const parsed = new URL(url);
     const safeHosts = new Set([
       "ui-avatars.com",
+      "i.ibb.co",
       "lh3.googleusercontent.com",
       "images.unsplash.com",
       "supabase.co",
@@ -17,10 +18,6 @@ const getSafeAvatarSrc = (url, fallbackUrl) => {
       "storage.googleapis.com",
       "res.cloudinary.com",
     ]);
-
-    if (parsed.hostname === "i.ibb.co" || parsed.hostname.endsWith(".ibb.co")) {
-      return fallbackUrl;
-    }
 
     const isSafeHost =
       safeHosts.has(parsed.hostname) ||

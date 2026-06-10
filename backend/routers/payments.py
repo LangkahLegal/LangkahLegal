@@ -9,7 +9,7 @@ from config import Settings, get_settings
 from database import get_supabase_client
 from dependencies import get_current_user
 from schemas.payments import CreateTransactionRequest
-from services.email_service import send_notification_email
+from services.email_service import get_frontend_base_url, send_notification_email
 
 router = APIRouter()
 
@@ -398,6 +398,7 @@ LangkahLegal
                         kons_email = kons_user_res.data["email"]
                         kons_nama = kons_res.data["nama_lengkap"]
                         kons_subject = "Klien Telah Membayar - Segera Isi Link Zoom"
+                        frontend_base_url = get_frontend_base_url()
                         kons_message = f"""Halo {kons_nama},
 
 Klien telah berhasil menyelesaikan pembayaran untuk pengajuan konsultasi (ID: {id_pengajuan}).
@@ -406,7 +407,7 @@ Status pengajuan kini menjadi 'Terjadwal'.
 Langkah selanjutnya:
 Mohon segera cek detail pengajuan dan masukkan tautan (Link) Zoom untuk konsultasi ini melalui aplikasi LangkahLegal.
 Tautan untuk mengelola pengajuan:
-http://localhost:3000/consultation/{id_pengajuan}
+{frontend_base_url}/consultation/{id_pengajuan}
 
 Terima kasih atas kerja samanya.
 """
@@ -641,7 +642,7 @@ Status pengajuan kini menjadi 'Terjadwal'.
 Langkah selanjutnya:
 Mohon segera cek detail pengajuan dan masukkan tautan (Link) Zoom untuk konsultasi ini melalui aplikasi LangkahLegal.
 Tautan untuk mengelola pengajuan:
-http://localhost:3000/consultation/{id_pengajuan}
+{frontend_base_url}/consultation/{id_pengajuan}
 
 Terima kasih atas kerja samanya.
 """
