@@ -9,6 +9,7 @@ import Hero from "../components/landingpage/Hero";
 import Features from "../components/landingpage/Features";
 import Editorial from "../components/landingpage/Editorial";
 import CTA from "../components/landingpage/CTA";
+import FAQ from "../components/landingpage/FAQ";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function LandingPage() {
       {/* Layout: Top */}
       <Navbar />
 
+      {/* REFACTOR: Hapus pt-24 agar Hero bisa menyentuh ujung paling atas browser */}
       <main className="overflow-x-hidden">
         {/* Section 1: Hero */}
         <Hero onGetStarted={handleGetStarted} onLearnMore={handleLearnMore} />
@@ -44,6 +46,9 @@ export default function LandingPage() {
 
         {/* Section 4: CTA */}
         <CTA onGetStarted={handleGetStarted} />
+
+        {/* Section 5: FAQ */}
+        <FAQ />
       </main>
 
       {/* Layout: Bottom */}
