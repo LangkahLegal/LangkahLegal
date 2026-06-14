@@ -50,7 +50,6 @@ async def posting_kasus_anonim(
     else:
         valid_files = []
 
-    # 1. Insert data kasus ke bursa
     data_kasus = {
         "id_user": current_user["id_user"],
         "kategori_hukum": kategori_hukum.lower().strip(),
@@ -68,7 +67,6 @@ async def posting_kasus_anonim(
 
     id_bursa = response.data[0]["id_bursa"]
 
-    # 2. Upload dokumen pendukung ke Supabase bucket (jika ada)
     settings = get_settings()
     bucket_name = settings.supabase_berkas_pendukung_bucket
     uploaded_docs = []
@@ -146,13 +144,11 @@ def klaim_kasus(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # 0. Pastikan yang mengakses adalah konsultan
     if current_user.get("role") != "konsultan":
         raise HTTPException(
             status_code=403, detail="Hanya konsultan yang bisa mengklaim kasus"
         )
 
-    # 1. Cari id_konsultan asli dari tabel konsultan berdasarkan id_user JWT
     konsultan_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -168,7 +164,6 @@ def klaim_kasus(
 
     real_id_konsultan = konsultan_profile.data[0]["id_konsultan"]
 
-    # 2. Cek apakah kasus bursa masih open
     kasus = (
         db.table("bursa_kasus")
         .select("id_bursa, id_user, status_bursa, deskripsi_kasus_awam, tanggal_konsultasi, jam_mulai, jam_selesai, dokumen_bukti")
@@ -187,7 +182,6 @@ def klaim_kasus(
             detail="Kasus ini sudah diklaim oleh konsultan lain",
         )
 
-    # 3. Cek bentrok jadwal untuk konsultan
     kasus_date = (kasus_data.get("tanggal_konsultasi") or "").split("T")[0]
     kasus_start = kasus_data.get("jam_mulai", "00:00")[:5]
     kasus_end = kasus_data.get("jam_selesai", "00:00")[:5]
@@ -219,7 +213,6 @@ def klaim_kasus(
                     detail=f"Gagal klaim: Anda sudah memiliki jadwal konsultasi aktif yang bertabrakan pada {kasus_date} jam {a_start}-{a_end}."
                 )
 
-    # 4. Tutup bursa → status menjadi 'closed'
     db.table("bursa_kasus").update({"status_bursa": "closed"}).eq(
         "id_bursa", id_bursa
     ).execute()
@@ -249,7 +242,6 @@ def klaim_kasus(
             detail="Gagal membuat draf konsultasi. Silakan coba lagi.",
         )
 
-    # 5. Kirim Notifikasi Email ke Klien
     try:
         from services.email_service import send_notification_email
         client_res = db.table("users").select("email, nama").eq("id_user", kasus_data["id_user"]).single().execute()

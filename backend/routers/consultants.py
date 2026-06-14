@@ -139,13 +139,11 @@ def get_consultant_dashboard_stats(
     if current_user["role"] != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
-    # 1. Ambil ID Konsultan
     kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
     id_kons = kons_profile.data[0]["id_konsultan"]
 
-    # 2. Total Income (Hanya yang settlement)
     pengajuan_with_tx = (
         db.table("pengajuan_konsultasi")
         .select("transaksi(nominal_konsultan, status_pembayaran)")
@@ -161,7 +159,6 @@ def get_consultant_dashboard_stats(
             if tx.get("status_pembayaran") == "settlement":
                 total_income += float(tx.get("nominal_konsultan") or 0)
 
-    # 3. Query Data Pengajuan (Ambil sekali saja untuk optimasi)
     # Kita ambil data dengan status terjadwal atau selesai
     klien_data_res = (
         db.table("pengajuan_konsultasi")
@@ -199,7 +196,6 @@ def get_pending_requests(
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
-    # 1. Ambil ID Konsultan berdasarkan ID User yang login
     kons_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -211,7 +207,6 @@ def get_pending_requests(
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
-    # 2. Ambil data pengajuan (Langsung dari tabel pengajuan_konsultasi)
     response = (
         db.table("pengajuan_konsultasi")
         .select(
@@ -248,11 +243,9 @@ def get_active_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # 1. Security check: Hanya untuk konsultan
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
 
-    # 2. Ambil ID Konsultan dari tabel profil
     kons_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -264,7 +257,6 @@ def get_active_requests(
     if not kons_profile.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
-    # 3. Query pengajuan: Ambil field tanggal & jam langsung dari tabel pengajuan_konsultasi
     response = (
         db.table("pengajuan_konsultasi")
         .select(
@@ -323,7 +315,6 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
 
     konsultan_data = response.data[0]
 
-    # 1. Hitung rating
     ratings = [r["skor_rating"] for r in konsultan_data.get("rating_ulasan", []) if r.get("skor_rating")]
     total_reviews = len(ratings)
     rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
@@ -332,7 +323,6 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
     konsultan_data["rating"] = rating_avg
     konsultan_data["reviews"] = total_reviews
 
-    # 2. Fetch jadwal ketersediaan (Jam Buka & Jam Tutup per Tanggal)
     # Kita ambil data spesifik agar frontend mudah memprosesnya
     jadwal_response = (
         db.table("jadwal_ketersediaan")
@@ -394,13 +384,11 @@ def upload_jadwal_konsultan(
     """
     (Khusus Konsultan) Menambahkan slot jadwal ketersediaan.
     """
-    # 1. Validasi Role
     if current_user.get("role") != "konsultan":
         raise HTTPException(
             status_code=403, detail="Hanya konsultan yang bisa mengatur jadwal"
         )
 
-    # 2. Cari ID Konsultan asli (karena di token biasanya cuma ada id_user)
     konsultan = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -411,7 +399,6 @@ def upload_jadwal_konsultan(
     if not konsultan.data:
         raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
 
-    # 3. Insert ke Tabel Jadwal
     new_schedule = {
         "id_konsultan": konsultan.data[0]["id_konsultan"],
         "tanggal": request.tanggal,

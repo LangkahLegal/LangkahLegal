@@ -5,7 +5,6 @@ from slowapi.errors import RateLimitExceeded
 from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs
 from dependencies import get_current_user
 
-# Mengambil fungsi dari file yang sudah ada
 from config import get_settings, Settings
 from database import check_db_connection
 from limiter import limiter
@@ -37,11 +36,6 @@ Catatan integrasi frontend:
 
 app.state.limiter = limiter
 
-# 1. SETUP CORS (Sangat penting agar Next.js bisa akses API ini)
-# Credentials + cookie tidak boleh dipakai bersama allow_origins=["*"] di browser.
-# Middleware untuk menangani X-Forwarded-Proto dari Railway reverse proxy.
-# Ini memastikan request.url.scheme = "https" sehingga redirect apapun
-# tetap menggunakan HTTPS, bukan HTTP.
 @app.middleware("http")
 async def force_https_scheme(request: Request, call_next):
     if request.headers.get("x-forwarded-proto") == "https":
@@ -63,7 +57,6 @@ async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExc
         content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."}
     )
 
-# 2. HEALTH CHECK ENDPOINT
 @app.get("/health", tags=["System"])
 def health_check(settings: Settings = Depends(get_settings)):
     """
@@ -79,8 +72,6 @@ Frontend dapat memanggil endpoint ini saat startup aplikasi untuk memastikan API
         "database": db_status
     }
 
-# 3. REGISTRASI ROUTERS (Endpoint API)
-# Bagian ini di-comment dulu sampai kita buat file routernya di folder terpisah
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(consultants.router, prefix="/api/v1/consultants", tags=["Direktori Konsultan"])
 app.include_router(cases.router, prefix="/api/v1/cases", tags=["Bursa Kasus"])

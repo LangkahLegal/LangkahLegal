@@ -41,7 +41,6 @@ export default function AvatarUpload({
     formData.append("image", file);
 
     try {
-      // 1. Upload ke IMGBB
       const res = await fetch(
         `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
         { method: "POST", body: formData },
@@ -49,11 +48,9 @@ export default function AvatarUpload({
       const { success, data } = await res.json();
       if (!success) throw new Error();
 
-      // 2. Sync ke DB & Fetch Fresh Data
       await userService.updateProfile({ foto_profil: data.url });
       const freshData = await userService.getFullProfile();
 
-      // 3. Update UI dengan prioritas data dari DB
       onChange(freshData.foto_profil || data.url);
     } catch (err) {
       alert("Gagal sinkronisasi foto.");

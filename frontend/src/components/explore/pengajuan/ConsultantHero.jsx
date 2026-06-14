@@ -8,22 +8,7 @@ const getSafeAvatarSrc = (url, fallbackUrl) => {
 
   try {
     const parsed = new URL(url);
-    const safeHosts = new Set([
-      "ui-avatars.com",
-      "i.ibb.co",
-      "lh3.googleusercontent.com",
-      "images.unsplash.com",
-      "supabase.co",
-      "*.supabase.co",
-      "storage.googleapis.com",
-      "res.cloudinary.com",
-    ]);
-
-    const isSafeHost =
-      safeHosts.has(parsed.hostname) ||
-      parsed.hostname.endsWith(".supabase.co");
-
-    return parsed.protocol === "https:" && isSafeHost ? url : fallbackUrl;
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : fallbackUrl;
   } catch {
     return fallbackUrl;
   }

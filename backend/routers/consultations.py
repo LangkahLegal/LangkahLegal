@@ -56,7 +56,6 @@ async def buat_pengajuan_konsultasi(
     else:
         valid_files = []
 
-    # 1. Ambil data jadwal ketersediaan untuk validasi range jam dan ambil tanggal
     jadwal = db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
     
     if not jadwal.data:
@@ -64,14 +63,12 @@ async def buat_pengajuan_konsultasi(
     
     data_jadwal = jadwal.data[0]
     
-    # 2. Validasi Jam
     if jam_mulai < data_jadwal["jam_mulai"] or jam_selesai > data_jadwal["jam_selesai"]:
         raise HTTPException(
             status_code=400, 
             detail=f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})"
         )
 
-    # 3. Buat record pengajuan
     new_pengajuan = {
         "id_user": current_user["id_user"],
         "id_konsultan": data_jadwal["id_konsultan"],
@@ -90,7 +87,6 @@ async def buat_pengajuan_konsultasi(
 
     id_pengajuan = res_pengajuan.data[0]["id_pengajuan"]
 
-    # 4. Upload dokumen pendukung ke Supabase bucket (jika ada)
     # ... (sisanya tetap sama) ...
     
     settings = get_settings()
@@ -118,7 +114,6 @@ async def buat_pengajuan_konsultasi(
         except Exception as e:
             failed_docs.append({"nama": file.filename, "alasan": str(e)})
 
-    # 5. Kirim Notifikasi Email ke Konsultan
     try:
         konsultan_res = db.table("konsultan").select("id_user, nama_lengkap").eq("id_konsultan", data_jadwal["id_konsultan"]).single().execute()
         if konsultan_res.data:
@@ -161,7 +156,6 @@ def update_consultation_status(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    # 1. Ambil data pengajuan dulu untuk pengecekan kepemilikan/hak akses
     pengajuan_res = db.table("pengajuan_konsultasi").select("*").eq("id_pengajuan", id_pengajuan).execute()
     
     if not pengajuan_res.data:
@@ -171,7 +165,6 @@ def update_consultation_status(
     user_role = current_user.get("role")
     user_id = current_user.get("id_user")
 
-    # 2. Validasi Hak Akses Berdasarkan Role
     if user_role == "client":
         # Client HANYA boleh membatalkan
         if new_status != "dibatalkan":
@@ -195,7 +188,6 @@ def update_consultation_status(
                 .eq("id_jadwal", data_pengajuan["id_jadwal"])\
                 .execute()
 
-    # 4. Update status_pengajuan
     response = db.table("pengajuan_konsultasi")\
         .update({"status_pengajuan": new_status})\
         .eq("id_pengajuan", id_pengajuan)\
@@ -204,7 +196,6 @@ def update_consultation_status(
     if not response.data:
         raise HTTPException(status_code=500, detail="Gagal memperbarui status")
 
-    # 5. Kirim Notifikasi Email ke Klien
     if new_status.lower() == "ditolak":
         try:
             client_res = db.table("users").select("email, nama").eq("id_user", data_pengajuan["id_user"]).single().execute()
@@ -449,11 +440,9 @@ def assign_schedule_to_claim(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # 0. Hanya konsultan
     if current_user.get("role") != "konsultan":
         raise HTTPException(status_code=403, detail="Hanya konsultan yang bisa mengatur jadwal")
 
-    # 1. Ambil id_konsultan
     kons_profile = (
         db.table("konsultan")
         .select("id_konsultan")
@@ -466,7 +455,6 @@ def assign_schedule_to_claim(
 
     real_id_konsultan = kons_profile.data["id_konsultan"]
 
-    # 2. Ambil data pengajuan & validasi
     pengajuan = (
         db.table("pengajuan_konsultasi")
         .select("id_pengajuan, id_konsultan, id_user, status_pengajuan, id_bursa")
@@ -484,7 +472,6 @@ def assign_schedule_to_claim(
     if data_pengajuan["status_pengajuan"] != "pending":
         raise HTTPException(status_code=400, detail="Hanya pengajuan berstatus pending yang bisa dijadwalkan")
 
-    # 3. Validasi jadwal milik konsultan ini
     jadwal = (
         db.table("jadwal_ketersediaan")
         .select("id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai, status_tersedia")
@@ -509,7 +496,6 @@ def assign_schedule_to_claim(
             detail=f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})",
         )
 
-    # 4. Update pengajuan dengan data jadwal + status
     update_data = {
         "id_jadwal": request.id_jadwal,
         "tanggal_pengajuan": data_jadwal["tanggal"],
@@ -528,12 +514,10 @@ def assign_schedule_to_claim(
     if not response.data:
         raise HTTPException(status_code=500, detail="Gagal mengatur jadwal")
 
-    # 5. Tandai slot jadwal sebagai tidak tersedia
     db.table("jadwal_ketersediaan").update({"status_tersedia": False}).eq(
         "id_jadwal", request.id_jadwal
     ).execute()
 
-    # 6. Kirim Notifikasi Email ke Klien
     try:
         client_res = db.table("users").select("email, nama").eq("id_user", data_pengajuan["id_user"]).single().execute()
         if client_res.data:
@@ -615,7 +599,6 @@ def update_zoom_link(
     if not response.data:
         raise HTTPException(status_code=500, detail="Gagal menyimpan link Zoom")
 
-    # 4. Kirim Notifikasi Email ke Klien
     try:
         pengajuan = db.table("pengajuan_konsultasi").select("id_user").eq("id_pengajuan", id_pengajuan).single().execute()
         if pengajuan.data:
@@ -737,7 +720,6 @@ def get_documents(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # 1. Cek kepemilikan pengajuan
     pengajuan = db.table("pengajuan_konsultasi").select("id_user, id_konsultan").eq("id_pengajuan", id_pengajuan).execute()
     if not pengajuan.data:
         raise HTTPException(status_code=404, detail="Pengajuan tidak ditemukan")
@@ -756,7 +738,6 @@ def get_documents(
     else:
         raise HTTPException(status_code=403, detail="Role tidak dikenali")
 
-    # 2. Ambil dokumen
     docs = (
         db.table("dokumen_pendukung")
         .select("id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at")
@@ -936,7 +917,6 @@ def submit_rating(
     if existing_rating.data:
         raise HTTPException(status_code=400, detail="Anda sudah memberikan ulasan untuk sesi konsultasi ini.")
 
-    # 1. Simpan rating ke tabel rating_ulasan
     rating_insert = {
         "id_pengajuan": id_pengajuan,
         "id_konsultan": data_pengajuan["id_konsultan"],
@@ -949,7 +929,6 @@ def submit_rating(
     if not insert_res.data:
         raise HTTPException(status_code=500, detail="Gagal menyimpan ulasan")
 
-    # 2. Pastikan status pengajuan diubah menjadi selesai (jika belum)
     if data_pengajuan["status_pengajuan"] != "selesai":
         db.table("pengajuan_konsultasi").update({"status_pengajuan": "selesai"}).eq("id_pengajuan", id_pengajuan).execute()
 

@@ -34,13 +34,11 @@ export default function ZoomLinkCard({
     role === "konsultan" || 
     role === "consultant";
 
-  // 1. FILTER STATUS
   const restrictedStatuses = ["dibatalkan", "ditolak", "kedaluwarsa"];
   if (restrictedStatuses.includes(status?.toLowerCase())) {
     return null;
   }
 
-  // 3. HANDLER
   const handleCopyLink = async () => {
     if (!link || !navigator.clipboard) return;
     try {
@@ -62,7 +60,6 @@ export default function ZoomLinkCard({
 
   const canJoin = status === "terjadwal";
 
-  // 4. RENDER UI
   return (
     <section className="space-y-4">
       {/* Label Title */}

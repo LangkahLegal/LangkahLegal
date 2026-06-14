@@ -1,13 +1,7 @@
 """
 Document Processing Service
 ============================
-Logika modular untuk memproses PDF dokumen hukum:
-  1. Ekstraksi teks dari PDF (PyMuPDF/fitz)
-  2. OCR noise cleaning
-  3. Chunking per pasal
-  4. AI metadata extraction (Gemini)
-  5. Embedding batch (Voyage AI) dengan rate-limit handling
-  6. Upsert ke Supabase
+
 
 Dipindahkan dari tests/rag_test.py dan tests/scrapper_fast.py
 agar bisa dipakai oleh router admin_docs.
@@ -119,7 +113,7 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 def clean_ocr_text(raw: str) -> str:
     """Bersihkan teks OCR dari typo umum dan noise."""
-    # Fix OCR typos
+
     raw = re.sub(r"Pasa[7l]\s*", "Pasal ", raw)
     raw = re.sub(r"(Pasal\s+\d+)\s*[Il]", r"\1 1", raw, flags=re.I)
     raw = re.sub(r"(Pasal\s+\d+)\s*[O]", r"\1 0", raw, flags=re.I)
@@ -146,7 +140,6 @@ def split_into_chunks(text: str) -> list[dict]:
     matches = list(pasal_re.finditer(text))
 
     if not matches:
-        # Coba pattern tanpa trailing newline strict
         pasal_re = re.compile(r"(?m)^Pasal\s+(\d+[a-z]?A?B?C?)", re.IGNORECASE)
         matches = list(pasal_re.finditer(text))
 
@@ -156,7 +149,6 @@ def split_into_chunks(text: str) -> list[dict]:
     chunks = []
     starts = [m.start() for m in matches] + [len(text)]
 
-    # Preambule
     preamble = text[: starts[0]].strip()
     if len(preamble) >= MIN_CHUNK_LEN:
         chunks.append({"nomor_pasal": "PREAMBULE", "teks": preamble})
@@ -211,8 +203,7 @@ def extract_metadata_with_ai(full_text: str) -> dict:
     preview = full_text[:2000]
     prompt = AI_METADATA_PROMPT + preview
 
-    # Fallback models, mirip rag_service
-    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    models = ["gemini-2.5-flash", "gemini-2.0-flash", ""]
     response_text = None
 
     for model in models:
@@ -230,7 +221,6 @@ def extract_metadata_with_ai(full_text: str) -> dict:
     if not response_text:
         raise RuntimeError("Semua model AI terkena rate limit untuk metadata extraction.")
 
-    # Parse JSON dari response (bersihkan markdown wrapper jika ada)
     cleaned = response_text
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
@@ -243,7 +233,6 @@ def extract_metadata_with_ai(full_text: str) -> dict:
         log.error(f"[DOC_SERVICE] Gagal parse JSON dari AI: {cleaned[:200]}")
         raise ValueError(f"AI mengembalikan format bukan JSON valid: {cleaned[:100]}")
 
-    # Validasi kategori
     if meta.get("kategori") not in VALID_KATEGORI:
         log.warning(f"[DOC_SERVICE] Kategori '{meta.get('kategori')}' tidak valid, fallback ke 'lainnya'")
         meta["kategori"] = "lainnya"
@@ -302,13 +291,11 @@ def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECON
     client = voyageai.Client()
     all_embeddings = []
 
-    # Dynamic batching berdasarkan character count
     batches: list[list[str]] = []
     current_batch: list[str] = []
     current_chars = 0
 
     for t in texts:
-        # Potong teks yang terlalu panjang
         if len(t) > MAX_CHARS_PER_BATCH:
             t = t[:MAX_CHARS_PER_BATCH]
         if current_chars + len(t) > MAX_CHARS_PER_BATCH or len(current_batch) >= 120:
@@ -340,17 +327,14 @@ def process_pdf_to_records(pdf_bytes: bytes, manual_metadata: dict | None = None
     Jika manual_metadata disupply, lewati tahap ekstraksi AI.
     Returns (records_tanpa_embedding, metadata).
     """
-    # 1. Extract
     log.info("[DOC_SERVICE] Step 1/4: Ekstraksi teks dari PDF...")
     raw_text = extract_text_from_pdf(pdf_bytes)
     if not raw_text or len(raw_text.strip()) < 50:
         raise ValueError("PDF tidak mengandung teks yang cukup untuk diproses.")
 
-    # 2. Clean
     log.info("[DOC_SERVICE] Step 2/4: Membersihkan noise OCR...")
     cleaned = clean_ocr_text(raw_text)
 
-    # 3. Metadata
     if manual_metadata:
         log.info("[DOC_SERVICE] Step 3/4: Menggunakan metadata manual (bypass AI)...")
         metadata = manual_metadata
@@ -360,7 +344,6 @@ def process_pdf_to_records(pdf_bytes: bytes, manual_metadata: dict | None = None
         
     log.info(f"[DOC_SERVICE] Metadata: {metadata.get('nama_uu')} | {metadata.get('kategori')}")
 
-    # 4. Chunk
     log.info("[DOC_SERVICE] Step 4/4: Chunking per pasal...")
     chunks = split_into_chunks(cleaned)
     if not chunks:

@@ -37,14 +37,12 @@ from services.doc_processing import (
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-# Kolom select (tanpa embedding — terlalu besar)
 SELECT_COLS = (
     "id_dokumen, frbr_uri, node_id, node_type, kategori, "
     "nama_uu, nomor_uu, tahun_uu, status_hukum, sumber_undang_undang, "
     "pasal_bagian, judul_bab, isi_teks, created_at, updated_at"
 )
 
-# In-memory job store (untuk MVP; di production pakai Redis/DB)
 _jobs: dict[str, dict] = {}
 
 
@@ -74,21 +72,16 @@ def _bg_process_pdf(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
     job["message"] = "Memproses PDF..."
 
     try:
-        # 1. PDF → records + metadata
-        job["message"] = "Mengekstrak teks dan memproses metadata dari PDF..."
         records, extracted_metadata = process_pdf_to_records(pdf_bytes, manual_metadata=metadata)
         frbr_uri = extracted_metadata.get("frbr_uri", "/akn/id/act/unknown")
         job["frbr_uri"] = frbr_uri
 
-        # 2. Embed semua teks
         job["message"] = f"Menghasilkan embedding untuk {len(records)} pasal (ini bisa memakan waktu)..."
         texts = [r["isi_teks"] for r in records]
         embeddings = generate_embeddings(texts)
 
-        # 3. Gabungkan embedding ke records
         rows = [{**rec, "embedding": emb} for rec, emb in zip(records, embeddings)]
 
-        # 4. DB operations
         db = get_supabase_client()
 
         if replace_uri:
@@ -96,7 +89,6 @@ def _bg_process_pdf(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
             db.table("dokumen_hukum").delete().eq("frbr_uri", replace_uri).execute()
             log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
 
-        # Cek apakah frbr_uri sudah ada (kalau bukan replace)
         if not replace_uri:
             existing = (
                 db.table("dokumen_hukum")
@@ -110,7 +102,6 @@ def _bg_process_pdf(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
                 job["message"] = "Gagal: dokumen sudah ada."
                 return
 
-        # Insert batch (40 rows per batch untuk hindari timeout PostgREST)
         job["message"] = f"Menyimpan {len(rows)} pasal ke database..."
         batch_size = 40
         total_inserted = 0
@@ -177,7 +168,6 @@ async def upload_document(
     if len(pdf_bytes) > 50 * 1024 * 1024:  # 50MB limit
         raise HTTPException(400, "File PDF terlalu besar (maks 50MB).")
 
-    # Generate frbr_uri if nomor_uu and tahun_uu are present
     frbr_uri = None
     if nomor_uu and tahun_uu:
         nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()
@@ -378,11 +368,9 @@ def update_chunk(
     if not update_data:
         raise HTTPException(400, "Tidak ada field yang diubah.")
 
-    # Konversi enum → string
     if "kategori" in update_data and update_data["kategori"] is not None:
         update_data["kategori"] = update_data["kategori"].value
 
-    # Re-embed jika isi_teks berubah
     if "isi_teks" in update_data:
         update_data["embedding"] = _embed_single(update_data["isi_teks"])
         log.info(f"[ADMIN_DOCS] Re-embedding chunk {id_dokumen}")
@@ -439,7 +427,6 @@ async def replace_document(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "File harus berformat PDF.")
 
-    # Validasi bahwa dokumen lama memang ada
     existing = (
         db.table("dokumen_hukum")
         .select("id_dokumen", count="exact")
@@ -463,7 +450,6 @@ async def replace_document(
         "error": None,
     }
 
-    # Generate new frbr_uri in case nomor/tahun changed
     new_frbr_uri = frbr_uri
     if nomor_uu and tahun_uu:
         nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()

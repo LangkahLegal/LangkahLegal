@@ -5,8 +5,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
 from database import get_supabase_client
 
-# Skema otorisasi standar (Bearer Token)
-# Di-override di bawah agar tidak error otomatis jika header kosong
 
 def _get_supabase_config() -> tuple[str, str]:
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
@@ -98,14 +96,12 @@ def get_current_user(
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak ditemukan di cookie maupun header.")
     try:
-        # 1. Validasi token langsung ke Supabase Cloud
         user_res = db.auth.get_user(token)
         if not user_res.user:
             raise HTTPException(status_code=401, detail="Token tidak valid atau kedaluwarsa")
 
         auth_user_id = user_res.user.id # Ini adalah UUID dari Supabase Auth
 
-        # 2. Hubungkan UUID Supabase dengan id_user (Integer) di tabel lokal kita
         user_profile = (
             db.table("users")
             .select("id_user, role, nama")

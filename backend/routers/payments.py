@@ -56,11 +56,9 @@ def create_transaction(
     db: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ):
-    # 1. Validasi role
     if current_user.get("role") != "client":
         raise HTTPException(status_code=403, detail="Hanya klien yang bisa melakukan pembayaran")
 
-    # 2. Ambil data pengajuan
     try:
         pengajuan_res = (
             db.table("pengajuan_konsultasi")
@@ -79,7 +77,6 @@ def create_transaction(
 
     pengajuan = pengajuan_res.data[0]
     
-    # 3. Validasi status — izinkan bayar/bayar ulang dari status berikut:
     #    - menunggu_pembayaran: konsultan baru approve
     #    - pembayaran_gagal: pembayaran sebelumnya gagal (legacy)
     #    - kedaluwarsa: pembayaran sebelumnya expire
@@ -90,7 +87,6 @@ def create_transaction(
             status_code=400,
             detail=f"Pengajuan tidak dalam status yang memerlukan pembayaran (status saat ini: {pengajuan['status_pengajuan']})",
         )
-    # 4. Cek apakah sudah ada transaksi pending untuk pengajuan ini
     existing_tx = (
         db.table("transaksi")
         .select("*")
@@ -100,21 +96,18 @@ def create_transaction(
     )
     if existing_tx.data:
         tx = existing_tx.data[0]
-        # Double check status ke Midtrans untuk memastikan token belum expired
         api_client = _get_core_api_client(settings)
         try:
             status_response = api_client.transactions.status(tx["order_id"])
             tx_status = status_response.get("transaction_status")
             
             if tx_status in ("cancel", "deny", "expire"):
-                # Update DB menjadi batal/kedaluwarsa, lalu lanjut buat transaksi KEDUA
                 db.table("transaksi").update({
                     "status_pembayaran": tx_status,
                     "updated_at": datetime.now().isoformat()
                 }).eq("order_id", tx["order_id"]).execute()
                 print(f"[INFO] Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
             else:
-                # Masih valid/pending, kembalikan snap_token yang ada
                 if tx.get("snap_token"):
                     return {
                         "snap_token": tx["snap_token"],
@@ -122,8 +115,6 @@ def create_transaction(
                         "order_id": tx["order_id"],
                     }
         except Exception as e:
-            # Jika transaksi belum ada di sisi Midtrans (misal belum klik payment method sama sekali),
-            # API status() akan error 404. Ini berarti token Snap MASIH VALID & belum dipilih methodnya.
             if "404" in str(e):
                 if tx.get("snap_token"):
                     return {
@@ -133,7 +124,6 @@ def create_transaction(
                     }
             else:
                 print(f"[WARN] Failed to check status for existing tx {tx['order_id']}: {e}")
-    # 5. Hitung nominal
     konsultan_data = pengajuan.get("konsultan") or {}
     tarif = konsultan_data.get("tarif_per_sesi")
 
@@ -167,21 +157,17 @@ def create_transaction(
             print(f"[WARN] Failed to calculate quantity: {e}")
 
     gross_amount = int(float(tarif)) * quantity
-    # Hitung komisi platform (10%) dan nominal konsultan (90%)
     komisi_platform = int(gross_amount * 0.10)
     nominal_konsultan = gross_amount - komisi_platform
 
-    # 6. Generate unique order_id
     order_id = f"LL-{payload.id_pengajuan}-{int(time.time())}"
 
-    # 7. Siapkan customer details
     user_data = pengajuan.get("users") or {}
     customer_details = {
         "first_name": user_data.get("nama", "Client"),
         "email": user_data.get("email", "client@langkahlegal.com"),
     }
 
-    # 8. Buat transaksi Midtrans Snap
     snap = _get_snap_client(settings)
 
     transaction_param = {
@@ -204,7 +190,6 @@ def create_transaction(
     snap_token = snap_response.get("token", "")
     redirect_url = snap_response.get("redirect_url", "")
 
-    # 9. Simpan ke tabel transaksi
     try:
         db.table("transaksi").insert({
             "id_pengajuan": payload.id_pengajuan,
@@ -249,7 +234,6 @@ async def midtrans_notification(
     db: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ):
-    # 1. Parse notification JSON dari Midtrans
     try:
         notification_json = await request.json()
     except Exception:
@@ -257,7 +241,6 @@ async def midtrans_notification(
 
     print(f"[MIDTRANS WEBHOOK] Received notification: {notification_json}")
 
-    # 2. Verifikasi notifikasi menggunakan Midtrans SDK
     api_client = _get_core_api_client(settings)
 
     try:
@@ -274,7 +257,6 @@ async def midtrans_notification(
 
     print(f"[MIDTRANS WEBHOOK] Order: {order_id}, Status: {transaction_status}, Fraud: {fraud_status}")
 
-    # 3. Cari transaksi di database
     tx_res = (
         db.table("transaksi")
         .select("*, pengajuan_konsultasi(id_pengajuan, status_pengajuan)")
@@ -290,23 +272,11 @@ async def midtrans_notification(
     id_pengajuan = tx["id_pengajuan"]
     current_payment_status = tx.get("status_pembayaran", "")
 
-    # 4. Guard: Jangan proses ulang transaksi yang sudah final
-    #    Mencegah double-webhook mengubah status yang sudah settlement/cancel/refund
     FINAL_STATUSES = ("settlement", "cancel", "refund")
     if current_payment_status in FINAL_STATUSES:
         print(f"[MIDTRANS WEBHOOK] Transaksi {order_id} sudah final ({current_payment_status}), skip.")
         return {"status": "ok", "message": f"Already {current_payment_status}"}
 
-    # 5. Tentukan status pembayaran baru berdasarkan notifikasi Midtrans
-    #
-    # Mapping Midtrans → status_pembayaran_enum × status_pengajuan_enum:
-    #   capture+accept / settlement  → settlement   × terjadwal
-    #   cancel / deny                → cancel        × dibatalkan
-    #   expire                       → expire        × kedaluwarsa
-    #   pending                      → pending       × (tidak diubah)
-    #   refund                       → refund        × dibatalkan
-    #   capture+challenge            → pending       × (tidak diubah, tunggu review)
-    #
     new_payment_status = None
     new_pengajuan_status = None
 
@@ -331,7 +301,6 @@ async def midtrans_notification(
         new_payment_status = "refund"
         new_pengajuan_status = "dibatalkan"
 
-    # 6. Update tabel transaksi
     if new_payment_status:
         update_data = {
             "status_pembayaran": new_payment_status,
@@ -345,7 +314,6 @@ async def midtrans_notification(
         db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
         print(f"[MIDTRANS WEBHOOK] Transaksi {order_id} diupdate ke {new_payment_status}")
 
-    # 7. Update status pengajuan konsultasi
     if new_pengajuan_status:
         db.table("pengajuan_konsultasi").update({
             "status_pengajuan": new_pengajuan_status,
@@ -353,7 +321,6 @@ async def midtrans_notification(
         }).eq("id_pengajuan", id_pengajuan).execute()
         print(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
 
-    # 8. Kirim Notifikasi Email jika Pembayaran Berhasil (Settlement)
     if new_payment_status == "settlement":
         try:
             pengajuan_res = db.table("pengajuan_konsultasi").select("id_user, id_konsultan, link_zoom").eq("id_pengajuan", id_pengajuan).single().execute()
@@ -365,7 +332,6 @@ async def midtrans_notification(
                     zoom_link = pengajuan_res.data.get("link_zoom") or "Belum ditentukan"
                     subject = "Receipt: Pembayaran Konsultasi Berhasil"
                     
-                    # Ambil data receipt
                     gross_amount = tx.get("gross_amount", 0)
                     formatted_amount = f"Rp {int(gross_amount):,}".replace(",", ".")
                     
@@ -390,7 +356,6 @@ LangkahLegal
 """
                     send_notification_email(client_email, subject, message)
                 
-                # Kirim ke Konsultan
                 kons_res = db.table("konsultan").select("id_user, nama_lengkap").eq("id_konsultan", pengajuan_res.data["id_konsultan"]).single().execute()
                 if kons_res.data:
                     kons_user_res = db.table("users").select("email").eq("id_user", kons_res.data["id_user"]).single().execute()
@@ -435,7 +400,6 @@ def get_payment_status(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # Validasi akses: pastikan user terkait pengajuan ini
     try:
         pengajuan_res = (
             db.table("pengajuan_konsultasi")
@@ -468,7 +432,6 @@ def get_payment_status(
         if not kons_res.data or kons_res.data[0]["id_konsultan"] != pengajuan["id_konsultan"]:
             raise HTTPException(status_code=403, detail="Akses ditolak")
 
-    # Ambil data transaksi terbaru
     tx_res = (
         db.table("transaksi")
         .select("*")
@@ -507,11 +470,9 @@ def sync_payment_status(
     db: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ):
-    # 1. Validasi role
     if current_user.get("role") != "client":
         raise HTTPException(status_code=403, detail="Hanya klien yang bisa sinkronisasi pembayaran")
 
-    # 2. Cari transaksi terbaru untuk pengajuan ini
     tx_res = (
         db.table("transaksi")
         .select("*")
@@ -528,7 +489,6 @@ def sync_payment_status(
     order_id = tx["order_id"]
     current_status = tx.get("status_pembayaran", "")
 
-    # 3. Jika sudah final, skip
     if current_status in ("settlement", "cancel", "refund"):
         return {
             "synced": False,
@@ -536,7 +496,6 @@ def sync_payment_status(
             "status_pembayaran": current_status,
         }
 
-    # 4. Query status langsung ke Midtrans Core API
     api_client = _get_core_api_client(settings)
 
     try:
@@ -551,7 +510,6 @@ def sync_payment_status(
 
     print(f"[SYNC] Order {order_id}: midtrans_status={transaction_status}, fraud={fraud_status}")
 
-    # 5. Tentukan status baru (mapping sama dengan webhook)
     new_payment_status = None
     new_pengajuan_status = None
 
@@ -571,7 +529,6 @@ def sync_payment_status(
     elif transaction_status == "pending":
         new_payment_status = "pending"
 
-    # 6. Update DB jika ada perubahan
     if new_payment_status and new_payment_status != current_status:
         update_data = {
             "status_pembayaran": new_payment_status,

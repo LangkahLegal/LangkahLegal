@@ -29,9 +29,7 @@ EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
 LLM_MODEL = "gemini-2.5-flash"
 
-# Batas token kasar untuk smart truncation.
-# Gemini 2.5 Flash punya context window ~1M token,
-# tapi kita batasi history agar response tetap cepat.
+
 MAX_HISTORY_CHARS = 60_000  # ~15k token (1 token ≈ 4 chars)
 MAX_TOOL_LOOP = 3
 
@@ -157,9 +155,7 @@ def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
     """Terjemahkan query awam → query hukum presisi, dengan konteks history."""
     client = _get_gemini_client()
 
-    # Bangun konteks singkat dari history terakhir (untuk rewriter saja).
-    # Ini boleh pakai format sederhana karena tujuannya cuma bikin search query,
-    # bukan percakapan multi-turn.
+
     history_snippet = ""
     if chat_history:
         lines = []
@@ -309,7 +305,7 @@ def _build_contents(
         role = "user" if raw_role == "user" else "model"
         text = msg.get("content", msg.get("text", ""))
 
-        # Kalau ini pesan AI yang mengandung hasil konsultan, tambahin ringkasan
+
         meta = msg.get("metadata") or {}
         if role == "model" and meta.get("type") == "consultant_list":
             consultant_data = meta.get("consultants", [])
@@ -321,8 +317,7 @@ def _build_contents(
                 types.Content(role=role, parts=[types.Part.from_text(text=text)])
             )
 
-    # Pesan user terbaru — query dan konteks pasal jadi Part terpisah
-    # supaya user input terisolasi dari instruksi (defense prompt injection)
+
     user_parts = [types.Part.from_text(text=user_query)]
     if pasal_context:
         user_parts.append(
@@ -343,7 +338,7 @@ def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
     if not contents:
         return contents
 
-    # Pesan terakhir = query user terbaru, jangan disentuh
+
     last_msg = contents[-1]
     history = contents[:-1]
 
@@ -352,7 +347,7 @@ def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
         for c in history
     )
 
-    # Buang dari awal sampai di bawah limit
+
     while total_chars > MAX_HISTORY_CHARS and history:
         removed = history.pop(0)
         removed_chars = sum(
@@ -383,7 +378,7 @@ def agentic_generate(
     """
     client = _get_gemini_client()
 
-    # Bangun contents array (structured multi-turn)
+
     contents = _build_contents(chat_history or [], query, context)
     contents = _smart_truncate(contents)
 
@@ -398,7 +393,7 @@ def agentic_generate(
     AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
     MAX_RETRIES = 2  # Retry sampai 2x kalau semua model 503
 
-    # Agentic loop — maksimal MAX_TOOL_LOOP iterasi
+
     for iteration in range(MAX_TOOL_LOOP):
         log.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
 
@@ -412,7 +407,7 @@ def agentic_generate(
                         contents=contents,
                         config=config,
                     )
-                    break  # Berhasil
+                    break
                 except Exception as e:
                     err_str = str(e)
                     if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
@@ -422,24 +417,23 @@ def agentic_generate(
                         raise e
             
             if response is not None:
-                break  # Berhasil, keluar dari retry loop
+                break
             
-            # Semua model gagal, tunggu sebelum retry
             if retry < MAX_RETRIES:
                 import time
-                wait_time = 2 * (retry + 1)  # 2s, 4s
+                wait_time = 2 * (retry + 1)
                 log.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
                 time.sleep(wait_time)
         
         if response is None:
-            # Semua model dan retry habis
+
             raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
 
-        # Kalau tidak ada function call, berarti Gemini sudah punya jawaban final
+
         if not response.function_calls:
             break
 
-        # Gemini minta panggil tool
+
         fc = response.function_calls[0]
         log.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
 
@@ -447,15 +441,14 @@ def agentic_generate(
             log.error("[AGENT] Tool call tapi supabase client None, skip")
             break
 
-        # Eksekusi tool
+
         tool_result = _execute_tool(supabase, fc.name, fc.args or {})
 
-        # Simpan konsultan kalau ada
+
         if fc.name == "search_consultants":
             consultants_found = tool_result.get("consultants", [])
 
-        # Append turn model (function call) + turn tool (function response)
-        # ke contents, lalu loop lagi biar Gemini baca hasilnya
+
         contents.append(response.candidates[0].content)
         contents.append(
             types.Content(
@@ -469,18 +462,18 @@ def agentic_generate(
             )
         )
     else:
-        # Loop habis tanpa break = Gemini terus-terusan minta tool call
+
         log.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
 
-    # Ambil text jawaban dari response terakhir
+
     jawaban = ""
     try:
         jawaban = response.text or ""
     except Exception:
-        # response.text bisa raise kalau isinya cuma function_call tanpa text
+
         jawaban = "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
 
-    # Tentukan tipe response
+
     if consultants_found:
         return {
             "type": "consultant_list",
@@ -511,7 +504,7 @@ def triage(
     current_step = "init"
 
     try:
-        # 1. Rewrite (Conditional)
+
         current_step = "rewrite"
         if len(query.split()) < 5:
             log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
@@ -520,12 +513,12 @@ def triage(
             log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
             search_query = query
 
-        # 2. Embed
+
         current_step = "embed"
         query_embedding = embed_query(search_query)
         log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
 
-        # 3. Retrieve — single threshold, no fallback cocoklogi
+
         current_step = "retrieve"
         pasals = retrieve_pasals(
             supabase=supabase,
@@ -536,12 +529,12 @@ def triage(
         )
         log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
 
-        # 4. Build context & references
+
         current_step = "build_context"
         context = _build_context(pasals)
         references = _build_references(pasals)
 
-        # 5. Agentic generate
+
         current_step = "agentic_generate"
         result = agentic_generate(
             query=query,
@@ -551,7 +544,7 @@ def triage(
         )
         log.info(f"[TRIAGE] Result type: {result['type']}")
 
-        # 6. Return
+
         return {
             "type": result["type"],
             "jawaban": result["jawaban"],
