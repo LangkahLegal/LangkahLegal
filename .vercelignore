@@ -1,0 +1,13 @@
+.git
+.gitignore
+.pytest_cache
+.venv
+.vscode
+node_modules
+frontend
+README.md
+*.pyc
+__pycache__
+.env
+.env.local
+test-results
