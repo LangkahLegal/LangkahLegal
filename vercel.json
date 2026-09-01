@@ -15,7 +15,7 @@
   "env": {
     "PYTHONUNBUFFERED": "1"
   },
-  "regions": ["sg1"],
+  "regions": ["sin1"],
   "github": {
     "enabled": false
   }
