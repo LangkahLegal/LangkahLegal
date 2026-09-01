@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+import voyageai
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File, Form, status
 from supabase import Client
 
@@ -54,7 +55,6 @@ def _require_admin(user: dict):
 
 def _embed_single(text: str) -> list[float]:
     """Embed 1 teks via Voyage AI."""
-    import voyageai  # lazy: lihat rag_service._get_voyage_client
     client = voyageai.Client()
     resp = client.embed([text], model="voyage-law-2", input_type="document")
     return resp.embeddings[0]

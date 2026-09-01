@@ -57,21 +57,6 @@ async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExc
         content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."}
     )
 
-@app.get("/", tags=["System"])
-def root(settings: Settings = Depends(get_settings)):
-    """
-    Info dasar API. Berguna untuk uptime check dan cek cepat "servernya hidup atau tidak".
-
-Tidak menyentuh database, jadi selalu cepat.
-    """
-    return {
-        "name": settings.app_name,
-        "version": app.version,
-        "environment": settings.app_env,
-        "docs": "/docs",
-    }
-
-
 @app.get("/health", tags=["System"])
 def health_check(settings: Settings = Depends(get_settings)):
     """

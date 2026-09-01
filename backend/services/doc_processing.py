@@ -14,6 +14,8 @@ import time
 import logging
 from pathlib import Path
 
+import fitz  # PyMuPDF
+import voyageai
 from google import genai
 from tenacity import (
     retry,
@@ -84,7 +86,6 @@ def _normalize_lines(raw: str) -> str:
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """Ekstrak teks dari PDF bytes menggunakan PyMuPDF (fitz)."""
-    import fitz  # lazy: PyMuPDF ~50 MB, hanya dipakai saat upload PDF
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     all_parts = []
 
@@ -274,7 +275,7 @@ def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
     wait=wait_exponential(multiplier=2, min=5, max=65),
     retry=retry_if_exception_type(Exception),
 )
-def _embed_batch_with_retry(client: "voyageai.Client", texts: list[str]) -> list[list[float]]:
+def _embed_batch_with_retry(client: voyageai.Client, texts: list[str]) -> list[list[float]]:
     """Embed satu batch teks, dengan retry pada 429."""
     try:
         resp = client.embed(texts, model=EMBEDDING_MODEL, input_type="document")
@@ -287,7 +288,6 @@ def _embed_batch_with_retry(client: "voyageai.Client", texts: list[str]) -> list
 
 def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECONDS) -> list[list[float]]:
     """Embed batch teks dengan dynamic chunking dan rate-limit handling."""
-    import voyageai  # lazy: lihat rag_service._get_voyage_client
     client = voyageai.Client()
     all_embeddings = []
 

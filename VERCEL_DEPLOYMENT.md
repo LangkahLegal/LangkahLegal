@@ -92,10 +92,23 @@ curl -i https://<backend>.vercel.app/openapi.json
 
 ## Step 6: Connect Frontend
 
-`frontend/.env.production`:
+Di project **frontend** (Vercel Dashboard → Settings → Environment Variables):
+
 ```
-NEXT_PUBLIC_API_URL=https://<backend>.vercel.app
+NEXT_PUBLIC_API_URL=https://<backend>.vercel.app/api/v1
 ```
+
+- **Wajib pakai akhiran `/api/v1`.** `frontend/src/lib/axios.js` memanggil path relatif
+  seperti `/auth/login-password`, jadi base URL harus sudah termasuk prefix `/api/v1`.
+- **Type-nya `Config`, bukan `Secret`.** Variabel berawalan `NEXT_PUBLIC_` di-inline ke
+  bundle JavaScript saat build, jadi nilainya selalu sampai ke browser. Menandainya
+  `Secret` tidak menyembunyikan apa pun dari publik — hanya menyembunyikannya dari Anda
+  di dashboard. Vercel tidak bisa mengubah `Secret` jadi `Config`; harus dihapus lalu
+  dibuat ulang.
+- **Harus redeploy setelah diubah.** `NEXT_PUBLIC_*` dibaca saat build, bukan saat runtime.
+- Kalau variabel ini kosong atau salah, `axios.js` diam-diam jatuh ke fallback lama
+  `https://langkahlegal-production.up.railway.app/api/v1` (sudah mati, balas 404) —
+  gejalanya semua request frontend gagal tanpa error yang jelas.
 
 ## Troubleshooting
 

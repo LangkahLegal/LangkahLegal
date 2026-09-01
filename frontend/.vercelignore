@@ -1,0 +1,13 @@
+# Project-level .vercelignore — WAJIB ADA.
+# Vercel: file .vercelignore di level project selalu menang atas yang di root repo.
+# Tanpa file ini, project frontend ikut memakai /.vercelignore yang meng-exclude
+# direktori "frontend" (aturan itu ditujukan untuk project backend), sehingga
+# package.json tidak ikut ter-upload dan build gagal dengan ENOENT.
+
+node_modules
+.next
+tests
+test-results
+playwright-report
+.env
+.env.local

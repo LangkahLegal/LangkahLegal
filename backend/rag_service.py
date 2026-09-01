@@ -14,6 +14,7 @@ import json
 import logging
 from typing import Optional
 
+import voyageai
 from google import genai
 from google.genai import types
 from supabase import Client
@@ -139,10 +140,7 @@ CONSULTANT_TOOL = types.Tool(
 
 # ── Client Helpers ──────────────────────────────────────────
 
-def _get_voyage_client() -> "voyageai.Client":  # noqa: F821
-    # Lazy import: voyageai menarik numpy/tokenizers (~95 MB).
-    # Ditunda supaya cold start endpoint non-RAG tetap ringan.
-    import voyageai
+def _get_voyage_client() -> voyageai.Client:
     return voyageai.Client()
 
 
