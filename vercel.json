@@ -2,21 +2,21 @@
   "version": 2,
   "builds": [
     {
-      "src": "Dockerfile",
-      "use": "@vercel/docker"
+      "src": "backend/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "backend/wsgi.py"
     }
   ],
   "env": {
     "PYTHONUNBUFFERED": "1"
   },
-  "regions": ["sin1"],
-  "github": {
-    "enabled": false
-  }
+  "regions": ["sin1"]
 }
