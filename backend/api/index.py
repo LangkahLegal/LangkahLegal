@@ -1,15 +1,18 @@
 """
 Vercel serverless function entry point for FastAPI
 
-Vercel automatically wraps the imported app as an ASGI handler.
+This handler wraps the FastAPI app to work with Vercel's Python runtime.
 """
 import sys
 import os
+from pathlib import Path
 
-# Add parent directory to path so we can import from backend
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the backend directory to Python path
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
+# Import the FastAPI app
 from main import app
 
-# Export the FastAPI app - Vercel will handle it as an ASGI application
-__all__ = ['app']
+# Vercel exports the app for ASGI handling
+# No additional handler needed - Vercel wraps it automatically
