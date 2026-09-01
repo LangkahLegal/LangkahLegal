@@ -1,0 +1,8 @@
+tests
+__pycache__
+*.pyc
+.env
+.env.local
+.pytest_cache
+AGENTS.md
+requirements-dev.txt

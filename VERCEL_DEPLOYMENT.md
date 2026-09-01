@@ -1,21 +1,28 @@
 # Panduan Deploy Backend ke Vercel
 
-## Step 1: Setup di Vercel Dashboard
+Backend di-deploy sebagai **project Vercel terpisah** dari frontend, dari repo yang sama.
+Vercel punya dukungan native untuk FastAPI: `backend/main.py` terdeteksi otomatis sebagai
+entrypoint (variabel `app`), jadi **tidak perlu** `builds`, `routes`, `wsgi.py`, atau
+handler `api/index.py` buatan sendiri.
 
-1. **Buat Project Baru di Vercel**:
-   - Pergi ke https://vercel.com/dashboard
-   - Klik "Add New" → "Project"
-   - Pilih repository GitHub Anda (LangkahLegal)
-   - Root directory: `.` (leave as default)
+## Step 1: Setup Project di Vercel Dashboard
 
-2. **Configure Build Settings**:
-   - Framework Preset: **Other** (bukan Next.js)
-   - Build Command: `pip install -r backend/requirements.txt`
-   - Output Directory: `backend`
-   - Development Command: (kosongkan)
+1. **Add New → Project** → pilih repository `LangkahLegal`.
+2. **Root Directory: `backend`** ← wajib. Ini yang membuat `main.py` dan
+   `requirements.txt` berada di root deployment.
+3. **Framework Preset: FastAPI** (kalau tidak ada, pilih `Other`).
+4. **Build & Output Settings — kosongkan semuanya:**
+   - Build Command: kosong (jangan di-override)
+   - Output Directory: **kosong** ← mengisi ini membuat Vercel menganggap deployment
+     sebagai situs statis sehingga tidak ada serverless function yang dibuat, dan
+     semua path balas `404 NOT_FOUND`.
+   - Install Command: kosong (Vercel jalankan `pip install -r requirements.txt` sendiri)
 
-3. **Add Environment Variables**:
-   Di Vercel Dashboard → Project Settings → Environment Variables, tambahkan:
+> Frontend adalah project Vercel terpisah dengan Root Directory `frontend`.
+
+## Step 2: Environment Variables
+
+Vercel Dashboard → Project Settings → Environment Variables (scope: Production + Preview):
 
 ```
 # Supabase
@@ -39,109 +46,75 @@ MIDTRANS_IS_PRODUCTION=true
 BREVO_API_KEY=<your-brevo-api-key>
 BREVO_FROM_EMAIL=LangkahLegal <langkahlegal@gmail.com>
 
-# Google (untuk AI/NLP features)
+# AI
 GOOGLE_API_KEY=<your-google-api-key>
+VOYAGE_API_KEY=<your-voyage-api-key>
 
 # Image Hosting (ImgBB)
 IMGBB_API_KEY=<your-imgbb-api-key>
-
-# VoyageAI (untuk embeddings)
-VOYAGE_API_KEY=<your-voyage-api-key>
 
 # App Config
 APP_ENV=production
 APP_NAME=LangkahLegal
 ```
 
-## Step 2: Update Frontend CORS
+Hanya `SUPABASE_URL` + (`SUPABASE_SERVICE_ROLE_KEY` atau `SUPABASE_KEY`) yang wajib —
+`config.py` melempar `RuntimeError` kalau keduanya kosong. Sisanya punya default atau
+hanya dipakai oleh fitur tertentu.
 
-Di `frontend/.env.production`:
-```
-NEXT_PUBLIC_API_URL=https://your-backend-api.vercel.app
-```
+## Step 3: File Konfigurasi di Repo
 
-Di `backend/main.py`, pastikan CORS sudah mencakup domain Vercel:
-```python
-allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.langkahlegal\.com|http://localhost:3000|http://127.0.0.1:3000"
-```
-
-## Step 3: Files yang Sudah Dibuat
-
-✅ `vercel.json` - Configuration untuk Vercel  
-✅ `backend/api/index.py` - Entry point  
-✅ `.vercelignore` - File yang di-ignore saat deploy  
+| File | Fungsi |
+|---|---|
+| `backend/main.py` | FastAPI app (`app`) — entrypoint yang dideteksi Vercel |
+| `backend/requirements.txt` | Dependency runtime (direct deps saja) |
+| `backend/requirements-dev.txt` | `requirements.txt` + pytest, dipakai CI |
+| `backend/vercel.json` | Hanya `regions: ["sin1"]` |
+| `backend/.vercelignore` | Exclude `tests/`, `__pycache__`, `.env` |
 
 ## Step 4: Deploy
 
 ```bash
-# Push ke GitHub (Vercel akan auto-deploy)
-git add .
-git commit -m "Setup Vercel deployment for backend"
+git add -A
+git commit -m "Deploy backend via Vercel FastAPI preset"
 git push origin main
 ```
 
-Vercel akan otomatis build dan deploy ketika push ke GitHub.
-
 ## Step 5: Testing
 
-Setelah deploy:
-
 ```bash
-# Test API documentation
-curl https://your-backend-api.vercel.app/docs
-
-# Test endpoint
-curl https://your-backend-api.vercel.app/api/v1/users/profile \
-  -H "Authorization: Bearer <token>"
+curl -i https://<backend>.vercel.app/health
+curl -i https://<backend>.vercel.app/docs
+curl -i https://<backend>.vercel.app/openapi.json
 ```
 
-## Step 6: Connect Frontend to Backend
+`/health` harus balas `{"status":"ok", ...}`.
 
-Update `frontend/src/lib/axios.js`:
-```javascript
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+## Step 6: Connect Frontend
+
+`frontend/.env.production`:
 ```
-
-Pastikan environment variable sudah set di Vercel dashboard.
-
-## Catatan Penting
-
-⚠️ **Vercel Serverless Limitations**:
-- Request timeout: 60 detik (Pro) atau 10 detik (Hobby)
-- Cold start dapat memperlambat response pertama
-- WebSocket mungkin tidak support penuh di beberapa plan
-
-⚠️ **Database Connection**:
-- Pastikan Supabase dapat diakses dari Vercel IPs
-- Gunakan connection pooling jika perlu
-
-⚠️ **Environment Variables**:
-- Jangan commit `.env` ke GitHub
-- Set semua secrets di Vercel dashboard, jangan di file lokal
+NEXT_PUBLIC_API_URL=https://<backend>.vercel.app
+```
 
 ## Troubleshooting
 
-### Build Gagal
-```bash
-# Check logs di Vercel dashboard
-# Pastikan pip install berhasil
-# Cek requirements.txt - semua dependencies harus listed
-```
+Baca header `X-Vercel-Error` dari response — itu yang menentukan di mana masalahnya:
 
-### API Return 502 Bad Gateway
-- Check Vercel logs
-- Pastikan main.py bisa di-import tanpa error
-- Check environment variables di Vercel
+| Gejala | Artinya | Penyebab umum |
+|---|---|---|
+| `404` + `X-Vercel-Error: NOT_FOUND` | Request **tidak pernah sampai** ke Python | Root Directory salah, atau Output Directory di-set (deployment jadi statis) |
+| `500` + `FUNCTION_INVOCATION_FAILED` | Function jalan tapi crash saat import | Env var kurang, atau import error — cek Runtime Logs |
+| `504` + `FUNCTION_INVOCATION_TIMEOUT` | Endpoint terlalu lama | Endpoint RAG/chatbot; naikkan `maxDuration` (butuh plan Pro) |
+| Build error `externally-managed-environment` | Build Command custom `pip install ...` masih aktif | Kosongkan Build Command di dashboard |
+| Build error size limit | Bundle > 250 MB uncompressed | PyMuPDF + tokenizers + cryptography + pyiceberg berat — pangkas dependency |
 
-### CORS Error
-- Update `allow_origin_regex` di main.py
-- Re-deploy setelah perubahan
+### Catatan lain
 
-### Request Timeout
-- Optimize slow endpoints
-- Reduce cold start time
-- Gunakan serverless functions yang lebih kecil
-
----
-
-Sudah siap! Ada pertanyaan tentang setup? 🚀
+- Cold start terasa karena dependency berat (PyMuPDF, tokenizers). Endpoint pertama lambat.
+- Timeout default: 60 detik. Untuk endpoint RAG yang lebih lama, tambahkan di
+  `backend/vercel.json` (butuh plan Pro):
+  ```json
+  { "functions": { "main.py": { "maxDuration": 300 } } }
+  ```
+- Jangan commit `backend/.env`.
