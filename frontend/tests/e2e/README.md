@@ -2,6 +2,34 @@
 
 End-to-End tests for LangkahLegal using [Playwright](https://playwright.dev/) with Page Object Model pattern.
 
+## Full E2E & Regression Suite (`regression/` + `live/`)
+
+Suite lengkap (251 test case, 36 fitur) yang **tidak membutuhkan akun/database**: frontend build produksi
+dijalankan di browser dan seluruh panggilan `/api/v1/*` di-mock di level jaringan (`regression/support/mock-api.js`).
+Laporan hasil: [`../../../E2E_REGRESSION_REPORT.md`](../../../E2E_REGRESSION_REPORT.md).
+
+```bash
+npm run build                    # sekali; suite memakai `next start -p 3100`
+npm run test:regression          # desktop + mobile (Pixel 7)
+npm run test:regression:smoke    # subset @smoke
+npm run test:live-api            # live API non-destruktif (backend harus jalan di :8000)
+npm run test:regression:report   # regenerasi E2E_REGRESSION_REPORT.md dari hasil terakhir
+```
+
+| Path | Isi |
+| --- | --- |
+| `regression/specs/01..10-*.spec.js` | Skenario per fitur (publik, auth, guard, client, pembayaran, bursa, konsultan, AI, pengaturan, admin) |
+| `regression/support/fixtures.js` | Fixture `api` (MockApi), `loginAs(role)`, `dialogs` (alert/confirm), `pageErrors`, helper `tc()` & `knownDefect()` |
+| `regression/support/mock-data.js` | Data mock yang meniru response FastAPI (tanggal relatif ke hari ini) |
+| `regression/support/findings.js` | Daftar defect + severity untuk laporan |
+| `live/api.live.spec.js` | Uji kontrak & keamanan API backend sungguhan (hanya request yang tidak mengubah data) |
+
+- Defect yang sudah terkonfirmasi ditandai `knownDefect("BUG-xx")` → suite tetap hijau, dan test akan berstatus
+  *unexpected pass* ketika bug diperbaiki (hapus penandanya). Jalankan dengan `E2E_STRICT=1` untuk melihat kegagalan apa adanya.
+- `E2E_WORKERS` mengatur paralelisme (default 2; di Windows >2 browser membuat aset `/_next/static` menggantung).
+- `E2E_OFFLINE=1` memblokir Google Fonts untuk menguji tampilan tanpa CDN.
+- Isi `.env.e2e` (lihat `.env.e2e.example`) agar test live terautentikasi (LIVE-020/021) ikut berjalan.
+
 ## Prerequisites
 
 - **Node.js** >= 20
