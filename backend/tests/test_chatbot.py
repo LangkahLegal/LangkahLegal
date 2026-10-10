@@ -1,4 +1,12 @@
+import pytest
+
 from routers import chatbot as chatbot_router
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    chatbot_router.limiter.reset()
+    yield
 
 
 def test_create_session_success(app_client, monkeypatch):
@@ -199,6 +207,92 @@ def test_chatbot_triage_existing_session_success(app_client, monkeypatch):
     assert response.status_code == 200
     assert response.json()["type"] == "consultant_list"
     assert response.json()["consultants"][0]["id_konsultan"] == 1
+
+
+def test_chatbot_triage_returns_and_persists_sumber_dokumen(app_client, monkeypatch):
+    sumber = [
+        {
+            "frbr_uri": "/akn/id/act/uu-13-2003",
+            "nama_uu": "Undang-Undang tentang Ketenagakerjaan",
+            "nomor_uu": "UU No. 13 Tahun 2003",
+            "tahun_uu": 2003,
+            "kategori": "ketenagakerjaan",
+            "status_hukum": "berlaku",
+            "has_file": False,
+            "pasal": [{"id_dokumen": 812, "pasal_bagian": "Pasal 156", "similarity": 0.73}],
+        }
+    ]
+    table_responses = {
+        "chat_sessions": [[{"id": "session-1"}]],
+        "chat_messages": [([], 1), [], [], []],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+
+    monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
+    monkeypatch.setattr(
+        chatbot_router,
+        "triage",
+        lambda **kwargs: {
+            "type": "text",
+            "jawaban": "Anda berhak atas pesangon.",
+            "pasal_referensi": [
+                {
+                    "id_dokumen": 812,
+                    "frbr_uri": "/akn/id/act/uu-13-2003",
+                    "nama_uu": "Undang-Undang tentang Ketenagakerjaan",
+                    "nomor_uu": "UU No. 13 Tahun 2003",
+                    "pasal_bagian": "Pasal 156",
+                    "judul_bab": None,
+                    "similarity": 0.73,
+                }
+            ],
+            "sumber_dokumen": sumber,
+            "disclaimer": "Disclaimer",
+        },
+    )
+
+    response = client.post(
+        "/api/v1/chatbot/triage",
+        json={"query": "Saya di-PHK tanpa pesangon", "session_id": "session-1"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sumber_dokumen"] == sumber
+    assert body["pasal_referensi"][0]["id_dokumen"] == 812
+
+    ai_row = supabase.inserted("chat_messages")[-1]
+    assert ai_row["role"] == "ai"
+    assert ai_row["metadata"]["sumber_dokumen"] == sumber
+
+
+def test_chatbot_triage_without_sumber_dokumen_defaults_to_empty(app_client, monkeypatch):
+    table_responses = {
+        "chat_sessions": [[{"id": "session-1"}]],
+        "chat_messages": [([], 1), [], [], []],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+
+    monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
+    monkeypatch.setattr(
+        chatbot_router,
+        "triage",
+        lambda **kwargs: {"type": "text", "jawaban": "Halo!", "pasal_referensi": [], "disclaimer": ""},
+    )
+
+    response = client.post(
+        "/api/v1/chatbot/triage",
+        json={"query": "Halo apa kabar", "session_id": "session-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["sumber_dokumen"] == []
 
 
 def test_chatbot_triage_session_not_found(app_client, monkeypatch):

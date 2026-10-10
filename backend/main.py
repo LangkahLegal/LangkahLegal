@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
-from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs
+from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs, knowledge
 from dependencies import get_current_user
 
 from config import get_settings, Settings
@@ -81,3 +81,4 @@ app.include_router(payments.router, prefix="/api/v1/payments", tags=["Pembayaran
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
 app.include_router(chatbot.router, prefix="/api/v1/chatbot", tags=["Chatbot AI"])
 app.include_router(admin_docs.router, prefix="/api/v1/admin/documents", tags=["Admin - Dokumen Hukum"])
+app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["Knowledge Base"])

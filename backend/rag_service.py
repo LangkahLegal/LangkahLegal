@@ -33,6 +33,10 @@ LLM_MODEL = "gemini-2.5-flash"
 MAX_HISTORY_CHARS = 60_000  # ~15k token (1 token ≈ 4 chars)
 MAX_TOOL_LOOP = 3
 
+# Filter tampilan "Sumber dokumen" di bawah jawaban (tidak mempengaruhi konteks prompt)
+SOURCE_MIN_SIMILARITY = 0.6
+SOURCE_MAX_DOCUMENTS = 3
+
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
 # ── Prompts ─────────────────────────────────────────────────
@@ -215,7 +219,12 @@ def retrieve_pasals(
         params["filter_kategori"] = filter_kategori
 
     result = supabase.rpc("match_dokumen_hukum", params).execute()
-    return result.data or []
+    rows = result.data or []
+    # RPC mengembalikan PK sebagai `id`; samakan dengan nama kolom tabel (id_dokumen)
+    for row in rows:
+        if "id_dokumen" not in row:
+            row["id_dokumen"] = row.get("id")
+    return rows
 
 
 def _build_context(pasals: list[dict]) -> str:
@@ -239,6 +248,8 @@ def _build_references(pasals: list[dict]) -> list[dict]:
     """Bangun list referensi pasal untuk response frontend."""
     return [
         {
+            "id_dokumen": p.get("id_dokumen"),
+            "frbr_uri": p.get("frbr_uri"),
             "nama_uu": p.get("nama_uu", ""),
             "nomor_uu": p.get("nomor_uu", ""),
             "pasal_bagian": p.get("pasal_bagian", ""),
@@ -247,6 +258,73 @@ def _build_references(pasals: list[dict]) -> list[dict]:
         }
         for p in pasals
     ]
+
+
+def _build_source_documents(
+    pasals: list[dict],
+    min_similarity: float = SOURCE_MIN_SIMILARITY,
+    max_documents: int = SOURCE_MAX_DOCUMENTS,
+) -> list[dict]:
+    """
+    Kelompokkan pasal hasil retrieval per dokumen (frbr_uri) untuk ditampilkan
+    sebagai daftar sumber yang bisa dibuka user. Pasal tanpa id_dokumen/frbr_uri
+    di-skip karena tidak bisa di-resolve ke dokumen.
+    """
+    groups: dict[str, dict] = {}
+    for p in pasals:
+        frbr_uri = p.get("frbr_uri")
+        id_dokumen = p.get("id_dokumen")
+        similarity = round(p.get("similarity", 0), 4)
+        if not frbr_uri or id_dokumen is None or similarity < min_similarity:
+            continue
+
+        doc = groups.setdefault(frbr_uri, {
+            "frbr_uri": frbr_uri,
+            "nama_uu": p.get("nama_uu"),
+            "nomor_uu": p.get("nomor_uu"),
+            "tahun_uu": p.get("tahun_uu"),
+            "kategori": p.get("kategori"),
+            "status_hukum": p.get("status_hukum"),
+            "has_file": False,
+            "pasal": [],
+        })
+        doc["pasal"].append({
+            "id_dokumen": id_dokumen,
+            "pasal_bagian": p.get("pasal_bagian", ""),
+            "similarity": similarity,
+        })
+
+    for doc in groups.values():
+        doc["pasal"].sort(key=lambda x: x["similarity"], reverse=True)
+
+    docs = sorted(groups.values(), key=lambda d: d["pasal"][0]["similarity"], reverse=True)
+    return docs[:max_documents]
+
+
+def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]:
+    """
+    Lengkapi status_hukum tiap sumber dari view dokumen_hukum_summary
+    (RPC match_dokumen_hukum tidak mengembalikan kolom ini).
+    Gagal lookup tidak boleh menggagalkan jawaban — status dibiarkan None.
+    """
+    if not sources:
+        return sources
+
+    try:
+        result = (
+            supabase.table("dokumen_hukum_summary")
+            .select("frbr_uri, status_hukum")
+            .in_("frbr_uri", [s["frbr_uri"] for s in sources])
+            .execute()
+        )
+        status_by_uri = {r["frbr_uri"]: r.get("status_hukum") for r in (result.data or [])}
+    except Exception as e:
+        log.warning(f"[TRIAGE] Gagal ambil status_hukum sumber dokumen: {e}")
+        return sources
+
+    for s in sources:
+        s["status_hukum"] = status_by_uri.get(s["frbr_uri"], s.get("status_hukum"))
+    return sources
 
 
 # ── Tool Execution ──────────────────────────────────────────
@@ -533,6 +611,7 @@ def triage(
         current_step = "build_context"
         context = _build_context(pasals)
         references = _build_references(pasals)
+        sources = _attach_document_status(supabase, _build_source_documents(pasals))
 
 
         current_step = "agentic_generate"
@@ -550,6 +629,7 @@ def triage(
             "jawaban": result["jawaban"],
             "consultants": result.get("consultants", []),
             "pasal_referensi": references,
+            "sumber_dokumen": sources,
             "disclaimer": DISCLAIMER,
         }
     except Exception as e:
