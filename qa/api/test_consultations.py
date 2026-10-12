@@ -14,7 +14,7 @@ def test_create_consultation_success(app_client):
                 }
             ]
         ],
-        "pengajuan_konsultasi": [[{"id_pengajuan": 55}]],
+        "pengajuan_konsultasi": [[], [{"id_pengajuan": 55}]],
     }
     client, _ = app_client(
         table_responses=table_responses,
@@ -33,6 +33,62 @@ def test_create_consultation_success(app_client):
 
     assert response.status_code == 201
     assert response.json()["data"]["id_pengajuan"] == 55
+
+
+def _booking_request(app_client, booked, jam_mulai, jam_selesai):
+    table_responses = {
+        "jadwal_ketersediaan": [
+            [
+                {
+                    "id_jadwal": 1,
+                    "id_konsultan": 7,
+                    "tanggal": "2026-01-01",
+                    "jam_mulai": "08:00:00",
+                    "jam_selesai": "17:00:00",
+                }
+            ]
+        ],
+        "pengajuan_konsultasi": [booked, [{"id_pengajuan": 56}]],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+    response = client.post(
+        "/api/v1/consultations",
+        data={
+            "id_jadwal": 1,
+            "deskripsi_kasus": "Kasus contoh",
+            "jam_mulai": jam_mulai,
+            "jam_selesai": jam_selesai,
+        },
+    )
+    return response, supabase
+
+
+BOOKED_0900_1000 = [{"tanggal_pengajuan": "2026-01-01", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
+
+
+def test_create_consultation_rejects_overlapping_slot(app_client):
+    response, supabase = _booking_request(app_client, BOOKED_0900_1000, "09:30:00", "10:30:00")
+
+    assert response.status_code == 409
+    assert "09:00-10:00" in response.json()["detail"]
+    assert supabase.inserted("pengajuan_konsultasi") == []
+
+
+def test_create_consultation_allows_adjacent_slot(app_client):
+    response, _ = _booking_request(app_client, BOOKED_0900_1000, "10:00:00", "11:00:00")
+
+    assert response.status_code == 201
+
+
+def test_create_consultation_ignores_booking_on_other_date(app_client):
+    other_day = [{"tanggal_pengajuan": "2026-01-02", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
+
+    response, _ = _booking_request(app_client, other_day, "09:00:00", "10:00:00")
+
+    assert response.status_code == 201
 
 
 def test_create_consultation_forbidden(app_client):

@@ -28,3 +28,34 @@ def count_sessions(jam_mulai: str, jam_selesai: str) -> int:
 def ensure_within_schedule(jam_mulai: str, jam_selesai: str, jadwal: dict) -> None:
     if jam_mulai < jadwal["jam_mulai"] or jam_selesai > jadwal["jam_selesai"]:
         raise BadRequestError(f"Jam di luar rentang operasional ({jadwal['jam_mulai']} - {jadwal['jam_selesai']})")
+
+
+def _slot_minutes(jam_mulai, jam_selesai) -> tuple[int, int] | None:
+    try:
+        return _to_minutes(str(jam_mulai)), _to_minutes(str(jam_selesai))
+    except (ValueError, IndexError):
+        return None
+
+
+def find_conflict(tanggal, jam_mulai, jam_selesai, bookings: list[dict]) -> tuple[str, str] | None:
+    target_date = str(tanggal or "").split("T")[0]
+    target = _slot_minutes(jam_mulai, jam_selesai)
+    if not target_date or target is None:
+        return None
+
+    for booking in bookings:
+        jadwal = booking.get("jadwal_ketersediaan") or {}
+        if isinstance(jadwal, list):
+            jadwal = jadwal[0] if jadwal else {}
+
+        booking_date = str(jadwal.get("tanggal") or booking.get("tanggal_pengajuan") or "").split("T")[0]
+        if booking_date != target_date:
+            continue
+
+        start = booking.get("jam_mulai") or jadwal.get("jam_mulai")
+        end = booking.get("jam_selesai") or jadwal.get("jam_selesai")
+        slot = _slot_minutes(start, end)
+        if slot and target[0] < slot[1] and target[1] > slot[0]:
+            return str(start)[:5], str(end)[:5]
+
+    return None

@@ -3,9 +3,10 @@ import logging
 from supabase import Client
 
 from core.constants import Role, StatusBursa, StatusPengajuan
-from core.exceptions import BadRequestError, InternalError, NotFoundError
+from core.exceptions import BadRequestError, ConflictError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
+from helpers.schedule import find_conflict
 from repositories import case_repository, consultation_repository
 from schemas.cases import CaseForm
 from services import notification_service
@@ -24,6 +25,7 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
 
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
+    _ensure_client_is_free(db, current_user.id_user, form)
 
     created = case_repository.insert(
         db,
@@ -70,31 +72,27 @@ def list_open_cases(db: Client, current_user: CurrentUser) -> dict:
 
 
 def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict) -> None:
-    kasus_date = (kasus_data.get("tanggal_konsultasi") or "").split("T")[0]
-    kasus_start = kasus_data.get("jam_mulai", "00:00")[:5]
-    kasus_end = kasus_data.get("jam_selesai", "00:00")[:5]
-
-    if not (kasus_date and kasus_start and kasus_end):
-        return
-
     active_consultations = consultation_repository.list_time_slots(db, id_konsultan, ACTIVE_STATUSES)
+    conflict = find_conflict(
+        kasus_data.get("tanggal_konsultasi"),
+        kasus_data.get("jam_mulai"),
+        kasus_data.get("jam_selesai"),
+        active_consultations,
+    )
+    if conflict:
+        kasus_date = str(kasus_data.get("tanggal_konsultasi")).split("T")[0]
+        raise BadRequestError(
+            f"Gagal klaim: Anda sudah memiliki jadwal konsultasi aktif yang bertabrakan pada {kasus_date} jam {conflict[0]}-{conflict[1]}."
+        )
 
-    for active in active_consultations:
-        active_jadwal = active.get("jadwal_ketersediaan") or {}
 
-        a_date_raw = active_jadwal.get("tanggal") or active.get("tanggal_pengajuan")
-        a_date = (a_date_raw or "").split("T")[0]
-
-        if not a_date or a_date != kasus_date:
-            continue
-
-        a_start = (active.get("jam_mulai") or active_jadwal.get("jam_mulai") or "00:00")[:5]
-        a_end = (active.get("jam_selesai") or active_jadwal.get("jam_selesai") or "00:00")[:5]
-
-        if kasus_start < a_end and kasus_end > a_start:
-            raise BadRequestError(
-                f"Gagal klaim: Anda sudah memiliki jadwal konsultasi aktif yang bertabrakan pada {kasus_date} jam {a_start}-{a_end}."
-            )
+def _ensure_client_is_free(db: Client, id_user: int, form: CaseForm) -> None:
+    own_consultations = consultation_repository.list_time_slots_for_user(db, id_user, ACTIVE_STATUSES)
+    conflict = find_conflict(form.tanggal_konsultasi, form.jam_mulai, form.jam_selesai, own_consultations)
+    if conflict:
+        raise ConflictError(
+            f"Anda sudah memiliki konsultasi aktif pada {form.tanggal_konsultasi} jam {conflict[0]}-{conflict[1]}."
+        )
 
 
 def claim_case(db: Client, current_user: CurrentUser, id_bursa: int) -> dict:

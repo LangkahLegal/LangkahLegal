@@ -195,3 +195,14 @@ def list_time_slots(db: Client, id_konsultan: int, statuses: list[str]) -> list[
 
 def list_booked_slots(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
     return list_by_konsultan_and_statuses(db, id_konsultan, statuses, "jam_mulai, jam_selesai, tanggal_pengajuan")
+
+
+def list_time_slots_for_user(db: Client, id_user: int, statuses: list[str]) -> list[dict]:
+    return (
+        db.table(TABLE)
+        .select("jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan")
+        .eq("id_user", id_user)
+        .in_("status_pengajuan", statuses)
+        .execute()
+        .data
+    )

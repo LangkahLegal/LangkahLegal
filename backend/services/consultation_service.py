@@ -5,10 +5,10 @@ from supabase import Client
 
 from core.config import get_settings
 from core.constants import Role, StatusPengajuan
-from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.exceptions import BadRequestError, ConflictError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import get_konsultan_id, require_konsultan_id, require_role
-from helpers.schedule import count_sessions, ensure_within_schedule
+from helpers.schedule import count_sessions, ensure_within_schedule, find_conflict
 from repositories import (
     case_repository,
     consultation_repository,
@@ -26,6 +26,15 @@ from services.storage_service import (
 
 logger = logging.getLogger(__name__)
 
+BLOCKING_STATUSES = [StatusPengajuan.TERJADWAL]
+
+
+def _ensure_slot_is_free(db: Client, data_jadwal: dict, form: ConsultationForm) -> None:
+    booked = consultation_repository.list_time_slots(db, data_jadwal["id_konsultan"], BLOCKING_STATUSES)
+    conflict = find_conflict(data_jadwal["tanggal"], form.jam_mulai, form.jam_selesai, booked)
+    if conflict:
+        raise ConflictError(f"Jam {conflict[0]}-{conflict[1]} pada tanggal tersebut sudah dipesan klien lain.")
+
 
 async def create_consultation(db: Client, current_user: CurrentUser, form: ConsultationForm) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
@@ -38,6 +47,7 @@ async def create_consultation(db: Client, current_user: CurrentUser, form: Consu
         raise NotFoundError("Jadwal ketersediaan tidak ditemukan")
 
     ensure_within_schedule(form.jam_mulai, form.jam_selesai, data_jadwal)
+    _ensure_slot_is_free(db, data_jadwal, form)
 
     created = consultation_repository.insert(
         db,

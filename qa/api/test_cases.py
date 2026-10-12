@@ -263,3 +263,46 @@ def test_claim_case_insert_failure_rolls_back(app_client):
     response = client.post("/api/v1/cases/1/claim")
 
     assert response.status_code == 500
+
+
+CASE_FORM = {
+    "kategori_hukum": "pidana",
+    "deskripsi_kasus_awam": "Kasus contoh",
+    "tanggal_konsultasi": "2026-06-01",
+    "jam_mulai": "09:00",
+    "jam_selesai": "10:00",
+}
+
+
+def test_post_case_rejects_when_client_has_overlapping_consultation(app_client):
+    table_responses = {
+        "pengajuan_konsultasi": [
+            [{"tanggal_pengajuan": "2026-06-01", "jam_mulai": "09:30:00", "jam_selesai": "10:30:00"}]
+        ],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+
+    response = client.post("/api/v1/cases", data=CASE_FORM)
+
+    assert response.status_code == 409
+    assert supabase.inserted("bursa_kasus") == []
+
+
+def test_post_case_allows_when_other_consultation_does_not_overlap(app_client):
+    table_responses = {
+        "pengajuan_konsultasi": [
+            [{"tanggal_pengajuan": "2026-06-01", "jam_mulai": "10:00:00", "jam_selesai": "11:00:00"}]
+        ],
+        "bursa_kasus": [[{"id_bursa": 1, "status_bursa": "open"}]],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+
+    response = client.post("/api/v1/cases", data=CASE_FORM)
+
+    assert response.status_code == 201
