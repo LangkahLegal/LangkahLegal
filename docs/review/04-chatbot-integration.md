@@ -1,5 +1,7 @@
 # 04 — Chatbot "Triase Hukum" Integration Review
 
+> **Note (2026-10-12):** This review describes the backend before the layered refactor. The logic has since moved out of `backend/routers/*.py` into `backend/services/`, `backend/repositories/`, `backend/helpers/`, `backend/core/` and `backend/docs/`, so the file and line links below point to the old locations. Findings still open should be re-located by function name.
+
 The feature is branded "Kia"/"Visi" in different places (system prompt calls the persona "Kia" — [rag_service.py:55](../../backend/rag_service.py#L55) — while the frontend page calls it "Visi" — [frontend/src/app/ai/page.js:16,225](../../frontend/src/app/ai/page.js#L16)). **This naming inconsistency is itself worth flagging** — confirm with product/design which name is current before the next UI change.
 
 ## 1. End-to-end flow

@@ -6,6 +6,7 @@ from supabase import Client
 from core.config import get_settings
 from core.constants import Role, StatusPengajuan
 from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.user import CurrentUser
 from helpers.access import get_konsultan_id, require_konsultan_id, require_role
 from helpers.schedule import count_sessions, ensure_within_schedule
 from repositories import (
@@ -26,7 +27,7 @@ from services.storage_service import (
 logger = logging.getLogger(__name__)
 
 
-async def create_consultation(db: Client, current_user: dict, form: ConsultationForm) -> dict:
+async def create_consultation(db: Client, current_user: CurrentUser, form: ConsultationForm) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
 
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
@@ -38,16 +39,19 @@ async def create_consultation(db: Client, current_user: dict, form: Consultation
 
     ensure_within_schedule(form.jam_mulai, form.jam_selesai, data_jadwal)
 
-    created = consultation_repository.insert(db, {
-        "id_user": current_user["id_user"],
-        "id_konsultan": data_jadwal["id_konsultan"],
-        "id_jadwal": form.id_jadwal,
-        "tanggal_pengajuan": data_jadwal["tanggal"],
-        "jam_mulai": form.jam_mulai,
-        "jam_selesai": form.jam_selesai,
-        "deskripsi_kasus": form.deskripsi_kasus,
-        "status_pengajuan": StatusPengajuan.PENDING
-    })
+    created = consultation_repository.insert(
+        db,
+        {
+            "id_user": current_user.id_user,
+            "id_konsultan": data_jadwal["id_konsultan"],
+            "id_jadwal": form.id_jadwal,
+            "tanggal_pengajuan": data_jadwal["tanggal"],
+            "jam_mulai": form.jam_mulai,
+            "jam_selesai": form.jam_selesai,
+            "deskripsi_kasus": form.deskripsi_kasus,
+            "status_pengajuan": StatusPengajuan.PENDING,
+        },
+    )
 
     if not created:
         raise InternalError("Gagal menyimpan data pengajuan")
@@ -59,7 +63,7 @@ async def create_consultation(db: Client, current_user: dict, form: Consultation
         return doc_meta["nama_dokumen"]
 
     uploaded_docs, failed_docs = await upload_supporting_documents(
-        db, valid_files, id_pengajuan, current_user["id_user"], save_document
+        db, valid_files, id_pengajuan, current_user.id_user, save_document
     )
 
     notification_service.consultant_new_request(db, data_jadwal["id_konsultan"], id_pengajuan)
@@ -73,18 +77,18 @@ async def create_consultation(db: Client, current_user: dict, form: Consultation
             "status": StatusPengajuan.PENDING,
             "dokumen_terupload": uploaded_docs,
             "dokumen_gagal": failed_docs,
-        }
+        },
     }
 
 
-def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status: str) -> dict:
+def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_status: str) -> dict:
     data_pengajuan = consultation_repository.get_by_id(db, id_pengajuan)
 
     if data_pengajuan is None:
         raise NotFoundError("Data pengajuan tidak ditemukan")
 
-    user_role = current_user.get("role")
-    user_id = current_user.get("id_user")
+    user_role = current_user.role
+    user_id = current_user.id_user
 
     if user_role == Role.CLIENT:
         if new_status != StatusPengajuan.DIBATALKAN:
@@ -117,14 +121,14 @@ def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status:
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
 
 
-def list_my_consultations(db: Client, current_user: dict) -> dict:
+def list_my_consultations(db: Client, current_user: CurrentUser) -> dict:
     id_user = None
     id_kons = None
 
-    if current_user["role"] == Role.CLIENT:
-        id_user = current_user["id_user"]
-    elif current_user["role"] == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user["id_user"])
+    if current_user.role == Role.CLIENT:
+        id_user = current_user.id_user
+    elif current_user.role == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, current_user.id_user)
 
     return {"data": consultation_repository.list_with_relations(db, id_user=id_user, id_konsultan=id_kons)}
 
@@ -132,38 +136,40 @@ def list_my_consultations(db: Client, current_user: dict) -> dict:
 def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
     berkas = []
     try:
-        bursa = case_repository.get_by_id(db, id_bursa, "dokumen_bukti")
+        bursa = case_repository.get_by_id(db, id_bursa)
         if bursa and bursa.get("dokumen_bukti"):
             urls = bursa["dokumen_bukti"].split(",")
             for idx, url in enumerate(urls):
                 url = url.strip()
                 if url:
                     ext = url.rsplit(".", 1)[-1].lower() if "." in url else ""
-                    berkas.append({
-                        "id_dokumen": idx + 1,
-                        "nama_dokumen": url.rsplit("/", 1)[-1] if "/" in url else f"dokumen_{idx+1}",
-                        "file_url": url,
-                        "tipe_file": "application/pdf" if ext == "pdf" else f"image/{ext}" if ext else "unknown",
-                        "ukuran_kb": 0,
-                    })
+                    berkas.append(
+                        {
+                            "id_dokumen": idx + 1,
+                            "nama_dokumen": url.rsplit("/", 1)[-1] if "/" in url else f"dokumen_{idx + 1}",
+                            "file_url": url,
+                            "tipe_file": "application/pdf" if ext == "pdf" else f"image/{ext}" if ext else "unknown",
+                            "ukuran_kb": 0,
+                        }
+                    )
     except Exception:
         pass
     return berkas
 
 
-def _detail_scope(db: Client, current_user: dict) -> tuple[int | None, int | None]:
-    if current_user.get("role") == Role.CLIENT:
-        return current_user["id_user"], None
+def _detail_scope(db: Client, current_user: CurrentUser) -> tuple[int | None, int | None]:
+    if current_user.role == Role.CLIENT:
+        return current_user.id_user, None
 
-    if current_user.get("role") == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user["id_user"])
+    if current_user.role == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, current_user.id_user)
         if id_kons is not None:
             return None, id_kons
 
     raise ForbiddenError("Akses ditolak")
 
 
-def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -> dict:
+def get_consultation_detail(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
     id_user, id_kons = _detail_scope(db, current_user)
 
     data = consultation_repository.get_detail(db, id_pengajuan, id_user=id_user, id_konsultan=id_kons)
@@ -221,9 +227,7 @@ def _enrich_detail(db: Client, data: dict) -> dict:
 
 
 def _get_pending_consultation_of(db: Client, id_pengajuan: int, id_konsultan: int) -> dict:
-    data_pengajuan = consultation_repository.get_by_id(
-        db, id_pengajuan, "id_pengajuan, id_konsultan, id_user, status_pengajuan, id_bursa"
-    )
+    data_pengajuan = consultation_repository.get_summary(db, id_pengajuan)
     if data_pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
@@ -237,11 +241,7 @@ def _get_pending_consultation_of(db: Client, id_pengajuan: int, id_konsultan: in
 
 
 def _get_available_schedule_of(db: Client, id_jadwal: int, id_konsultan: int) -> dict:
-    data_jadwal = schedule_repository.get_by_id(
-        db,
-        id_jadwal,
-        "id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai, status_tersedia",
-    )
+    data_jadwal = schedule_repository.get_by_id(db, id_jadwal)
     if data_jadwal is None:
         raise NotFoundError("Jadwal tidak ditemukan")
 
@@ -254,25 +254,27 @@ def _get_available_schedule_of(db: Client, id_jadwal: int, id_konsultan: int) ->
     return data_jadwal
 
 
-def assign_schedule(
-    db: Client, current_user: dict, id_pengajuan: int, request: AssignSchedule
-) -> dict:
+def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, request: AssignSchedule) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    real_id_konsultan = require_konsultan_id(db, current_user["id_user"])
+    real_id_konsultan = require_konsultan_id(db, current_user.id_user)
 
     data_pengajuan = _get_pending_consultation_of(db, id_pengajuan, real_id_konsultan)
     data_jadwal = _get_available_schedule_of(db, request.id_jadwal, real_id_konsultan)
 
     ensure_within_schedule(request.jam_mulai, request.jam_selesai, data_jadwal)
 
-    updated = consultation_repository.update(db, id_pengajuan, {
-        "id_jadwal": request.id_jadwal,
-        "tanggal_pengajuan": data_jadwal["tanggal"],
-        "jam_mulai": request.jam_mulai,
-        "jam_selesai": request.jam_selesai,
-        "status_pengajuan": StatusPengajuan.MENUNGGU_PEMBAYARAN,
-    })
+    updated = consultation_repository.update(
+        db,
+        id_pengajuan,
+        {
+            "id_jadwal": request.id_jadwal,
+            "tanggal_pengajuan": data_jadwal["tanggal"],
+            "jam_mulai": request.jam_mulai,
+            "jam_selesai": request.jam_selesai,
+            "status_pengajuan": StatusPengajuan.MENUNGGU_PEMBAYARAN,
+        },
+    )
 
     if not updated:
         raise InternalError("Gagal mengatur jadwal")
@@ -287,10 +289,10 @@ def assign_schedule(
     }
 
 
-def update_zoom_link(db: Client, current_user: dict, id_pengajuan: int, link_zoom: str) -> dict:
+def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, link_zoom: str) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur link Zoom")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
     pengajuan = consultation_repository.get_for_konsultan(db, id_pengajuan, id_kons)
 
@@ -317,12 +319,12 @@ def update_zoom_link(db: Client, current_user: dict, id_pengajuan: int, link_zoo
     }
 
 
-def mark_completed(db: Client, current_user: dict, id_pengajuan: int) -> dict:
+def mark_completed(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang bisa menandai konsultasi selesai")
 
-    user_id = current_user["id_user"]
+    user_id = current_user.id_user
 
-    pengajuan = consultation_repository.get_by_id_strict(db, id_pengajuan, "id_user, status_pengajuan")
+    pengajuan = consultation_repository.get_summary_strict(db, id_pengajuan)
 
     if not pengajuan:
         raise NotFoundError("Pengajuan tidak ditemukan")
@@ -333,9 +335,7 @@ def mark_completed(db: Client, current_user: dict, id_pengajuan: int) -> dict:
     if pengajuan["status_pengajuan"] != StatusPengajuan.TERJADWAL:
         raise BadRequestError("Hanya pengajuan dengan status 'terjadwal' yang bisa diselesaikan")
 
-    updated = consultation_repository.update(
-        db, id_pengajuan, {"status_pengajuan": StatusPengajuan.SELESAI}
-    )
+    updated = consultation_repository.update(db, id_pengajuan, {"status_pengajuan": StatusPengajuan.SELESAI})
 
     if not updated:
         raise InternalError("Gagal menandai konsultasi selesai")
@@ -346,22 +346,17 @@ def mark_completed(db: Client, current_user: dict, id_pengajuan: int) -> dict:
 def get_booked_slots(db: Client, id_konsultan: int) -> dict:
     return {
         "message": "Data jadwal terisi ditemukan",
-        "data": consultation_repository.list_by_konsultan_and_statuses(
-            db,
-            id_konsultan,
-            [StatusPengajuan.TERJADWAL],
-            "jam_mulai, jam_selesai, tanggal_pengajuan",
-        ),
+        "data": consultation_repository.list_booked_slots(db, id_konsultan, [StatusPengajuan.TERJADWAL]),
     }
 
 
-def list_documents(db: Client, current_user: dict, id_pengajuan: int) -> dict:
-    data_pengajuan = consultation_repository.get_by_id(db, id_pengajuan, "id_user, id_konsultan")
+def list_documents(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
+    data_pengajuan = consultation_repository.get_summary(db, id_pengajuan)
     if data_pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
-    user_role = current_user.get("role")
-    user_id = current_user.get("id_user")
+    user_role = current_user.role
+    user_id = current_user.id_user
 
     if user_role == Role.CLIENT:
         if data_pengajuan["id_user"] != user_id:
@@ -375,25 +370,24 @@ def list_documents(db: Client, current_user: dict, id_pengajuan: int) -> dict:
 
     docs = supporting_document_repository.list_by_pengajuan(db, id_pengajuan)
 
-    return {
-        "message": "Dokumen berhasil dimuat",
-        "total": len(docs),
-        "data": docs
-    }
+    return {"message": "Dokumen berhasil dimuat", "total": len(docs), "data": docs}
 
 
 def _insert_document(db: Client, id_pengajuan: int, doc_meta: dict) -> list[dict]:
-    return supporting_document_repository.insert(db, {
-        "id_pengajuan": id_pengajuan,
-        "nama_dokumen": doc_meta["nama_dokumen"],
-        "file_url": doc_meta["file_url"],
-        "tipe_file": doc_meta["tipe_file"],
-        "ukuran_kb": doc_meta["ukuran_kb"],
-    })
+    return supporting_document_repository.insert(
+        db,
+        {
+            "id_pengajuan": id_pengajuan,
+            "nama_dokumen": doc_meta["nama_dokumen"],
+            "file_url": doc_meta["file_url"],
+            "tipe_file": doc_meta["tipe_file"],
+            "ukuran_kb": doc_meta["ukuran_kb"],
+        },
+    )
 
 
 def _require_owned_consultation(db: Client, id_pengajuan: int, id_user: int, forbidden_detail: str) -> None:
-    pengajuan = consultation_repository.get_by_id(db, id_pengajuan, "id_user")
+    pengajuan = consultation_repository.get_summary(db, id_pengajuan)
     if pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
     if pengajuan["id_user"] != id_user:
@@ -402,7 +396,7 @@ def _require_owned_consultation(db: Client, id_pengajuan: int, id_user: int, for
 
 async def upload_documents(
     db: Client,
-    current_user: dict,
+    current_user: CurrentUser,
     id_pengajuan: int,
     dokumen_pendukung_files: list[UploadFile],
 ) -> dict:
@@ -411,7 +405,7 @@ async def upload_documents(
     _require_owned_consultation(
         db,
         id_pengajuan,
-        current_user["id_user"],
+        current_user.id_user,
         "Anda tidak berhak mengunggah dokumen untuk pengajuan ini",
     )
 
@@ -426,7 +420,7 @@ async def upload_documents(
         return {"id_dokumen": inserted[0]["id_dokumen"] if inserted else None, **doc_meta}
 
     uploaded_docs, failed_docs = await upload_supporting_documents(
-        db, valid_files, id_pengajuan, current_user["id_user"], save_document, detail_only=True
+        db, valid_files, id_pengajuan, current_user.id_user, save_document, detail_only=True
     )
 
     return {
@@ -434,17 +428,17 @@ async def upload_documents(
         "data": {
             "dokumen_terupload": uploaded_docs,
             "dokumen_gagal": failed_docs,
-        }
+        },
     }
 
 
-def delete_document(db: Client, current_user: dict, id_pengajuan: int, id_dokumen: int) -> dict:
+def delete_document(db: Client, current_user: CurrentUser, id_pengajuan: int, id_dokumen: int) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat menghapus dokumen")
 
     _require_owned_consultation(
         db,
         id_pengajuan,
-        current_user["id_user"],
+        current_user.id_user,
         "Anda tidak berhak menghapus dokumen untuk pengajuan ini",
     )
 
@@ -469,16 +463,12 @@ def delete_document(db: Client, current_user: dict, id_pengajuan: int, id_dokume
     return {"message": "Dokumen berhasil dihapus", "id_dokumen": id_dokumen}
 
 
-def submit_rating(
-    db: Client, current_user: dict, id_pengajuan: int, rating_data: RatingCreate
-) -> dict:
+def submit_rating(db: Client, current_user: CurrentUser, id_pengajuan: int, rating_data: RatingCreate) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memberikan rating")
 
-    user_id = current_user.get("id_user")
+    user_id = current_user.id_user
 
-    data_pengajuan = consultation_repository.get_by_id(
-        db, id_pengajuan, "id_user, id_konsultan, status_pengajuan"
-    )
+    data_pengajuan = consultation_repository.get_summary(db, id_pengajuan)
 
     if data_pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
@@ -487,17 +477,22 @@ def submit_rating(
         raise ForbiddenError("Anda tidak berhak memberi rating pada pengajuan orang lain")
 
     if data_pengajuan["status_pengajuan"] not in [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI]:
-        raise BadRequestError("Rating hanya dapat diberikan untuk sesi yang sedang berjalan (terjadwal) atau sudah selesai.")
+        raise BadRequestError(
+            "Rating hanya dapat diberikan untuk sesi yang sedang berjalan (terjadwal) atau sudah selesai."
+        )
 
     if rating_repository.list_by_pengajuan(db, id_pengajuan):
         raise BadRequestError("Anda sudah memberikan ulasan untuk sesi konsultasi ini.")
 
-    inserted = rating_repository.insert(db, {
-        "id_pengajuan": id_pengajuan,
-        "id_konsultan": data_pengajuan["id_konsultan"],
-        "skor_rating": rating_data.skor_rating,
-        "ulasan_teks": rating_data.ulasan_teks,
-    })
+    inserted = rating_repository.insert(
+        db,
+        {
+            "id_pengajuan": id_pengajuan,
+            "id_konsultan": data_pengajuan["id_konsultan"],
+            "skor_rating": rating_data.skor_rating,
+            "ulasan_teks": rating_data.ulasan_teks,
+        },
+    )
 
     if not inserted:
         raise InternalError("Gagal menyimpan ulasan")

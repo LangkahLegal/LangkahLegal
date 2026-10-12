@@ -157,9 +157,7 @@ def test_chatbot_triage_new_session_success(app_client, monkeypatch):
     )
 
     monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
-    monkeypatch.setattr(
-        chat_service, "_auto_generate_title", lambda *args, **kwargs: None
-    )
+    monkeypatch.setattr(chat_service, "_auto_generate_title", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         chat_service,
         "triage",

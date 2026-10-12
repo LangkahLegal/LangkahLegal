@@ -12,9 +12,10 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from main import app  # noqa: E402
 from core.database import get_supabase_client  # noqa: E402
 from core.dependencies import get_current_user  # noqa: E402
+from core.user import CurrentUser  # noqa: E402
+from main import app  # noqa: E402
 
 
 class MockResponse:
@@ -172,7 +173,7 @@ def app_client():
         )
         app.dependency_overrides[get_supabase_client] = lambda: supabase
         if current_user is not None:
-            app.dependency_overrides[get_current_user] = lambda: current_user
+            app.dependency_overrides[get_current_user] = lambda: CurrentUser(**current_user)
         else:
             app.dependency_overrides.pop(get_current_user, None)
         return TestClient(app), supabase

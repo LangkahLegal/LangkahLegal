@@ -6,8 +6,6 @@ UPDATE_CHUNK_REQUEST = "Payload untuk update 1 chunk/pasal (fix typo / kategori)
 
 CHUNK_RESPONSE = "Response untuk 1 chunk/pasal (tanpa embedding)."
 
-DOCUMENT_GROUP_RESPONSE = "Response ringkasan 1 UU (group by frbr_uri)."
-
 PAGINATED_RESPONSE = "Wrapper response dengan pagination."
 
 JOB_STATUS_RESPONSE = "Response untuk status background job (upload/replace PDF)."

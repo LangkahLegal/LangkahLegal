@@ -6,13 +6,14 @@ from supabase import Client
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
 from core.limiter import limiter
+from core.user import CurrentUser
+from docs import knowledge as docs
 from schemas.knowledge import (
     KnowledgeDocumentDetail,
     PasalDetailResponse,
     PasalListResponse,
 )
 from services import knowledge_service
-from docs import knowledge as docs
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ RATE_LIMIT = "30/minute"
 def get_pasal(
     request: Request,
     id_dokumen: int,
-    user: dict = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     return knowledge_service.get_pasal(db, id_dokumen)
@@ -35,7 +36,7 @@ def get_pasal(
 def get_document_detail(
     request: Request,
     frbr_uri: str = Query(..., description="FRBR URI dokumen, misal /akn/id/act/uu-13-2003"),
-    user: dict = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     return knowledge_service.get_document_detail(db, frbr_uri)
@@ -49,7 +50,7 @@ def list_document_pasal(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None, max_length=100, description="Cari nomor pasal atau isi teks"),
-    user: dict = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     return knowledge_service.list_document_pasal(db, frbr_uri, page, page_size, search)

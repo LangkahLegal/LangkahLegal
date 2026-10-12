@@ -3,27 +3,28 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-import voyageai
 from fastapi import UploadFile
 from supabase import Client
 
 from core.constants import Role
 from core.database import get_supabase_client
 from core.exceptions import BadRequestError, InternalError, NotFoundError
+from core.user import CurrentUser
+from helpers.access import require_role
+from helpers.embedding import get_voyage_client
+from repositories import legal_document_repository
 from schemas.admin_docs import (
     DocumentReplaceForm,
     DocumentUploadForm,
     PaginatedResponse,
     UpdateChunkRequest,
 )
-from helpers.access import require_role
-from repositories import legal_document_repository
 from services.doc_processing import (
     generate_embeddings,
     process_pdf_to_records,
 )
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 SELECT_COLS = (
     "id_dokumen, frbr_uri, node_id, node_type, kategori, "
@@ -38,12 +39,12 @@ MAX_PDF_BYTES = 50 * 1024 * 1024
 _jobs: dict[str, dict] = {}
 
 
-def _require_admin(user: dict):
+def _require_admin(user: CurrentUser):
     require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin.")
 
 
 def _embed_single(text: str) -> list[float]:
-    client = voyageai.Client()
+    client = get_voyage_client()
     resp = client.embed([text], model="voyage-law-2", input_type="document")
     return resp.embeddings[0]
 
@@ -63,7 +64,7 @@ def _build_manual_metadata(form: DocumentUploadForm, default_frbr_uri: str | Non
         "tahun_uu": form.tahun_uu,
         "kategori": form.kategori,
         "status_hukum": form.status_hukum,
-        "frbr_uri": _build_frbr_uri(form.nomor_uu, form.tahun_uu, default=default_frbr_uri)
+        "frbr_uri": _build_frbr_uri(form.nomor_uu, form.tahun_uu, default=default_frbr_uri),
     }
 
 
@@ -105,7 +106,7 @@ def _clear_or_reject_existing(db: Client, job: dict, replace_uri: str | None) ->
     if replace_uri:
         job["message"] = f"Menghapus dokumen lama ({replace_uri})..."
         legal_document_repository.delete_by_uri(db, replace_uri)
-        log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
+        logger.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
         return
 
     frbr_uri = job["frbr_uri"]
@@ -135,14 +136,16 @@ def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
 
         job["status"] = "completed"
         job["total_chunks"] = total_inserted
-        job["message"] = f"Berhasil! {total_inserted} pasal dari '{extracted_metadata.get('nama_uu', 'Dokumen')}' telah disimpan."
-        log.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {job['frbr_uri']}")
+        job["message"] = (
+            f"Berhasil! {total_inserted} pasal dari '{extracted_metadata.get('nama_uu', 'Dokumen')}' telah disimpan."
+        )
+        logger.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {job['frbr_uri']}")
 
     except DocumentAlreadyExists as e:
         _mark_failed(job, str(e), "Gagal: dokumen sudah ada.")
     except Exception as e:
         _mark_failed(job, str(e), f"Gagal memproses PDF: {str(e)[:200]}")
-        log.error(f"[ADMIN_DOCS] Job {job_id} failed: {e}", exc_info=True)
+        logger.error(f"[ADMIN_DOCS] Job {job_id} failed: {e}", exc_info=True)
 
 
 def _require_pdf_filename(file: UploadFile) -> None:
@@ -159,7 +162,7 @@ async def _read_pdf_bytes(file: UploadFile, max_bytes: int | None = None) -> byt
     return pdf_bytes
 
 
-async def create_upload_job(user: dict, form: DocumentUploadForm) -> tuple[dict, bytes, dict]:
+async def create_upload_job(user: CurrentUser, form: DocumentUploadForm) -> tuple[dict, bytes, dict]:
     _require_admin(user)
     _require_pdf_filename(form.file)
 
@@ -167,14 +170,14 @@ async def create_upload_job(user: dict, form: DocumentUploadForm) -> tuple[dict,
     manual_metadata = _build_manual_metadata(form, default_frbr_uri=None)
 
     job = _register_job(f"File '{form.file.filename}' diterima. Menunggu proses...")
-    log.info(f"[ADMIN_DOCS] Job {job['job_id']} queued for '{form.file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
+    logger.info(
+        f"[ADMIN_DOCS] Job {job['job_id']} queued for '{form.file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata."
+    )
 
     return job, pdf_bytes, manual_metadata
 
 
-async def create_replace_job(
-    db: Client, user: dict, form: DocumentReplaceForm
-) -> tuple[dict, bytes, dict]:
+async def create_replace_job(db: Client, user: CurrentUser, form: DocumentReplaceForm) -> tuple[dict, bytes, dict]:
     _require_admin(user)
     _require_pdf_filename(form.file)
 
@@ -189,12 +192,12 @@ async def create_replace_job(
         f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{form.file.filename}'...",
         frbr_uri=frbr_uri,
     )
-    log.info(f"[ADMIN_DOCS] Replace job {job['job_id']} queued for {frbr_uri}")
+    logger.info(f"[ADMIN_DOCS] Replace job {job['job_id']} queued for {frbr_uri}")
 
     return job, pdf_bytes, manual_metadata
 
 
-def get_job_status(user: dict, job_id: str) -> dict:
+def get_job_status(user: CurrentUser, job_id: str) -> dict:
     _require_admin(user)
 
     job = _jobs.get(job_id)
@@ -205,7 +208,7 @@ def get_job_status(user: dict, job_id: str) -> dict:
 
 def list_documents(
     db: Client,
-    user: dict,
+    user: CurrentUser,
     page: int,
     page_size: int,
     kategori: Optional[str],
@@ -214,16 +217,14 @@ def list_documents(
     _require_admin(user)
 
     offset = (page - 1) * page_size
-    rows, total = legal_document_repository.list_summaries(
-        db, offset, page_size, kategori=kategori, search=search
-    )
+    rows, total = legal_document_repository.list_summaries(db, offset, page_size, kategori=kategori, search=search)
 
     return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
 
 
 def list_chunks(
     db: Client,
-    user: dict,
+    user: CurrentUser,
     frbr_uri: str,
     page: int,
     page_size: int,
@@ -234,14 +235,12 @@ def list_chunks(
     total = legal_document_repository.count_by_uri(db, frbr_uri, search)
 
     offset = (page - 1) * page_size
-    rows = legal_document_repository.list_by_uri(
-        db, frbr_uri, SELECT_COLS, offset, page_size, search
-    )
+    rows = legal_document_repository.list_by_uri(db, frbr_uri, SELECT_COLS, offset, page_size, search)
 
     return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
 
 
-def get_chunk(db: Client, user: dict, id_dokumen: int) -> dict:
+def get_chunk(db: Client, user: CurrentUser, id_dokumen: int) -> dict:
     _require_admin(user)
 
     chunk = legal_document_repository.get_by_id(db, id_dokumen, SELECT_COLS)
@@ -251,10 +250,10 @@ def get_chunk(db: Client, user: dict, id_dokumen: int) -> dict:
     return chunk
 
 
-def update_chunk(db: Client, user: dict, id_dokumen: int, payload: UpdateChunkRequest) -> dict:
+def update_chunk(db: Client, user: CurrentUser, id_dokumen: int, payload: UpdateChunkRequest) -> dict:
     _require_admin(user)
 
-    if legal_document_repository.get_by_id(db, id_dokumen, "id_dokumen") is None:
+    if not legal_document_repository.exists(db, id_dokumen):
         raise NotFoundError("Chunk tidak ditemukan.")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -266,7 +265,7 @@ def update_chunk(db: Client, user: dict, id_dokumen: int, payload: UpdateChunkRe
 
     if "isi_teks" in update_data:
         update_data["embedding"] = _embed_single(update_data["isi_teks"])
-        log.info(f"[ADMIN_DOCS] Re-embedding chunk {id_dokumen}")
+        logger.info(f"[ADMIN_DOCS] Re-embedding chunk {id_dokumen}")
 
     update_data["updated_at"] = datetime.now().isoformat()
 
@@ -275,11 +274,11 @@ def update_chunk(db: Client, user: dict, id_dokumen: int, payload: UpdateChunkRe
     if not updated:
         raise InternalError("Gagal update chunk.")
 
-    log.info(f"[ADMIN_DOCS] Updated chunk {id_dokumen}")
+    logger.info(f"[ADMIN_DOCS] Updated chunk {id_dokumen}")
     return updated[0]
 
 
-def delete_document(db: Client, user: dict, frbr_uri: str) -> None:
+def delete_document(db: Client, user: CurrentUser, frbr_uri: str) -> None:
     _require_admin(user)
 
     total = legal_document_repository.count_by_uri(db, frbr_uri)
@@ -287,4 +286,4 @@ def delete_document(db: Client, user: dict, frbr_uri: str) -> None:
         raise NotFoundError("Dokumen dengan URI tersebut tidak ditemukan.")
 
     legal_document_repository.delete_by_uri(db, frbr_uri)
-    log.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({total} rows)")
+    logger.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({total} rows)")

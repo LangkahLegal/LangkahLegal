@@ -29,3 +29,15 @@ def update(db: Client, id_user: int, data: dict) -> list[dict]:
 
 def link_auth_user(db: Client, email: str, auth_user_id: str) -> None:
     db.table(TABLE).update({"auth_user_id": auth_user_id}).eq("email", email).execute()
+
+
+def get_contact(db: Client, id_user: int) -> dict:
+    return get_by_id_strict(db, id_user, "email, nama")
+
+
+def get_email(db: Client, id_user: int) -> dict:
+    return get_by_id_strict(db, id_user, "email")
+
+
+def get_profile_fields(db: Client, id_user: int) -> dict:
+    return get_by_id_strict(db, id_user, "nama, email, foto_profil, role")

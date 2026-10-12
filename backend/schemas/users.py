@@ -1,8 +1,9 @@
 from dataclasses import dataclass, fields
+from typing import Optional
 
 from fastapi import File, Form, UploadFile
 from pydantic import BaseModel
-from typing import Optional
+
 
 class ProfileUpdatePayload(BaseModel):
     nama: Optional[str] = None
@@ -38,9 +39,5 @@ class ProfileForm:
     portofolio_file: UploadFile | None = File(default=None)
 
     def to_payload(self) -> ProfileUpdatePayload:
-        values = {
-            field.name: getattr(self, field.name)
-            for field in fields(self)
-            if field.name != "portofolio_file"
-        }
+        values = {field.name: getattr(self, field.name) for field in fields(self) if field.name != "portofolio_file"}
         return ProfileUpdatePayload.model_construct(**values)

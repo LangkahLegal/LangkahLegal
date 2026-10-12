@@ -9,14 +9,7 @@ def get_by_id(db: Client, id_jadwal: int, columns: str = "*") -> dict | None:
 
 
 def list_available(db: Client, id_konsultan: int) -> list[dict]:
-    return (
-        db.table(TABLE)
-        .select("*")
-        .eq("id_konsultan", id_konsultan)
-        .eq("status_tersedia", True)
-        .execute()
-        .data
-    )
+    return db.table(TABLE).select("*").eq("id_konsultan", id_konsultan).eq("status_tersedia", True).execute().data
 
 
 def list_available_by_date(db: Client, id_konsultan: int) -> list[dict]:

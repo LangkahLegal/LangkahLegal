@@ -4,14 +4,7 @@ TABLE = "dokumen_pendukung"
 
 
 def get(db: Client, id_dokumen: int, id_pengajuan: int) -> dict | None:
-    rows = (
-        db.table(TABLE)
-        .select("*")
-        .eq("id_dokumen", id_dokumen)
-        .eq("id_pengajuan", id_pengajuan)
-        .execute()
-        .data
-    )
+    rows = db.table(TABLE).select("*").eq("id_dokumen", id_dokumen).eq("id_pengajuan", id_pengajuan).execute().data
     return rows[0] if rows else None
 
 

@@ -1,5 +1,7 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class SignUpPayload(BaseModel):
     email: str
@@ -30,10 +32,6 @@ class PasswordLoginPayload(BaseModel):
     password: str
 
 
-class RefreshTokenPayload(BaseModel):
-    refresh_token: str
-
-
 class OAuthPayload(BaseModel):
     redirectTo: str
     provider: Optional[str] = "google"
@@ -42,9 +40,11 @@ class OAuthPayload(BaseModel):
 class RolePayload(BaseModel):
     role: str
 
+
 class ForgotPasswordPayload(BaseModel):
     email: str
     emailRedirectTo: Optional[str] = None
+
 
 class ResetPasswordPayload(BaseModel):
     new_password: str

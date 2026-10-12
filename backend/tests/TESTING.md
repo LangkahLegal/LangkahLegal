@@ -12,7 +12,9 @@ Dokumen ini menjelaskan alur kerja dan cakupan pengujian pada folder `backend/te
 
 - `conftest.py`: fixture global, mock Supabase, dan helper client.
 - `test_admin.py`: endpoint admin (statistik, konsultan, verifikasi).
+- `test_admin_docs.py`: job proses PDF dokumen hukum, upload, dan replace.
 - `test_auth.py`: signup, login, role update, profile, logout.
+- `test_cases.py`: posting kasus ke bursa, daftar bursa, dan klaim kasus.
 - `test_chatbot.py`: sesi chatbot, pesan, triage.
 - `test_consultants.py`: daftar/detail konsultan, jadwal, dashboard, request.
 - `test_consultations.py`: pengajuan konsultasi, detail, status, dokumen.
@@ -40,11 +42,15 @@ Dokumen ini menjelaskan alur kerja dan cakupan pengujian pada folder `backend/te
    - Setiap test membuat client dengan data mock, melakukan request HTTP, lalu melakukan assert.
 
 5. **Mocking layanan eksternal**
-   - `monkeypatch` dipakai untuk mengganti fungsi/klien eksternal, seperti:
-     - Supabase auth (`_post_auth`)
-     - Midtrans (`_get_snap_client`, `_get_core_api_client`)
-     - Upload dokumen (`upload_supporting_document_to_supabase`, `upload_portfolio_pdf_to_supabase`)
-     - AI triage (`triage`, `_auto_generate_title`)
+   - `monkeypatch` dipakai untuk mengganti fungsi/klien eksternal. Logic berada di layer service,
+     jadi patch diarahkan ke modul service, bukan router:
+     - Supabase auth: `services.auth_service._post_auth`
+     - Midtrans: `services.payment_service._get_snap_client`, `_get_core_api_client`
+     - Upload dokumen: `services.storage_service.upload_supporting_document_to_supabase`,
+       `services.user_service.upload_portfolio_pdf_to_supabase`
+     - AI triage: `services.chat_service.triage`, `_auto_generate_title`
+     - Proses PDF admin: `services.admin_doc_service.process_pdf_job`, `process_pdf_to_records`,
+       `generate_embeddings`
 
 ## Skema `table_responses`
 
@@ -71,7 +77,8 @@ Catatan:
 
 ## Simulasi Auth & Role
 
-- `current_user` pada `app_client` mensimulasikan hasil `get_current_user`.
+- `current_user` pada `app_client` mensimulasikan hasil `get_current_user`. Test cukup mengirim `dict`
+  (`{"id_user": 1, "role": "client"}`); fixture mengubahnya menjadi objek `CurrentUser`.
 - `auth_user` dan `auth_error` mensimulasikan respons `supabase.auth.get_user`.
   - `auth_error` biasanya menghasilkan HTTP 401.
 
@@ -125,7 +132,9 @@ Catatan:
 Dari root repo:
 
 ```bash
-python -m pip install -r backend/requirements.txt
+python -m pip install -r backend/requirements-dev.txt
+python -m ruff check backend
+python -m ruff format --check backend
 python -m pytest backend/tests
 ```
 

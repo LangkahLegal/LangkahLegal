@@ -59,24 +59,18 @@ def _raise_auth_error(response: httpx.Response) -> None:
 
 
 def _generate_pkce_pair() -> tuple[str, str]:
-    code_verifier = (
-        base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode("ascii")
-    )
+    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode("ascii")
     digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
     code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
     return code_verifier, code_challenge
 
 
-async def _post_auth(
-    path: str, payload: Optional[dict] = None, params: Optional[dict] = None
-) -> dict:
+async def _post_auth(path: str, payload: Optional[dict] = None, params: Optional[dict] = None) -> dict:
     settings = get_settings()
     url = f"{settings.supabase_url}{path}"
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(
-            url, json=payload, params=params, headers=_get_service_headers()
-        )
+        response = await client.post(url, json=payload, params=params, headers=_get_service_headers())
 
     if response.status_code >= 400:
         _raise_auth_error(response)
@@ -213,7 +207,9 @@ async def exchange_code(code: Optional[str], code_verifier: Optional[str]) -> di
     if not code:
         raise BadRequestError("Code tidak ditemukan.")
     if not code_verifier:
-        raise BadRequestError("Session login (PKCE verifier) tidak ditemukan atau sudah kadaluarsa. Silakan ulangi login.")
+        raise BadRequestError(
+            "Session login (PKCE verifier) tidak ditemukan atau sudah kadaluarsa. Silakan ulangi login."
+        )
 
     data = await _post_auth(
         "/auth/v1/token",

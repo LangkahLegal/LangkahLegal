@@ -54,9 +54,7 @@ def list_for_admin(
     status_verifikasi: Optional[str] = None,
     spesialisasi: Optional[str] = None,
 ) -> list[dict]:
-    query = (
-        db.table(TABLE)
-        .select("""
+    query = db.table(TABLE).select("""
             id_konsultan,
             nama_lengkap,
             spesialisasi,
@@ -69,7 +67,6 @@ def list_for_admin(
             kota_praktik,
             users (id_user, nama, email, foto_profil)
         """)
-    )
 
     if status_verifikasi:
         query = query.eq("status_verifikasi", status_verifikasi)
@@ -90,3 +87,31 @@ def update_by_user(db: Client, id_user: int, data: dict) -> list[dict]:
 
 def search_by_category(db: Client, params: dict) -> list[dict]:
     return db.rpc("search_consultants_by_category", params).execute().data or []
+
+
+def exists(db: Client, id_konsultan: int) -> bool:
+    return get_by_id(db, id_konsultan, "id_konsultan") is not None
+
+
+def get_owner(db: Client, id_konsultan: int) -> dict:
+    return get_by_id_strict(db, id_konsultan, "id_user, nama_lengkap")
+
+
+def get_name(db: Client, id_konsultan: int) -> dict:
+    return get_by_id_strict(db, id_konsultan, "nama_lengkap")
+
+
+def get_public_detail(db: Client, id_konsultan: int) -> dict | None:
+    return get_by_id(db, id_konsultan, "*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
+
+
+def get_admin_detail(db: Client, id_konsultan: int) -> dict | None:
+    return get_by_id(
+        db,
+        id_konsultan,
+        """
+            *,
+            users (id_user, nama, email, foto_profil, created_at),
+            rating_ulasan (skor_rating, ulasan_teks, created_at)
+        """,
+    )

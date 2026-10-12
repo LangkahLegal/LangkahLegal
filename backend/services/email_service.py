@@ -1,6 +1,8 @@
 import logging
 from email.utils import parseaddr
+
 import httpx
+
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -11,9 +13,9 @@ BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 def get_frontend_base_url() -> str:
     settings = get_settings()
-    
+
     if settings.frontend_url:
-        return settings.frontend_url.rstrip('/')
+        return settings.frontend_url.rstrip("/")
 
     app_env = settings.app_env.strip().lower()
 
@@ -40,10 +42,7 @@ def _send_via_brevo(to_email: str, subject: str, body_html: str) -> None:
     }
 
     payload = {
-        "sender": {
-            "name": sender_name or "LangkahLegal",
-            "email": sender_email or "langkahlegal@gmail.com"
-        },
+        "sender": {"name": sender_name or "LangkahLegal", "email": sender_email or "langkahlegal@gmail.com"},
         "to": [{"email": to_email}],
         "subject": subject,
         "htmlContent": body_html,
@@ -58,8 +57,7 @@ def _send_via_brevo(to_email: str, subject: str, body_html: str) -> None:
             logger.info(f"Email terkirim ke {to_email} (messageId={resp_data.get('messageId', '?')})")
         else:
             logger.error(
-                f"Gagal kirim email ke {to_email} via Brevo: "
-                f"status={response.status_code}, body={response.text}"
+                f"Gagal kirim email ke {to_email} via Brevo: status={response.status_code}, body={response.text}"
             )
     except httpx.TimeoutException:
         logger.error(f"Timeout saat kirim email ke {to_email} via Brevo")

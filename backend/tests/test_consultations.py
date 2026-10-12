@@ -290,9 +290,7 @@ def test_upload_document_success(app_client, monkeypatch):
             "ukuran_kb": 10,
         }
 
-    monkeypatch.setattr(
-        storage_service, "upload_supporting_document_to_supabase", fake_upload
-    )
+    monkeypatch.setattr(storage_service, "upload_supporting_document_to_supabase", fake_upload)
 
     table_responses = {
         "pengajuan_konsultasi": [[{"id_user": 1}]],
@@ -408,9 +406,7 @@ def test_assign_schedule_pengajuan_not_found(app_client):
 def test_assign_schedule_invalid_time(app_client):
     table_responses = {
         "konsultan": [[{"id_konsultan": 7}]],
-        "pengajuan_konsultasi": [
-            [{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}]
-        ],
+        "pengajuan_konsultasi": [[{"id_pengajuan": 1, "id_konsultan": 7, "status_pengajuan": "pending"}]],
         "jadwal_ketersediaan": [
             [
                 {

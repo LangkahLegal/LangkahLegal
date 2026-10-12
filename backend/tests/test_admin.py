@@ -1,5 +1,3 @@
-
-
 def test_admin_stats_forbidden(app_client):
     client, _ = app_client(current_user={"id_user": 1, "role": "client"})
     response = client.get("/api/v1/admin/stats")
@@ -9,12 +7,8 @@ def test_admin_stats_forbidden(app_client):
 def test_admin_stats_success_view(app_client):
     table_responses = {
         "users": [[{"role": "client"}, {"role": "konsultan"}]],
-        "konsultan": [
-            [{"status_verifikasi": "pending"}, {"status_verifikasi": "terverifikasi"}]
-        ],
-        "admin_transaction_stats": [
-            [{"total_transactions": 2, "total_revenue": 5000, "total_commission": 500}]
-        ],
+        "konsultan": [[{"status_verifikasi": "pending"}, {"status_verifikasi": "terverifikasi"}]],
+        "admin_transaction_stats": [[{"total_transactions": 2, "total_revenue": 5000, "total_commission": 500}]],
     }
     client, _ = app_client(
         table_responses=table_responses,
@@ -49,9 +43,7 @@ def test_admin_stats_fallback(app_client):
 
 
 def test_admin_consultant_list_success(app_client):
-    table_responses = {
-        "konsultan": [[{"id_konsultan": 1, "nama_lengkap": "Konsultan"}]]
-    }
+    table_responses = {"konsultan": [[{"id_konsultan": 1, "nama_lengkap": "Konsultan"}]]}
     client, _ = app_client(
         table_responses=table_responses,
         current_user={"id_user": 99, "role": "admin"},

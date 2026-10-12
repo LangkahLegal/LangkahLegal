@@ -1,16 +1,15 @@
-from fastapi import Depends, HTTPException, Cookie
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Cookie, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
-from core.database import get_supabase_client
-from helpers.profile import find_profile
 
+from core.database import get_supabase_client
+from core.user import CurrentUser
+from helpers.profile import find_profile
 
 security = HTTPBearer(auto_error=False)
 
 
-def _extract_token(
-    credentials: HTTPAuthorizationCredentials | None, ll_token: str | None
-) -> str | None:
+def _extract_token(credentials: HTTPAuthorizationCredentials | None, ll_token: str | None) -> str | None:
     if credentials and credentials.credentials:
         return credentials.credentials
     return ll_token or None
@@ -29,8 +28,8 @@ def get_token_from_request(
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     ll_token: str | None = Cookie(default=None),
-    db: Client = Depends(get_supabase_client)
-):
+    db: Client = Depends(get_supabase_client),
+) -> CurrentUser:
     token = _extract_token(credentials, ll_token)
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak ditemukan di cookie maupun header.")
@@ -47,11 +46,11 @@ def get_current_user(
                 detail="Profil user belum sinkron dengan database lokal.",
             )
 
-        return {
-            "id_user": profile["id_user"],
-            "role": profile["role"],
-            "nama": profile["nama"],
-        }
+        return CurrentUser(
+            id_user=profile["id_user"],
+            role=profile["role"],
+            nama=profile["nama"],
+        )
 
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Otorisasi gagal: {str(e)}")

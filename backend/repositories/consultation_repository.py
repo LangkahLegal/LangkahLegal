@@ -4,6 +4,8 @@ from supabase import Client
 
 TABLE = "pengajuan_konsultasi"
 
+SUMMARY_COLUMNS = "id_pengajuan, id_user, id_konsultan, id_bursa, status_pengajuan, link_zoom"
+
 REQUEST_COLUMNS = """
             id_pengajuan,
             deskripsi_kasus,
@@ -114,9 +116,7 @@ def list_by_konsultan(db: Client, id_konsultan: int, columns: str) -> list[dict]
     return db.table(TABLE).select(columns).eq("id_konsultan", id_konsultan).execute().data
 
 
-def list_by_konsultan_and_statuses(
-    db: Client, id_konsultan: int, statuses: list[str], columns: str
-) -> list[dict]:
+def list_by_konsultan_and_statuses(db: Client, id_konsultan: int, statuses: list[str], columns: str) -> list[dict]:
     return (
         db.table(TABLE)
         .select(columns)
@@ -156,3 +156,42 @@ def insert(db: Client, data: dict) -> list[dict]:
 
 def update(db: Client, id_pengajuan: int, data: dict) -> list[dict]:
     return db.table(TABLE).update(data).eq("id_pengajuan", id_pengajuan).execute().data
+
+
+def get_summary(db: Client, id_pengajuan: int) -> dict | None:
+    return get_by_id(db, id_pengajuan, SUMMARY_COLUMNS)
+
+
+def get_summary_strict(db: Client, id_pengajuan: int) -> dict:
+    return get_by_id_strict(db, id_pengajuan, SUMMARY_COLUMNS)
+
+
+def list_income_rows(db: Client, id_konsultan: int) -> list[dict]:
+    return list_by_konsultan(db, id_konsultan, "transaksi(nominal_konsultan, status_pembayaran)")
+
+
+def list_statuses(db: Client, id_konsultan: int) -> list[dict]:
+    return list_by_konsultan(db, id_konsultan, "id_pengajuan, status_pengajuan")
+
+
+def list_clients_by_statuses(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
+    return list_by_konsultan_and_statuses(db, id_konsultan, statuses, "id_user, status_pengajuan")
+
+
+def list_with_client_and_date(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
+    return list_by_konsultan_and_statuses(
+        db, id_konsultan, statuses, "*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)"
+    )
+
+
+def list_time_slots(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
+    return list_by_konsultan_and_statuses(
+        db,
+        id_konsultan,
+        statuses,
+        "jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan",
+    )
+
+
+def list_booked_slots(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
+    return list_by_konsultan_and_statuses(db, id_konsultan, statuses, "jam_mulai, jam_selesai, tanggal_pengajuan")

@@ -1,5 +1,3 @@
-
-
 def test_get_all_consultants_success(app_client):
     table_responses = {
         "konsultan": [
@@ -55,9 +53,7 @@ def test_get_consultant_detail_success(app_client):
 
 
 def test_get_consultant_schedules_success(app_client):
-    table_responses = {
-        "jadwal_ketersediaan": [[{"id_jadwal": 1, "status_tersedia": True}]]
-    }
+    table_responses = {"jadwal_ketersediaan": [[{"id_jadwal": 1, "status_tersedia": True}]]}
     client, _ = app_client(table_responses=table_responses)
 
     response = client.get("/api/v1/consultants/1/schedules")
@@ -104,16 +100,8 @@ def test_dashboard_stats_success(app_client):
         "konsultan": [[{"id_konsultan": 5}]],
         "pengajuan_konsultasi": [
             [
-                {
-                    "transaksi": [
-                        {"nominal_konsultan": 1000, "status_pembayaran": "settlement"}
-                    ]
-                },
-                {
-                    "transaksi": [
-                        {"nominal_konsultan": 500, "status_pembayaran": "pending"}
-                    ]
-                },
+                {"transaksi": [{"nominal_konsultan": 1000, "status_pembayaran": "settlement"}]},
+                {"transaksi": [{"nominal_konsultan": 500, "status_pembayaran": "pending"}]},
             ],
             [
                 {"id_user": 1, "status_pengajuan": "terjadwal"},
@@ -201,9 +189,7 @@ def test_edit_jadwal_konsultan_success(app_client):
 
 
 def test_delete_jadwal_konsultan_booked(app_client):
-    table_responses = {
-        "jadwal_ketersediaan": [[{"id_jadwal": 10, "status_tersedia": False}]]
-    }
+    table_responses = {"jadwal_ketersediaan": [[{"id_jadwal": 10, "status_tersedia": False}]]}
     client, _ = app_client(
         table_responses=table_responses,
         current_user={"id_user": 1, "role": "konsultan"},

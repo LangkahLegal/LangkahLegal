@@ -1,6 +1,9 @@
 from typing import Optional
+
 from pydantic import BaseModel, Field
+
 from docs import schemas as docs
+
 
 class CreateSessionRequest(BaseModel):
     title: Optional[str] = Field(
@@ -9,14 +12,17 @@ class CreateSessionRequest(BaseModel):
         description="Judul sesi (opsional, bisa di-auto-generate dari pesan pertama)",
     )
 
+
 class SessionResponse(BaseModel):
     id: str
     title: str
     created_at: str
     updated_at: str
 
+
 class SessionListResponse(BaseModel):
     sessions: list[SessionResponse]
+
 
 class MessageResponse(BaseModel):
     id: str
@@ -26,8 +32,10 @@ class MessageResponse(BaseModel):
     metadata: Optional[dict] = None
     created_at: str
 
+
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
+
 
 class TriageRequest(BaseModel):
     query: str = Field(
@@ -46,6 +54,7 @@ class TriageRequest(BaseModel):
         description="Filter kategori hukum (opsional)",
     )
 
+
 class PasalReference(BaseModel):
     id_dokumen: Optional[int] = None
     frbr_uri: Optional[str] = None
@@ -55,10 +64,12 @@ class PasalReference(BaseModel):
     judul_bab: Optional[str] = None
     similarity: float
 
+
 class SumberPasal(BaseModel):
     id_dokumen: int
     pasal_bagian: str
     similarity: float
+
 
 class SumberDokumen(BaseModel):
     __doc__ = docs.SUMBER_DOKUMEN
@@ -71,6 +82,7 @@ class SumberDokumen(BaseModel):
     has_file: bool = False
     pasal: list[SumberPasal] = []
 
+
 class ConsultantInfo(BaseModel):
     id_konsultan: int
     nama_lengkap: Optional[str] = None
@@ -82,6 +94,7 @@ class ConsultantInfo(BaseModel):
     bio_singkat: Optional[str] = None
     avg_rating: Optional[float] = 0
     total_reviews: Optional[int] = 0
+
 
 class TriageResponse(BaseModel):
     session_id: str

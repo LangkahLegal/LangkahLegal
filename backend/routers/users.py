@@ -1,28 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from supabase import Client
 from pydantic import ValidationError
+from supabase import Client
+
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
+from core.user import CurrentUser
+from docs import users as docs
 from schemas.users import ProfileForm, ProfileUpdatePayload
 from services import user_service
-from docs import users as docs
 
 router = APIRouter()
 
+
 @router.get("/me/settings", **docs.GET_SETTINGS_INFO)
-def get_settings_info(current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
+def get_settings_info(current_user: CurrentUser = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
     return user_service.get_settings_info(db, current_user)
 
+
 @router.get("/me/profile/full", **docs.GET_FULL_PROFILE)
-def get_full_profile(current_user: dict = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
+def get_full_profile(current_user: CurrentUser = Depends(get_current_user), db: Client = Depends(get_supabase_client)):
     return user_service.get_full_profile(db, current_user)
+
 
 @router.put("/me/profile/update", **docs.UPDATE_PROFILE)
 async def update_profile(
     request: Request,
     form: ProfileForm = Depends(),
-    current_user: dict = Depends(get_current_user),
-    db: Client = Depends(get_supabase_client)
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
 ):
     if request.headers.get("content-type", "").startswith("application/json"):
         body = await request.json()

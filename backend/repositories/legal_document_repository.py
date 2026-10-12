@@ -17,12 +17,7 @@ def get_by_id(db: Client, id_dokumen: int, columns: str) -> dict | None:
 
 def get_first_by_uri(db: Client, frbr_uri: str, columns: str) -> tuple[dict | None, int]:
     result = (
-        db.table(TABLE)
-        .select(columns, count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .order("id_dokumen")
-        .limit(1)
-        .execute()
+        db.table(TABLE).select(columns, count="exact").eq("frbr_uri", frbr_uri).order("id_dokumen").limit(1).execute()
     )
     return (result.data[0] if result.data else None), (result.count or 0)
 
@@ -100,11 +95,8 @@ def match_by_embedding(db: Client, params: dict) -> list[dict]:
 
 
 def list_statuses_by_uris(db: Client, frbr_uris: list[str]) -> list[dict]:
-    return (
-        db.table(SUMMARY_VIEW)
-        .select("frbr_uri, status_hukum")
-        .in_("frbr_uri", frbr_uris)
-        .execute()
-        .data
-        or []
-    )
+    return db.table(SUMMARY_VIEW).select("frbr_uri, status_hukum").in_("frbr_uri", frbr_uris).execute().data or []
+
+
+def exists(db: Client, id_dokumen: int) -> bool:
+    return get_by_id(db, id_dokumen, "id_dokumen") is not None

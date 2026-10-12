@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+
 from services import auth_service
 
 
@@ -83,9 +84,7 @@ def test_profile_success(app_client):
     }
 
     client, _ = app_client(table_responses=table_responses, auth_user=auth_user)
-    response = client.get(
-        "/api/v1/auth/profile", headers={"Authorization": "Bearer token"}
-    )
+    response = client.get("/api/v1/auth/profile", headers={"Authorization": "Bearer token"})
 
     assert response.status_code == 200
     assert response.json()["data"]["id_user"] == 1
@@ -96,9 +95,7 @@ def test_profile_not_found_returns_none(app_client):
     table_responses = {"users": [[], []]}
 
     client, _ = app_client(table_responses=table_responses, auth_user=auth_user)
-    response = client.get(
-        "/api/v1/auth/profile", headers={"Authorization": "Bearer token"}
-    )
+    response = client.get("/api/v1/auth/profile", headers={"Authorization": "Bearer token"})
 
     assert response.status_code == 200
     assert response.json()["data"] is None
@@ -158,9 +155,7 @@ def test_logout_success(app_client, monkeypatch):
     monkeypatch.setattr(auth_service.httpx, "AsyncClient", DummyAsyncClient)
 
     client, _ = app_client()
-    response = client.post(
-        "/api/v1/auth/logout", headers={"Authorization": "Bearer token"}
-    )
+    response = client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer token"})
 
     assert response.status_code == 200
     assert response.json()["data"]["logout"] is True

@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
+
 from docs import schemas as docs
 
 
@@ -29,14 +30,10 @@ class KategoriHukum(str, Enum):
     lainnya = "lainnya"
 
 
-
-
 class UpdateChunkRequest(BaseModel):
     __doc__ = docs.UPDATE_CHUNK_REQUEST
     kategori: Optional[KategoriHukum] = None
     isi_teks: Optional[str] = Field(None, min_length=10)
-
-
 
 
 class ChunkResponse(BaseModel):
@@ -56,17 +53,6 @@ class ChunkResponse(BaseModel):
     isi_teks: str
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
-
-
-class DocumentGroupResponse(BaseModel):
-    __doc__ = docs.DOCUMENT_GROUP_RESPONSE
-    frbr_uri: str
-    nama_uu: Optional[str] = None
-    nomor_uu: Optional[str] = None
-    tahun_uu: Optional[int] = None
-    kategori: str
-    status_hukum: Optional[str] = None
-    total_chunks: int
 
 
 class PaginatedResponse(BaseModel):

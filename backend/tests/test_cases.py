@@ -53,9 +53,7 @@ def test_post_case_with_files(app_client, monkeypatch):
             "ukuran_kb": 10,
         }
 
-    monkeypatch.setattr(
-        storage_service, "upload_supporting_document_to_supabase", fake_upload
-    )
+    monkeypatch.setattr(storage_service, "upload_supporting_document_to_supabase", fake_upload)
 
     table_responses = {
         "bursa_kasus": [

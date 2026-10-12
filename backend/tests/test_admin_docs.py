@@ -33,9 +33,7 @@ def run_job(monkeypatch):
             return records, {"frbr_uri": FRBR_URI, "nama_uu": "UU Contoh"}
 
         monkeypatch.setattr(admin_doc_service, "process_pdf_to_records", fake_process)
-        monkeypatch.setattr(
-            admin_doc_service, "generate_embeddings", lambda texts: [[0.1]] * len(texts)
-        )
+        monkeypatch.setattr(admin_doc_service, "generate_embeddings", lambda texts: [[0.1]] * len(texts))
         monkeypatch.setattr(admin_doc_service, "get_supabase_client", lambda: object())
         monkeypatch.setattr(admin_doc_service, "legal_document_repository", repo)
 
@@ -108,9 +106,7 @@ PDF_FILE = {"file": ("uu.pdf", b"%PDF-1.4 " + b"x" * 200, "application/pdf")}
 
 def test_upload_document_queues_job(app_client, monkeypatch):
     queued = []
-    monkeypatch.setattr(
-        admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs))
-    )
+    monkeypatch.setattr(admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs)))
     client, _ = app_client(current_user=ADMIN)
 
     response = client.post(
@@ -156,9 +152,7 @@ def test_replace_document_not_found(app_client):
 
 def test_replace_document_queues_job(app_client, monkeypatch):
     queued = []
-    monkeypatch.setattr(
-        admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs))
-    )
+    monkeypatch.setattr(admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs)))
     client, _ = app_client(
         table_responses={"dokumen_hukum": [([{"id_dokumen": 1}], 1)]},
         current_user=ADMIN,

@@ -7,9 +7,10 @@ from google.genai import types
 from supabase import Client
 
 from core.config import get_settings
+from helpers.embedding import get_voyage_client
 from repositories import consultant_repository, legal_document_repository
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 EMBEDDING_MODEL = "voyage-law-2"
@@ -114,8 +115,7 @@ CONSULTANT_TOOL = types.Tool(
                     "max_budget": {
                         "type": "integer",
                         "description": (
-                            "Budget maksimal per sesi (Rupiah). "
-                            "Jangan sertakan kalau klien tidak menyebut budget."
+                            "Budget maksimal per sesi (Rupiah). Jangan sertakan kalau klien tidak menyebut budget."
                         ),
                     },
                 },
@@ -127,7 +127,7 @@ CONSULTANT_TOOL = types.Tool(
 
 
 def _get_voyage_client() -> voyageai.Client:
-    return voyageai.Client()
+    return get_voyage_client()
 
 
 def _get_gemini_client() -> genai.Client:
@@ -137,7 +137,6 @@ def _get_gemini_client() -> genai.Client:
 
 def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
     client = _get_gemini_client()
-
 
     history_snippet = ""
     if chat_history:
@@ -165,10 +164,10 @@ def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
             ),
         )
         rewritten = resp.text.strip().strip('"').strip("'")
-        log.info(f"[REWRITE] '{raw_query[:50]}' → '{rewritten[:80]}'")
+        logger.info(f"[REWRITE] '{raw_query[:50]}' → '{rewritten[:80]}'")
         return rewritten
     except Exception as e:
-        log.warning(f"[REWRITE] Gagal, pakai query asli: {e}")
+        logger.warning(f"[REWRITE] Gagal, pakai query asli: {e}")
         return raw_query
 
 
@@ -244,21 +243,26 @@ def _build_source_documents(
         if not frbr_uri or id_dokumen is None or similarity < min_similarity:
             continue
 
-        doc = groups.setdefault(frbr_uri, {
-            "frbr_uri": frbr_uri,
-            "nama_uu": p.get("nama_uu"),
-            "nomor_uu": p.get("nomor_uu"),
-            "tahun_uu": p.get("tahun_uu"),
-            "kategori": p.get("kategori"),
-            "status_hukum": p.get("status_hukum"),
-            "has_file": False,
-            "pasal": [],
-        })
-        doc["pasal"].append({
-            "id_dokumen": id_dokumen,
-            "pasal_bagian": p.get("pasal_bagian", ""),
-            "similarity": similarity,
-        })
+        doc = groups.setdefault(
+            frbr_uri,
+            {
+                "frbr_uri": frbr_uri,
+                "nama_uu": p.get("nama_uu"),
+                "nomor_uu": p.get("nomor_uu"),
+                "tahun_uu": p.get("tahun_uu"),
+                "kategori": p.get("kategori"),
+                "status_hukum": p.get("status_hukum"),
+                "has_file": False,
+                "pasal": [],
+            },
+        )
+        doc["pasal"].append(
+            {
+                "id_dokumen": id_dokumen,
+                "pasal_bagian": p.get("pasal_bagian", ""),
+                "similarity": similarity,
+            }
+        )
 
     for doc in groups.values():
         doc["pasal"].sort(key=lambda x: x["similarity"], reverse=True)
@@ -272,12 +276,10 @@ def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]
         return sources
 
     try:
-        rows = legal_document_repository.list_statuses_by_uris(
-            supabase, [s["frbr_uri"] for s in sources]
-        )
+        rows = legal_document_repository.list_statuses_by_uris(supabase, [s["frbr_uri"] for s in sources])
         status_by_uri = {r["frbr_uri"]: r.get("status_hukum") for r in rows}
     except Exception as e:
-        log.warning(f"[TRIAGE] Gagal ambil status_hukum sumber dokumen: {e}")
+        logger.warning(f"[TRIAGE] Gagal ambil status_hukum sumber dokumen: {e}")
         return sources
 
     for s in sources:
@@ -300,10 +302,10 @@ def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
 
     try:
         consultants = consultant_repository.search_by_category(supabase, params)
-        log.info(f"[TOOL] search_consultants → {len(consultants)} hasil (kategori={kategori})")
+        logger.info(f"[TOOL] search_consultants → {len(consultants)} hasil (kategori={kategori})")
         return {"consultants": consultants, "count": len(consultants)}
     except Exception as e:
-        log.error(f"[TOOL] search_consultants gagal: {e}")
+        logger.error(f"[TOOL] search_consultants gagal: {e}")
         return {"error": str(e), "consultants": []}
 
 
@@ -326,7 +328,6 @@ def _build_contents(
         role = "user" if raw_role == "user" else "model"
         text = msg.get("content", msg.get("text", ""))
 
-
         meta = msg.get("metadata") or {}
         if role == "model" and meta.get("type") == "consultant_list":
             consultant_data = meta.get("consultants", [])
@@ -334,18 +335,11 @@ def _build_contents(
             text = f"{text}\n\n[Konteks internal: {summary}]"
 
         if text.strip():
-            contents.append(
-                types.Content(role=role, parts=[types.Part.from_text(text=text)])
-            )
-
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
 
     user_parts = [types.Part.from_text(text=user_query)]
     if pasal_context:
-        user_parts.append(
-            types.Part.from_text(
-                text=f"\n---\nKONTEKS PASAL HUKUM YANG RELEVAN:\n{pasal_context}"
-            )
-        )
+        user_parts.append(types.Part.from_text(text=f"\n---\nKONTEKS PASAL HUKUM YANG RELEVAN:\n{pasal_context}"))
     contents.append(types.Content(role="user", parts=user_parts))
 
     return contents
@@ -355,23 +349,16 @@ def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
     if not contents:
         return contents
 
-
     last_msg = contents[-1]
     history = contents[:-1]
 
-    total_chars = sum(
-        sum(len(p.text or "") for p in c.parts if hasattr(p, "text"))
-        for c in history
-    )
-
+    total_chars = sum(sum(len(p.text or "") for p in c.parts if hasattr(p, "text")) for c in history)
 
     while total_chars > MAX_HISTORY_CHARS and history:
         removed = history.pop(0)
-        removed_chars = sum(
-            len(p.text or "") for p in removed.parts if hasattr(p, "text")
-        )
+        removed_chars = sum(len(p.text or "") for p in removed.parts if hasattr(p, "text"))
         total_chars -= removed_chars
-        log.info(f"[TRUNCATE] Buang 1 pesan lama ({removed_chars} chars), sisa {total_chars}")
+        logger.info(f"[TRUNCATE] Buang 1 pesan lama ({removed_chars} chars), sisa {total_chars}")
 
     return history + [last_msg]
 
@@ -383,7 +370,6 @@ def agentic_generate(
     supabase: Client = None,
 ) -> dict:
     client = _get_gemini_client()
-
 
     contents = _build_contents(chat_history or [], query, context)
     contents = _smart_truncate(contents)
@@ -399,15 +385,14 @@ def agentic_generate(
     AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
     MAX_RETRIES = 2
 
-
     for iteration in range(MAX_TOOL_LOOP):
-        log.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
+        logger.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
 
         response = None
         for retry in range(MAX_RETRIES + 1):
             for model_name in AVAILABLE_MODELS:
                 try:
-                    log.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
+                    logger.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
                     response = client.models.generate_content(
                         model=model_name,
                         contents=contents,
@@ -417,43 +402,40 @@ def agentic_generate(
                 except Exception as e:
                     err_str = str(e)
                     if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                        log.warning(f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback...")
+                        logger.warning(
+                            f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback..."
+                        )
                         continue
                     else:
                         raise e
-            
+
             if response is not None:
                 break
-            
+
             if retry < MAX_RETRIES:
                 import time
+
                 wait_time = 2 * (retry + 1)
-                log.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
+                logger.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
                 time.sleep(wait_time)
-        
+
         if response is None:
-
             raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
-
 
         if not response.function_calls:
             break
 
-
         fc = response.function_calls[0]
-        log.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
+        logger.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
 
         if not supabase:
-            log.error("[AGENT] Tool call tapi supabase client None, skip")
+            logger.error("[AGENT] Tool call tapi supabase client None, skip")
             break
-
 
         tool_result = _execute_tool(supabase, fc.name, fc.args or {})
 
-
         if fc.name == "search_consultants":
             consultants_found = tool_result.get("consultants", [])
-
 
         contents.append(response.candidates[0].content)
         contents.append(
@@ -468,17 +450,13 @@ def agentic_generate(
             )
         )
     else:
-
-        log.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
-
+        logger.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
 
     jawaban = ""
     try:
         jawaban = response.text or ""
     except Exception:
-
         jawaban = "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
-
 
     if consultants_found:
         return {
@@ -496,24 +474,21 @@ def triage(
     kategori: Optional[str] = None,
     chat_history: list[dict] = None,
 ) -> dict:
-    log.info(f"[TRIAGE] Query masuk: {query[:100]}")
+    logger.info(f"[TRIAGE] Query masuk: {query[:100]}")
     current_step = "init"
 
     try:
-
         current_step = "rewrite"
         if len(query.split()) < 5:
-            log.info("[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
+            logger.info("[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
             search_query = rewrite_query(query, chat_history)
         else:
-            log.info("[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
+            logger.info("[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
             search_query = query
-
 
         current_step = "embed"
         query_embedding = embed_query(search_query)
-        log.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
-
+        logger.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
 
         current_step = "retrieve"
         pasals = retrieve_pasals(
@@ -523,14 +498,12 @@ def triage(
             match_threshold=0.5,
             filter_kategori=kategori,
         )
-        log.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
-
+        logger.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
 
         current_step = "build_context"
         context = _build_context(pasals)
         references = _build_references(pasals)
         sources = _attach_document_status(supabase, _build_source_documents(pasals))
-
 
         current_step = "agentic_generate"
         result = agentic_generate(
@@ -539,8 +512,7 @@ def triage(
             chat_history=chat_history,
             supabase=supabase,
         )
-        log.info(f"[TRIAGE] Result type: {result['type']}")
-
+        logger.info(f"[TRIAGE] Result type: {result['type']}")
 
         return {
             "type": result["type"],
@@ -551,6 +523,5 @@ def triage(
             "disclaimer": DISCLAIMER,
         }
     except Exception as e:
-        log.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)
+        logger.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)
         raise RuntimeError(f"RAG pipeline failed at step '{current_step}': {type(e).__name__}: {str(e)[:200]}") from e
-

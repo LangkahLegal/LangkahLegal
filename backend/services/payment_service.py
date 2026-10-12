@@ -8,6 +8,7 @@ from supabase import Client
 from core.config import Settings
 from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.user import CurrentUser
 from helpers.access import get_konsultan_id, require_role
 from helpers.schedule import count_sessions
 from repositories import consultation_repository, payment_repository
@@ -83,15 +84,16 @@ def _save_statuses(
     payment_repository.update_by_order_id(db, order_id, update_data)
 
     if new_pengajuan_status:
-        consultation_repository.update(db, id_pengajuan, {
-            "status_pengajuan": new_pengajuan_status,
-            "updated_at": datetime.now().isoformat(),
-        })
+        consultation_repository.update(
+            db,
+            id_pengajuan,
+            {
+                "status_pengajuan": new_pengajuan_status,
+                "updated_at": datetime.now().isoformat(),
+            },
+        )
 
-    logger.info(
-        f"Order {order_id}: transaksi={new_payment_status}, "
-        f"pengajuan {id_pengajuan}={new_pengajuan_status}"
-    )
+    logger.info(f"Order {order_id}: transaksi={new_payment_status}, pengajuan {id_pengajuan}={new_pengajuan_status}")
 
 
 def _existing_snap_response(tx: dict) -> dict:
@@ -113,10 +115,9 @@ def _reuse_pending_transaction(db: Client, settings: Settings, id_pengajuan: int
         tx_status = api_client.transactions.status(tx["order_id"]).get("transaction_status")
 
         if tx_status in MIDTRANS_STALE_STATUSES:
-            payment_repository.update_by_order_id(db, tx["order_id"], {
-                "status_pembayaran": tx_status,
-                "updated_at": datetime.now().isoformat()
-            })
+            payment_repository.update_by_order_id(
+                db, tx["order_id"], {"status_pembayaran": tx_status, "updated_at": datetime.now().isoformat()}
+            )
             logger.info(f"Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
             return None
     except Exception as e:
@@ -140,9 +141,7 @@ def _calculate_amounts(pengajuan: dict) -> tuple[int, int, int]:
     return gross_amount, komisi_platform, gross_amount - komisi_platform
 
 
-def _create_snap_transaction(
-    settings: Settings, order_id: str, gross_amount: int, pengajuan: dict
-) -> tuple[str, str]:
+def _create_snap_transaction(settings: Settings, order_id: str, gross_amount: int, pengajuan: dict) -> tuple[str, str]:
     user_data = pengajuan.get("users") or {}
     transaction_param = {
         "transaction_details": {
@@ -171,16 +170,14 @@ def _create_snap_transaction(
 
 def create_transaction(
     db: Client,
-    current_user: dict,
+    current_user: CurrentUser,
     settings: Settings,
     payload: CreateTransactionRequest,
 ) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang bisa melakukan pembayaran")
 
     try:
-        pengajuan = consultation_repository.get_for_payment(
-            db, payload.id_pengajuan, current_user["id_user"]
-        )
+        pengajuan = consultation_repository.get_for_payment(db, payload.id_pengajuan, current_user.id_user)
     except Exception as e:
         logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
@@ -202,16 +199,19 @@ def create_transaction(
     snap_token, redirect_url = _create_snap_transaction(settings, order_id, gross_amount, pengajuan)
 
     try:
-        payment_repository.insert(db, {
-            "id_pengajuan": payload.id_pengajuan,
-            "order_id": order_id,
-            "gross_amount": gross_amount,
-            "nominal_konsultan": nominal_konsultan,
-            "komisi_platform": komisi_platform,
-            "status_pembayaran": StatusPembayaran.PENDING,
-            "snap_token": snap_token,
-            "snap_redirect_url": redirect_url,
-        })
+        payment_repository.insert(
+            db,
+            {
+                "id_pengajuan": payload.id_pengajuan,
+                "order_id": order_id,
+                "gross_amount": gross_amount,
+                "nominal_konsultan": nominal_konsultan,
+                "komisi_platform": komisi_platform,
+                "status_pembayaran": StatusPembayaran.PENDING,
+                "snap_token": snap_token,
+                "snap_redirect_url": redirect_url,
+            },
+        )
     except Exception as e:
         logger.error(f"Gagal menyimpan transaksi ke DB: {e}")
         raise InternalError("Gagal menyimpan data transaksi")
@@ -265,11 +265,9 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
     return {"status": "ok"}
 
 
-def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dict:
+def get_payment_status(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
     try:
-        pengajuan = consultation_repository.get_by_id(
-            db, id_pengajuan, "id_pengajuan, id_user, id_konsultan"
-        )
+        pengajuan = consultation_repository.get_summary(db, id_pengajuan)
     except Exception as e:
         logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
@@ -277,8 +275,8 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
     if pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
-    user_role = current_user.get("role")
-    user_id = current_user.get("id_user")
+    user_role = current_user.role
+    user_id = current_user.id_user
 
     if user_role == Role.CLIENT and pengajuan["id_user"] != user_id:
         raise ForbiddenError("Akses ditolak")
@@ -295,9 +293,7 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
     return {"data": tx}
 
 
-def sync_payment_status(
-    db: Client, current_user: dict, settings: Settings, id_pengajuan: int
-) -> dict:
+def sync_payment_status(db: Client, current_user: CurrentUser, settings: Settings, id_pengajuan: int) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang bisa sinkronisasi pembayaran")
 
     tx = payment_repository.get_latest_by_pengajuan(db, id_pengajuan)

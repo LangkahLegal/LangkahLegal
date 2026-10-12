@@ -34,9 +34,11 @@ def _source(frbr_uri):
 
 
 def test_attach_document_status_fills_from_summary_view():
-    db = _FakeSummaryTable(data=[
-        {"frbr_uri": "/akn/id/act/uu-13-2003", "status_hukum": "berlaku"},
-    ])
+    db = _FakeSummaryTable(
+        data=[
+            {"frbr_uri": "/akn/id/act/uu-13-2003", "status_hukum": "berlaku"},
+        ]
+    )
     sources = [_source("/akn/id/act/uu-13-2003"), _source("/akn/id/act/uu-6-2023")]
 
     result = _attach_document_status(db, sources)
@@ -77,9 +79,11 @@ class _FakeRpc:
 
 
 def test_retrieve_pasals_maps_rpc_id_to_id_dokumen():
-    rpc = _FakeRpc([
-        {"id": 812, "frbr_uri": "/akn/id/act/uu-13-2003", "pasal_bagian": "Pasal 156", "similarity": 0.73},
-    ])
+    rpc = _FakeRpc(
+        [
+            {"id": 812, "frbr_uri": "/akn/id/act/uu-13-2003", "pasal_bagian": "Pasal 156", "similarity": 0.73},
+        ]
+    )
 
     rows = retrieve_pasals(rpc, [0.0] * 1024, filter_kategori="ketenagakerjaan")
 
@@ -196,20 +200,37 @@ class _FakeSupabase:
 
 def test_triage_returns_grouped_sources_with_status(monkeypatch):
     from services import rag_service
+
     rpc_rows = [
-        {"id": 812, "frbr_uri": "/akn/id/act/uu-13-2003", "nama_uu": "UU Ketenagakerjaan",
-         "nomor_uu": "UU No. 13 Tahun 2003", "tahun_uu": 2003, "pasal_bagian": "Pasal 156",
-         "judul_bab": None, "isi_teks": "...", "kategori": "ketenagakerjaan", "similarity": 0.81},
-        {"id": 900, "frbr_uri": "/akn/id/act/uu-13-2003", "nama_uu": "UU Ketenagakerjaan",
-         "nomor_uu": "UU No. 13 Tahun 2003", "tahun_uu": 2003, "pasal_bagian": "Pasal 161",
-         "judul_bab": None, "isi_teks": "...", "kategori": "ketenagakerjaan", "similarity": 0.52},
+        {
+            "id": 812,
+            "frbr_uri": "/akn/id/act/uu-13-2003",
+            "nama_uu": "UU Ketenagakerjaan",
+            "nomor_uu": "UU No. 13 Tahun 2003",
+            "tahun_uu": 2003,
+            "pasal_bagian": "Pasal 156",
+            "judul_bab": None,
+            "isi_teks": "...",
+            "kategori": "ketenagakerjaan",
+            "similarity": 0.81,
+        },
+        {
+            "id": 900,
+            "frbr_uri": "/akn/id/act/uu-13-2003",
+            "nama_uu": "UU Ketenagakerjaan",
+            "nomor_uu": "UU No. 13 Tahun 2003",
+            "tahun_uu": 2003,
+            "pasal_bagian": "Pasal 161",
+            "judul_bab": None,
+            "isi_teks": "...",
+            "kategori": "ketenagakerjaan",
+            "similarity": 0.52,
+        },
     ]
     db = _FakeSupabase(rpc_rows, [{"frbr_uri": "/akn/id/act/uu-13-2003", "status_hukum": "berlaku"}])
 
     monkeypatch.setattr(rag_service, "embed_query", lambda q: [0.0] * 1024)
-    monkeypatch.setattr(
-        rag_service, "agentic_generate", lambda **kwargs: {"type": "text", "jawaban": "Jawaban"}
-    )
+    monkeypatch.setattr(rag_service, "agentic_generate", lambda **kwargs: {"type": "text", "jawaban": "Jawaban"})
 
     result = rag_service.triage("saya di-PHK tanpa pesangon sama sekali", db)
 

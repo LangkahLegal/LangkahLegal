@@ -1,5 +1,7 @@
 # 02 — Database Schema and API Surface
 
+> **Note (2026-10-12):** This review describes the backend before the layered refactor. The logic has since moved out of `backend/routers/*.py` into `backend/services/`, `backend/repositories/`, `backend/helpers/`, `backend/core/` and `backend/docs/`, so the file and line links below point to the old locations. Findings still open should be re-located by function name.
+
 ## Important caveat on the schema section
 
 **There are no migration files, no ORM model classes, and no SQL DDL committed anywhere in this repository.** The database is a hosted Supabase (Postgres) project, accessed exclusively through the PostgREST-based `supabase-py` client (`db.table("...").select("...")`). The table/column list below was reconstructed by reading every `.table(...)`, `.select(...)`, `.insert(...)`, and `.update(...)` call across `backend/routers/*.py`, `backend/rag_service.py`, and `backend/services/*.py`, plus the Pydantic response schemas in `backend/schemas/*.py`.

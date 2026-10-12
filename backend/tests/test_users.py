@@ -2,9 +2,7 @@ from services import user_service
 
 
 def test_get_settings_info_success(app_client):
-    table_responses = {
-        "users": [{"nama": "User", "email": "user@example.com", "foto_profil": None}]
-    }
+    table_responses = {"users": [{"nama": "User", "email": "user@example.com", "foto_profil": None}]}
     client, _ = app_client(
         table_responses=table_responses,
         current_user={"id_user": 1, "role": "client"},
@@ -19,9 +17,7 @@ def test_get_settings_info_success(app_client):
 
 def test_get_settings_info_unauthorized(app_client):
     client, _ = app_client(auth_error=Exception("bad"))
-    response = client.get(
-        "/api/v1/users/me/settings", headers={"Authorization": "Bearer token"}
-    )
+    response = client.get("/api/v1/users/me/settings", headers={"Authorization": "Bearer token"})
     assert response.status_code == 401
 
 

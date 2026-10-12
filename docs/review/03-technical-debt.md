@@ -1,5 +1,7 @@
 # 03 — Technical Debt and Improvement Candidates
 
+> **Note (2026-10-12):** This review describes the backend before the layered refactor. The logic has since moved out of `backend/routers/*.py` into `backend/services/`, `backend/repositories/`, `backend/helpers/`, `backend/core/` and `backend/docs/`, so the file and line links below point to the old locations. Findings still open should be re-located by function name.
+
 Findings are grouped by category, then sorted **high → medium → low** severity within each group. Effort: **S** = under a day, **M** = a few days, **L** = a week or more / needs design discussion.
 
 ## Authentication and authorization

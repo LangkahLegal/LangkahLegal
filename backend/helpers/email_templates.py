@@ -17,7 +17,9 @@ Terima kasih.
 
 def request_rejected(client_nama: str, id_pengajuan: int) -> tuple[str, str]:
     subject = "Pengajuan Konsultasi Ditolak"
-    message = f"Halo {client_nama}, mohon maaf, pengajuan konsultasi Anda (ID: {id_pengajuan}) telah ditolak oleh konsultan."
+    message = (
+        f"Halo {client_nama}, mohon maaf, pengajuan konsultasi Anda (ID: {id_pengajuan}) telah ditolak oleh konsultan."
+    )
     return subject, message
 
 
@@ -109,7 +111,7 @@ BUKTI PEMBAYARAN (RECEIPT)
 Order ID         : {order_id}
 Nominal          : {formatted_amount}
 Metode Pembayaran: {payment_type}
-Waktu Bayar      : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Waktu Bayar      : {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 ====================================
 
 Link Zoom Anda: {zoom_link}

@@ -4,21 +4,28 @@ from supabase import Client
 from core.config import Settings, get_settings
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
-from schemas.payments import CreateTransactionRequest
-from services import payment_service
+from core.user import CurrentUser
 from docs import payments as docs
+from schemas.payments import CreateTransactionRequest, CreateTransactionResponse
+from services import payment_service
 
 router = APIRouter()
 
 
-@router.post("/create-transaction", status_code=status.HTTP_201_CREATED, **docs.CREATE_TRANSACTION)
+@router.post(
+    "/create-transaction",
+    status_code=status.HTTP_201_CREATED,
+    response_model=CreateTransactionResponse,
+    **docs.CREATE_TRANSACTION,
+)
 def create_transaction(
     payload: CreateTransactionRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ):
     return payment_service.create_transaction(db, current_user, settings, payload)
+
 
 @router.post("/notification", status_code=status.HTTP_200_OK, **docs.MIDTRANS_NOTIFICATION)
 async def midtrans_notification(
@@ -37,7 +44,7 @@ async def midtrans_notification(
 @router.get("/status/{id_pengajuan}", status_code=status.HTTP_200_OK, **docs.GET_PAYMENT_STATUS)
 def get_payment_status(
     id_pengajuan: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
     return payment_service.get_payment_status(db, current_user, id_pengajuan)
@@ -46,7 +53,7 @@ def get_payment_status(
 @router.post("/sync/{id_pengajuan}", status_code=status.HTTP_200_OK, **docs.SYNC_PAYMENT_STATUS)
 def sync_payment_status(
     id_pengajuan: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ):

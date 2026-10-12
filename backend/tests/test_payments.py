@@ -11,9 +11,7 @@ class DummySnap:
 
 
 class DummyTransactions:
-    def __init__(
-        self, status_response=None, notification_response=None, status_error=None
-    ):
+    def __init__(self, status_response=None, notification_response=None, status_error=None):
         self._status_response = status_response
         self._notification_response = notification_response
         self._status_error = status_error
@@ -30,9 +28,7 @@ class DummyTransactions:
 
 
 class DummyCoreApi:
-    def __init__(
-        self, status_response=None, notification_response=None, status_error=None
-    ):
+    def __init__(self, status_response=None, notification_response=None, status_error=None):
         self.transactions = DummyTransactions(
             status_response=status_response,
             notification_response=notification_response,
@@ -57,9 +53,7 @@ def test_create_transaction_success(app_client, monkeypatch):
         "transaksi": [[], []],
     }
 
-    monkeypatch.setattr(
-        payment_service, "_get_snap_client", lambda settings: DummySnap()
-    )
+    monkeypatch.setattr(payment_service, "_get_snap_client", lambda settings: DummySnap())
 
     client, _ = app_client(
         table_responses=table_responses,
@@ -160,9 +154,7 @@ def test_create_transaction_existing_pending_returns_token(app_client, monkeypat
     monkeypatch.setattr(
         payment_service,
         "_get_core_api_client",
-        lambda settings: DummyCoreApi(
-            status_response={"transaction_status": "pending"}
-        ),
+        lambda settings: DummyCoreApi(status_response={"transaction_status": "pending"}),
     )
 
     client, _ = app_client(
@@ -270,9 +262,7 @@ def test_midtrans_notification_updates_status(app_client, monkeypatch):
 
 
 def test_get_payment_status_forbidden(app_client):
-    table_responses = {
-        "pengajuan_konsultasi": [[{"id_pengajuan": 1, "id_user": 2, "id_konsultan": 3}]]
-    }
+    table_responses = {"pengajuan_konsultasi": [[{"id_pengajuan": 1, "id_user": 2, "id_konsultan": 3}]]}
     client, _ = app_client(
         table_responses=table_responses,
         current_user={"id_user": 1, "role": "client"},
@@ -285,9 +275,7 @@ def test_get_payment_status_forbidden(app_client):
 
 def test_get_payment_status_success(app_client):
     table_responses = {
-        "pengajuan_konsultasi": [
-            [{"id_pengajuan": 1, "id_user": 1, "id_konsultan": 3}]
-        ],
+        "pengajuan_konsultasi": [[{"id_pengajuan": 1, "id_user": 1, "id_konsultan": 3}]],
         "transaksi": [[{"id_transaksi": 10, "status_pembayaran": "pending"}]],
     }
     client, _ = app_client(
@@ -318,9 +306,7 @@ def test_sync_payment_status_not_found(app_client):
 
 
 def test_sync_payment_status_final(app_client):
-    table_responses = {
-        "transaksi": [[{"order_id": "order-1", "status_pembayaran": "settlement"}]]
-    }
+    table_responses = {"transaksi": [[{"order_id": "order-1", "status_pembayaran": "settlement"}]]}
     client, _ = app_client(
         table_responses=table_responses,
         current_user={"id_user": 1, "role": "client"},

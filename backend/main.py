@@ -1,34 +1,32 @@
 import logging
 
-from fastapi import FastAPI, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
-from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs, knowledge
 
-from core.config import get_settings, Settings
+from core.config import Settings, get_settings
 from core.database import check_db_connection
 from core.limiter import limiter
 from docs import main as docs
+from routers import admin, admin_docs, auth, cases, chatbot, consultants, consultations, knowledge, payments, users
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 
-app = FastAPI(
-    title="LangkahLegal API",
-    description=docs.API_DESCRIPTION,
-    version="1.0.0"
-)
+app = FastAPI(title="LangkahLegal API", description=docs.API_DESCRIPTION, version="1.0.0")
 
 app.state.limiter = limiter
+
 
 @app.middleware("http")
 async def force_https_scheme(request: Request, call_next):
     if request.headers.get("x-forwarded-proto") == "https":
         request.scope["scheme"] = "https"
     return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,22 +36,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.exception_handler(RateLimitExceeded)
 async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
-        content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."}
+        content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."},
     )
+
 
 @app.get("/health", tags=["System"], **docs.HEALTH_CHECK)
 def health_check(settings: Settings = Depends(get_settings)):
     db_status = "connected" if check_db_connection() else "disconnected"
-    return {
-        "status": "ok",
-        "app_name": settings.app_name,
-        "environment": settings.app_env,
-        "database": db_status
-    }
+    return {"status": "ok", "app_name": settings.app_name, "environment": settings.app_env, "database": db_status}
+
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(consultants.router, prefix="/api/v1/consultants", tags=["Direktori Konsultan"])

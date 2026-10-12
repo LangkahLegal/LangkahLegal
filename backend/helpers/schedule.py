@@ -27,6 +27,4 @@ def count_sessions(jam_mulai: str, jam_selesai: str) -> int:
 
 def ensure_within_schedule(jam_mulai: str, jam_selesai: str, jadwal: dict) -> None:
     if jam_mulai < jadwal["jam_mulai"] or jam_selesai > jadwal["jam_selesai"]:
-        raise BadRequestError(
-            f"Jam di luar rentang operasional ({jadwal['jam_mulai']} - {jadwal['jam_selesai']})"
-        )
+        raise BadRequestError(f"Jam di luar rentang operasional ({jadwal['jam_mulai']} - {jadwal['jam_selesai']})")

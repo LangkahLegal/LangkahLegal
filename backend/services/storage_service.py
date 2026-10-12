@@ -102,9 +102,7 @@ async def upload_supporting_document_to_supabase(
     if not matched_ext:
         raise HTTPException(status_code=400, detail="Dokumen pendukung hanya boleh PDF atau image")
 
-    file_bytes = await _read_file_bytes(
-        file, "dokumen pendukung", MAX_SUPPORTING_DOC_SIZE_MB, "dokumen pendukung"
-    )
+    file_bytes = await _read_file_bytes(file, "dokumen pendukung", MAX_SUPPORTING_DOC_SIZE_MB, "dokumen pendukung")
 
     is_pdf = matched_ext == ".pdf"
     if is_pdf and not file_bytes.startswith(b"%PDF"):

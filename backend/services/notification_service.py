@@ -31,11 +31,11 @@ def _send(to_email: str, template: tuple[str, str]) -> None:
 
 @_best_effort("pengajuan baru")
 def consultant_new_request(db: Client, id_konsultan: int, id_pengajuan: int) -> None:
-    konsultan = consultant_repository.get_by_id_strict(db, id_konsultan, "id_user, nama_lengkap")
+    konsultan = consultant_repository.get_owner(db, id_konsultan)
     if not konsultan:
         return
 
-    user = user_repository.get_by_id_strict(db, konsultan["id_user"], "email")
+    user = user_repository.get_email(db, konsultan["id_user"])
     if user:
         _send(
             user["email"],
@@ -45,14 +45,14 @@ def consultant_new_request(db: Client, id_konsultan: int, id_pengajuan: int) -> 
 
 @_best_effort("di update_status (ditolak)")
 def client_request_rejected(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
+    client = user_repository.get_contact(db, data_pengajuan["id_user"])
     if client:
         _send(client["email"], email_templates.request_rejected(client["nama"], id_pengajuan))
 
 
 @_best_effort("di update_status (menunggu_pembayaran)")
 def client_awaiting_payment(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
+    client = user_repository.get_contact(db, data_pengajuan["id_user"])
     if client:
         _send(
             client["email"],
@@ -62,7 +62,7 @@ def client_awaiting_payment(db: Client, data_pengajuan: dict, id_pengajuan: int)
 
 @_best_effort("di assign-schedule")
 def client_schedule_assigned(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
+    client = user_repository.get_contact(db, data_pengajuan["id_user"])
     if client:
         _send(
             client["email"],
@@ -72,11 +72,11 @@ def client_schedule_assigned(db: Client, data_pengajuan: dict, id_pengajuan: int
 
 @_best_effort("di zoom-link")
 def client_zoom_link(db: Client, id_pengajuan: int) -> None:
-    pengajuan = consultation_repository.get_by_id_strict(db, id_pengajuan, "id_user")
+    pengajuan = consultation_repository.get_summary_strict(db, id_pengajuan)
     if not pengajuan:
         return
 
-    client = user_repository.get_by_id_strict(db, pengajuan["id_user"], "email, nama")
+    client = user_repository.get_contact(db, pengajuan["id_user"])
     if client:
         _send(
             client["email"],
@@ -85,16 +85,14 @@ def client_zoom_link(db: Client, id_pengajuan: int) -> None:
 
 
 @_best_effort("bursa diklaim")
-def client_case_claimed(
-    db: Client, kasus_data: dict, id_konsultan: int, id_bursa: int, pengajuan: dict
-) -> None:
+def client_case_claimed(db: Client, kasus_data: dict, id_konsultan: int, id_bursa: int, pengajuan: dict) -> None:
     id_pengajuan = pengajuan["id_pengajuan"]
-    client = user_repository.get_by_id_strict(db, kasus_data["id_user"], "email, nama")
+    client = user_repository.get_contact(db, kasus_data["id_user"])
     if not client:
         return
 
     frontend_base_url = get_frontend_base_url()
-    konsultan = consultant_repository.get_by_id_strict(db, id_konsultan, "nama_lengkap")
+    konsultan = consultant_repository.get_name(db, id_konsultan)
     kons_nama = konsultan["nama_lengkap"] if konsultan else "Seorang konsultan"
 
     _send(
@@ -105,13 +103,11 @@ def client_case_claimed(
 
 @_best_effort("settlement")
 def payment_settled(db: Client, tx: dict, id_pengajuan: int, order_id: str, payment_type: str) -> None:
-    pengajuan = consultation_repository.get_by_id_strict(
-        db, id_pengajuan, "id_user, id_konsultan, link_zoom"
-    )
+    pengajuan = consultation_repository.get_summary_strict(db, id_pengajuan)
     if not pengajuan:
         return
 
-    client = user_repository.get_by_id_strict(db, pengajuan["id_user"], "email, nama")
+    client = user_repository.get_contact(db, pengajuan["id_user"])
     if client:
         _send(
             client["email"],
@@ -125,13 +121,11 @@ def payment_settled(db: Client, tx: dict, id_pengajuan: int, order_id: str, paym
             ),
         )
 
-    konsultan = consultant_repository.get_by_id_strict(
-        db, pengajuan["id_konsultan"], "id_user, nama_lengkap"
-    )
+    konsultan = consultant_repository.get_owner(db, pengajuan["id_konsultan"])
     if not konsultan:
         return
 
-    kons_user = user_repository.get_by_id_strict(db, konsultan["id_user"], "email")
+    kons_user = user_repository.get_email(db, konsultan["id_user"])
     if kons_user:
         _send(
             kons_user["email"],

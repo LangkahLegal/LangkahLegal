@@ -21,14 +21,7 @@ def list_sessions(db: Client, user_id: int, limit: int) -> list[dict]:
 
 
 def list_owned_session(db: Client, session_id: str, user_id: int) -> list[dict]:
-    return (
-        db.table(SESSIONS)
-        .select("id")
-        .eq("id", session_id)
-        .eq("user_id", user_id)
-        .execute()
-        .data
-    )
+    return db.table(SESSIONS).select("id").eq("id", session_id).eq("user_id", user_id).execute().data
 
 
 def update_session_title(db: Client, session_id: str, title: str) -> None:

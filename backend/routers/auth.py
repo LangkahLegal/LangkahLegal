@@ -4,19 +4,7 @@ from supabase import Client
 from core.database import get_supabase_client
 from core.dependencies import get_token_from_request
 from core.limiter import limiter
-
-from schemas.auth import (
-    ForgotPasswordPayload,
-    ResetPasswordPayload,
-    OAuthPayload,
-    OtpLoginPayload,
-    PasswordLoginPayload,
-    ResendOtpPayload,
-    RolePayload,
-    SignUpPayload,
-    VerifyOtpPayload,
-)
-from services import auth_service
+from docs import auth as docs
 from helpers.cookies import (
     clear_auth_cookies,
     clear_oauth_verifier_cookie,
@@ -24,7 +12,18 @@ from helpers.cookies import (
     set_oauth_verifier_cookie,
     set_role_cookie,
 )
-from docs import auth as docs
+from schemas.auth import (
+    ForgotPasswordPayload,
+    OAuthPayload,
+    OtpLoginPayload,
+    PasswordLoginPayload,
+    ResendOtpPayload,
+    ResetPasswordPayload,
+    RolePayload,
+    SignUpPayload,
+    VerifyOtpPayload,
+)
+from services import auth_service
 
 router = APIRouter()
 

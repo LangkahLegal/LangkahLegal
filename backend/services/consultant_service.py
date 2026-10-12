@@ -6,6 +6,7 @@ from supabase import Client
 
 from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
+from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
 from helpers.rating import summarize_ratings
 from repositories import consultant_repository, consultation_repository, schedule_repository
@@ -29,26 +30,26 @@ UNPAID_STATUSES = [
 
 def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> dict:
     try:
-        rows = consultant_repository.list_active_catalog(
-            db, spesialisasi if spesialisasi != "semua" else None
-        )
+        rows = consultant_repository.list_active_catalog(db, spesialisasi if spesialisasi != "semua" else None)
 
         formatted_data = []
         for item in rows:
             rating_avg, total_reviews = summarize_ratings(item.get("rating_ulasan", []))
             user_data = item.get("users") or {}
 
-            formatted_data.append({
-                "id": item["id_konsultan"],
-                "name": item["nama_lengkap"],
-                "spec": item["spesialisasi"],
-                "rating": rating_avg,
-                "reviews": total_reviews,
-                "status": "online",
-                "foto_profil": user_data.get("foto_profil"),
-                "status_verifikasi": item.get("status_verifikasi"),
-                "tarif_per_sesi": item.get("tarif_per_sesi")
-            })
+            formatted_data.append(
+                {
+                    "id": item["id_konsultan"],
+                    "name": item["nama_lengkap"],
+                    "spec": item["spesialisasi"],
+                    "rating": rating_avg,
+                    "reviews": total_reviews,
+                    "status": "online",
+                    "foto_profil": user_data.get("foto_profil"),
+                    "status_verifikasi": item.get("status_verifikasi"),
+                    "tarif_per_sesi": item.get("tarif_per_sesi"),
+                }
+            )
 
         return {
             "message": "Katalog konsultan berhasil dimuat",
@@ -60,9 +61,7 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
 
 
 def get_consultant_detail(db: Client, id_konsultan: int) -> dict:
-    konsultan_data = consultant_repository.get_by_id(
-        db, id_konsultan, "*, users(nama, email, foto_profil), rating_ulasan(skor_rating)"
-    )
+    konsultan_data = consultant_repository.get_public_detail(db, id_konsultan)
 
     if konsultan_data is None:
         raise NotFoundError("Konsultan tidak ditemukan")
@@ -88,29 +87,23 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
         raise InternalError(f"Gagal mengambil jadwal: {str(e)}")
 
 
-def get_my_schedules(db: Client, current_user: dict) -> list:
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+def get_my_schedules(db: Client, current_user: CurrentUser) -> list:
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
     formatted = []
     for item in schedule_repository.list_with_clients(db, id_kons):
         pengajuan = item.get("pengajuan_konsultasi", [])
-        nama_klien = (
-            pengajuan[0]["users"]["nama"]
-            if pengajuan and pengajuan[0].get("users")
-            else None
-        )
+        nama_klien = pengajuan[0]["users"]["nama"] if pengajuan and pengajuan[0].get("users") else None
         formatted.append({**item, "nama_klien": nama_klien})
     return formatted
 
 
-def get_dashboard_stats(db: Client, current_user: dict) -> dict:
+def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
-    pengajuan_with_tx = consultation_repository.list_by_konsultan(
-        db, id_kons, "transaksi(nominal_konsultan, status_pembayaran)"
-    )
+    pengajuan_with_tx = consultation_repository.list_income_rows(db, id_kons)
 
     total_income = 0
     for p in pengajuan_with_tx:
@@ -121,12 +114,12 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
             if tx.get("status_pembayaran") == StatusPembayaran.SETTLEMENT:
                 total_income += float(tx.get("nominal_konsultan") or 0)
 
-    all_data = consultation_repository.list_by_konsultan_and_statuses(
-        db,
-        id_kons,
-        [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI],
-        "id_user, status_pengajuan",
-    ) or []
+    all_data = (
+        consultation_repository.list_clients_by_statuses(
+            db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI]
+        )
+        or []
+    )
 
     unique_klien = set(p["id_user"] for p in all_data)
     sesi_aktif = [p for p in all_data if p["status_pengajuan"] == StatusPengajuan.TERJADWAL]
@@ -138,18 +131,18 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
     }
 
 
-def get_pending_requests(db: Client, current_user: dict) -> list:
+def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
     return consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING])
 
 
-def get_active_requests(db: Client, current_user: dict) -> list:
+def get_active_requests(db: Client, current_user: CurrentUser) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
     return consultation_repository.list_requests_for_konsultan(
         db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
@@ -182,7 +175,7 @@ def _format_upcoming_client(req: dict, now: datetime) -> dict | None:
         "tanggal_konsultasi": tanggal_konsultasi,
         "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
         "waktu_selesai": jam_selesai_str,
-        "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
+        "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at"),
     }
 
 
@@ -211,37 +204,27 @@ def _format_history_item(req: dict) -> dict:
         "tanggal_konsultasi": jadwal.get("tanggal") or req.get("tanggal_pengajuan", ""),
         "jam_mulai": jm,
         "jam_selesai": js,
-        "nominal_konsultan": _earned_amount(req)
+        "nominal_konsultan": _earned_amount(req),
     }
 
 
-def get_scheduled_clients(db: Client, current_user: dict) -> dict:
+def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user.id_user, "Profil tidak ditemukan")
 
-    rows = consultation_repository.list_by_konsultan_and_statuses(
-        db,
-        id_kons,
-        [StatusPengajuan.TERJADWAL],
-        "*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)",
-    )
+    rows = consultation_repository.list_with_client_and_date(db, id_kons, [StatusPengajuan.TERJADWAL])
 
     now = datetime.now(WIB).replace(tzinfo=None)
-    formatted_data = [
-        item for item in (_format_upcoming_client(req, now) for req in rows) if item is not None
-    ]
+    formatted_data = [item for item in (_format_upcoming_client(req, now) for req in rows) if item is not None]
 
-    return {
-        "total_klien_aktif": len(formatted_data),
-        "data": formatted_data
-    }
+    return {"total_klien_aktif": len(formatted_data), "data": formatted_data}
 
 
-def get_history(db: Client, current_user: dict) -> dict:
+def get_history(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user.id_user, "Profil tidak ditemukan")
 
     rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
@@ -250,29 +233,29 @@ def get_history(db: Client, current_user: dict) -> dict:
 
     total_selesai = sum(1 for item in formatted_data if item["status"] == StatusPengajuan.SELESAI)
 
-    return {
-        "total_sesi_selesai": total_selesai,
-        "data": formatted_data
-    }
+    return {"total_sesi_selesai": total_selesai, "data": formatted_data}
 
 
-def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> dict:
+def create_schedule(db: Client, current_user: CurrentUser, request: ScheduleCreate) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    id_kons = require_konsultan_id(db, current_user["id_user"])
+    id_kons = require_konsultan_id(db, current_user.id_user)
 
-    created = schedule_repository.insert(db, {
-        "id_konsultan": id_kons,
-        "tanggal": request.tanggal,
-        "jam_mulai": request.jam_mulai,
-        "jam_selesai": request.jam_selesai,
-        "status_tersedia": True,
-    })
+    created = schedule_repository.insert(
+        db,
+        {
+            "id_konsultan": id_kons,
+            "tanggal": request.tanggal,
+            "jam_mulai": request.jam_mulai,
+            "jam_selesai": request.jam_selesai,
+            "status_tersedia": True,
+        },
+    )
 
     return {"message": "Jadwal berhasil ditambahkan", "data": created[0]}
 
 
-def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
+def delete_schedule(db: Client, current_user: CurrentUser, id_jadwal: int) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
     jadwal = schedule_repository.get_by_id(db, id_jadwal)
@@ -286,9 +269,7 @@ def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
     return {"message": "Jadwal berhasil dihapus"}
 
 
-def update_schedule(
-    db: Client, current_user: dict, id_jadwal: int, request: ScheduleUpdate
-) -> dict:
+def update_schedule(db: Client, current_user: CurrentUser, id_jadwal: int, request: ScheduleUpdate) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
     jadwal = schedule_repository.get_by_id(db, id_jadwal)
@@ -306,8 +287,6 @@ def toggle_schedule_slot(db: Client, id_jadwal: int, payload: ScheduleToggle) ->
     return {"data": updated, "count": None}
 
 
-def toggle_global_active(db: Client, current_user: dict, payload: ConsultantActiveToggle) -> dict:
-    updated = consultant_repository.update_by_user(
-        db, current_user["id_user"], {"is_active": payload.is_active}
-    )
+def toggle_global_active(db: Client, current_user: CurrentUser, payload: ConsultantActiveToggle) -> dict:
+    updated = consultant_repository.update_by_user(db, current_user.id_user, {"is_active": payload.is_active})
     return {"data": updated, "count": None}

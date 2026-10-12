@@ -1,5 +1,7 @@
 # 01 — Backend Architecture Review
 
+> **Note (2026-10-12):** This review describes the backend before the layered refactor. The logic has since moved out of `backend/routers/*.py` into `backend/services/`, `backend/repositories/`, `backend/helpers/`, `backend/core/` and `backend/docs/`, so the file and line links below point to the old locations. Findings still open should be re-located by function name.
+
 Scope: `backend/` only (FastAPI service). Frontend (`frontend/`, Next.js) is referenced only where it affects backend design decisions (CORS, cookie flags, base URL).
 
 ## 1. Stack summary
