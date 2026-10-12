@@ -29,6 +29,7 @@ class MockResponse:
 class TableQueue:
     def __init__(self, responses):
         self._responses = list(responses)
+        self.inserted = []
 
     def pop(self):
         if self._responses:
@@ -65,8 +66,15 @@ class MockTable:
     def order(self, *args, **kwargs):
         return self
 
+    def range(self, *args, **kwargs):
+        return self
+
+    def or_(self, *args, **kwargs):
+        return self
+
     def insert(self, payload):
         self.last_payload = payload
+        self._queue.inserted.append(payload)
         return self
 
     def update(self, payload):
@@ -143,6 +151,11 @@ class MockSupabase:
             queue = TableQueue(self._table_responses.get(name, []))
             self._table_queues[name] = queue
         return MockTable(queue)
+
+    def inserted(self, name):
+        """Semua payload yang di-insert ke tabel `name`, sesuai urutan."""
+        queue = self._table_queues.get(name)
+        return queue.inserted if queue else []
 
 
 @pytest.fixture

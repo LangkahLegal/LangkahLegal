@@ -46,11 +46,29 @@ class TriageRequest(BaseModel):
     )
 
 class PasalReference(BaseModel):
+    id_dokumen: Optional[int] = None
+    frbr_uri: Optional[str] = None
     nama_uu: Optional[str] = ""
     nomor_uu: Optional[str] = ""
     pasal_bagian: str
     judul_bab: Optional[str] = None
     similarity: float
+
+class SumberPasal(BaseModel):
+    id_dokumen: int
+    pasal_bagian: str
+    similarity: float
+
+class SumberDokumen(BaseModel):
+    """1 dokumen peraturan (group by frbr_uri) yang ditampilkan di bawah jawaban AI."""
+    frbr_uri: str
+    nama_uu: Optional[str] = None
+    nomor_uu: Optional[str] = None
+    tahun_uu: Optional[int] = None
+    kategori: Optional[str] = None
+    status_hukum: Optional[str] = None
+    has_file: bool = False
+    pasal: list[SumberPasal] = []
 
 class ConsultantInfo(BaseModel):
     id_konsultan: int
@@ -69,5 +87,6 @@ class TriageResponse(BaseModel):
     type: str = Field("text", description="'text' untuk jawaban biasa, 'consultant_list' untuk daftar konsultan")
     jawaban: str
     pasal_referensi: list[PasalReference] = []
+    sumber_dokumen: list[SumberDokumen] = []
     consultants: Optional[list[ConsultantInfo]] = None
     disclaimer: str

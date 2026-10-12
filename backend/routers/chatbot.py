@@ -341,6 +341,7 @@ async def chatbot_triage(
         ai_metadata = {
             "type": response_type,
             "pasal_referensi": result.get("pasal_referensi", []),
+            "sumber_dokumen": result.get("sumber_dokumen", []),
             "disclaimer": result.get("disclaimer", ""),
         }
         if response_type == "consultant_list":
@@ -364,6 +365,7 @@ async def chatbot_triage(
             type=response_type,
             jawaban=result["jawaban"],
             pasal_referensi=result.get("pasal_referensi", []),
+            sumber_dokumen=result.get("sumber_dokumen", []),
             consultants=result.get("consultants") if response_type == "consultant_list" else None,
             disclaimer=result.get("disclaimer", ""),
         )
