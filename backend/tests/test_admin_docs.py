@@ -99,3 +99,79 @@ def test_process_pdf_job_failure_is_recorded(run_job):
     assert job["error"] == "OCR gagal"
     assert job["message"] == "Gagal memproses PDF: OCR gagal"
     assert repo.batches == []
+
+
+ADMIN = {"id_user": 1, "role": "admin"}
+FORM_FIELDS = {"nama_uu": "UU Contoh", "kategori": "umum", "status_hukum": "berlaku"}
+PDF_FILE = {"file": ("uu.pdf", b"%PDF-1.4 " + b"x" * 200, "application/pdf")}
+
+
+def test_upload_document_queues_job(app_client, monkeypatch):
+    queued = []
+    monkeypatch.setattr(
+        admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs))
+    )
+    client, _ = app_client(current_user=ADMIN)
+
+    response = client.post(
+        "/api/v1/admin/documents/upload",
+        data={**FORM_FIELDS, "nomor_uu": "13", "tahun_uu": "2003"},
+        files=PDF_FILE,
+    )
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "queued"
+    args, _ = queued[0]
+    assert args[2]["frbr_uri"] == "/akn/id/act/uu-13-2003"
+    assert args[2]["nomor_uu"] == "UU No. 13 Tahun 2003"
+    admin_doc_service._jobs.clear()
+
+
+def test_upload_document_rejects_non_pdf(app_client):
+    client, _ = app_client(current_user=ADMIN)
+
+    response = client.post(
+        "/api/v1/admin/documents/upload",
+        data=FORM_FIELDS,
+        files={"file": ("uu.txt", b"bukan pdf", "text/plain")},
+    )
+
+    assert response.status_code == 400
+
+
+def test_replace_document_not_found(app_client):
+    client, _ = app_client(
+        table_responses={"dokumen_hukum": [([], 0)]},
+        current_user=ADMIN,
+    )
+
+    response = client.put(
+        "/api/v1/admin/documents/replace",
+        data={**FORM_FIELDS, "frbr_uri": "/akn/id/act/uu-1-2020"},
+        files=PDF_FILE,
+    )
+
+    assert response.status_code == 404
+
+
+def test_replace_document_queues_job(app_client, monkeypatch):
+    queued = []
+    monkeypatch.setattr(
+        admin_doc_service, "process_pdf_job", lambda *args, **kwargs: queued.append((args, kwargs))
+    )
+    client, _ = app_client(
+        table_responses={"dokumen_hukum": [([{"id_dokumen": 1}], 1)]},
+        current_user=ADMIN,
+    )
+
+    response = client.put(
+        "/api/v1/admin/documents/replace",
+        data={**FORM_FIELDS, "frbr_uri": "/akn/id/act/uu-1-2020"},
+        files=PDF_FILE,
+    )
+
+    assert response.status_code == 202
+    _, kwargs = queued[0]
+    assert kwargs["replace_uri"] == "/akn/id/act/uu-1-2020"
+    assert kwargs["manual_metadata"]["frbr_uri"] == "/akn/id/act/uu-1-2020"
+    admin_doc_service._jobs.clear()

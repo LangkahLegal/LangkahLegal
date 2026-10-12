@@ -1,7 +1,19 @@
+from dataclasses import dataclass
 from datetime import datetime
 
+from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
 from typing import Optional
+
+
+@dataclass
+class ConsultationForm:
+    id_jadwal: int = Form(...)
+    deskripsi_kasus: str = Form(...)
+    jam_mulai: str = Form(...)
+    jam_selesai: str = Form(...)
+    dokumen_pendukung_files: list[UploadFile] | None = File(default=None)
+
 
 class ConsultationCreate(BaseModel):
     id_jadwal: int

@@ -1,13 +1,12 @@
 import logging
-from typing import Optional
 
-from fastapi import UploadFile
 from supabase import Client
 
 from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from helpers.access import require_konsultan_id, require_role
 from repositories import case_repository, consultation_repository
+from schemas.cases import CaseForm
 from services import notification_service
 from services.storage_service import select_valid_files, upload_supporting_documents
 
@@ -20,29 +19,19 @@ ACTIVE_STATUSES = [
 ]
 
 
-async def post_case(
-    db: Client,
-    current_user: dict,
-    kategori_hukum: str,
-    deskripsi_kasus_awam: str,
-    tanggal_konsultasi: str,
-    jam_mulai: str,
-    jam_selesai: str,
-    dokumen_bukti: Optional[str],
-    dokumen_pendukung_files: list[UploadFile] | None,
-) -> dict:
+async def post_case(db: Client, current_user: dict, form: CaseForm) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
 
-    valid_files = select_valid_files(dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
+    valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
 
     created = case_repository.insert(db, {
         "id_user": current_user["id_user"],
-        "kategori_hukum": kategori_hukum.lower().strip(),
-        "deskripsi_kasus_awam": deskripsi_kasus_awam,
-        "dokumen_bukti": dokumen_bukti,
-        "tanggal_konsultasi": tanggal_konsultasi,
-        "jam_mulai": jam_mulai,
-        "jam_selesai": jam_selesai,
+        "kategori_hukum": form.kategori_hukum.lower().strip(),
+        "deskripsi_kasus_awam": form.deskripsi_kasus_awam,
+        "dokumen_bukti": form.dokumen_bukti,
+        "tanggal_konsultasi": form.tanggal_konsultasi,
+        "jam_mulai": form.jam_mulai,
+        "jam_selesai": form.jam_selesai,
         "status_bursa": StatusBursa.OPEN,
     })
     if not created:
@@ -56,7 +45,7 @@ async def post_case(
 
     if uploaded:
         file_urls = [doc["file_url"] for doc in uploaded]
-        combined = ",".join(([dokumen_bukti] if dokumen_bukti else []) + file_urls)
+        combined = ",".join(([form.dokumen_bukti] if form.dokumen_bukti else []) + file_urls)
         case_repository.update(db, id_bursa, {"dokumen_bukti": combined})
 
     return {

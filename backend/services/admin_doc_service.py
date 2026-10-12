@@ -10,7 +10,12 @@ from supabase import Client
 from core.constants import Role
 from core.database import get_supabase_client
 from core.exceptions import BadRequestError, InternalError, NotFoundError
-from schemas.admin_docs import PaginatedResponse, UpdateChunkRequest
+from schemas.admin_docs import (
+    DocumentReplaceForm,
+    DocumentUploadForm,
+    PaginatedResponse,
+    UpdateChunkRequest,
+)
 from helpers.access import require_role
 from repositories import legal_document_repository
 from services.doc_processing import (
@@ -50,21 +55,15 @@ def _build_frbr_uri(nomor_uu: str | None, tahun_uu: int | None, default: str | N
     return default
 
 
-def _build_manual_metadata(
-    nama_uu: str,
-    nomor_uu: str | None,
-    tahun_uu: int | None,
-    kategori: str,
-    status_hukum: str,
-    frbr_uri: str | None,
-) -> dict:
+def _build_manual_metadata(form: DocumentUploadForm, default_frbr_uri: str | None) -> dict:
+    has_number = form.nomor_uu and form.tahun_uu
     return {
-        "nama_uu": nama_uu,
-        "nomor_uu": f"UU No. {nomor_uu} Tahun {tahun_uu}" if nomor_uu and tahun_uu else None,
-        "tahun_uu": tahun_uu,
-        "kategori": kategori,
-        "status_hukum": status_hukum,
-        "frbr_uri": frbr_uri
+        "nama_uu": form.nama_uu,
+        "nomor_uu": f"UU No. {form.nomor_uu} Tahun {form.tahun_uu}" if has_number else None,
+        "tahun_uu": form.tahun_uu,
+        "kategori": form.kategori,
+        "status_hukum": form.status_hukum,
+        "frbr_uri": _build_frbr_uri(form.nomor_uu, form.tahun_uu, default=default_frbr_uri)
     }
 
 
@@ -160,57 +159,34 @@ async def _read_pdf_bytes(file: UploadFile, max_bytes: int | None = None) -> byt
     return pdf_bytes
 
 
-async def create_upload_job(
-    user: dict,
-    file: UploadFile,
-    nama_uu: str,
-    nomor_uu: str | None,
-    tahun_uu: int | None,
-    kategori: str,
-    status_hukum: str,
-) -> tuple[dict, bytes, dict]:
+async def create_upload_job(user: dict, form: DocumentUploadForm) -> tuple[dict, bytes, dict]:
     _require_admin(user)
-    _require_pdf_filename(file)
+    _require_pdf_filename(form.file)
 
-    pdf_bytes = await _read_pdf_bytes(file, max_bytes=MAX_PDF_BYTES)
+    pdf_bytes = await _read_pdf_bytes(form.file, max_bytes=MAX_PDF_BYTES)
+    manual_metadata = _build_manual_metadata(form, default_frbr_uri=None)
 
-    frbr_uri = _build_frbr_uri(nomor_uu, tahun_uu, default=None)
-    manual_metadata = _build_manual_metadata(
-        nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, frbr_uri
-    )
-
-    job = _register_job(f"File '{file.filename}' diterima. Menunggu proses...")
-    log.info(f"[ADMIN_DOCS] Job {job['job_id']} queued for '{file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
+    job = _register_job(f"File '{form.file.filename}' diterima. Menunggu proses...")
+    log.info(f"[ADMIN_DOCS] Job {job['job_id']} queued for '{form.file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
 
     return job, pdf_bytes, manual_metadata
 
 
 async def create_replace_job(
-    db: Client,
-    user: dict,
-    file: UploadFile,
-    frbr_uri: str,
-    nama_uu: str,
-    nomor_uu: str | None,
-    tahun_uu: int | None,
-    kategori: str,
-    status_hukum: str,
+    db: Client, user: dict, form: DocumentReplaceForm
 ) -> tuple[dict, bytes, dict]:
     _require_admin(user)
-    _require_pdf_filename(file)
+    _require_pdf_filename(form.file)
 
+    frbr_uri = form.frbr_uri
     if not legal_document_repository.count_by_uri(db, frbr_uri):
         raise NotFoundError(f"Dokumen dengan URI '{frbr_uri}' tidak ditemukan.")
 
-    pdf_bytes = await _read_pdf_bytes(file)
-
-    new_frbr_uri = _build_frbr_uri(nomor_uu, tahun_uu, default=frbr_uri)
-    manual_metadata = _build_manual_metadata(
-        nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, new_frbr_uri
-    )
+    pdf_bytes = await _read_pdf_bytes(form.file)
+    manual_metadata = _build_manual_metadata(form, default_frbr_uri=frbr_uri)
 
     job = _register_job(
-        f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{file.filename}'...",
+        f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{form.file.filename}'...",
         frbr_uri=frbr_uri,
     )
     log.info(f"[ADMIN_DOCS] Replace job {job['job_id']} queued for {frbr_uri}")

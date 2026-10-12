@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request
 from supabase import Client
 from pydantic import ValidationError
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
-from schemas.users import ProfileUpdatePayload
+from schemas.users import ProfileForm, ProfileUpdatePayload
 from services import user_service
 from docs import users as docs
 
@@ -20,20 +20,7 @@ def get_full_profile(current_user: dict = Depends(get_current_user), db: Client 
 @router.put("/me/profile/update", **docs.UPDATE_PROFILE)
 async def update_profile(
     request: Request,
-    nama: str | None = Form(default=None),
-    foto_profil: str | None = Form(default=None),
-    bio_singkat: str | None = Form(default=None),
-    deskripsi_lengkap: str | None = Form(default=None),
-    nomor_izin_praktik: str | None = Form(default=None),
-    gelar_akademik: str | None = Form(default=None),
-    pendidikan_terakhir: str | None = Form(default=None),
-    kota_praktik: str | None = Form(default=None),
-    spesialisasi: str | None = Form(default=None),
-    pengalaman_tahun: int | None = Form(default=None),
-    tarif_per_sesi: float | None = Form(default=None),
-    linkedin: str | None = Form(default=None),
-    portofolio: str | None = Form(default=None),
-    portofolio_file: UploadFile | None = File(default=None),
+    form: ProfileForm = Depends(),
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
@@ -47,26 +34,12 @@ async def update_profile(
     else:
         form_data = await request.form()
         explicit_portofolio_field = "portofolio" in form_data
-        payload = ProfileUpdatePayload.model_construct(
-            nama=nama,
-            foto_profil=foto_profil,
-            bio_singkat=bio_singkat,
-            deskripsi_lengkap=deskripsi_lengkap,
-            nomor_izin_praktik=nomor_izin_praktik,
-            gelar_akademik=gelar_akademik,
-            pendidikan_terakhir=pendidikan_terakhir,
-            kota_praktik=kota_praktik,
-            spesialisasi=spesialisasi,
-            pengalaman_tahun=pengalaman_tahun,
-            tarif_per_sesi=tarif_per_sesi,
-            linkedin=linkedin,
-            portofolio=portofolio,
-        )
+        payload = form.to_payload()
 
     return await user_service.update_profile(
         db=db,
         current_user=current_user,
         payload=payload,
         explicit_portofolio_field=explicit_portofolio_field,
-        portofolio_file=portofolio_file,
+        portofolio_file=form.portofolio_file,
     )

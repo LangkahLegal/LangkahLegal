@@ -1,5 +1,8 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
 from docs import schemas as docs
 
@@ -82,3 +85,19 @@ class JobStatusResponse(BaseModel):
     frbr_uri: Optional[str] = None
     total_chunks: Optional[int] = None
     error: Optional[str] = None
+
+
+@dataclass
+class DocumentUploadForm:
+    file: UploadFile = File(..., description="File PDF dokumen hukum")
+    nama_uu: str = Form(..., description="Nama lengkap undang-undang")
+    nomor_uu: str | None = Form(None, description="Nomor undang-undang")
+    tahun_uu: int | None = Form(None, description="Tahun undang-undang")
+    kategori: str = Form(..., description="Kategori hukum")
+    status_hukum: str = Form(..., description="Status hukum")
+
+
+@dataclass
+class DocumentReplaceForm(DocumentUploadForm):
+    file: UploadFile = File(..., description="File PDF pengganti")
+    frbr_uri: str = Form(..., description="FRBR URI dokumen yang akan di-replace")

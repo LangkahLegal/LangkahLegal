@@ -1,12 +1,14 @@
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, UploadFile, File, Form, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from supabase import Client
 
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
 from schemas.admin_docs import (
     ChunkResponse,
+    DocumentReplaceForm,
+    DocumentUploadForm,
     JobStatusResponse,
     PaginatedResponse,
     UpdateChunkRequest,
@@ -25,23 +27,10 @@ router = APIRouter()
 )
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="File PDF dokumen hukum"),
-    nama_uu: str = Form(..., description="Nama lengkap undang-undang"),
-    nomor_uu: str | None = Form(None, description="Nomor undang-undang"),
-    tahun_uu: int | None = Form(None, description="Tahun undang-undang"),
-    kategori: str = Form(..., description="Kategori hukum"),
-    status_hukum: str = Form(..., description="Status hukum"),
+    form: DocumentUploadForm = Depends(),
     user: dict = Depends(get_current_user),
 ):
-    job, pdf_bytes, manual_metadata = await admin_doc_service.create_upload_job(
-        user=user,
-        file=file,
-        nama_uu=nama_uu,
-        nomor_uu=nomor_uu,
-        tahun_uu=tahun_uu,
-        kategori=kategori,
-        status_hukum=status_hukum,
-    )
+    job, pdf_bytes, manual_metadata = await admin_doc_service.create_upload_job(user, form)
 
     background_tasks.add_task(
         admin_doc_service.process_pdf_job, job["job_id"], pdf_bytes, manual_metadata
@@ -109,34 +98,18 @@ def update_chunk(
 )
 async def replace_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="File PDF pengganti"),
-    frbr_uri: str = Form(..., description="FRBR URI dokumen yang akan di-replace"),
-    nama_uu: str = Form(..., description="Nama lengkap undang-undang"),
-    nomor_uu: str | None = Form(None, description="Nomor undang-undang"),
-    tahun_uu: int | None = Form(None, description="Tahun undang-undang"),
-    kategori: str = Form(..., description="Kategori hukum"),
-    status_hukum: str = Form(..., description="Status hukum"),
+    form: DocumentReplaceForm = Depends(),
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    job, pdf_bytes, manual_metadata = await admin_doc_service.create_replace_job(
-        db=db,
-        user=user,
-        file=file,
-        frbr_uri=frbr_uri,
-        nama_uu=nama_uu,
-        nomor_uu=nomor_uu,
-        tahun_uu=tahun_uu,
-        kategori=kategori,
-        status_hukum=status_hukum,
-    )
+    job, pdf_bytes, manual_metadata = await admin_doc_service.create_replace_job(db, user, form)
 
     background_tasks.add_task(
         admin_doc_service.process_pdf_job,
         job["job_id"],
         pdf_bytes,
         manual_metadata=manual_metadata,
-        replace_uri=frbr_uri,
+        replace_uri=form.frbr_uri,
     )
 
     return job

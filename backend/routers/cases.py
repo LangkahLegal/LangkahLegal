@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, status
 from supabase import Client
 from core.database import get_supabase_client
 from core.dependencies import get_current_user
+from schemas.cases import CaseForm
 from services import case_service
-from typing import Optional
 from docs import cases as docs
 
 router = APIRouter()
@@ -11,27 +11,11 @@ router = APIRouter()
 
 @router.post("/", status_code=status.HTTP_201_CREATED, **docs.POSTING_KASUS_ANONIM)
 async def posting_kasus_anonim(
-    kategori_hukum: str = Form(...),
-    deskripsi_kasus_awam: str = Form(...),
-    tanggal_konsultasi: str = Form(...),
-    jam_mulai: str = Form(...),
-    jam_selesai: str = Form(...),
-    dokumen_bukti: Optional[str] = Form(default=None),
-    dokumen_pendukung_files: list[UploadFile] | None = File(default=None),
+    form: CaseForm = Depends(),
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    return await case_service.post_case(
-        db=db,
-        current_user=current_user,
-        kategori_hukum=kategori_hukum,
-        deskripsi_kasus_awam=deskripsi_kasus_awam,
-        tanggal_konsultasi=tanggal_konsultasi,
-        jam_mulai=jam_mulai,
-        jam_selesai=jam_selesai,
-        dokumen_bukti=dokumen_bukti,
-        dokumen_pendukung_files=dokumen_pendukung_files,
-    )
+    return await case_service.post_case(db, current_user, form)
 
 
 @router.get("/", **docs.LIHAT_BURSA_KASUS)

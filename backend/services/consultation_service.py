@@ -15,7 +15,7 @@ from repositories import (
     schedule_repository,
     supporting_document_repository,
 )
-from schemas.consultations import AssignSchedule, RatingCreate
+from schemas.consultations import AssignSchedule, ConsultationForm, RatingCreate
 from services import notification_service
 from services.storage_service import (
     remove_file_from_supabase,
@@ -26,34 +26,26 @@ from services.storage_service import (
 logger = logging.getLogger(__name__)
 
 
-async def create_consultation(
-    db: Client,
-    current_user: dict,
-    id_jadwal: int,
-    deskripsi_kasus: str,
-    jam_mulai: str,
-    jam_selesai: str,
-    dokumen_pendukung_files: list[UploadFile] | None,
-) -> dict:
+async def create_consultation(db: Client, current_user: dict, form: ConsultationForm) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
 
-    valid_files = select_valid_files(dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
+    valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
 
-    data_jadwal = schedule_repository.get_by_id(db, id_jadwal)
+    data_jadwal = schedule_repository.get_by_id(db, form.id_jadwal)
 
     if data_jadwal is None:
         raise NotFoundError("Jadwal ketersediaan tidak ditemukan")
 
-    ensure_within_schedule(jam_mulai, jam_selesai, data_jadwal)
+    ensure_within_schedule(form.jam_mulai, form.jam_selesai, data_jadwal)
 
     created = consultation_repository.insert(db, {
         "id_user": current_user["id_user"],
         "id_konsultan": data_jadwal["id_konsultan"],
-        "id_jadwal": id_jadwal,
+        "id_jadwal": form.id_jadwal,
         "tanggal_pengajuan": data_jadwal["tanggal"],
-        "jam_mulai": jam_mulai,
-        "jam_selesai": jam_selesai,
-        "deskripsi_kasus": deskripsi_kasus,
+        "jam_mulai": form.jam_mulai,
+        "jam_selesai": form.jam_selesai,
+        "deskripsi_kasus": form.deskripsi_kasus,
         "status_pengajuan": StatusPengajuan.PENDING
     })
 
@@ -77,7 +69,7 @@ async def create_consultation(
         "data": {
             "id_pengajuan": id_pengajuan,
             "tanggal_konsultasi": data_jadwal["tanggal"],
-            "jam_diajukan": f"{jam_mulai} - {jam_selesai}",
+            "jam_diajukan": f"{form.jam_mulai} - {form.jam_selesai}",
             "status": StatusPengajuan.PENDING,
             "dokumen_terupload": uploaded_docs,
             "dokumen_gagal": failed_docs,

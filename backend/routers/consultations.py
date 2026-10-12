@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from supabase import Client
 from core.database import get_supabase_client
-from schemas.consultations import AssignSchedule, RatingCreate
+from schemas.consultations import AssignSchedule, ConsultationForm, RatingCreate
 from core.dependencies import get_current_user
 from services import consultation_service
 from docs import consultations as docs
@@ -10,23 +10,11 @@ router = APIRouter()
 
 @router.post("/", status_code=status.HTTP_201_CREATED, **docs.BUAT_PENGAJUAN_KONSULTASI)
 async def buat_pengajuan_konsultasi(
-    id_jadwal: int = Form(...),
-    deskripsi_kasus: str = Form(...),
-    jam_mulai: str = Form(...),
-    jam_selesai: str = Form(...),
-    dokumen_pendukung_files: list[UploadFile] | None = File(default=None),
+    form: ConsultationForm = Depends(),
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client)
 ):
-    return await consultation_service.create_consultation(
-        db=db,
-        current_user=current_user,
-        id_jadwal=id_jadwal,
-        deskripsi_kasus=deskripsi_kasus,
-        jam_mulai=jam_mulai,
-        jam_selesai=jam_selesai,
-        dokumen_pendukung_files=dokumen_pendukung_files,
-    )
+    return await consultation_service.create_consultation(db, current_user, form)
 
 @router.put("/{id_pengajuan}/status")
 def update_consultation_status(
