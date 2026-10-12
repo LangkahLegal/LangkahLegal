@@ -39,7 +39,7 @@ MAX_PDF_BYTES = 50 * 1024 * 1024
 _jobs: dict[str, dict] = {}
 
 
-def _require_admin(user: CurrentUser):
+def _require_admin(user: CurrentUser) -> None:
     require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin.")
 
 
@@ -123,7 +123,9 @@ def _insert_in_batches(db: Client, job: dict, rows: list[dict]) -> int:
     return len(rows)
 
 
-def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None):
+def process_pdf_job(
+    job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None
+) -> None:
     job = _jobs[job_id]
     job["status"] = "processing"
     job["message"] = "Memproses PDF..."

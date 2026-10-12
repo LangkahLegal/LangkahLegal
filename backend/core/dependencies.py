@@ -52,5 +52,7 @@ def get_current_user(
             nama=profile["nama"],
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Otorisasi gagal: {str(e)}")

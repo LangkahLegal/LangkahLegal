@@ -152,8 +152,8 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
                             "ukuran_kb": 0,
                         }
                     )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Gagal memuat dokumen bursa {id_bursa}: {e}")
     return berkas
 
 

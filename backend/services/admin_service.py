@@ -19,7 +19,7 @@ from schemas.admin import VerifyConsultantPayload
 logger = logging.getLogger(__name__)
 
 
-def require_admin(user: CurrentUser):
+def require_admin(user: CurrentUser) -> None:
     require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin yang bisa mengakses fitur ini.")
 
 

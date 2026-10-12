@@ -32,6 +32,15 @@ class PasswordLoginPayload(BaseModel):
     password: str
 
 
+class RefreshTokenPayload(BaseModel):
+    refresh_token: Optional[str] = None
+
+
+class ExchangeCodePayload(BaseModel):
+    code: Optional[str] = None
+    code_verifier: Optional[str] = None
+
+
 class OAuthPayload(BaseModel):
     redirectTo: str
     provider: Optional[str] = "google"

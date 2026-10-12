@@ -4,7 +4,7 @@ from fastapi import HTTPException
 class AppError(HTTPException):
     status_code = 500
 
-    def __init__(self, detail=None, status_code: int | None = None):
+    def __init__(self, detail=None, status_code: int | None = None) -> None:
         super().__init__(status_code=status_code or self.status_code, detail=detail)
 
 

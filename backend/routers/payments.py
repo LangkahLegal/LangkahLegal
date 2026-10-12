@@ -35,7 +35,7 @@ async def midtrans_notification(
 ):
     try:
         notification_json = await request.json()
-    except Exception:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     return payment_service.handle_notification(db, settings, notification_json)

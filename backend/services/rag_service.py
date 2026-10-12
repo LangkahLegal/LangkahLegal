@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional
 
 import voyageai
@@ -124,6 +125,12 @@ CONSULTANT_TOOL = types.Tool(
         )
     ]
 )
+
+
+AGENT_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite")
+AGENT_MAX_RETRIES = 2
+REWRITE_BELOW_WORDS = 5
+MODEL_UNAVAILABLE_MARKERS = ("429", "503", "UNAVAILABLE")
 
 
 def _get_voyage_client() -> voyageai.Client:
@@ -363,6 +370,51 @@ def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
     return history + [last_msg]
 
 
+def _is_model_unavailable(error: Exception) -> bool:
+    return any(marker in str(error) for marker in MODEL_UNAVAILABLE_MARKERS)
+
+
+def _generate_with_first_available_model(client: genai.Client, contents: list, config, retry: int):
+    for model_name in AGENT_MODELS:
+        try:
+            logger.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
+            return client.models.generate_content(model=model_name, contents=contents, config=config)
+        except Exception as e:
+            if not _is_model_unavailable(e):
+                raise
+            logger.warning(f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback...")
+    return None
+
+
+def _generate_with_retry(client: genai.Client, contents: list, config):
+    for retry in range(AGENT_MAX_RETRIES + 1):
+        response = _generate_with_first_available_model(client, contents, config, retry)
+        if response is not None:
+            return response
+
+        if retry < AGENT_MAX_RETRIES:
+            wait_time = 2 * (retry + 1)
+            logger.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
+            time.sleep(wait_time)
+
+    raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
+
+
+def _tool_response_content(name: str, tool_result: dict) -> types.Content:
+    return types.Content(
+        role="tool",
+        parts=[types.Part.from_function_response(name=name, response=tool_result)],
+    )
+
+
+def _response_text(response) -> str:
+    try:
+        return response.text or ""
+    except Exception as e:
+        logger.warning(f"[AGENT] Teks jawaban tidak bisa dibaca: {e}")
+        return "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
+
+
 def agentic_generate(
     query: str,
     context: str,
@@ -370,10 +422,7 @@ def agentic_generate(
     supabase: Client = None,
 ) -> dict:
     client = _get_gemini_client()
-
-    contents = _build_contents(chat_history or [], query, context)
-    contents = _smart_truncate(contents)
-
+    contents = _smart_truncate(_build_contents(chat_history or [], query, context))
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT,
         temperature=0.4,
@@ -382,45 +431,11 @@ def agentic_generate(
     )
 
     consultants_found = []
-    AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-    MAX_RETRIES = 2
 
     for iteration in range(MAX_TOOL_LOOP):
         logger.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
 
-        response = None
-        for retry in range(MAX_RETRIES + 1):
-            for model_name in AVAILABLE_MODELS:
-                try:
-                    logger.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=contents,
-                        config=config,
-                    )
-                    break
-                except Exception as e:
-                    err_str = str(e)
-                    if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                        logger.warning(
-                            f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback..."
-                        )
-                        continue
-                    else:
-                        raise e
-
-            if response is not None:
-                break
-
-            if retry < MAX_RETRIES:
-                import time
-
-                wait_time = 2 * (retry + 1)
-                logger.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
-                time.sleep(wait_time)
-
-        if response is None:
-            raise Exception("RESOURCE_EXHAUSTED: Semua model tidak tersedia setelah retry (429/503).")
+        response = _generate_with_retry(client, contents, config)
 
         if not response.function_calls:
             break
@@ -438,25 +453,11 @@ def agentic_generate(
             consultants_found = tool_result.get("consultants", [])
 
         contents.append(response.candidates[0].content)
-        contents.append(
-            types.Content(
-                role="tool",
-                parts=[
-                    types.Part.from_function_response(
-                        name=fc.name,
-                        response=tool_result,
-                    )
-                ],
-            )
-        )
+        contents.append(_tool_response_content(fc.name, tool_result))
     else:
         logger.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
 
-    jawaban = ""
-    try:
-        jawaban = response.text or ""
-    except Exception:
-        jawaban = "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
+    jawaban = _response_text(response)
 
     if consultants_found:
         return {
@@ -466,6 +467,15 @@ def agentic_generate(
         }
 
     return {"type": "text", "jawaban": jawaban}
+
+
+def _search_query(query: str, chat_history: list[dict] | None) -> str:
+    if len(query.split()) >= REWRITE_BELOW_WORDS:
+        logger.info("[TRIAGE] Query panjang, skip rewrite untuk hemat kuota.")
+        return query
+
+    logger.info("[TRIAGE] Query singkat, melakukan rewrite...")
+    return rewrite_query(query, chat_history)
 
 
 def triage(
@@ -479,12 +489,7 @@ def triage(
 
     try:
         current_step = "rewrite"
-        if len(query.split()) < 5:
-            logger.info("[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
-            search_query = rewrite_query(query, chat_history)
-        else:
-            logger.info("[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
-            search_query = query
+        search_query = _search_query(query, chat_history)
 
         current_step = "embed"
         query_embedding = embed_query(search_query)

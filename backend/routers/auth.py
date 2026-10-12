@@ -13,10 +13,12 @@ from helpers.cookies import (
     set_role_cookie,
 )
 from schemas.auth import (
+    ExchangeCodePayload,
     ForgotPasswordPayload,
     OAuthPayload,
     OtpLoginPayload,
     PasswordLoginPayload,
+    RefreshTokenPayload,
     ResendOtpPayload,
     ResetPasswordPayload,
     RolePayload,
@@ -72,12 +74,11 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
 async def exchange_code(
     request: Request,
     response: Response,
-    payload: dict,
+    payload: ExchangeCodePayload,
 ):
-    code = payload.get("code")
-    code_verifier = payload.get("code_verifier") or request.cookies.get("ll_oauth_verifier")
+    code_verifier = payload.code_verifier or request.cookies.get("ll_oauth_verifier")
 
-    data = await auth_service.exchange_code(code, code_verifier)
+    data = await auth_service.exchange_code(payload.code, code_verifier)
 
     set_auth_cookies(response, data["session"])
     clear_oauth_verifier_cookie(response)
@@ -86,10 +87,8 @@ async def exchange_code(
 
 
 @router.post("/refresh", **docs.REFRESH_SESSION)
-async def refresh_session(request: Request, response: Response, payload: dict = None):
-    refresh_token = request.cookies.get("ll_refresh")
-    if payload and payload.get("refresh_token"):
-        refresh_token = payload.get("refresh_token")
+async def refresh_session(request: Request, response: Response, payload: RefreshTokenPayload | None = None):
+    refresh_token = (payload.refresh_token if payload else None) or request.cookies.get("ll_refresh")
 
     data = await auth_service.refresh_session(refresh_token)
 

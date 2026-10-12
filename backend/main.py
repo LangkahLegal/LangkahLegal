@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -22,7 +22,7 @@ app.state.limiter = limiter
 
 
 @app.middleware("http")
-async def force_https_scheme(request: Request, call_next):
+async def force_https_scheme(request: Request, call_next) -> Response:
     if request.headers.get("x-forwarded-proto") == "https":
         request.scope["scheme"] = "https"
     return await call_next(request)
@@ -38,7 +38,7 @@ app.add_middleware(
 
 
 @app.exception_handler(RateLimitExceeded)
-async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     return JSONResponse(
         status_code=429,
         content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."},

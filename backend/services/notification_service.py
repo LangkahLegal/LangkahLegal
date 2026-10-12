@@ -1,5 +1,6 @@
 import functools
 import logging
+from typing import Callable
 
 from supabase import Client
 
@@ -10,14 +11,14 @@ from services.email_service import get_frontend_base_url, send_notification_emai
 logger = logging.getLogger(__name__)
 
 
-def _best_effort(label: str):
-    def decorator(func):
+def _best_effort(label: str) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> None:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                logger.error(f"Gagal kirim email {label}: {e}")
+                logger.error(f"Gagal kirim email {label}: {e}", exc_info=True)
 
         return wrapper
 
