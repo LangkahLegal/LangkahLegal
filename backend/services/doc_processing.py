@@ -1,12 +1,3 @@
-"""
-Document Processing Service
-============================
-
-
-Dipindahkan dari tests/rag_test.py dan tests/scrapper_fast.py
-agar bisa dipakai oleh router admin_docs.
-"""
-
 import os
 import re
 import json
@@ -49,7 +40,6 @@ _NOISE_RE = re.compile("|".join(OCR_NOISE_PATTERNS), re.IGNORECASE)
 
 
 def _is_noise_line(line: str) -> bool:
-    """Deteksi apakah baris ini noise (watermark, header, footer, sampah OCR)."""
     s = line.strip()
     if not s:
         return True
@@ -73,7 +63,6 @@ def _is_noise_line(line: str) -> bool:
 
 
 def _normalize_lines(raw: str) -> str:
-    """Bersihkan noise per baris dan gabung ulang."""
     lines = []
     for line in raw.splitlines():
         s = line.strip()
@@ -85,7 +74,6 @@ def _normalize_lines(raw: str) -> str:
 
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
-    """Ekstrak teks dari PDF bytes menggunakan PyMuPDF (fitz)."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     all_parts = []
 
@@ -112,8 +100,6 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
 
 def clean_ocr_text(raw: str) -> str:
-    """Bersihkan teks OCR dari typo umum dan noise."""
-
     raw = re.sub(r"Pasa[7l]\s*", "Pasal ", raw)
     raw = re.sub(r"(Pasal\s+\d+)\s*[Il]", r"\1 1", raw, flags=re.I)
     raw = re.sub(r"(Pasal\s+\d+)\s*[O]", r"\1 0", raw, flags=re.I)
@@ -135,7 +121,6 @@ def clean_ocr_text(raw: str) -> str:
 
 
 def split_into_chunks(text: str) -> list[dict]:
-    """Pecah teks bersih menjadi chunk per-pasal."""
     pasal_re = re.compile(r"(?m)^Pasal\s+(\d+[a-z]?A?B?C?)\s*$", re.IGNORECASE)
     matches = list(pasal_re.finditer(text))
 
@@ -198,7 +183,6 @@ VALID_KATEGORI = {
 
 
 def extract_metadata_with_ai(full_text: str) -> dict:
-    """Gunakan Gemini untuk mengekstrak metadata dari teks dokumen hukum."""
     client = genai.Client()
     preview = full_text[:2000]
     prompt = AI_METADATA_PROMPT + preview
@@ -241,7 +225,6 @@ def extract_metadata_with_ai(full_text: str) -> dict:
 
 
 def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
-    """Bangun list record siap-insert dari chunks + metadata AI."""
     frbr_uri = metadata.get("frbr_uri", "/akn/id/act/unknown")
     kategori = metadata.get("kategori", "lainnya")
     nama_uu = metadata.get("nama_uu")
@@ -276,7 +259,6 @@ def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
     retry=retry_if_exception_type(Exception),
 )
 def _embed_batch_with_retry(client: voyageai.Client, texts: list[str]) -> list[list[float]]:
-    """Embed satu batch teks, dengan retry pada 429."""
     try:
         resp = client.embed(texts, model=EMBEDDING_MODEL, input_type="document")
         return resp.embeddings
@@ -287,7 +269,6 @@ def _embed_batch_with_retry(client: voyageai.Client, texts: list[str]) -> list[l
 
 
 def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECONDS) -> list[list[float]]:
-    """Embed batch teks dengan dynamic chunking dan rate-limit handling."""
     client = voyageai.Client()
     all_embeddings = []
 
@@ -322,11 +303,6 @@ def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECON
 
 
 def process_pdf_to_records(pdf_bytes: bytes, manual_metadata: dict | None = None) -> tuple[list[dict], dict]:
-    """
-    Pipeline lengkap: PDF bytes → records siap insert.
-    Jika manual_metadata disupply, lewati tahap ekstraksi AI.
-    Returns (records_tanpa_embedding, metadata).
-    """
     log.info("[DOC_SERVICE] Step 1/4: Ekstraksi teks dari PDF...")
     raw_text = extract_text_from_pdf(pdf_bytes)
     if not raw_text or len(raw_text.strip()) < 50:

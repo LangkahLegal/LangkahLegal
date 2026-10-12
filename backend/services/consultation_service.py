@@ -255,9 +255,6 @@ def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status:
 
 
 def list_my_consultations(db: Client, current_user: dict) -> dict:
-    """
-    Mengambil list konsultasi dengan JOIN ke jadwal dan nama konsultan.
-    """
     query = db.table("pengajuan_konsultasi").select("""
         *,
         dokumen_pendukung (
@@ -286,7 +283,6 @@ def list_my_consultations(db: Client, current_user: dict) -> dict:
 
 
 def _count_sessions(jm: str, js: str) -> int:
-    """Jumlah blok 30 menit dari rentang `HH:MM` (minimal 1)."""
     jumlah_sesi = 1
     if len(jm) >= 5 and len(js) >= 5:
         try:
@@ -306,7 +302,6 @@ def _count_sessions(jm: str, js: str) -> int:
 
 
 def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
-    """Untuk bursa kasus, dokumen tersimpan di field dokumen_bukti (comma-separated URLs)."""
     berkas = []
     try:
         bursa_data = db.table("bursa_kasus").select("dokumen_bukti").eq("id_bursa", id_bursa).execute()

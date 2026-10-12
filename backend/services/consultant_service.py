@@ -65,10 +65,6 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
 
 
 def get_consultant_detail(db: Client, id_konsultan: int) -> dict:
-    """
-    Mengambil profil detail satu konsultan beserta jadwal ketersediaannya
-    (sebagai jam buka/tutup).
-    """
     response = (
         db.table("konsultan")
         .select("*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
@@ -104,10 +100,6 @@ def get_consultant_detail(db: Client, id_konsultan: int) -> dict:
 
 
 def get_available_schedules(db: Client, id_konsultan: int) -> dict:
-    """
-    Melihat jadwal ketersediaan konsultan untuk diajukan oleh Klien.
-    Penting: Hanya jadwal dengan status_tersedia = True yang muncul.
-    """
     try:
         response = (
             db.table("jadwal_ketersediaan")
@@ -402,9 +394,6 @@ def get_history(db: Client, current_user: dict) -> dict:
 
 
 def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> dict:
-    """
-    (Khusus Konsultan) Menambahkan slot jadwal ketersediaan.
-    """
     if current_user.get("role") != "konsultan":
         raise ForbiddenError("Hanya konsultan yang bisa mengatur jadwal")
 
@@ -432,9 +421,6 @@ def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> 
 
 
 def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
-    """
-    (Khusus Konsultan) Menghapus slot jadwal yang belum dipesan.
-    """
     if current_user.get("role") != "konsultan":
         raise ForbiddenError("Akses ditolak")
 
@@ -454,9 +440,6 @@ def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
 def update_schedule(
     db: Client, current_user: dict, id_jadwal: int, request: ScheduleUpdate
 ) -> dict:
-    """
-    (Khusus Konsultan) Mengubah jam/tanggal jadwal yang belum dipesan.
-    """
     if current_user.get("role") != "konsultan":
         raise ForbiddenError("Akses ditolak")
 

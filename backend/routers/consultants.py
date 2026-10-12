@@ -11,24 +11,12 @@ from schemas.consultants import (
 )
 from services import consultant_service
 from typing import Optional
+from docs import consultants as docs
 
 router = APIRouter()
 
 
-@router.get(
-    "/",
-    status_code=status.HTTP_200_OK,
-    summary="Ambil katalog konsultan aktif",
-    description="""
-Mengambil daftar konsultan aktif untuk halaman katalog/landing.
-
-Query opsional:
-- `spesialisasi`: filter berdasarkan kata kunci spesialisasi.
-
-Response sudah diformat untuk frontend card list:
-- `id`, `name`, `spec`, `rating`, `reviews`, `status`, `foto_profil`.
-""",
-)
+@router.get("/", status_code=status.HTTP_200_OK, **docs.GET_ALL_CONSULTANTS)
 def get_all_consultants(
     spesialisasi: Optional[str] = None,
     db: Client = Depends(get_supabase_client)
@@ -36,11 +24,7 @@ def get_all_consultants(
     return consultant_service.list_active_consultants(db, spesialisasi)
 
 
-@router.get(
-    "/me/schedules",
-    summary="Konsultan melihat semua slot jadwal miliknya",
-    description="Menampilkan daftar jadwal milik konsultan login, termasuk nama klien jika slot sudah dibooking.",
-)
+@router.get("/me/schedules", **docs.GET_MY_SCHEDULES)
 def get_my_schedules(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
@@ -51,7 +35,7 @@ def get_my_schedules(
 @router.get(
     "/me/dashboard-stats",
     status_code=status.HTTP_200_OK,
-    summary="Statistik dashboard konsultan",
+    **docs.GET_CONSULTANT_DASHBOARD_STATS,
 )
 def get_consultant_dashboard_stats(
     current_user: dict = Depends(get_current_user),
@@ -60,11 +44,7 @@ def get_consultant_dashboard_stats(
     return consultant_service.get_dashboard_stats(db, current_user)
 
 
-@router.get(
-    "/me/requests/pending",
-    summary="Daftar pengajuan pending untuk konsultan",
-    description="Menampilkan daftar pengajuan konsultasi dengan status `pending` untuk konsultan login.",
-)
+@router.get("/me/requests/pending", **docs.GET_PENDING_REQUESTS)
 def get_pending_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
@@ -72,11 +52,7 @@ def get_pending_requests(
     return consultant_service.get_pending_requests(db, current_user)
 
 
-@router.get(
-    "/me/requests/active",
-    summary="Daftar pengajuan aktif untuk konsultan",
-    description="Menampilkan daftar pengajuan konsultasi dengan status `terjadwal` untuk konsultan login.",
-)
+@router.get("/me/requests/active", **docs.GET_ACTIVE_REQUESTS)
 def get_active_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
@@ -84,20 +60,7 @@ def get_active_requests(
     return consultant_service.get_active_requests(db, current_user)
 
 
-@router.get(
-    "/{id_konsultan}",
-    status_code=status.HTTP_200_OK,
-    summary="Detail profil konsultan publik",
-    description="""
-Mengambil profil detail konsultan berdasarkan `id_konsultan`.
-
-Response mencakup:
-- data profil konsultan
-- data users terkait (nama, email, foto_profil)
-- rating agregat
-- jadwal_ketersediaan aktif
-""",
-)
+@router.get("/{id_konsultan}", status_code=status.HTTP_200_OK, **docs.GET_CONSULTANT_DETAIL)
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
     return consultant_service.get_consultant_detail(db, id_konsultan)
 
@@ -105,8 +68,7 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
 @router.get(
     "/{id_konsultan}/schedules",
     status_code=status.HTTP_200_OK,
-    summary="Lihat jadwal tersedia per konsultan",
-    description="Mengembalikan hanya slot jadwal yang masih tersedia (`status_tersedia=true`) untuk pengajuan client.",
+    **docs.GET_CONSULTANT_SCHEDULES,
 )
 def get_consultant_schedules(
     id_konsultan: int, db: Client = Depends(get_supabase_client)
@@ -114,12 +76,7 @@ def get_consultant_schedules(
     return consultant_service.get_available_schedules(db, id_konsultan)
 
 
-@router.post(
-    "/schedules",
-    status_code=status.HTTP_201_CREATED,
-    summary="Konsultan menambah slot jadwal",
-    description="Khusus role konsultan untuk menambahkan slot jadwal ketersediaan baru.",
-)
+@router.post("/schedules", status_code=status.HTTP_201_CREATED, **docs.UPLOAD_JADWAL_KONSULTAN)
 def upload_jadwal_konsultan(
     request: ScheduleCreate,
     current_user: dict = Depends(get_current_user),
@@ -131,8 +88,7 @@ def upload_jadwal_konsultan(
 @router.delete(
     "/schedules/{id_jadwal}",
     status_code=status.HTTP_200_OK,
-    summary="Konsultan menghapus slot jadwal",
-    description="Slot hanya bisa dihapus jika belum dibooking client (`status_tersedia=true`).",
+    **docs.HAPUS_JADWAL_KONSULTAN,
 )
 def hapus_jadwal_konsultan(
     id_jadwal: int,
@@ -142,12 +98,7 @@ def hapus_jadwal_konsultan(
     return consultant_service.delete_schedule(db, current_user, id_jadwal)
 
 
-@router.put(
-    "/schedules/{id_jadwal}",
-    status_code=status.HTTP_200_OK,
-    summary="Konsultan mengubah slot jadwal",
-    description="Slot hanya bisa diubah jika belum dibooking client.",
-)
+@router.put("/schedules/{id_jadwal}", status_code=status.HTTP_200_OK, **docs.EDIT_JADWAL_KONSULTAN)
 def edit_jadwal_konsultan(
     id_jadwal: int,
     request: ScheduleUpdate,
@@ -157,22 +108,14 @@ def edit_jadwal_konsultan(
     return consultant_service.update_schedule(db, current_user, id_jadwal, request)
 
 
-@router.patch(
-    "/schedules/{id_jadwal}/toggle",
-    summary="Toggle status ketersediaan per slot",
-    description="Mengubah `status_tersedia` untuk satu slot jadwal tertentu.",
-)
+@router.patch("/schedules/{id_jadwal}/toggle", **docs.TOGGLE_SCHEDULE_SLOT)
 def toggle_schedule_slot(
     id_jadwal: int, payload: ScheduleToggle, db: Client = Depends(get_supabase_client)
 ):
     return consultant_service.toggle_schedule_slot(db, id_jadwal, payload)
 
 
-@router.patch(
-    "/me/active-status",
-    summary="Toggle status aktif konsultan",
-    description="Mengubah status global konsultan (`is_active`) untuk kontrol tampil di katalog publik.",
-)
+@router.patch("/me/active-status", **docs.TOGGLE_GLOBAL_ACTIVE)
 def toggle_global_active(
     payload: ConsultantActiveToggle,
     current_user: dict = Depends(get_current_user),
@@ -181,13 +124,7 @@ def toggle_global_active(
     return consultant_service.toggle_global_active(db, current_user, payload)
 
 
-@router.get(
-    "/me/clients",
-    summary="Daftar Klien Terjadwal (Belum Lewat)",
-    description="""
-Page Daftar Klien: Menampilkan pengajuan berstatus 'terjadwal' yang jadwalnya belum lewat waktu sekarang.
-"""
-)
+@router.get("/me/clients", **docs.GET_DAFTAR_KLIEN)
 def get_daftar_klien(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
@@ -195,15 +132,7 @@ def get_daftar_klien(
     return consultant_service.get_scheduled_clients(db, current_user)
 
 
-@router.get(
-    "/me/history",
-    summary="Riwayat Konsultan",
-    description="""
-Page Riwayat Konsultan: Semua pengajuan KECUALI yang berstatus 'pending'.
-Menampilkan status: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak, kedaluwarsa.
-Disorting berdasarkan terbaru ke terlama.
-"""
-)
+@router.get("/me/history", **docs.GET_RIWAYAT_KONSULTAN)
 def get_riwayat_konsultan(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),

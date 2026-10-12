@@ -247,7 +247,6 @@ async def refresh_session(refresh_token: Optional[str]) -> dict:
 
 
 def get_profile(db: Client, token: str) -> Optional[dict]:
-    """Profil user lokal berdasarkan access token, atau None jika belum terdaftar."""
     user = _get_auth_user(token, db)
 
     result = (

@@ -4,25 +4,12 @@ from database import get_supabase_client
 from dependencies import get_current_user
 from services import case_service
 from typing import Optional
+from docs import cases as docs
 
 router = APIRouter()
 
 
-@router.post(
-    "/",
-    status_code=status.HTTP_201_CREATED,
-    summary="Client posting kasus anonim ke bursa (dengan file upload)",
-    description="""
-Membuat kasus baru pada bursa kasus.
-
-Khusus role client. Kasus yang berhasil diposting akan berstatus `open`
-dan dapat diklaim langsung oleh konsultan.
-
-Mendukung upload file dokumen pendukung (opsional).
-Gunakan field `dokumen_pendukung_files` untuk upload file (bisa lebih dari satu).
-Format yang diizinkan: PDF / JPG / JPEG / PNG / WEBP.
-""",
-)
+@router.post("/", status_code=status.HTTP_201_CREATED, **docs.POSTING_KASUS_ANONIM)
 async def posting_kasus_anonim(
     kategori_hukum: str = Form(...),
     deskripsi_kasus_awam: str = Form(...),
@@ -47,33 +34,15 @@ async def posting_kasus_anonim(
     )
 
 
-@router.get(
-    "/",
-    summary="Konsultan melihat daftar bursa kasus open",
-    description="Khusus role konsultan. Mengambil semua kasus bursa dengan status `open`.",
-)
+@router.get("/", **docs.LIHAT_BURSA_KASUS)
 def lihat_bursa_kasus(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    """
-    (Khusus Konsultan) Endpoint untuk melihat semua kasus yang masih 'open'.
-    """
     return case_service.list_open_cases(db, current_user)
 
 
-@router.post(
-    "/{id_bursa}/claim",
-    status_code=status.HTTP_201_CREATED,
-    summary="Konsultan klaim langsung sebuah kasus dari bursa",
-    description="""
-Khusus role konsultan. Konsultan langsung mengambil/mengklaim kasus dari bursa.
-
-Saat klaim berhasil:
-- Status bursa berubah menjadi `closed`.
-- Otomatis dibuatkan draf pengajuan konsultasi (tabel `pengajuan_konsultasi`).
-""",
-)
+@router.post("/{id_bursa}/claim", status_code=status.HTTP_201_CREATED, **docs.KLAIM_KASUS)
 def klaim_kasus(
     id_bursa: int,
     current_user: dict = Depends(get_current_user),

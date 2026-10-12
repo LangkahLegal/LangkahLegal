@@ -19,7 +19,6 @@ log = logging.getLogger(__name__)
 
 
 def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 30) -> list[dict]:
-    """Ambil riwayat chat dari DB, termasuk metadata (untuk konteks konsultan)."""
     try:
         result = (
             supabase.table("chat_messages")
@@ -49,7 +48,6 @@ def _save_message(
     content: str,
     metadata: dict = None,
 ) -> None:
-    """Simpan pesan ke tabel chat_messages."""
     row = {
         "session_id": session_id,
         "role": role,
@@ -62,10 +60,6 @@ def _save_message(
 
 
 def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> None:
-    """
-    Background: Generate judul sesi dari pesan pertama user menggunakan LLM.
-    Dipanggil hanya jika ini adalah pesan pertama di sesi ini.
-    """
     from rag_service import _get_gemini_client, LLM_MODEL
     from google.genai import types
 
@@ -189,14 +183,6 @@ def get_session_messages(
 
 
 def run_triage(supabase: Client, current_user: dict, payload: TriageRequest) -> TriageResponse:
-    """
-    Pipeline:
-    1. Resolve/create session
-    2. Load chat history from DB
-    3. Run RAG triage
-    4. Save user message + AI response to DB
-    5. Auto-generate title if first message
-    """
     session_id = payload.session_id
     current_step = "init"
     try:

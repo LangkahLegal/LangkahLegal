@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 def require_admin(user: dict):
-    """Pastikan user memiliki role admin."""
     if user.get("role") != "admin":
         raise ForbiddenError("Akses ditolak. Hanya admin yang bisa mengakses fitur ini.")
 

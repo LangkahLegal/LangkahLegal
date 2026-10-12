@@ -1,17 +1,3 @@
-"""
-Knowledge Base Router (Publik, read-only)
-==========================================
-Endpoint untuk user membuka sumber dokumen peraturan yang dipakai chatbot
-(daftar "Sumber dokumen" di bawah jawaban AI).
-
-  - GET /pasal/{id_dokumen}          → Isi 1 pasal + metadata dokumennya
-  - GET /documents/detail?frbr_uri=  → Metadata dokumen + total pasal
-  - GET /documents/pasal?frbr_uri=   → Daftar pasal 1 dokumen (paginasi + search)
-
-Prefix: /api/v1/knowledge
-frbr_uri dikirim via query param karena mengandung "/" (konsisten dengan admin_docs).
-"""
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -26,21 +12,14 @@ from schemas.knowledge import (
     PasalListResponse,
 )
 from services import knowledge_service
+from docs import knowledge as docs
 
 router = APIRouter()
 
 RATE_LIMIT = "30/minute"
 
 
-@router.get(
-    "/pasal/{id_dokumen}",
-    response_model=PasalDetailResponse,
-    summary="Isi 1 pasal beserta metadata dokumennya",
-    description="""
-Dipanggil saat user mengklik chip pasal pada daftar "Sumber dokumen" di bawah jawaban chatbot.
-Mengembalikan 404 jika pasal sudah tidak ada (misal dokumen di-replace admin setelah jawaban dibuat).
-    """,
-)
+@router.get("/pasal/{id_dokumen}", response_model=PasalDetailResponse, **docs.GET_PASAL)
 @limiter.limit(RATE_LIMIT)
 def get_pasal(
     request: Request,
@@ -51,11 +30,7 @@ def get_pasal(
     return knowledge_service.get_pasal(db, id_dokumen)
 
 
-@router.get(
-    "/documents/detail",
-    response_model=KnowledgeDocumentDetail,
-    summary="Metadata 1 dokumen peraturan + total pasal",
-)
+@router.get("/documents/detail", response_model=KnowledgeDocumentDetail, **docs.GET_DOCUMENT_DETAIL)
 @limiter.limit(RATE_LIMIT)
 def get_document_detail(
     request: Request,
@@ -66,15 +41,7 @@ def get_document_detail(
     return knowledge_service.get_document_detail(db, frbr_uri)
 
 
-@router.get(
-    "/documents/pasal",
-    response_model=PasalListResponse,
-    summary="Daftar pasal dari 1 dokumen (paginasi + pencarian)",
-    description="""
-Dipakai untuk membaca dokumen utuh dari chatbot ("Lihat semua pasal").
-Urutan mengikuti urutan pasal saat dokumen diproses. Field `search` mencari di nomor pasal dan isi teks.
-    """,
-)
+@router.get("/documents/pasal", response_model=PasalListResponse, **docs.LIST_DOCUMENT_PASAL)
 @limiter.limit(RATE_LIMIT)
 def list_document_pasal(
     request: Request,

@@ -32,7 +32,6 @@ def _require_admin(user: dict):
 
 
 def _embed_single(text: str) -> list[float]:
-    """Embed 1 teks via Voyage AI."""
     client = voyageai.Client()
     resp = client.embed([text], model="voyage-law-2", input_type="document")
     return resp.embeddings[0]
@@ -64,10 +63,6 @@ def _build_manual_metadata(
 
 
 def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None):
-    """
-    Background task: proses PDF dari awal sampai insert ke DB.
-    Jika replace_uri diberikan, hapus dokumen lama dulu.
-    """
     job = _jobs[job_id]
     job["status"] = "processing"
     job["message"] = "Memproses PDF..."
@@ -132,7 +127,6 @@ async def create_upload_job(
     kategori: str,
     status_hukum: str,
 ) -> tuple[dict, bytes, dict]:
-    """Validasi upload & daftarkan job. Mengembalikan (job, pdf_bytes, manual_metadata)."""
     _require_admin(user)
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -175,7 +169,6 @@ async def create_replace_job(
     kategori: str,
     status_hukum: str,
 ) -> tuple[dict, bytes, dict]:
-    """Validasi replace & daftarkan job. Mengembalikan (job, pdf_bytes, manual_metadata)."""
     _require_admin(user)
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):

@@ -37,10 +37,6 @@ async def update_profile(
     explicit_portofolio_field: bool,
     portofolio_file: UploadFile | None,
 ) -> dict:
-    """
-    `explicit_portofolio_field` bernilai True jika client benar-benar mengirim
-    field `portofolio` (termasuk string kosong untuk menghapus portofolio).
-    """
     normalized_portofolio_value: str | None = None
     if explicit_portofolio_field:
         normalized_portofolio_value = (payload.portofolio or "").strip() or None

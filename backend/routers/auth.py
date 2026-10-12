@@ -20,6 +20,7 @@ from schemas.auth import (
     VerifyOtpPayload,
 )
 from services import auth_service
+from docs import auth as docs
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -91,64 +92,40 @@ def _set_role_cookie(response: Response, role: str):
     response.set_cookie("ll_role", role, max_age=30*24*3600, path="/", samesite="lax")
 
 
-@router.post(
-    "/signup",
-    summary="Daftar akun baru",
-    description="Mendaftarkan user baru menggunakan email/password.",
-)
+@router.post("/signup", **docs.SIGN_UP)
 async def sign_up(payload: SignUpPayload, response: Response):
     data = await auth_service.sign_up(payload)
     _set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
-@router.post(
-    "/login-otp",
-    summary="Kirim OTP login ke email",
-    description="Mengirim OTP login ke email yang sudah terdaftar. Endpoint ini tidak membuat user baru.",
-)
+@router.post("/login-otp", **docs.SEND_OTP_LOGIN)
 @limiter.limit("3/minute")
 async def send_otp_login(request: Request, payload: OtpLoginPayload):
     return {"data": await auth_service.send_otp_login(payload)}
 
 
-@router.post(
-    "/resend-signup-otp",
-    summary="Kirim ulang OTP signup",
-    description="Mengirim ulang OTP verifikasi email pada flow signup.",
-)
+@router.post("/resend-signup-otp", **docs.RESEND_SIGNUP_OTP)
 @limiter.limit("3/minute")
 async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
     return {"data": await auth_service.resend_signup_otp(payload)}
 
 
-@router.post(
-    "/verify-otp",
-    summary="Verifikasi OTP",
-    description="Memverifikasi token OTP dan mengembalikan session/access token bila berhasil.",
-)
+@router.post("/verify-otp", **docs.VERIFY_OTP)
 async def verify_otp(payload: VerifyOtpPayload, response: Response):
     data = await auth_service.verify_otp(payload)
     _set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
-@router.post(
-    "/login-password",
-    summary="Login dengan email & password",
-    description="Login standar berbasis password. Mengembalikan session lengkap (access token + refresh token).",
-)
+@router.post("/login-password", **docs.LOGIN_WITH_PASSWORD)
 async def login_with_password(payload: PasswordLoginPayload, response: Response):
     data = await auth_service.login_with_password(payload)
     _set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
-@router.post(
-    "/oauth/google",
-    summary="Generate OAuth URL Google",
-    description="Menghasilkan URL OAuth Google + PKCE verifier.",
-)
+@router.post("/oauth/google", **docs.SIGN_IN_WITH_GOOGLE)
 async def sign_in_with_google(payload: OAuthPayload, response: Response):
     data = auth_service.build_google_oauth_url(payload)
     cookie_flags = _get_cookie_flags()
@@ -167,11 +144,7 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
     return {"data": data}
 
 
-@router.post(
-    "/exchange-code",
-    summary="Tukar OAuth Code dengan Session",
-    description="Menukar code dari URL callback dengan session/access token.",
-)
+@router.post("/exchange-code", **docs.EXCHANGE_CODE)
 async def exchange_code(
     request: Request,
     response: Response,
@@ -188,11 +161,7 @@ async def exchange_code(
     return {"data": data}
 
 
-@router.post(
-    "/refresh",
-    summary="Refresh access token",
-    description="Menukar refresh token untuk mendapatkan session/access token baru.",
-)
+@router.post("/refresh", **docs.REFRESH_SESSION)
 async def refresh_session(request: Request, response: Response, payload: dict = None):
     refresh_token = request.cookies.get("ll_refresh")
     if payload and payload.get("refresh_token"):
@@ -205,11 +174,7 @@ async def refresh_session(request: Request, response: Response, payload: dict = 
     return {"data": data}
 
 
-@router.get(
-    "/profile",
-    summary="Ambil profil user berdasarkan bearer token",
-    description="Validasi access token ke Supabase lalu kembalikan profile user lokal.",
-)
+@router.get("/profile", **docs.GET_PROFILE)
 def get_profile(
     response: Response,
     token: str = Depends(get_token_from_request),
@@ -221,11 +186,7 @@ def get_profile(
     return {"data": profile}
 
 
-@router.post(
-    "/role",
-    summary="Set role user setelah login",
-    description="Menyimpan atau memperbarui role user.",
-)
+@router.post("/role", **docs.UPDATE_ROLE)
 def update_role(
     payload: RolePayload,
     response: Response,
@@ -237,32 +198,20 @@ def update_role(
     return {"data": data}
 
 
-@router.post(
-    "/logout",
-    summary="Logout session user",
-    description="Mencabut session/token aktif user pada Supabase Auth dan menghapus cookie.",
-)
+@router.post("/logout", **docs.LOGOUT)
 async def logout(response: Response, token: str = Depends(get_token_from_request)):
     await auth_service.logout(token)
     _clear_auth_cookies(response)
     return {"data": {"logout": True}}
 
 
-@router.post(
-    "/forgot-password",
-    summary="Kirim tautan reset password",
-    description="Mengirimkan tautan reset password ke email user.",
-)
+@router.post("/forgot-password", **docs.FORGOT_PASSWORD)
 @limiter.limit("3/minute")
 async def forgot_password(request: Request, payload: ForgotPasswordPayload, response: Response):
     return {"data": await auth_service.forgot_password(payload)}
 
 
-@router.post(
-    "/reset-password",
-    summary="Reset password user",
-    description="Mengubah password user setelah berhasil memverifikasi tautan reset.",
-)
+@router.post("/reset-password", **docs.RESET_PASSWORD)
 async def reset_password(
     payload: ResetPasswordPayload,
     response: Response,

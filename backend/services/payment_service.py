@@ -15,7 +15,6 @@ FINAL_STATUSES = ("settlement", "cancel", "refund")
 
 
 def _get_snap_client(settings: Settings) -> midtransclient.Snap:
-    """Inisialisasi Midtrans Snap client dari config."""
     return midtransclient.Snap(
         is_production=settings.midtrans_is_production,
         server_key=settings.midtrans_server_key,
@@ -24,7 +23,6 @@ def _get_snap_client(settings: Settings) -> midtransclient.Snap:
 
 
 def _get_core_api_client(settings: Settings) -> midtransclient.CoreApi:
-    """Inisialisasi Midtrans Core API client untuk verifikasi webhook."""
     return midtransclient.CoreApi(
         is_production=settings.midtrans_is_production,
         server_key=settings.midtrans_server_key,
@@ -41,7 +39,6 @@ def _existing_snap_response(tx: dict) -> dict:
 
 
 def _calculate_quantity(pengajuan: dict) -> int:
-    """Jumlah blok 30 menit dari rentang jam konsultasi (minimal 1)."""
     jam_mulai_str = str(pengajuan.get("jam_mulai", ""))
     jam_selesai_str = str(pengajuan.get("jam_selesai", ""))
 
@@ -72,7 +69,6 @@ def _calculate_quantity(pengajuan: dict) -> int:
 def _send_settlement_emails(
     db: Client, tx: dict, id_pengajuan: int, order_id: str, payment_type: str
 ) -> None:
-    """Kirim receipt ke klien dan pemberitahuan ke konsultan setelah pembayaran settle."""
     pengajuan_res = db.table("pengajuan_konsultasi").select("id_user, id_konsultan, link_zoom").eq("id_pengajuan", id_pengajuan).single().execute()
     if not pengajuan_res.data:
         return

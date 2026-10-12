@@ -8,29 +8,11 @@ from dependencies import get_current_user
 from config import get_settings, Settings
 from database import check_db_connection
 from limiter import limiter
+from docs import main as docs
 
 app = FastAPI(
     title="LangkahLegal API",
-    description="""
-API backend untuk platform konsultasi hukum LangkahLegal.
-
-Panduan singkat untuk frontend:
-- Semua endpoint bisnis berada di prefix `/api/v1`.
-- Endpoint yang membutuhkan login menggunakan header: `Authorization: Bearer <access_token>`.
-- Gunakan endpoint auth untuk mendapatkan access token.
-- Endpoint upload file (portofolio dan dokumen pendukung) wajib dikirim sebagai `multipart/form-data`.
-
-Ringkasan modul:
-- `Auth`: Signup/login/OTP/OAuth/session.
-- `Direktori Konsultan`: Katalog konsultan, detail konsultan, dan manajemen jadwal.
-- `Konsultasi`: Pengajuan konsultasi, response konsultan, status, dan rating.
-- `Users / Profile`: Profile user dan profile profesional konsultan.
-- `Bursa Kasus`: Posting kasus anonim dan sistem klaim langsung oleh konsultan.
-
-Catatan integrasi frontend:
-- Jika endpoint menerima file, jangan set header `Content-Type` manual; biarkan browser/client mengisi boundary multipart otomatis.
-- Field timestamp pada pengajuan konsultasi menggunakan format ISO 8601.
-""",
+    description=docs.API_DESCRIPTION,
     version="1.0.0"
 )
 
@@ -57,13 +39,8 @@ async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExc
         content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."}
     )
 
-@app.get("/health", tags=["System"])
+@app.get("/health", tags=["System"], **docs.HEALTH_CHECK)
 def health_check(settings: Settings = Depends(get_settings)):
-    """
-    Mengecek status server dan koneksi database.
-
-Frontend dapat memanggil endpoint ini saat startup aplikasi untuk memastikan API siap dipakai.
-    """
     db_status = "connected" if check_db_connection() else "disconnected"
     return {
         "status": "ok",
