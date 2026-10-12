@@ -12,13 +12,9 @@ Flow utama:
 Prefix: /api/v1/admin/documents
 """
 
-import logging
-import uuid
-from datetime import datetime
 from typing import Optional
 
-import voyageai
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File, Form, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, UploadFile, File, Form, status
 from supabase import Client
 
 from database import get_supabase_client
@@ -29,97 +25,9 @@ from schemas.admin_docs import (
     PaginatedResponse,
     UpdateChunkRequest,
 )
-from services.doc_processing import (
-    generate_embeddings,
-    process_pdf_to_records,
-)
+from services import admin_doc_service
 
-log = logging.getLogger(__name__)
 router = APIRouter()
-
-SELECT_COLS = (
-    "id_dokumen, frbr_uri, node_id, node_type, kategori, "
-    "nama_uu, nomor_uu, tahun_uu, status_hukum, sumber_undang_undang, "
-    "pasal_bagian, judul_bab, isi_teks, created_at, updated_at"
-)
-
-_jobs: dict[str, dict] = {}
-
-
-# ── Helpers ─────────────────────────────────────────────
-
-def _require_admin(user: dict):
-    if user.get("role") != "admin":
-        raise HTTPException(403, "Akses ditolak. Hanya admin.")
-
-
-def _embed_single(text: str) -> list[float]:
-    """Embed 1 teks via Voyage AI."""
-    client = voyageai.Client()
-    resp = client.embed([text], model="voyage-law-2", input_type="document")
-    return resp.embeddings[0]
-
-
-# ── Background Task: Process & Insert PDF ──────────────
-
-def _bg_process_pdf(job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None):
-    """
-    Background task: proses PDF dari awal sampai insert ke DB.
-    Jika replace_uri diberikan, hapus dokumen lama dulu.
-    """
-    job = _jobs[job_id]
-    job["status"] = "processing"
-    job["message"] = "Memproses PDF..."
-
-    try:
-        records, extracted_metadata = process_pdf_to_records(pdf_bytes, manual_metadata=metadata)
-        frbr_uri = extracted_metadata.get("frbr_uri", "/akn/id/act/unknown")
-        job["frbr_uri"] = frbr_uri
-
-        job["message"] = f"Menghasilkan embedding untuk {len(records)} pasal (ini bisa memakan waktu)..."
-        texts = [r["isi_teks"] for r in records]
-        embeddings = generate_embeddings(texts)
-
-        rows = [{**rec, "embedding": emb} for rec, emb in zip(records, embeddings)]
-
-        db = get_supabase_client()
-
-        if replace_uri:
-            job["message"] = f"Menghapus dokumen lama ({replace_uri})..."
-            db.table("dokumen_hukum").delete().eq("frbr_uri", replace_uri).execute()
-            log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
-
-        if not replace_uri:
-            existing = (
-                db.table("dokumen_hukum")
-                .select("id_dokumen", count="exact")
-                .eq("frbr_uri", frbr_uri)
-                .execute()
-            )
-            if existing.count and existing.count > 0:
-                job["status"] = "failed"
-                job["error"] = f"Dokumen dengan URI '{frbr_uri}' sudah ada di database. Gunakan fitur Replace jika ingin mengganti."
-                job["message"] = "Gagal: dokumen sudah ada."
-                return
-
-        job["message"] = f"Menyimpan {len(rows)} pasal ke database..."
-        batch_size = 40
-        total_inserted = 0
-        for i in range(0, len(rows), batch_size):
-            batch = rows[i : i + batch_size]
-            db.table("dokumen_hukum").insert(batch).execute()
-            total_inserted += len(batch)
-
-        job["status"] = "completed"
-        job["total_chunks"] = total_inserted
-        job["message"] = f"Berhasil! {total_inserted} pasal dari '{extracted_metadata.get('nama_uu', 'Dokumen')}' telah disimpan."
-        log.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {frbr_uri}")
-
-    except Exception as e:
-        job["status"] = "failed"
-        job["error"] = str(e)
-        job["message"] = f"Gagal memproses PDF: {str(e)[:200]}"
-        log.error(f"[ADMIN_DOCS] Job {job_id} failed: {e}", exc_info=True)
 
 
 @router.post(
@@ -153,49 +61,25 @@ async def upload_document(
     """
     Upload file PDF beserta metadata secara manual → sistem memproses di background:
     Teks Ekstraksi → Chunking → Embedding → Insert DB.
-    
+
     Proses AI Extraction di-bypass jika metadata manual disediakan.
     Response langsung 202 Accepted dengan job_id.
     """
-    _require_admin(user)
+    job, pdf_bytes, manual_metadata = await admin_doc_service.create_upload_job(
+        user=user,
+        file=file,
+        nama_uu=nama_uu,
+        nomor_uu=nomor_uu,
+        tahun_uu=tahun_uu,
+        kategori=kategori,
+        status_hukum=status_hukum,
+    )
 
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "File harus berformat PDF.")
+    background_tasks.add_task(
+        admin_doc_service.process_pdf_job, job["job_id"], pdf_bytes, manual_metadata
+    )
 
-    pdf_bytes = await file.read()
-    if len(pdf_bytes) < 100:
-        raise HTTPException(400, "File PDF terlalu kecil atau kosong.")
-    if len(pdf_bytes) > 50 * 1024 * 1024:  # 50MB limit
-        raise HTTPException(400, "File PDF terlalu besar (maks 50MB).")
-
-    frbr_uri = None
-    if nomor_uu and tahun_uu:
-        nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()
-        frbr_uri = f"/akn/id/act/uu-{nomor_clean}-{tahun_uu}"
-
-    manual_metadata = {
-        "nama_uu": nama_uu,
-        "nomor_uu": f"UU No. {nomor_uu} Tahun {tahun_uu}" if nomor_uu and tahun_uu else None,
-        "tahun_uu": tahun_uu,
-        "kategori": kategori,
-        "status_hukum": status_hukum,
-        "frbr_uri": frbr_uri
-    }
-
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "message": f"File '{file.filename}' diterima. Menunggu proses...",
-        "frbr_uri": None,
-        "total_chunks": None,
-        "error": None,
-    }
-
-    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes, manual_metadata)
-    log.info(f"[ADMIN_DOCS] Job {job_id} queued for '{file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
-
-    return _jobs[job_id]
+    return job
 
 
 @router.get(
@@ -217,12 +101,7 @@ def get_job_status(
     job_id: str,
     user: dict = Depends(get_current_user),
 ):
-    _require_admin(user)
-
-    job = _jobs.get(job_id)
-    if not job:
-        raise HTTPException(404, "Job tidak ditemukan.")
-    return job
+    return admin_doc_service.get_job_status(user, job_id)
 
 
 @router.get(
@@ -244,24 +123,7 @@ def list_documents(
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    _require_admin(user)
-
-    query = db.table("dokumen_hukum_summary").select(
-        "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, total_chunks", count="exact"
-    )
-
-    if kategori:
-        query = query.eq("kategori", kategori)
-    if search:
-        query = query.ilike("nama_uu", f"%{search}%")
-
-    offset = (page - 1) * page_size
-    result = query.order("frbr_uri").range(offset, offset + page_size - 1).execute()
-
-    rows = result.data or []
-    total = result.count or 0
-
-    return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
+    return admin_doc_service.list_documents(db, user, page, page_size, kategori, search)
 
 
 @router.get(
@@ -282,30 +144,7 @@ def list_chunks(
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    _require_admin(user)
-
-    count_query = db.table("dokumen_hukum").select("id_dokumen", count="exact").eq("frbr_uri", frbr_uri)
-    data_query = db.table("dokumen_hukum").select(SELECT_COLS).eq("frbr_uri", frbr_uri)
-
-    if search:
-        search_filter = f"pasal_bagian.ilike.%{search}%,isi_teks.ilike.%{search}%"
-        count_query = count_query.or_(search_filter)
-        data_query = data_query.or_(search_filter)
-
-    count_result = count_query.execute()
-    total = count_result.count or 0
-
-    offset = (page - 1) * page_size
-    result = (
-        data_query
-        .order("id_dokumen")
-        .range(offset, offset + page_size - 1)
-        .execute()
-    )
-
-    return PaginatedResponse(
-        data=result.data or [], total=total, page=page, page_size=page_size
-    )
+    return admin_doc_service.list_chunks(db, user, frbr_uri, page, page_size, search)
 
 
 @router.get(
@@ -322,18 +161,7 @@ def get_chunk(
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    _require_admin(user)
-
-    result = (
-        db.table("dokumen_hukum")
-        .select(SELECT_COLS)
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
-
-    if not result.data:
-        raise HTTPException(404, "Chunk tidak ditemukan.")
-    return result.data[0]
+    return admin_doc_service.get_chunk(db, user, id_dokumen)
 
 
 @router.patch(
@@ -353,42 +181,7 @@ def update_chunk(
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    _require_admin(user)
-
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen")
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
-    if not existing.data:
-        raise HTTPException(404, "Chunk tidak ditemukan.")
-
-    update_data = payload.model_dump(exclude_unset=True)
-    if not update_data:
-        raise HTTPException(400, "Tidak ada field yang diubah.")
-
-    if "kategori" in update_data and update_data["kategori"] is not None:
-        update_data["kategori"] = update_data["kategori"].value
-
-    if "isi_teks" in update_data:
-        update_data["embedding"] = _embed_single(update_data["isi_teks"])
-        log.info(f"[ADMIN_DOCS] Re-embedding chunk {id_dokumen}")
-
-    update_data["updated_at"] = datetime.now().isoformat()
-
-    result = (
-        db.table("dokumen_hukum")
-        .update(update_data)
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
-
-    if not result.data:
-        raise HTTPException(500, "Gagal update chunk.")
-
-    log.info(f"[ADMIN_DOCS] Updated chunk {id_dokumen}")
-    return result.data[0]
+    return admin_doc_service.update_chunk(db, user, id_dokumen, payload)
 
 
 @router.put(
@@ -422,52 +215,27 @@ async def replace_document(
     Hapus semua chunk lama (by frbr_uri), lalu proses PDF baru
     sebagai dokumen pengganti. Dijalankan di background.
     """
-    _require_admin(user)
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "File harus berformat PDF.")
-
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen", count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .execute()
+    job, pdf_bytes, manual_metadata = await admin_doc_service.create_replace_job(
+        db=db,
+        user=user,
+        file=file,
+        frbr_uri=frbr_uri,
+        nama_uu=nama_uu,
+        nomor_uu=nomor_uu,
+        tahun_uu=tahun_uu,
+        kategori=kategori,
+        status_hukum=status_hukum,
     )
-    if not (existing.count or 0):
-        raise HTTPException(404, f"Dokumen dengan URI '{frbr_uri}' tidak ditemukan.")
 
-    pdf_bytes = await file.read()
-    if len(pdf_bytes) < 100:
-        raise HTTPException(400, "File PDF terlalu kecil atau kosong.")
+    background_tasks.add_task(
+        admin_doc_service.process_pdf_job,
+        job["job_id"],
+        pdf_bytes,
+        manual_metadata=manual_metadata,
+        replace_uri=frbr_uri,
+    )
 
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "message": f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{file.filename}'...",
-        "frbr_uri": frbr_uri,
-        "total_chunks": None,
-        "error": None,
-    }
-
-    new_frbr_uri = frbr_uri
-    if nomor_uu and tahun_uu:
-        nomor_clean = str(nomor_uu).strip().replace(" ", "-").lower()
-        new_frbr_uri = f"/akn/id/act/uu-{nomor_clean}-{tahun_uu}"
-
-    manual_metadata = {
-        "nama_uu": nama_uu,
-        "nomor_uu": f"UU No. {nomor_uu} Tahun {tahun_uu}" if nomor_uu and tahun_uu else None,
-        "tahun_uu": tahun_uu,
-        "kategori": kategori,
-        "status_hukum": status_hukum,
-        "frbr_uri": new_frbr_uri
-    }
-
-    background_tasks.add_task(_bg_process_pdf, job_id, pdf_bytes, manual_metadata=manual_metadata, replace_uri=frbr_uri)
-    log.info(f"[ADMIN_DOCS] Replace job {job_id} queued for {frbr_uri}")
-
-    return _jobs[job_id]
+    return job
 
 
 @router.delete(
@@ -484,16 +252,4 @@ def delete_document(
     user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    _require_admin(user)
-
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen", count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .execute()
-    )
-    if not (existing.count or 0):
-        raise HTTPException(404, "Dokumen dengan URI tersebut tidak ditemukan.")
-
-    db.table("dokumen_hukum").delete().eq("frbr_uri", frbr_uri).execute()
-    log.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({existing.count} rows)")
+    admin_doc_service.delete_document(db, user, frbr_uri)

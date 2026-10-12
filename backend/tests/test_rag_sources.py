@@ -79,7 +79,6 @@ class _FakeRpc:
 
 
 def test_retrieve_pasals_maps_rpc_id_to_id_dokumen():
-    # Bentuk baris sesuai RETURNS TABLE match_dokumen_hukum di Supabase
     rpc = _FakeRpc([
         {"id": 812, "frbr_uri": "/akn/id/act/uu-13-2003", "pasal_bagian": "Pasal 156", "similarity": 0.73},
     ])
@@ -223,5 +222,4 @@ def test_triage_returns_grouped_sources_with_status(monkeypatch):
     assert len(result["sumber_dokumen"]) == 1
     doc = result["sumber_dokumen"][0]
     assert doc["status_hukum"] == "berlaku"
-    # Pasal 161 (0.52) tetap jadi konteks/referensi tapi tidak ditampilkan sebagai sumber
     assert [p["id_dokumen"] for p in doc["pasal"]] == [812]

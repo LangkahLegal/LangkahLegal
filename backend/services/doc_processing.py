@@ -14,7 +14,7 @@ import time
 import logging
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import fitz
 import voyageai
 from google import genai
 from tenacity import (
@@ -30,7 +30,7 @@ EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
 MIN_CHUNK_LEN = 30
 MAX_CHARS_PER_BATCH = 10_000
-BATCH_DELAY_SECONDS = 21.0  # Voyage free tier: ~3 RPM
+BATCH_DELAY_SECONDS = 21.0
 
 
 OCR_NOISE_PATTERNS = [

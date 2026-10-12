@@ -23,23 +23,20 @@ from config import get_settings
 
 log = logging.getLogger(__name__)
 
-# ── Config ──────────────────────────────────────────────────
 
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
 LLM_MODEL = "gemini-2.5-flash"
 
 
-MAX_HISTORY_CHARS = 60_000  # ~15k token (1 token ≈ 4 chars)
+MAX_HISTORY_CHARS = 60_000
 MAX_TOOL_LOOP = 3
 
-# Filter tampilan "Sumber dokumen" di bawah jawaban (tidak mempengaruhi konteks prompt)
 SOURCE_MIN_SIMILARITY = 0.6
 SOURCE_MAX_DOCUMENTS = 3
 
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
-# ── Prompts ─────────────────────────────────────────────────
 
 QUERY_REWRITER_PROMPT = """Kamu ahli hukum Indonesia. Tugasmu: ubah pertanyaan awam jadi query pencarian hukum yang presisi.
 
@@ -102,7 +99,6 @@ LARANGAN:
 - Jangan panggil search_consultants sebelum minimal Step 1 & Step 2, kecuali user eksplisit minta.
 """
 
-# ── Tool Definition ─────────────────────────────────────────
 
 CONSULTANT_TOOL = types.Tool(
     function_declarations=[
@@ -142,8 +138,6 @@ CONSULTANT_TOOL = types.Tool(
 )
 
 
-# ── Client Helpers ──────────────────────────────────────────
-
 def _get_voyage_client() -> voyageai.Client:
     return voyageai.Client()
 
@@ -152,8 +146,6 @@ def _get_gemini_client() -> genai.Client:
     settings = get_settings()
     return genai.Client(api_key=settings.google_api_key)
 
-
-# ── Query Rewriting ─────────────────────────────────────────
 
 def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
     """Terjemahkan query awam → query hukum presisi, dengan konteks history."""
@@ -193,8 +185,6 @@ def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
         return raw_query
 
 
-# ── Embedding & Retrieval ───────────────────────────────────
-
 def embed_query(query: str) -> list[float]:
     """Embed query pakai Voyage AI (input_type=query)."""
     client = _get_voyage_client()
@@ -220,7 +210,6 @@ def retrieve_pasals(
 
     result = supabase.rpc("match_dokumen_hukum", params).execute()
     rows = result.data or []
-    # RPC mengembalikan PK sebagai `id`; samakan dengan nama kolom tabel (id_dokumen)
     for row in rows:
         if "id_dokumen" not in row:
             row["id_dokumen"] = row.get("id")
@@ -327,8 +316,6 @@ def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]
     return sources
 
 
-# ── Tool Execution ──────────────────────────────────────────
-
 def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
     """Eksekusi tool call dari Gemini, return dict untuk FunctionResponse."""
     if fn_name != "search_consultants":
@@ -352,8 +339,6 @@ def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
         log.error(f"[TOOL] search_consultants gagal: {e}")
         return {"error": str(e), "consultants": []}
 
-
-# ── Contents Builder ────────────────────────────────────────
 
 def _summarize_consultants(consultants: list[dict]) -> str:
     """Bikin ringkasan singkat daftar konsultan untuk konteks history."""
@@ -437,8 +422,6 @@ def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
     return history + [last_msg]
 
 
-# ── Agentic Generation ──────────────────────────────────────
-
 def agentic_generate(
     query: str,
     context: str,
@@ -469,7 +452,7 @@ def agentic_generate(
 
     consultants_found = []
     AVAILABLE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-    MAX_RETRIES = 2  # Retry sampai 2x kalau semua model 503
+    MAX_RETRIES = 2
 
 
     for iteration in range(MAX_TOOL_LOOP):
@@ -561,8 +544,6 @@ def agentic_generate(
 
     return {"type": "text", "jawaban": jawaban}
 
-
-# ── Main Triage Pipeline ────────────────────────────────────
 
 def triage(
     query: str,

@@ -1,12 +1,6 @@
-import base64
-import hashlib
-import secrets
 from typing import Optional
-from urllib.parse import quote, urlencode
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Cookie
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
@@ -20,12 +14,12 @@ from schemas.auth import (
     OAuthPayload,
     OtpLoginPayload,
     PasswordLoginPayload,
-    RefreshTokenPayload,
     ResendOtpPayload,
     RolePayload,
     SignUpPayload,
     VerifyOtpPayload,
 )
+from services import auth_service
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -57,11 +51,11 @@ def _set_auth_cookies(response: Response, session_data: dict):
         return
 
     cookie_flags = _get_cookie_flags()
-        
+
     access_token = session_data.get("access_token")
     refresh_token = session_data.get("refresh_token")
     expires_in = session_data.get("expires_in", 3600)
-    
+
     if access_token:
         response.set_cookie(
             key="ll_token",
@@ -73,7 +67,7 @@ def _set_auth_cookies(response: Response, session_data: dict):
             domain=cookie_flags["domain"],
             path="/"
         )
-    
+
     if refresh_token:
         response.set_cookie(
             key="ll_refresh",
@@ -93,67 +87,8 @@ def _clear_auth_cookies(response: Response):
     response.delete_cookie("ll_oauth_verifier", path="/", domain=cookie_flags["domain"])
     response.delete_cookie("ll_role", path="/", domain=cookie_flags["domain"])
 
-def _get_service_headers() -> dict:
-    settings = get_settings()
-    return {
-        "apikey": settings.supabase_key,
-        "Authorization": f"Bearer {settings.supabase_key}",
-        "Content-Type": "application/json",
-    }
-
-
-def _get_user_headers(access_token: str) -> dict:
-    settings = get_settings()
-    return {
-        "apikey": settings.supabase_key,
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
-
-
-def _raise_auth_error(response: httpx.Response) -> None:
-    detail = "Gagal memproses permintaan auth."
-    try:
-        payload = response.json()
-        detail = (
-            payload.get("msg")
-            or payload.get("message")
-            or payload.get("error_description")
-            or payload.get("error")
-            or detail
-        )
-    except ValueError:
-        pass
-
-    raise HTTPException(status_code=response.status_code, detail=detail)
-
-
-def _generate_pkce_pair() -> tuple[str, str]:
-    code_verifier = (
-        base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode("ascii")
-    )
-    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
-    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
-    return code_verifier, code_challenge
-
-
-async def _post_auth(
-    path: str, payload: Optional[dict] = None, params: Optional[dict] = None
-) -> dict:
-    settings = get_settings()
-    url = f"{settings.supabase_url}{path}"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(
-            url, json=payload, params=params, headers=_get_service_headers()
-        )
-
-    if response.status_code >= 400:
-        _raise_auth_error(response)
-
-    if response.content:
-        return response.json()
-    return {}
+def _set_role_cookie(response: Response, role: str):
+    response.set_cookie("ll_role", role, max_age=30*24*3600, path="/", samesite="lax")
 
 
 @router.post(
@@ -162,34 +97,9 @@ async def _post_auth(
     description="Mendaftarkan user baru menggunakan email/password.",
 )
 async def sign_up(payload: SignUpPayload, response: Response):
-    options = {
-        "data": {
-            "full_name": payload.name,
-            "role": payload.role,
-        }
-    }
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
-
-    data = await _post_auth(
-        "/auth/v1/signup",
-        {
-            "email": payload.email,
-            "password": payload.password,
-            "options": options,
-        },
-    )
-    
-    session = data.get("session")
-    if session:
-        _set_auth_cookies(response, session)
-
-    return {
-        "data": {
-            "session": session,
-            "user": data.get("user"),
-        }
-    }
+    data = await auth_service.sign_up(payload)
+    _set_auth_cookies(response, data["session"])
+    return {"data": data}
 
 
 @router.post(
@@ -199,21 +109,7 @@ async def sign_up(payload: SignUpPayload, response: Response):
 )
 @limiter.limit("3/minute")
 async def send_otp_login(request: Request, payload: OtpLoginPayload):
-    options = {
-        "should_create_user": False,
-    }
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
-
-    await _post_auth(
-        "/auth/v1/otp",
-        {
-            "email": payload.email,
-            "options": options,
-        },
-    )
-
-    return {"data": {"sent": True}}
+    return {"data": await auth_service.send_otp_login(payload)}
 
 
 @router.post(
@@ -223,20 +119,7 @@ async def send_otp_login(request: Request, payload: OtpLoginPayload):
 )
 @limiter.limit("3/minute")
 async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
-    options = {}
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
-
-    await _post_auth(
-        "/auth/v1/resend",
-        {
-            "type": "signup",
-            "email": payload.email,
-            "options": options,
-        },
-    )
-
-    return {"data": {"sent": True}}
+    return {"data": await auth_service.resend_signup_otp(payload)}
 
 
 @router.post(
@@ -245,24 +128,9 @@ async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
     description="Memverifikasi token OTP dan mengembalikan session/access token bila berhasil.",
 )
 async def verify_otp(payload: VerifyOtpPayload, response: Response):
-    data = await _post_auth(
-        "/auth/v1/verify",
-        {
-            "email": payload.email,
-            "token": payload.token,
-            "type": payload.type or "email",
-        },
-    )
-
-    session_payload = data.get("session") or data
-    _set_auth_cookies(response, session_payload)
-
-    return {
-        "data": {
-            "session": session_payload,
-            "user": session_payload.get("user") if isinstance(session_payload, dict) else None,
-        }
-    }
+    data = await auth_service.verify_otp(payload)
+    _set_auth_cookies(response, data["session"])
+    return {"data": data}
 
 
 @router.post(
@@ -271,23 +139,9 @@ async def verify_otp(payload: VerifyOtpPayload, response: Response):
     description="Login standar berbasis password. Mengembalikan session lengkap (access token + refresh token).",
 )
 async def login_with_password(payload: PasswordLoginPayload, response: Response):
-    data = await _post_auth(
-        "/auth/v1/token",
-        {
-            "email": payload.email,
-            "password": payload.password,
-        },
-        params={"grant_type": "password"},
-    )
-
-    _set_auth_cookies(response, data)
-
-    return {
-        "data": {
-            "session": data,
-            "user": data.get("user"),
-        }
-    }
+    data = await auth_service.login_with_password(payload)
+    _set_auth_cookies(response, data["session"])
+    return {"data": data}
 
 
 @router.post(
@@ -296,20 +150,12 @@ async def login_with_password(payload: PasswordLoginPayload, response: Response)
     description="Menghasilkan URL OAuth Google + PKCE verifier.",
 )
 async def sign_in_with_google(payload: OAuthPayload, response: Response):
-    code_verifier, code_challenge = _generate_pkce_pair()
-    params = {
-        "provider": payload.provider or "google",
-        "redirect_to": payload.redirectTo,
-        "code_challenge": code_challenge,
-        "code_challenge_method": "s256",
-    }
-    settings = get_settings()
-    url = f"{settings.supabase_url}/auth/v1/authorize?{urlencode(params)}"
+    data = auth_service.build_google_oauth_url(payload)
     cookie_flags = _get_cookie_flags()
 
     response.set_cookie(
         key="ll_oauth_verifier",
-        value=code_verifier,
+        value=data["code_verifier"],
         max_age=3600,
         httponly=True,
         samesite=cookie_flags["samesite"],
@@ -318,12 +164,7 @@ async def sign_in_with_google(payload: OAuthPayload, response: Response):
         path="/"
     )
 
-    return {
-        "data": {
-            "url": url,
-            "code_verifier": code_verifier,
-        }
-    }
+    return {"data": data}
 
 
 @router.post(
@@ -338,30 +179,13 @@ async def exchange_code(
 ):
     code = payload.get("code")
     code_verifier = payload.get("code_verifier") or request.cookies.get("ll_oauth_verifier")
-    
-    if not code:
-        raise HTTPException(status_code=400, detail="Code tidak ditemukan.")
-    if not code_verifier:
-        raise HTTPException(status_code=400, detail="Session login (PKCE verifier) tidak ditemukan atau sudah kadaluarsa. Silakan ulangi login.")
-        
-    data = await _post_auth(
-        "/auth/v1/token",
-        {
-            "auth_code": code,
-            "code_verifier": code_verifier,
-        },
-        params={"grant_type": "pkce"},
-    )
-    
-    _set_auth_cookies(response, data)
+
+    data = await auth_service.exchange_code(code, code_verifier)
+
+    _set_auth_cookies(response, data["session"])
     response.delete_cookie("ll_oauth_verifier", path="/", domain=_get_cookie_flags()["domain"])
-    
-    return {
-        "data": {
-            "session": data,
-            "user": data.get("user"),
-        }
-    }
+
+    return {"data": data}
 
 
 @router.post(
@@ -373,40 +197,12 @@ async def refresh_session(request: Request, response: Response, payload: dict = 
     refresh_token = request.cookies.get("ll_refresh")
     if payload and payload.get("refresh_token"):
         refresh_token = payload.get("refresh_token")
-        
-    if not refresh_token:
-        raise HTTPException(status_code=400, detail="Refresh token tidak tersedia.")
 
-    data = await _post_auth(
-        "/auth/v1/token",
-        {
-            "refresh_token": refresh_token,
-        },
-        params={"grant_type": "refresh_token"},
-    )
+    data = await auth_service.refresh_session(refresh_token)
 
-    _set_auth_cookies(response, data)
+    _set_auth_cookies(response, data["session"])
 
-    return {
-        "data": {
-            "session": data,
-            "user": data.get("user"),
-        }
-    }
-
-
-def _get_auth_user(token: str, db: Client) -> dict:
-    try:
-        user_res = db.auth.get_user(token)
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"Token tidak valid: {str(exc)}")
-
-    if not user_res.user:
-        raise HTTPException(
-            status_code=401, detail="Token tidak valid atau kedaluwarsa"
-        )
-
-    return user_res.user
+    return {"data": data}
 
 
 @router.get(
@@ -419,36 +215,9 @@ def get_profile(
     token: str = Depends(get_token_from_request),
     db: Client = Depends(get_supabase_client),
 ):
-    user = _get_auth_user(token, db)
-
-    result = (
-        db.table("users")
-        .select("id_user, nama, email, role, auth_user_id")
-        .eq("auth_user_id", user.id)
-        .execute()
-    )
-
-    if not result.data:
-        if user.email:
-            email_result = (
-                db.table("users")
-                .select("id_user, nama, email, role, auth_user_id")
-                .eq("email", user.email)
-                .execute()
-            )
-            if email_result.data:
-                db.table("users").update({"auth_user_id": user.id}).eq(
-                    "email", user.email
-                ).execute()
-                profile = email_result.data[0]
-                profile["auth_user_id"] = user.id
-                response.set_cookie("ll_role", profile["role"], max_age=30*24*3600, path="/", samesite="lax")
-                return {"data": profile}
-
-        return {"data": None}
-
-    profile = result.data[0]
-    response.set_cookie("ll_role", profile["role"], max_age=30*24*3600, path="/", samesite="lax")
+    profile = auth_service.get_profile(db, token)
+    if profile is not None:
+        _set_role_cookie(response, profile["role"])
     return {"data": profile}
 
 
@@ -463,38 +232,9 @@ def update_role(
     token: str = Depends(get_token_from_request),
     db: Client = Depends(get_supabase_client),
 ):
-    user = _get_auth_user(token, db)
-
-    metadata = user.user_metadata or {}
-    display_name = (
-        metadata.get("full_name")
-        or metadata.get("name")
-        or (user.email.split("@")[0] if user.email else None)
-        or "User"
-    )
-
-    payload_data = {
-        "auth_user_id": user.id,
-        "email": user.email,
-        "nama": display_name,
-        "role": payload.role,
-    }
-
-    result_existing = db.table("users").select("id_user").eq("auth_user_id", user.id).execute()
-    
-    if result_existing.data:
-        profile = result_existing.data[0]
-        db.table("users").update(payload_data).eq("id_user", profile["id_user"]).execute()
-        response.set_cookie("ll_role", payload.role, max_age=30*24*3600, path="/", samesite="lax")
-        return {"data": {**payload_data, "id_user": profile["id_user"]}}
-
-    result = db.table("users").insert(payload_data).execute()
-    
-    if result.data:
-        response.set_cookie("ll_role", payload.role, max_age=30*24*3600, path="/", samesite="lax")
-        return {"data": result.data[0]}
-
-    raise HTTPException(status_code=500, detail="Gagal memperbarui role.")
+    data = auth_service.update_role(db, token, payload)
+    _set_role_cookie(response, payload.role)
+    return {"data": data}
 
 
 @router.post(
@@ -503,17 +243,8 @@ def update_role(
     description="Mencabut session/token aktif user pada Supabase Auth dan menghapus cookie.",
 )
 async def logout(response: Response, token: str = Depends(get_token_from_request)):
-    settings = get_settings()
-    url = f"{settings.supabase_url}/auth/v1/logout"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        res = await client.post(url, headers=_get_user_headers(token))
-
+    await auth_service.logout(token)
     _clear_auth_cookies(response)
-
-    if res.status_code >= 400:
-        _raise_auth_error(res)
-
     return {"data": {"logout": True}}
 
 
@@ -524,20 +255,7 @@ async def logout(response: Response, token: str = Depends(get_token_from_request
 )
 @limiter.limit("3/minute")
 async def forgot_password(request: Request, payload: ForgotPasswordPayload, response: Response):
-    body = {"email": payload.email}
-
-    params = {}
-    if payload.emailRedirectTo:
-        separator = "&" if "?" in payload.emailRedirectTo else "?"
-        params["redirect_to"] = f"{payload.emailRedirectTo}{separator}email={quote(payload.email)}"
-
-    await _post_auth(
-        "/auth/v1/recover",
-        payload=body,
-        params=params,
-    )
-
-    return {"data": {"sent": True}}
+    return {"data": await auth_service.forgot_password(payload)}
 
 
 @router.post(
@@ -550,20 +268,6 @@ async def reset_password(
     response: Response,
     token: str = Depends(get_token_from_request),
 ):
-    settings = get_settings()
-    url = f"{settings.supabase_url}/auth/v1/user"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        res = await client.put(
-            url,
-            headers=_get_user_headers(token),
-            json={"password": payload.new_password},
-        )
-
-    if res.status_code >= 400:
-        _raise_auth_error(res)
-
+    await auth_service.reset_password(token, payload.new_password)
     _clear_auth_cookies(response)
-
     return {"data": {"updated": True}}
-

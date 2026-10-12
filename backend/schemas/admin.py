@@ -8,5 +8,5 @@ from typing import Optional
 
 class VerifyConsultantPayload(BaseModel):
     """Payload untuk approve/reject konsultan."""
-    action: str  # 'terverifikasi' atau 'ditolak'
-    alasan: Optional[str] = None  # Alasan jika ditolak
+    action: str
+    alasan: Optional[str] = None

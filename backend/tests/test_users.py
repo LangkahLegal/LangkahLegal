@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from routers import users as users_router
+from services import user_service
 
 
 def test_get_settings_info_success(app_client):
@@ -115,7 +115,7 @@ def test_update_profile_portofolio_file_success(app_client, monkeypatch):
     async def fake_upload(*args, **kwargs):
         return "http://example.com/port.pdf"
 
-    monkeypatch.setattr(users_router, "upload_portfolio_pdf_to_supabase", fake_upload)
+    monkeypatch.setattr(user_service, "upload_portfolio_pdf_to_supabase", fake_upload)
 
     client, _ = app_client(current_user={"id_user": 1, "role": "konsultan"})
 

@@ -70,7 +70,6 @@ def test_send_recovery_email_success(mock_settings_with_key):
             mock_client_cls.return_value.__enter__.return_value = mock_client
             send_recovery_email("client@example.com", "https://reset-link")
 
-            # Check that post was called with correct payload & headers
             mock_client.post.assert_called_once()
             args, kwargs = mock_client.post.call_args
             assert args[0] == "https://api.brevo.com/v3/smtp/email"
@@ -91,7 +90,6 @@ def test_send_notification_email_failure(mock_settings_with_key):
     with patch("services.email_service.get_settings", return_value=mock_settings_with_key):
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__.return_value = mock_client
-            # Should not raise exception
             send_notification_email("user@example.com", "Test Title", "Test Message")
             mock_client.post.assert_called_once()
 
@@ -103,7 +101,6 @@ def test_send_email_exception_handling(mock_settings_with_key):
     with patch("services.email_service.get_settings", return_value=mock_settings_with_key):
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__.return_value = mock_client
-            # Should handle exception gracefully
             send_notification_email("user@example.com", "Test Title", "Test Message")
             mock_client.post.assert_called_once()
 

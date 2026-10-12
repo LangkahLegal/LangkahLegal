@@ -1,6 +1,7 @@
 import pytest
 
 from routers import chatbot as chatbot_router
+from services import chat_service
 
 
 @pytest.fixture(autouse=True)
@@ -157,10 +158,10 @@ def test_chatbot_triage_new_session_success(app_client, monkeypatch):
 
     monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
     monkeypatch.setattr(
-        chatbot_router, "_auto_generate_title", lambda *args, **kwargs: None
+        chat_service, "_auto_generate_title", lambda *args, **kwargs: None
     )
     monkeypatch.setattr(
-        chatbot_router,
+        chat_service,
         "triage",
         lambda **kwargs: {
             "type": "text",
@@ -188,7 +189,7 @@ def test_chatbot_triage_existing_session_success(app_client, monkeypatch):
 
     monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
     monkeypatch.setattr(
-        chatbot_router,
+        chat_service,
         "triage",
         lambda **kwargs: {
             "type": "consultant_list",
@@ -233,7 +234,7 @@ def test_chatbot_triage_returns_and_persists_sumber_dokumen(app_client, monkeypa
 
     monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
     monkeypatch.setattr(
-        chatbot_router,
+        chat_service,
         "triage",
         lambda **kwargs: {
             "type": "text",
@@ -281,7 +282,7 @@ def test_chatbot_triage_without_sumber_dokumen_defaults_to_empty(app_client, mon
 
     monkeypatch.setattr(chatbot_router, "get_supabase_client", lambda: supabase)
     monkeypatch.setattr(
-        chatbot_router,
+        chat_service,
         "triage",
         lambda **kwargs: {"type": "text", "jawaban": "Halo!", "pasal_referensi": [], "disclaimer": ""},
     )

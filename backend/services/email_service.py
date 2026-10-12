@@ -5,13 +5,6 @@ from config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── Brevo HTTP API ──────────────────────────────────────────
-# Dokumentasi: https://developers.brevo.com/reference/sendtransacemail
-#
-# Alasan migrasi dari SMTP:
-#   Railway free tier memblokir outbound SMTP ports (25, 465, 587).
-#   Brevo HTTP API menggunakan HTTPS (port 443) yang tidak diblokir.
-#   Brevo mendukung Single Sender Verification (email personal @gmail.com).
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
@@ -79,9 +72,6 @@ def _send_via_brevo(to_email: str, subject: str, body_html: str) -> None:
         logger.error(f"Timeout saat kirim email ke {to_email} via Brevo")
     except Exception as e:
         logger.error(f"Error saat kirim email ke {to_email} via Brevo: {e}")
-
-
-# ── Public API (signature tetap sama agar caller tidak berubah) ──
 
 
 def send_recovery_email(to_email: str, recovery_link: str) -> None:

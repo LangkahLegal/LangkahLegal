@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, status
 from supabase import Client
 from database import get_supabase_client
 from dependencies import get_current_user
 
-# Tambahkan ScheduleUpdate di baris import
 from schemas.consultants import (
     ScheduleCreate,
     ScheduleToggle,
     ConsultantActiveToggle,
     ScheduleUpdate,
 )
-from typing import List, Optional
+from services import consultant_service
+from typing import Optional
 
 router = APIRouter()
 
@@ -30,62 +30,10 @@ Response sudah diformat untuk frontend card list:
 """,
 )
 def get_all_consultants(
-    spesialisasi: Optional[str] = None, 
+    spesialisasi: Optional[str] = None,
     db: Client = Depends(get_supabase_client)
 ):
-    try:
-        # add join 'users(foto_profil)' ke dalam select
-        query = (
-            db.table("konsultan")
-            .select("""
-                id_konsultan,
-                nama_lengkap,
-                spesialisasi,
-                is_active,
-                status_verifikasi,
-                tarif_per_sesi,
-                users (foto_profil),
-                rating_ulasan (skor_rating)
-            """)
-            .eq("is_active", True)
-        )
-
-        if spesialisasi and spesialisasi != "semua":
-            query = query.ilike("spesialisasi", f"%{spesialisasi}%")
-
-        response = query.execute()
-
-        formatted_data = []
-        for item in response.data:
-            # Hitung Rating
-            ratings = [r["skor_rating"] for r in item.get("rating_ulasan", []) if r.get("skor_rating")]
-            total_reviews = len(ratings)
-            rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-
-            # Ambil foto_profil dari join users
-            # Skenario: item["users"] akan berupa dict { "foto_profil": "..." }
-            user_data = item.get("users") or {}
-            
-            formatted_item = {
-                "id": item["id_konsultan"],
-                "name": item["nama_lengkap"],
-                "spec": item["spesialisasi"],
-                "rating": rating_avg,
-                "reviews": total_reviews,
-                "status": "online",
-                "foto_profil": user_data.get("foto_profil"), # Ganti 'avatar' jadi 'foto_profil'
-                "status_verifikasi": item.get("status_verifikasi"),
-                "tarif_per_sesi": item.get("tarif_per_sesi")
-            }
-            formatted_data.append(formatted_item)
-
-        return {
-            "message": "Katalog konsultan berhasil dimuat",
-            "data": formatted_data,
-        }
-    except Exception as e:
-        print(f"Backend Error: {e}")
-        return {"data": [], "message": str(e)}
+    return consultant_service.list_active_consultants(db, spesialisasi)
 
 
 @router.get(
@@ -97,36 +45,9 @@ def get_my_schedules(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    kons = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-    # Join ke pengajuan_konsultasi -> users untuk ambil nama klien jika booked
-    query = (
-        db.table("jadwal_ketersediaan")
-        .select(
-            """
-        id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia,
-        pengajuan_konsultasi ( users ( nama ) )
-    """
-        )
-        .eq("id_konsultan", kons.data["id_konsultan"])
-        .execute()
-    )
+    return consultant_service.get_my_schedules(db, current_user)
 
-    formatted = []
-    for item in query.data:
-        pengajuan = item.get("pengajuan_konsultasi", [])
-        nama_klien = (
-            pengajuan[0]["users"]["nama"]
-            if pengajuan and pengajuan[0].get("users")
-            else None
-        )
-        formatted.append({**item, "nama_klien": nama_klien})
-    return formatted
+
 @router.get(
     "/me/dashboard-stats",
     status_code=status.HTTP_200_OK,
@@ -136,53 +57,8 @@ def get_consultant_dashboard_stats(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    if current_user["role"] != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
+    return consultant_service.get_dashboard_stats(db, current_user)
 
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
-    if not kons_profile.data:
-        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-    id_kons = kons_profile.data[0]["id_konsultan"]
-
-    pengajuan_with_tx = (
-        db.table("pengajuan_konsultasi")
-        .select("transaksi(nominal_konsultan, status_pembayaran)")
-        .eq("id_konsultan", id_kons)
-        .execute()
-    )
-
-    total_income = 0
-    for p in pengajuan_with_tx.data:
-        tx_list = p.get("transaksi") or []
-        if isinstance(tx_list, dict): tx_list = [tx_list]
-        for tx in tx_list:
-            if tx.get("status_pembayaran") == "settlement":
-                total_income += float(tx.get("nominal_konsultan") or 0)
-
-    # Kita ambil data dengan status terjadwal atau selesai
-    klien_data_res = (
-        db.table("pengajuan_konsultasi")
-        .select("id_user, status_pengajuan")
-        .eq("id_konsultan", id_kons)
-        .in_("status_pengajuan", ["terjadwal", "selesai"])
-        .execute()
-    )
-    
-    all_data = klien_data_res.data or []
-
-    # LOGIKA DISTINCT: Total Klien (Orang unik yang pernah/sedang ditangani)
-    # Client X booking 10x tetap dihitung 1 orang.
-    unique_klien = set(p["id_user"] for p in all_data)
-
-    # LOGIKA BARIS: Konsultasi Aktif (Jumlah sesi yang statusnya terjadwal)
-    # Client X punya 2 jadwal aktif, dihitung 2 sesi.
-    sesi_aktif = [p for p in all_data if p["status_pengajuan"] == "terjadwal"]
-
-    return {
-        "total_income": total_income,
-        "total_klien": len(unique_klien),      # Output: 1 (Distinct People)
-        "total_klien_aktif": len(sesi_aktif),  # Output: 2 (Total Active Rows/Sessions)
-    }
 
 @router.get(
     "/me/requests/pending",
@@ -193,45 +69,7 @@ def get_pending_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
-
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-    
-    if not kons_profile.data:
-        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select(
-            """
-            id_pengajuan, 
-            deskripsi_kasus, 
-            status_pengajuan, 
-            created_at,
-            tanggal_pengajuan, 
-            jam_mulai, 
-            jam_selesai,
-            id_bursa,
-            users ( 
-                nama, 
-                foto_profil 
-            )
-        """
-        )
-        .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .eq("status_pengajuan", "pending")
-        .order("created_at", desc=True)
-        .execute()
-    )
-    
-    return response.data
+    return consultant_service.get_pending_requests(db, current_user)
 
 
 @router.get(
@@ -243,45 +81,7 @@ def get_active_requests(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Hanya untuk konsultan")
-
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-    
-    if not kons_profile.data:
-        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select(
-            """
-            id_pengajuan, 
-            deskripsi_kasus, 
-            status_pengajuan, 
-            created_at,
-            tanggal_pengajuan, 
-            jam_mulai, 
-            jam_selesai,
-            id_bursa,
-            users ( nama, foto_profil )
-        """
-        )
-        .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .in_("status_pengajuan", ["terjadwal", "menunggu_pembayaran"])
-        .order("created_at", desc=True)
-        .execute()
-    )
-    
-    return response.data
-
-
-# --- BAGIAN ODE: JADWAL (SCHEDULE PAGE) ---
+    return consultant_service.get_active_requests(db, current_user)
 
 
 @router.get(
@@ -299,44 +99,7 @@ Response mencakup:
 """,
 )
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
-    """
-    Mengambil profil detail satu konsultan beserta jadwal ketersediaannya 
-    (sebagai jam buka/tutup).
-    """
-    response = (
-        db.table("konsultan")
-        .select("*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
-        .eq("id_konsultan", id_konsultan)
-        .execute()
-    )
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Konsultan tidak ditemukan")
-
-    konsultan_data = response.data[0]
-
-    ratings = [r["skor_rating"] for r in konsultan_data.get("rating_ulasan", []) if r.get("skor_rating")]
-    total_reviews = len(ratings)
-    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-    
-    konsultan_data.pop("rating_ulasan", None)
-    konsultan_data["rating"] = rating_avg
-    konsultan_data["reviews"] = total_reviews
-
-    # Kita ambil data spesifik agar frontend mudah memprosesnya
-    jadwal_response = (
-        db.table("jadwal_ketersediaan")
-        .select("id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia")
-        .eq("id_konsultan", id_konsultan)
-        .eq("status_tersedia", True)
-        .order("tanggal")
-        .execute()
-    )
-    
-    # Kita format agar jam_mulai/selesai bertindak sebagai range operasional
-    konsultan_data["jadwal_ketersediaan"] = jadwal_response.data
-
-    return {"message": "Detail profil ditemukan", "data": konsultan_data}
+    return consultant_service.get_consultant_detail(db, id_konsultan)
 
 
 @router.get(
@@ -348,26 +111,7 @@ def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_c
 def get_consultant_schedules(
     id_konsultan: int, db: Client = Depends(get_supabase_client)
 ):
-    """
-    Melihat jadwal ketersediaan konsultan untuk diajukan oleh Klien.
-    Penting: Hanya jadwal dengan status_tersedia = True yang muncul.
-    """
-    try:
-        response = (
-            db.table("jadwal_ketersediaan")
-            .select("*")
-            .eq("id_konsultan", id_konsultan)
-            .eq("status_tersedia", True)
-            .execute()
-        )
-
-        return {
-            "status": "success",
-            "id_konsultan": id_konsultan,
-            "data": response.data,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal mengambil jadwal: {str(e)}")
+    return consultant_service.get_available_schedules(db, id_konsultan)
 
 
 @router.post(
@@ -381,40 +125,7 @@ def upload_jadwal_konsultan(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    """
-    (Khusus Konsultan) Menambahkan slot jadwal ketersediaan.
-    """
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(
-            status_code=403, detail="Hanya konsultan yang bisa mengatur jadwal"
-        )
-
-    konsultan = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .execute()
-    )
-
-    if not konsultan.data:
-        raise HTTPException(status_code=404, detail="Profil konsultan tidak ditemukan")
-
-    new_schedule = {
-        "id_konsultan": konsultan.data[0]["id_konsultan"],
-        "tanggal": request.tanggal,
-        "jam_mulai": request.jam_mulai,
-        "jam_selesai": request.jam_selesai,
-        "status_tersedia": True,
-    }
-
-    response = db.table("jadwal_ketersediaan").insert(new_schedule).execute()
-
-    return {"message": "Jadwal berhasil ditambahkan", "data": response.data[0]}
-
-
-# ==========================================
-# 3. MODUL MANAJEMEN JADWAL (EDIT & DELETE)
-# ==========================================
+    return consultant_service.create_schedule(db, current_user, request)
 
 
 @router.delete(
@@ -428,27 +139,7 @@ def hapus_jadwal_konsultan(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    """
-    (Khusus Konsultan) Menghapus slot jadwal yang belum dipesan.
-    """
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Akses ditolak")
-
-    # Pastikan jadwal belum dibooking (status_tersedia = True)
-    jadwal = (
-        db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
-    )
-    if not jadwal.data:
-        raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
-
-    if not jadwal.data[0]["status_tersedia"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Jadwal tidak bisa dihapus karena sudah dipesan klien",
-        )
-
-    db.table("jadwal_ketersediaan").delete().eq("id_jadwal", id_jadwal).execute()
-    return {"message": "Jadwal berhasil dihapus"}
+    return consultant_service.delete_schedule(db, current_user, id_jadwal)
 
 
 @router.put(
@@ -463,32 +154,7 @@ def edit_jadwal_konsultan(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    """
-    (Khusus Konsultan) Mengubah jam/tanggal jadwal yang belum dipesan.
-    """
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Akses ditolak")
-
-    jadwal = (
-        db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
-    )
-    if not jadwal.data or not jadwal.data[0]["status_tersedia"]:
-        raise HTTPException(
-            status_code=400, detail="Jadwal tidak ditemukan atau sudah dipesan"
-        )
-
-    update_data = {k: v for k, v in request.dict().items() if v is not None}
-
-    response = (
-        db.table("jadwal_ketersediaan")
-        .update(update_data)
-        .eq("id_jadwal", id_jadwal)
-        .execute()
-    )
-    return {"message": "Jadwal berhasil diperbarui", "data": response.data[0]}
-
-
-
+    return consultant_service.update_schedule(db, current_user, id_jadwal, request)
 
 
 @router.patch(
@@ -499,13 +165,7 @@ def edit_jadwal_konsultan(
 def toggle_schedule_slot(
     id_jadwal: int, payload: ScheduleToggle, db: Client = Depends(get_supabase_client)
 ):
-    # Update status per slot
-    return (
-        db.table("jadwal_ketersediaan")
-        .update({"status_tersedia": payload.status_tersedia})
-        .eq("id_jadwal", id_jadwal)
-        .execute()
-    )
+    return consultant_service.toggle_schedule_slot(db, id_jadwal, payload)
 
 
 @router.patch(
@@ -518,13 +178,8 @@ def toggle_global_active(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    # Update ketersediaan global (is_active)
-    return (
-        db.table("konsultan")
-        .update({"is_active": payload.is_active})
-        .eq("id_user", current_user["id_user"])
-        .execute()
-    )
+    return consultant_service.toggle_global_active(db, current_user, payload)
+
 
 @router.get(
     "/me/clients",
@@ -537,65 +192,7 @@ def get_daftar_klien(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Akses ditolak")
-
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
-    if not kons_profile.data:
-        raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
-        
-    id_kons = kons_profile.data["id_konsultan"]
-
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)")
-        .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", "terjadwal")
-        .execute()
-    )
-    
-    from datetime import datetime, timezone, timedelta
-    wib = timezone(timedelta(hours=7))
-    now = datetime.now(wib).replace(tzinfo=None)  # naive WIB time for comparison
-    
-    formatted_data = []
-    
-    for req in response.data:
-        # jadwal_ketersediaan bisa berupa dict atau list, handle keduanya
-        jadwal = req.get("jadwal_ketersediaan") or {}
-        if isinstance(jadwal, list):
-            jadwal = jadwal[0] if len(jadwal) > 0 else {}
-        
-        # Prioritaskan tanggal_pengajuan dari tabel pengajuan, fallback ke jadwal
-        tanggal_konsultasi = req.get("tanggal_pengajuan") or jadwal.get("tanggal")
-        jam_selesai_str = str(req.get("jam_selesai", ""))[:5]  # "HH:MM"
-        
-        if not tanggal_konsultasi:
-            continue
-        
-        # Bangun datetime penuh dari tanggal + jam_selesai untuk perbandingan akurat
-        try:
-            jam_selesai_full = jam_selesai_str if jam_selesai_str else "23:59"
-            deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_full}", "%Y-%m-%d %H:%M")
-        except ValueError:
-            deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
-        
-        # Hanya tampilkan yang jadwalnya belum lewat
-        if now <= deadline:
-            formatted_data.append({
-                "id_pengajuan": req["id_pengajuan"],
-                "nama_klien": req.get("users", {}).get("nama"),
-                "foto_profil": req.get("users", {}).get("foto_profil"),
-                "tanggal_konsultasi": tanggal_konsultasi,
-                "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
-                "waktu_selesai": jam_selesai_str,
-                "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
-            })
-
-    return {
-        "total_klien_aktif": len(formatted_data),
-        "data": formatted_data
-    }
+    return consultant_service.get_scheduled_clients(db, current_user)
 
 
 @router.get(
@@ -611,65 +208,4 @@ def get_riwayat_konsultan(
     current_user: dict = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    if current_user.get("role") != "konsultan":
-        raise HTTPException(status_code=403, detail="Akses ditolak")
-
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
-    if not kons_profile.data:
-        raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
-        
-    id_kons = kons_profile.data[0]["id_konsultan"]
-
-    # Ambil SEMUA pengajuan kecuali yang pending
-    # Termasuk: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak, kedaluwarsa
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
-        .eq("id_konsultan", id_kons)
-        .neq("status_pengajuan", "pending")
-        .execute()
-    )
-    
-    formatted_data = []
-    
-    for req in response.data:
-        jadwal = req.get("jadwal_ketersediaan") or {}
-        trans = req.get("transaksi") or [] # bisa list
-        
-        nominal = 0
-        if isinstance(trans, list) and len(trans) > 0:
-            nominal = trans[0].get("nominal_konsultan") or 0
-        elif isinstance(trans, dict):
-             nominal = trans.get("nominal_konsultan") or 0
-             
-        # Jika dibatalkan/ditolak/kedaluwarsa → nominal = 0
-        status_akhir = req.get("status_pengajuan")
-        if status_akhir in ["cancelled", "dibatalkan", "ditolak", "kedaluwarsa"]:
-            nominal = 0
-            
-        jm = str(req.get("jam_mulai", ""))[:5]
-        js = str(req.get("jam_selesai", ""))[:5]
-
-        formatted_data.append({
-            "id_pengajuan": req["id_pengajuan"],
-            "id_bursa": req.get("id_bursa"),
-            "nama_klien": req.get("users", {}).get("nama"),
-            "foto_profil": req.get("users", {}).get("foto_profil"),
-            "rentang_waktu": f"{jm} - {js}" if jm and js else "",
-            "status": status_akhir,
-            "tanggal_konsultasi": jadwal.get("tanggal") or req.get("tanggal_pengajuan", ""),
-            "jam_mulai": jm,
-            "jam_selesai": js,
-            "nominal_konsultan": nominal
-        })
-        
-    # Sort DESC by tanggal_konsultasi
-    formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
-
-    # Hitung hanya yang berstatus 'selesai'
-    total_selesai = sum(1 for item in formatted_data if item["status"] == "selesai")
-
-    return {
-        "total_sesi_selesai": total_selesai,
-        "data": formatted_data
-    }
+    return consultant_service.get_history(db, current_user)

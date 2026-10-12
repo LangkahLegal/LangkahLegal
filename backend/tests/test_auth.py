@@ -1,12 +1,12 @@
 from types import SimpleNamespace
-from routers import auth as auth_router
+from services import auth_service
 
 
 def test_signup_success(app_client, monkeypatch):
     async def fake_post_auth(path, payload=None, params=None):
         return {"session": {"access_token": "token"}, "user": {"id": "auth-1"}}
 
-    monkeypatch.setattr(auth_router, "_post_auth", fake_post_auth)
+    monkeypatch.setattr(auth_service, "_post_auth", fake_post_auth)
 
     client, _ = app_client()
     response = client.post(
@@ -38,7 +38,7 @@ def test_login_password_success(app_client, monkeypatch):
             "user": {"id": "auth-1"},
         }
 
-    monkeypatch.setattr(auth_router, "_post_auth", fake_post_auth)
+    monkeypatch.setattr(auth_service, "_post_auth", fake_post_auth)
 
     client, _ = app_client()
     response = client.post(
@@ -155,7 +155,7 @@ def test_logout_success(app_client, monkeypatch):
         async def post(self, url, headers=None):
             return DummyResponse()
 
-    monkeypatch.setattr(auth_router.httpx, "AsyncClient", DummyAsyncClient)
+    monkeypatch.setattr(auth_service.httpx, "AsyncClient", DummyAsyncClient)
 
     client, _ = app_client()
     response = client.post(

@@ -1,4 +1,4 @@
-from routers import payments as payments_router
+from services import payment_service
 
 
 class DummySnap:
@@ -58,7 +58,7 @@ def test_create_transaction_success(app_client, monkeypatch):
     }
 
     monkeypatch.setattr(
-        payments_router, "_get_snap_client", lambda settings: DummySnap()
+        payment_service, "_get_snap_client", lambda settings: DummySnap()
     )
 
     client, _ = app_client(
@@ -158,7 +158,7 @@ def test_create_transaction_existing_pending_returns_token(app_client, monkeypat
     }
 
     monkeypatch.setattr(
-        payments_router,
+        payment_service,
         "_get_core_api_client",
         lambda settings: DummyCoreApi(
             status_response={"transaction_status": "pending"}
@@ -220,7 +220,7 @@ def test_midtrans_notification_order_not_found(app_client, monkeypatch):
     table_responses = {"transaksi": [[]]}
 
     monkeypatch.setattr(
-        payments_router,
+        payment_service,
         "_get_core_api_client",
         lambda settings: DummyCoreApi(
             notification_response={
@@ -249,7 +249,7 @@ def test_midtrans_notification_updates_status(app_client, monkeypatch):
     }
 
     monkeypatch.setattr(
-        payments_router,
+        payment_service,
         "_get_core_api_client",
         lambda settings: DummyCoreApi(
             notification_response={
@@ -340,7 +340,7 @@ def test_sync_payment_status_updates(app_client, monkeypatch):
     }
 
     monkeypatch.setattr(
-        payments_router,
+        payment_service,
         "_get_core_api_client",
         lambda settings: DummyCoreApi(
             status_response={

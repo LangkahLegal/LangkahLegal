@@ -100,7 +100,7 @@ def get_current_user(
         if not user_res.user:
             raise HTTPException(status_code=401, detail="Token tidak valid atau kedaluwarsa")
 
-        auth_user_id = user_res.user.id # Ini adalah UUID dari Supabase Auth
+        auth_user_id = user_res.user.id
 
         user_profile = (
             db.table("users")

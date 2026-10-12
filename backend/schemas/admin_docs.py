@@ -78,7 +78,7 @@ class PaginatedResponse(BaseModel):
 class JobStatusResponse(BaseModel):
     """Response untuk status background job (upload/replace PDF)."""
     job_id: str
-    status: str  # queued, processing, completed, failed
+    status: str
     message: str
     frbr_uri: Optional[str] = None
     total_chunks: Optional[int] = None

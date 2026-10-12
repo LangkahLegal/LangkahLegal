@@ -1,4 +1,4 @@
-from routers import consultations as consultations_router
+from services import consultation_service
 
 
 def test_create_consultation_success(app_client):
@@ -291,7 +291,7 @@ def test_upload_document_success(app_client, monkeypatch):
         }
 
     monkeypatch.setattr(
-        consultations_router, "upload_supporting_document_to_supabase", fake_upload
+        consultation_service, "upload_supporting_document_to_supabase", fake_upload
     )
 
     table_responses = {
