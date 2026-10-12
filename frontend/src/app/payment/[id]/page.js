@@ -48,8 +48,8 @@ export default function PaymentPage() {
     queryKey: ["paymentStatus", id],
     queryFn: () => paymentService.getPaymentStatus(id),
     enabled: !!id,
-    refetchInterval: (data) =>
-      data?.status_pembayaran === "pending" ? 5000 : false,
+    refetchInterval: (query) =>
+      query.state.data?.status_pembayaran === "pending" ? 5000 : false,
   });
 
   // --- 3. MUTATION: CREATE TRANSACTION ---

@@ -21,11 +21,11 @@ export const paymentService = {
   /**
    * Cek status pembayaran untuk suatu pengajuan.
    * @param {number} id_pengajuan - ID pengajuan konsultasi
-   * @returns {{ data: object | null }}
+   * @returns {object | null} transaksi terakhir, atau null bila belum ada
    */
   getPaymentStatus: async (id_pengajuan) => {
     const response = await api.get(`/payments/status/${id_pengajuan}`);
-    return response.data;
+    return response.data?.data ?? null;
   },
 
   /**

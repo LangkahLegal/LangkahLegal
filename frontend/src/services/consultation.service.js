@@ -85,13 +85,6 @@ export const consultationService = {
     return response.data.data;
   },
 
-  respondToConsultation: async (id, statusPersetujuan) => {
-    const response = await api.put(`/consultations/${id}/respond`, {
-      status_persetujuan: statusPersetujuan,
-    });
-    return response.data;
-  },
-
   markConsultationComplete: async (id) => {
     const response = await api.put(`/consultations/${id}/complete`);
     return response.data;

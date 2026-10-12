@@ -98,10 +98,24 @@ test.describe("Pembayaran @payment", () => {
     input: "GET /payments/status/501 → {data:{status_pembayaran:'settlement'}} (format asli backend)",
     expected: "Layar 'Pembayaran Berhasil!' tampil; tombol 'Bayar Sekarang' tidak ditampilkan",
   }), async ({ page, api }) => {
-    knownDefect("BUG-20");
     api.on("GET", "/payments/status/501", { json: { data: { status_pembayaran: "settlement", order_id: "LL-501" } } });
     await page.goto("/payment/501");
     await expect(page.getByText("Pembayaran Berhasil!")).toBeVisible({ timeout: 5000 });
+  });
+
+  test(...tc("PAY-012", "Pembayaran tertunda terdeteksi lunas lewat polling tanpa muat ulang", {
+    feature: F_PAY, type: "Regression",
+    input: "GET /payments/status/501 → pending, lalu settlement pada polling berikutnya (5 detik)",
+    expected: "Tombol 'Bayar Sekarang' tampil dulu, lalu layar 'Pembayaran Berhasil!' muncul sendiri",
+  }), async ({ page, api }) => {
+    let calls = 0;
+    api.on("GET", "/payments/status/501", () => ({
+      json: { data: { status_pembayaran: calls++ === 0 ? "pending" : "settlement", order_id: "LL-501" } },
+    }));
+    await page.goto("/payment/501");
+    await expect(payBtn(page)).toBeVisible();
+    await expect(page.getByText("Pembayaran Berhasil!")).toBeVisible({ timeout: 15_000 });
+    expect(calls).toBeGreaterThan(1);
   });
 
   test(...tc("PAY-007", "Script Midtrans gagal dimuat: user mendapat umpan balik saat klik bayar", {
