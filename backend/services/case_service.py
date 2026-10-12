@@ -6,7 +6,7 @@ from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
-from helpers.schedule import find_conflict
+from helpers.schedule import ensure_not_past, find_conflict
 from repositories import case_repository, consultation_repository
 from schemas.cases import CaseForm
 from services import notification_service
@@ -25,6 +25,7 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
 
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
+    ensure_not_past(form.tanggal_konsultasi, form.jam_mulai)
     _ensure_client_is_free(db, current_user.id_user, form)
 
     created = case_repository.insert(

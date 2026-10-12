@@ -1,8 +1,39 @@
 import math
+from datetime import datetime, timedelta, timezone
 
 from core.exceptions import BadRequestError
 
 SESSION_MINUTES = 30
+WIB = timezone(timedelta(hours=7))
+END_OF_DAY = "23:59"
+
+
+def now_wib() -> datetime:
+    return datetime.now(WIB).replace(tzinfo=None)
+
+
+def is_past(tanggal, jam=None, now: datetime | None = None) -> bool:
+    """Apakah tanggal + jam (waktu WIB) sudah lewat. Tanpa jam yang valid, dihitung sampai akhir hari."""
+    date_part = str(tanggal or "").split("T")[0]
+    if not date_part:
+        return False
+
+    try:
+        day = datetime.strptime(date_part, "%Y-%m-%d")
+    except ValueError:
+        return False
+
+    try:
+        minutes = _to_minutes(str(jam))
+    except (ValueError, IndexError):
+        minutes = _to_minutes(END_OF_DAY)
+
+    return (now or now_wib()) > day + timedelta(minutes=minutes)
+
+
+def ensure_not_past(tanggal, jam) -> None:
+    if is_past(tanggal, jam):
+        raise BadRequestError("Waktu konsultasi yang dipilih sudah lewat")
 
 
 def _to_minutes(time_str: str) -> int:

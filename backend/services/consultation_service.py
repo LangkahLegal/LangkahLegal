@@ -8,7 +8,7 @@ from core.constants import Role, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import get_konsultan_id, require_konsultan_id, require_role
-from helpers.schedule import count_sessions, ensure_within_schedule, find_conflict
+from helpers.schedule import count_sessions, ensure_not_past, ensure_within_schedule, find_conflict
 from repositories import (
     case_repository,
     consultation_repository,
@@ -27,6 +27,19 @@ from services.storage_service import (
 logger = logging.getLogger(__name__)
 
 BLOCKING_STATUSES = [StatusPengajuan.TERJADWAL]
+
+# Perubahan status yang boleh dilakukan lewat endpoint status: {role: {status sekarang: status tujuan}}.
+# Status lain (terjadwal, selesai, kedaluwarsa) hanya diubah oleh alur pembayaran, rating, dan penyelesaian.
+STATUS_TRANSITIONS = {
+    Role.CLIENT: {
+        StatusPengajuan.PENDING: {StatusPengajuan.DIBATALKAN},
+        StatusPengajuan.MENUNGGU_PEMBAYARAN: {StatusPengajuan.DIBATALKAN},
+        StatusPengajuan.TERJADWAL: {StatusPengajuan.DIBATALKAN},
+    },
+    Role.KONSULTAN: {
+        StatusPengajuan.PENDING: {StatusPengajuan.MENUNGGU_PEMBAYARAN, StatusPengajuan.DITOLAK},
+    },
+}
 
 
 def _ensure_slot_is_free(db: Client, data_jadwal: dict, form: ConsultationForm) -> None:
@@ -47,6 +60,7 @@ async def create_consultation(db: Client, current_user: CurrentUser, form: Consu
         raise NotFoundError("Jadwal ketersediaan tidak ditemukan")
 
     ensure_within_schedule(form.jam_mulai, form.jam_selesai, data_jadwal)
+    ensure_not_past(data_jadwal["tanggal"], form.jam_mulai)
     _ensure_slot_is_free(db, data_jadwal, form)
 
     created = consultation_repository.insert(
@@ -91,7 +105,17 @@ async def create_consultation(db: Client, current_user: CurrentUser, form: Consu
     }
 
 
+def _ensure_transition_allowed(role: str, current_status: str | None, new_status: str) -> None:
+    allowed = STATUS_TRANSITIONS.get(role, {}).get(current_status, set())
+    if new_status not in allowed:
+        raise BadRequestError(f"Status tidak dapat diubah dari '{current_status}' menjadi '{new_status}'")
+
+
 def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_status: str) -> dict:
+    new_status = new_status.strip().lower()
+    if new_status not in StatusPengajuan.ALL:
+        raise BadRequestError(f"Status '{new_status}' tidak dikenal")
+
     data_pengajuan = consultation_repository.get_by_id(db, id_pengajuan)
 
     if data_pengajuan is None:
@@ -114,7 +138,9 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
     else:
         raise ForbiddenError("Role tidak dikenali")
 
-    if new_status.lower() in [StatusPengajuan.DITOLAK, StatusPengajuan.DIBATALKAN]:
+    _ensure_transition_allowed(user_role, data_pengajuan.get("status_pengajuan"), new_status)
+
+    if new_status in [StatusPengajuan.DITOLAK, StatusPengajuan.DIBATALKAN]:
         if data_pengajuan.get("id_jadwal"):
             schedule_repository.set_available(db, data_pengajuan["id_jadwal"], True)
 
@@ -123,9 +149,9 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
     if not updated:
         raise InternalError("Gagal memperbarui status")
 
-    if new_status.lower() == StatusPengajuan.DITOLAK:
+    if new_status == StatusPengajuan.DITOLAK:
         notification_service.client_request_rejected(db, data_pengajuan, id_pengajuan)
-    elif new_status.lower() == StatusPengajuan.MENUNGGU_PEMBAYARAN:
+    elif new_status == StatusPengajuan.MENUNGGU_PEMBAYARAN:
         notification_service.client_awaiting_payment(db, data_pengajuan, id_pengajuan)
 
     return {"message": f"Status berhasil diubah menjadi {new_status}"}

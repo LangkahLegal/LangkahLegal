@@ -8,7 +8,7 @@ def test_create_consultation_success(app_client):
                 {
                     "id_jadwal": 1,
                     "id_konsultan": 7,
-                    "tanggal": "2026-01-01",
+                    "tanggal": "2099-01-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                 }
@@ -42,7 +42,7 @@ def _booking_request(app_client, booked, jam_mulai, jam_selesai):
                 {
                     "id_jadwal": 1,
                     "id_konsultan": 7,
-                    "tanggal": "2026-01-01",
+                    "tanggal": "2099-01-01",
                     "jam_mulai": "08:00:00",
                     "jam_selesai": "17:00:00",
                 }
@@ -66,7 +66,7 @@ def _booking_request(app_client, booked, jam_mulai, jam_selesai):
     return response, supabase
 
 
-BOOKED_0900_1000 = [{"tanggal_pengajuan": "2026-01-01", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
+BOOKED_0900_1000 = [{"tanggal_pengajuan": "2099-01-01", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
 
 
 def test_create_consultation_rejects_overlapping_slot(app_client):
@@ -84,7 +84,7 @@ def test_create_consultation_allows_adjacent_slot(app_client):
 
 
 def test_create_consultation_ignores_booking_on_other_date(app_client):
-    other_day = [{"tanggal_pengajuan": "2026-01-02", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
+    other_day = [{"tanggal_pengajuan": "2099-01-02", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"}]
 
     response, _ = _booking_request(app_client, other_day, "09:00:00", "10:00:00")
 
@@ -142,7 +142,7 @@ def test_create_consultation_invalid_time(app_client):
                 {
                     "id_jadwal": 1,
                     "id_konsultan": 7,
-                    "tanggal": "2026-01-01",
+                    "tanggal": "2099-01-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                 }
@@ -188,7 +188,7 @@ def test_get_detail_pengajuan_success(app_client):
                     "id_pengajuan": 1,
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
-                    "tanggal_pengajuan": "2026-01-01",
+                    "tanggal_pengajuan": "2099-01-01",
                     "jadwal_ketersediaan": {
                         "tanggal": "2026-01-05",
                         "konsultan": {"tarif_per_sesi": 100},
@@ -245,6 +245,7 @@ def test_update_status_success(app_client):
                     "id_user": 2,
                     "id_konsultan": 7,
                     "id_jadwal": 3,
+                    "status_pengajuan": "pending",
                 }
             ],
             [{"id_pengajuan": 1}],
@@ -258,10 +259,69 @@ def test_update_status_success(app_client):
 
     response = client.put(
         "/api/v1/consultations/1/status",
-        params={"new_status": "terjadwal"},
+        params={"new_status": "menunggu_pembayaran"},
     )
 
     assert response.status_code == 200
+
+
+def _status_request(app_client, role, current_status, new_status):
+    table_responses = {
+        "pengajuan_konsultasi": [
+            [{"id_pengajuan": 1, "id_user": 1, "id_konsultan": 7, "status_pengajuan": current_status}],
+            [{"id_pengajuan": 1}],
+        ],
+        "konsultan": [[{"id_konsultan": 7}]],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": role},
+    )
+    return client.put("/api/v1/consultations/1/status", params={"new_status": new_status})
+
+
+def test_update_status_rejects_unknown_status(app_client):
+    response = _status_request(app_client, "konsultan", "pending", "status_ngawur")
+
+    assert response.status_code == 400
+    assert "tidak dikenal" in response.json()["detail"]
+
+
+def test_update_status_konsultan_cannot_skip_payment(app_client):
+    response = _status_request(app_client, "konsultan", "pending", "terjadwal")
+
+    assert response.status_code == 400
+
+
+def test_update_status_konsultan_cannot_change_finished_consultation(app_client):
+    response = _status_request(app_client, "konsultan", "selesai", "ditolak")
+
+    assert response.status_code == 400
+
+
+def test_update_status_konsultan_can_reject_pending(app_client):
+    response = _status_request(app_client, "konsultan", "pending", "ditolak")
+
+    assert response.status_code == 200
+
+
+def test_update_status_client_can_cancel_pending(app_client):
+    response = _status_request(app_client, "client", "pending", "dibatalkan")
+
+    assert response.status_code == 200
+
+
+def test_update_status_client_cannot_cancel_finished_consultation(app_client):
+    response = _status_request(app_client, "client", "selesai", "dibatalkan")
+
+    assert response.status_code == 400
+
+
+def test_update_status_is_case_insensitive(app_client):
+    response = _status_request(app_client, "client", "pending", "Dibatalkan")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Status berhasil diubah menjadi dibatalkan"
 
 
 def test_update_status_not_found(app_client):
@@ -286,7 +346,7 @@ def test_get_booked_slots_success(app_client):
                 {
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
-                    "tanggal_pengajuan": "2026-01-01",
+                    "tanggal_pengajuan": "2099-01-01",
                 }
             ]
         ]
@@ -522,3 +582,32 @@ def test_assign_schedule_success(app_client):
 
     assert response.status_code == 200
     assert response.json()["data"]["status_pengajuan"] == "menunggu_pembayaran"
+
+
+def test_create_consultation_rejects_past_time(app_client):
+    table_responses = {
+        "jadwal_ketersediaan": [
+            [
+                {
+                    "id_jadwal": 1,
+                    "id_konsultan": 7,
+                    "tanggal": "2020-01-01",
+                    "jam_mulai": "08:00:00",
+                    "jam_selesai": "17:00:00",
+                }
+            ]
+        ],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 1, "role": "client"},
+    )
+
+    response = client.post(
+        "/api/v1/consultations",
+        data={"id_jadwal": 1, "deskripsi_kasus": "Kasus", "jam_mulai": "09:00:00", "jam_selesai": "10:00:00"},
+    )
+
+    assert response.status_code == 400
+    assert "sudah lewat" in response.json()["detail"]
+    assert supabase.inserted("pengajuan_konsultasi") == []

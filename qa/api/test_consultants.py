@@ -280,5 +280,25 @@ def test_konsultan_id_from_session_skips_profile_lookup(app_client):
     response = client.get("/api/v1/consultants/me/requests/pending")
 
     assert response.status_code == 200
-    assert response.json() == [{"id_pengajuan": 1}]
+    assert response.json() == [{"id_pengajuan": 1, "sudah_lewat": False}]
     assert "konsultan" not in supabase._table_queues
+
+
+def test_requests_are_flagged_when_start_time_has_passed(app_client):
+    table_responses = {
+        "pengajuan_konsultasi": [
+            [
+                {"id_pengajuan": 1, "tanggal_pengajuan": "2020-01-01", "jam_mulai": "09:00:00"},
+                {"id_pengajuan": 2, "tanggal_pengajuan": "2099-01-01", "jam_mulai": "09:00:00"},
+                {"id_pengajuan": 3, "tanggal_pengajuan": "2020-01-01", "jam_mulai": None},
+            ]
+        ],
+    }
+    client, _ = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 3, "role": "konsultan", "id_konsultan": 7},
+    )
+
+    response = client.get("/api/v1/consultants/me/requests/active")
+
+    assert [row["sudah_lewat"] for row in response.json()] == [True, False, False]

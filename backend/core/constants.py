@@ -14,6 +14,17 @@ class StatusPengajuan:
     KEDALUWARSA = "kedaluwarsa"
     PEMBAYARAN_GAGAL = "pembayaran_gagal"
 
+    ALL = (
+        PENDING,
+        MENUNGGU_PEMBAYARAN,
+        TERJADWAL,
+        SELESAI,
+        DIBATALKAN,
+        DITOLAK,
+        KEDALUWARSA,
+        PEMBAYARAN_GAGAL,
+    )
+
 
 class StatusPembayaran:
     PENDING = "pending"

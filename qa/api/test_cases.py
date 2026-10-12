@@ -13,7 +13,7 @@ def test_post_case_success(app_client):
         data={
             "kategori_hukum": "pidana",
             "deskripsi_kasus_awam": "Kasus contoh",
-            "tanggal_konsultasi": "2026-06-01",
+            "tanggal_konsultasi": "2099-06-01",
             "jam_mulai": "09:00",
             "jam_selesai": "10:00",
         },
@@ -36,7 +36,7 @@ def test_post_case_forbidden(app_client):
         data={
             "kategori_hukum": "pidana",
             "deskripsi_kasus_awam": "Kasus contoh",
-            "tanggal_konsultasi": "2026-06-01",
+            "tanggal_konsultasi": "2099-06-01",
             "jam_mulai": "09:00",
             "jam_selesai": "10:00",
         },
@@ -78,7 +78,7 @@ def test_post_case_with_files(app_client, monkeypatch):
         data={
             "kategori_hukum": "pidana",
             "deskripsi_kasus_awam": "Kasus contoh",
-            "tanggal_konsultasi": "2026-06-01",
+            "tanggal_konsultasi": "2099-06-01",
             "jam_mulai": "09:00",
             "jam_selesai": "10:00",
         },
@@ -118,7 +118,7 @@ def test_claim_case_success(app_client):
                     "id_user": 2,
                     "status_bursa": "open",
                     "deskripsi_kasus_awam": "Kasus",
-                    "tanggal_konsultasi": "2026-06-01",
+                    "tanggal_konsultasi": "2099-06-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                     "dokumen_bukti": None,
@@ -163,7 +163,7 @@ def test_claim_case_already_closed(app_client):
                     "id_bursa": 1,
                     "status_bursa": "closed",
                     "id_user": 2,
-                    "tanggal_konsultasi": "2026-06-01",
+                    "tanggal_konsultasi": "2099-06-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                 }
@@ -201,7 +201,7 @@ def test_claim_case_schedule_conflict(app_client):
                     "id_bursa": 1,
                     "id_user": 2,
                     "status_bursa": "open",
-                    "tanggal_konsultasi": "2026-06-01",
+                    "tanggal_konsultasi": "2099-06-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                     "deskripsi_kasus_awam": "Kasus",
@@ -215,11 +215,11 @@ def test_claim_case_schedule_conflict(app_client):
                     "jam_mulai": "09:30",
                     "jam_selesai": "10:30",
                     "jadwal_ketersediaan": {
-                        "tanggal": "2026-06-01",
+                        "tanggal": "2099-06-01",
                         "jam_mulai": "09:00",
                         "jam_selesai": "10:00",
                     },
-                    "tanggal_pengajuan": "2026-06-01",
+                    "tanggal_pengajuan": "2099-06-01",
                 }
             ]
         ],
@@ -244,7 +244,7 @@ def test_claim_case_insert_failure_rolls_back(app_client):
                     "id_user": 2,
                     "status_bursa": "open",
                     "deskripsi_kasus_awam": "Kasus",
-                    "tanggal_konsultasi": "2026-06-01",
+                    "tanggal_konsultasi": "2099-06-01",
                     "jam_mulai": "09:00",
                     "jam_selesai": "10:00",
                     "dokumen_bukti": None,
@@ -268,7 +268,7 @@ def test_claim_case_insert_failure_rolls_back(app_client):
 CASE_FORM = {
     "kategori_hukum": "pidana",
     "deskripsi_kasus_awam": "Kasus contoh",
-    "tanggal_konsultasi": "2026-06-01",
+    "tanggal_konsultasi": "2099-06-01",
     "jam_mulai": "09:00",
     "jam_selesai": "10:00",
 }
@@ -277,7 +277,7 @@ CASE_FORM = {
 def test_post_case_rejects_when_client_has_overlapping_consultation(app_client):
     table_responses = {
         "pengajuan_konsultasi": [
-            [{"tanggal_pengajuan": "2026-06-01", "jam_mulai": "09:30:00", "jam_selesai": "10:30:00"}]
+            [{"tanggal_pengajuan": "2099-06-01", "jam_mulai": "09:30:00", "jam_selesai": "10:30:00"}]
         ],
     }
     client, supabase = app_client(
@@ -294,7 +294,7 @@ def test_post_case_rejects_when_client_has_overlapping_consultation(app_client):
 def test_post_case_allows_when_other_consultation_does_not_overlap(app_client):
     table_responses = {
         "pengajuan_konsultasi": [
-            [{"tanggal_pengajuan": "2026-06-01", "jam_mulai": "10:00:00", "jam_selesai": "11:00:00"}]
+            [{"tanggal_pengajuan": "2099-06-01", "jam_mulai": "10:00:00", "jam_selesai": "11:00:00"}]
         ],
         "bursa_kasus": [[{"id_bursa": 1, "status_bursa": "open"}]],
     }
@@ -306,3 +306,12 @@ def test_post_case_allows_when_other_consultation_does_not_overlap(app_client):
     response = client.post("/api/v1/cases", data=CASE_FORM)
 
     assert response.status_code == 201
+
+
+def test_post_case_rejects_past_time(app_client):
+    client, supabase = app_client(current_user={"id_user": 1, "role": "client"})
+
+    response = client.post("/api/v1/cases", data={**CASE_FORM, "tanggal_konsultasi": "2020-01-01"})
+
+    assert response.status_code == 400
+    assert supabase.inserted("bursa_kasus") == []

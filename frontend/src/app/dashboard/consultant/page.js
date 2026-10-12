@@ -33,6 +33,11 @@ const isSchedulePast = (dateStr, timeStr) => {
   return scheduleDateTime < now;
 };
 
+// Backend (waktu WIB) yang menentukan apakah jadwal sudah lewat; jam perangkat hanya cadangan
+// bila field `sudah_lewat` tidak tersedia.
+const isRequestPast = (req) =>
+  req.sudah_lewat ?? isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
+
 export default function ConsultantDashboardPage() {
   const router = useRouter();
 
@@ -90,7 +95,7 @@ export default function ConsultantDashboardPage() {
     if (!activeRequests?.length) return null;
     const filtered = activeRequests.filter((req) => {
       const isScheduled = req.status_pengajuan?.toLowerCase() === "terjadwal";
-      const isFuture = !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
+      const isFuture = !isRequestPast(req);
       return isScheduled && isFuture;
     });
     if (!filtered.length) return null;
@@ -108,7 +113,7 @@ export default function ConsultantDashboardPage() {
 
   const mappedRequests = useMemo(() => {
     return pendingRequests
-      .filter((req) => !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai))
+      .filter((req) => !isRequestPast(req))
       .map((req) => transformToCardData(req));
   }, [pendingRequests]);
 

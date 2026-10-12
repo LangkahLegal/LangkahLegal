@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Optional
 
 from supabase import Client
@@ -9,6 +9,7 @@ from core.exceptions import BadRequestError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
 from helpers.rating import summarize_ratings
+from helpers.schedule import is_past, now_wib
 from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
     ConsultantActiveToggle,
@@ -19,7 +20,6 @@ from schemas.consultants import (
 
 logger = logging.getLogger(__name__)
 
-WIB = timezone(timedelta(hours=7))
 UNPAID_STATUSES = [
     "cancelled",
     StatusPengajuan.DIBATALKAN,
@@ -131,12 +131,24 @@ def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
     }
 
 
+def _with_past_flag(rows: list[dict]) -> list[dict]:
+    """Tandai pengajuan yang jam mulainya sudah lewat; pengajuan tanpa jadwal tidak pernah dianggap lewat."""
+    now = now_wib()
+    return [
+        {
+            **row,
+            "sudah_lewat": bool(row.get("jam_mulai")) and is_past(row.get("tanggal_pengajuan"), row["jam_mulai"], now),
+        }
+        for row in rows
+    ]
+
+
 def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
     id_kons = require_konsultan_id(db, current_user)
 
-    return consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING])
+    return _with_past_flag(consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING]))
 
 
 def get_active_requests(db: Client, current_user: CurrentUser) -> list:
@@ -144,8 +156,10 @@ def get_active_requests(db: Client, current_user: CurrentUser) -> list:
 
     id_kons = require_konsultan_id(db, current_user)
 
-    return consultation_repository.list_requests_for_konsultan(
-        db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
+    return _with_past_flag(
+        consultation_repository.list_requests_for_konsultan(
+            db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
+        )
     )
 
 
@@ -160,12 +174,7 @@ def _format_upcoming_client(req: dict, now: datetime) -> dict | None:
     if not tanggal_konsultasi:
         return None
 
-    try:
-        deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_str or '23:59'}", "%Y-%m-%d %H:%M")
-    except ValueError:
-        deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
-
-    if now > deadline:
+    if is_past(tanggal_konsultasi, jam_selesai_str, now):
         return None
 
     return {
@@ -215,7 +224,7 @@ def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
 
     rows = consultation_repository.list_with_client_and_date(db, id_kons, [StatusPengajuan.TERJADWAL])
 
-    now = datetime.now(WIB).replace(tzinfo=None)
+    now = now_wib()
     formatted_data = [item for item in (_format_upcoming_client(req, now) for req in rows) if item is not None]
 
     return {"total_klien_aktif": len(formatted_data), "data": formatted_data}
