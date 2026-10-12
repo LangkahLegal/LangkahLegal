@@ -1,4 +1,4 @@
-from services import case_service
+from services import storage_service
 
 
 def test_post_case_success(app_client):
@@ -54,7 +54,7 @@ def test_post_case_with_files(app_client, monkeypatch):
         }
 
     monkeypatch.setattr(
-        case_service, "upload_supporting_document_to_supabase", fake_upload
+        storage_service, "upload_supporting_document_to_supabase", fake_upload
     )
 
     table_responses = {

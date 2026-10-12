@@ -9,6 +9,7 @@ from supabase import Client
 
 from core.config import get_settings
 from core.exceptions import AppError, BadRequestError, InternalError, UnauthorizedError
+from helpers.profile import find_profile
 from repositories import user_repository
 from schemas.auth import (
     ForgotPasswordPayload,
@@ -250,21 +251,7 @@ async def refresh_session(refresh_token: Optional[str]) -> dict:
 def get_profile(db: Client, token: str) -> Optional[dict]:
     user = _get_auth_user(token, db)
 
-    columns = "id_user, nama, email, role, auth_user_id"
-    profiles = user_repository.list_by_auth_user_id(db, user.id, columns)
-
-    if not profiles:
-        if user.email:
-            email_profiles = user_repository.list_by_email(db, user.email, columns)
-            if email_profiles:
-                user_repository.link_auth_user(db, user.email, user.id)
-                profile = email_profiles[0]
-                profile["auth_user_id"] = user.id
-                return profile
-
-        return None
-
-    return profiles[0]
+    return find_profile(db, user.id, user.email, "id_user, nama, email, role, auth_user_id")
 
 
 def update_role(db: Client, token: str, payload: RolePayload) -> dict:

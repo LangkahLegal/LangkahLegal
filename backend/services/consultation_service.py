@@ -1,138 +1,29 @@
 import logging
-import math
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 from supabase import Client
 
 from core.config import get_settings
 from core.constants import Role, StatusPengajuan
 from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
 from helpers.access import get_konsultan_id, require_konsultan_id, require_role
+from helpers.schedule import count_sessions, ensure_within_schedule
 from repositories import (
     case_repository,
-    consultant_repository,
     consultation_repository,
     rating_repository,
     schedule_repository,
     supporting_document_repository,
-    user_repository,
 )
 from schemas.consultations import AssignSchedule, RatingCreate
-from services.email_service import get_frontend_base_url, send_notification_email
+from services import notification_service
 from services.storage_service import (
     remove_file_from_supabase,
-    upload_supporting_document_to_supabase,
+    select_valid_files,
+    upload_supporting_documents,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _notify_consultant_new_request(db: Client, id_konsultan: int, id_pengajuan: int) -> None:
-    try:
-        konsultan = consultant_repository.get_by_id_strict(db, id_konsultan, "id_user, nama_lengkap")
-        if konsultan:
-            user = user_repository.get_by_id_strict(db, konsultan["id_user"], "email")
-            if user:
-                konsultan_email = user["email"]
-                konsultan_nama = konsultan["nama_lengkap"]
-                subject = "Pengajuan Konsultasi Baru"
-                frontend_base_url = get_frontend_base_url()
-                message = f"""Halo {konsultan_nama},
-
-Anda memiliki pengajuan konsultasi baru yang menunggu persetujuan Anda.
-
-Silakan tinjau detail pengajuan dan tentukan tindakan Anda melalui tautan berikut:
-{frontend_base_url}/request/{id_pengajuan}
-
-Terima kasih.
-"""
-                send_notification_email(konsultan_email, subject, message)
-    except Exception:
-        pass
-
-
-def _notify_client_rejected(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    try:
-        client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
-        if client:
-            client_email = client["email"]
-            client_nama = client["nama"]
-            subject = "Pengajuan Konsultasi Ditolak"
-            message = f"Halo {client_nama}, mohon maaf, pengajuan konsultasi Anda (ID: {id_pengajuan}) telah ditolak oleh konsultan."
-            send_notification_email(client_email, subject, message)
-    except Exception as e:
-        logger.error(f"Gagal kirim email di update_status (ditolak): {e}")
-
-
-def _notify_client_awaiting_payment(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    try:
-        client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
-        if client:
-            client_email = client["email"]
-            client_nama = client["nama"]
-            subject = "Jadwal Konsultasi Ditetapkan - Menunggu Pembayaran"
-            frontend_base_url = get_frontend_base_url()
-            message = f"""Halo {client_nama},
-
-Kabar baik! Pengajuan konsultasi Anda (ID: {id_pengajuan}) telah dikonfirmasi oleh konsultan.
-
-Silakan lanjutkan ke tahap pembayaran untuk mengamankan slot jadwal Anda. Anda dapat melakukan pembayaran melalui tautan berikut:
-{frontend_base_url}/payment/{id_pengajuan}
-
-(Atau Anda dapat langsung mengecek menu Dashboard di aplikasi LangkahLegal).
-
-Terima kasih.
-"""
-            send_notification_email(client_email, subject, message)
-    except Exception as e:
-        logger.error(f"Gagal kirim email di update_status (menunggu_pembayaran): {e}")
-
-
-def _notify_client_schedule_assigned(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
-    try:
-        client = user_repository.get_by_id_strict(db, data_pengajuan["id_user"], "email, nama")
-        if client:
-            client_email = client["email"]
-            client_nama = client["nama"]
-            subject = "Jadwal Konsultasi Ditetapkan - Menunggu Pembayaran"
-            frontend_base_url = get_frontend_base_url()
-            message = f"""Halo {client_nama},
-
-Jadwal konsultasi Anda telah dikonfirmasi dan ditetapkan oleh konsultan (ID Pengajuan: {id_pengajuan}).
-
-Silakan lanjutkan ke tahap pembayaran untuk mengamankan slot jadwal Anda. Anda dapat melakukan pembayaran melalui tautan berikut:
-{frontend_base_url}/payment/{id_pengajuan}
-
-(Atau Anda dapat langsung mengecek menu Dashboard di aplikasi LangkahLegal).
-
-Terima kasih.
-"""
-            send_notification_email(client_email, subject, message)
-    except Exception as e:
-        logger.error(f"Gagal kirim email di assign-schedule: {e}")
-
-
-def _notify_client_zoom_link(db: Client, id_pengajuan: int) -> None:
-    try:
-        pengajuan = consultation_repository.get_by_id_strict(db, id_pengajuan, "id_user")
-        if pengajuan:
-            client = user_repository.get_by_id_strict(db, pengajuan["id_user"], "email, nama")
-            if client:
-                client_email = client["email"]
-                client_nama = client["nama"]
-                subject = "Link Zoom Konsultasi Tersedia"
-                frontend_base_url = get_frontend_base_url()
-                message = f"""Halo {client_nama},
-
-Konsultan telah membagikan link Zoom untuk sesi konsultasi Anda.
-Silakan cek detail dan akses link tersebut melalui tautan berikut:
-{frontend_base_url}/consultation/{id_pengajuan}
-
-Terima kasih.
-"""
-                send_notification_email(client_email, subject, message)
-    except Exception as e:
-        logger.error(f"Gagal kirim email di zoom-link: {e}")
 
 
 async def create_consultation(
@@ -146,22 +37,14 @@ async def create_consultation(
 ) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
 
-    if dokumen_pendukung_files:
-        valid_files = [f for f in dokumen_pendukung_files if f.filename]
-        if len(valid_files) > 10:
-            raise BadRequestError("Maksimal 10 file dokumen pendukung")
-    else:
-        valid_files = []
+    valid_files = select_valid_files(dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
 
     data_jadwal = schedule_repository.get_by_id(db, id_jadwal)
 
     if data_jadwal is None:
         raise NotFoundError("Jadwal ketersediaan tidak ditemukan")
 
-    if jam_mulai < data_jadwal["jam_mulai"] or jam_selesai > data_jadwal["jam_selesai"]:
-        raise BadRequestError(
-            f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})"
-        )
+    ensure_within_schedule(jam_mulai, jam_selesai, data_jadwal)
 
     created = consultation_repository.insert(db, {
         "id_user": current_user["id_user"],
@@ -179,32 +62,15 @@ async def create_consultation(
 
     id_pengajuan = created[0]["id_pengajuan"]
 
-    settings = get_settings()
-    bucket_name = settings.supabase_berkas_pendukung_bucket
-    uploaded_docs = []
-    failed_docs = []
+    def save_document(doc_meta: dict) -> str:
+        _insert_document(db, id_pengajuan, doc_meta)
+        return doc_meta["nama_dokumen"]
 
-    for file in valid_files:
-        try:
-            doc_meta = await upload_supporting_document_to_supabase(
-                file=file,
-                id_pengajuan=id_pengajuan,
-                id_user=current_user["id_user"],
-                db_client=db,
-                bucket_name=bucket_name,
-            )
-            supporting_document_repository.insert(db, {
-                "id_pengajuan": id_pengajuan,
-                "nama_dokumen": doc_meta["nama_dokumen"],
-                "file_url": doc_meta["file_url"],
-                "tipe_file": doc_meta["tipe_file"],
-                "ukuran_kb": doc_meta["ukuran_kb"],
-            })
-            uploaded_docs.append(doc_meta["nama_dokumen"])
-        except Exception as e:
-            failed_docs.append({"nama": file.filename, "alasan": str(e)})
+    uploaded_docs, failed_docs = await upload_supporting_documents(
+        db, valid_files, id_pengajuan, current_user["id_user"], save_document
+    )
 
-    _notify_consultant_new_request(db, data_jadwal["id_konsultan"], id_pengajuan)
+    notification_service.consultant_new_request(db, data_jadwal["id_konsultan"], id_pengajuan)
 
     return {
         "message": "Pengajuan berhasil dikirim.",
@@ -252,9 +118,9 @@ def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status:
         raise InternalError("Gagal memperbarui status")
 
     if new_status.lower() == StatusPengajuan.DITOLAK:
-        _notify_client_rejected(db, data_pengajuan, id_pengajuan)
+        notification_service.client_request_rejected(db, data_pengajuan, id_pengajuan)
     elif new_status.lower() == StatusPengajuan.MENUNGGU_PEMBAYARAN:
-        _notify_client_awaiting_payment(db, data_pengajuan, id_pengajuan)
+        notification_service.client_awaiting_payment(db, data_pengajuan, id_pengajuan)
 
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
 
@@ -269,25 +135,6 @@ def list_my_consultations(db: Client, current_user: dict) -> dict:
         id_kons = get_konsultan_id(db, current_user["id_user"])
 
     return {"data": consultation_repository.list_with_relations(db, id_user=id_user, id_konsultan=id_kons)}
-
-
-def _count_sessions(jm: str, js: str) -> int:
-    jumlah_sesi = 1
-    if len(jm) >= 5 and len(js) >= 5:
-        try:
-            start_h, start_m = int(jm[:2]), int(jm[3:5])
-            end_h, end_m = int(js[:2]), int(js[3:5])
-            start_total = start_h * 60 + start_m
-            end_total = end_h * 60 + end_m
-            diff = end_total - start_total
-            if diff < 0:
-                diff += 24 * 60
-            calc_sesi = math.ceil(diff / 30.0)
-            if calc_sesi > 0:
-                jumlah_sesi = calc_sesi
-        except Exception:
-            pass
-    return jumlah_sesi
 
 
 def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
@@ -312,24 +159,31 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
     return berkas
 
 
-def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -> dict:
-    id_user = None
-    id_kons = None
-
+def _detail_scope(db: Client, current_user: dict) -> tuple[int | None, int | None]:
+    """Filter kepemilikan (id_user, id_konsultan) untuk detail pengajuan sesuai role."""
     if current_user.get("role") == Role.CLIENT:
-        id_user = current_user["id_user"]
-    elif current_user.get("role") == Role.KONSULTAN:
+        return current_user["id_user"], None
+
+    if current_user.get("role") == Role.KONSULTAN:
         id_kons = get_konsultan_id(db, current_user["id_user"])
-        if id_kons is None:
-            raise ForbiddenError("Akses ditolak")
-    else:
-        raise ForbiddenError("Akses ditolak")
+        if id_kons is not None:
+            return None, id_kons
+
+    raise ForbiddenError("Akses ditolak")
+
+
+def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -> dict:
+    id_user, id_kons = _detail_scope(db, current_user)
 
     data = consultation_repository.get_detail(db, id_pengajuan, id_user=id_user, id_konsultan=id_kons)
 
     if data is None:
         raise NotFoundError("Detail tidak ditemukan")
 
+    return {"data": _enrich_detail(db, data)}
+
+
+def _enrich_detail(db: Client, data: dict) -> dict:
     jadwal = data.get("jadwal_ketersediaan") or {}
     konsultan_via_jadwal = jadwal.get("konsultan") or {}
     konsultan_direct = data.get("konsultan") or {}
@@ -345,7 +199,7 @@ def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -
     js = str(data.get("jam_selesai", ""))[:5]
     data["rentang_waktu"] = f"{jm} - {js}" if jm and js else ""
 
-    jumlah_sesi = _count_sessions(jm, js)
+    jumlah_sesi = count_sessions(jm, js)
     data["jumlah_sesi"] = jumlah_sesi
 
     tarif_skrg = konsultan_via_jadwal.get("tarif_per_sesi") or konsultan_direct.get("tarif_per_sesi", 0)
@@ -372,7 +226,41 @@ def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -
 
     data["berkas_pendukung"] = berkas
 
-    return {"data": data}
+    return data
+
+
+def _get_pending_consultation_of(db: Client, id_pengajuan: int, id_konsultan: int) -> dict:
+    data_pengajuan = consultation_repository.get_by_id(
+        db, id_pengajuan, "id_pengajuan, id_konsultan, id_user, status_pengajuan, id_bursa"
+    )
+    if data_pengajuan is None:
+        raise NotFoundError("Pengajuan tidak ditemukan")
+
+    if data_pengajuan["id_konsultan"] != id_konsultan:
+        raise ForbiddenError("Pengajuan ini bukan milik Anda")
+
+    if data_pengajuan["status_pengajuan"] != StatusPengajuan.PENDING:
+        raise BadRequestError("Hanya pengajuan berstatus pending yang bisa dijadwalkan")
+
+    return data_pengajuan
+
+
+def _get_available_schedule_of(db: Client, id_jadwal: int, id_konsultan: int) -> dict:
+    data_jadwal = schedule_repository.get_by_id(
+        db,
+        id_jadwal,
+        "id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai, status_tersedia",
+    )
+    if data_jadwal is None:
+        raise NotFoundError("Jadwal tidak ditemukan")
+
+    if data_jadwal["id_konsultan"] != id_konsultan:
+        raise ForbiddenError("Jadwal ini bukan milik Anda")
+
+    if not data_jadwal["status_tersedia"]:
+        raise BadRequestError("Slot jadwal sudah tidak tersedia")
+
+    return data_jadwal
 
 
 def assign_schedule(
@@ -382,36 +270,10 @@ def assign_schedule(
 
     real_id_konsultan = require_konsultan_id(db, current_user["id_user"])
 
-    data_pengajuan = consultation_repository.get_by_id(
-        db, id_pengajuan, "id_pengajuan, id_konsultan, id_user, status_pengajuan, id_bursa"
-    )
-    if data_pengajuan is None:
-        raise NotFoundError("Pengajuan tidak ditemukan")
+    data_pengajuan = _get_pending_consultation_of(db, id_pengajuan, real_id_konsultan)
+    data_jadwal = _get_available_schedule_of(db, request.id_jadwal, real_id_konsultan)
 
-    if data_pengajuan["id_konsultan"] != real_id_konsultan:
-        raise ForbiddenError("Pengajuan ini bukan milik Anda")
-
-    if data_pengajuan["status_pengajuan"] != StatusPengajuan.PENDING:
-        raise BadRequestError("Hanya pengajuan berstatus pending yang bisa dijadwalkan")
-
-    data_jadwal = schedule_repository.get_by_id(
-        db,
-        request.id_jadwal,
-        "id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai, status_tersedia",
-    )
-    if data_jadwal is None:
-        raise NotFoundError("Jadwal tidak ditemukan")
-
-    if data_jadwal["id_konsultan"] != real_id_konsultan:
-        raise ForbiddenError("Jadwal ini bukan milik Anda")
-
-    if not data_jadwal["status_tersedia"]:
-        raise BadRequestError("Slot jadwal sudah tidak tersedia")
-
-    if request.jam_mulai < data_jadwal["jam_mulai"] or request.jam_selesai > data_jadwal["jam_selesai"]:
-        raise BadRequestError(
-            f"Jam di luar rentang operasional ({data_jadwal['jam_mulai']} - {data_jadwal['jam_selesai']})"
-        )
+    ensure_within_schedule(request.jam_mulai, request.jam_selesai, data_jadwal)
 
     updated = consultation_repository.update(db, id_pengajuan, {
         "id_jadwal": request.id_jadwal,
@@ -426,7 +288,7 @@ def assign_schedule(
 
     schedule_repository.set_available(db, request.id_jadwal, False)
 
-    _notify_client_schedule_assigned(db, data_pengajuan, id_pengajuan)
+    notification_service.client_schedule_assigned(db, data_pengajuan, id_pengajuan)
 
     return {
         "message": "Jadwal berhasil diatur. Status berubah ke menunggu_pembayaran.",
@@ -456,7 +318,7 @@ def update_zoom_link(db: Client, current_user: dict, id_pengajuan: int, link_zoo
     if not updated:
         raise InternalError("Gagal menyimpan link Zoom")
 
-    _notify_client_zoom_link(db, id_pengajuan)
+    notification_service.client_zoom_link(db, id_pengajuan)
 
     return {
         "message": "Link Zoom berhasil disimpan",
@@ -529,6 +391,16 @@ def list_documents(db: Client, current_user: dict, id_pengajuan: int) -> dict:
     }
 
 
+def _insert_document(db: Client, id_pengajuan: int, doc_meta: dict) -> list[dict]:
+    return supporting_document_repository.insert(db, {
+        "id_pengajuan": id_pengajuan,
+        "nama_dokumen": doc_meta["nama_dokumen"],
+        "file_url": doc_meta["file_url"],
+        "tipe_file": doc_meta["tipe_file"],
+        "ukuran_kb": doc_meta["ukuran_kb"],
+    })
+
+
 def _require_owned_consultation(db: Client, id_pengajuan: int, id_user: int, forbidden_detail: str) -> None:
     pengajuan = consultation_repository.get_by_id(db, id_pengajuan, "id_user")
     if pengajuan is None:
@@ -552,45 +424,19 @@ async def upload_documents(
         "Anda tidak berhak mengunggah dokumen untuk pengajuan ini",
     )
 
-    valid_files = [f for f in dokumen_pendukung_files if f.filename]
-    if not valid_files:
-        raise BadRequestError("Tidak ada file valid yang dikirim")
-    if len(valid_files) > 10:
-        raise BadRequestError("Maksimal 10 file per upload")
+    valid_files = select_valid_files(
+        dokumen_pendukung_files,
+        "Maksimal 10 file per upload",
+        empty_detail="Tidak ada file valid yang dikirim",
+    )
 
-    settings = get_settings()
-    bucket_name = settings.supabase_berkas_pendukung_bucket
-    uploaded_docs = []
-    failed_docs = []
+    def save_document(doc_meta: dict) -> dict:
+        inserted = _insert_document(db, id_pengajuan, doc_meta)
+        return {"id_dokumen": inserted[0]["id_dokumen"] if inserted else None, **doc_meta}
 
-    for file in valid_files:
-        try:
-            doc_meta = await upload_supporting_document_to_supabase(
-                file=file,
-                id_pengajuan=id_pengajuan,
-                id_user=current_user["id_user"],
-                db_client=db,
-                bucket_name=bucket_name,
-            )
-            inserted = supporting_document_repository.insert(db, {
-                "id_pengajuan": id_pengajuan,
-                "nama_dokumen": doc_meta["nama_dokumen"],
-                "file_url": doc_meta["file_url"],
-                "tipe_file": doc_meta["tipe_file"],
-                "ukuran_kb": doc_meta["ukuran_kb"],
-            })
-
-            uploaded_docs.append({
-                "id_dokumen": inserted[0]["id_dokumen"] if inserted else None,
-                "nama_dokumen": doc_meta["nama_dokumen"],
-                "file_url": doc_meta["file_url"],
-                "tipe_file": doc_meta["tipe_file"],
-                "ukuran_kb": doc_meta["ukuran_kb"],
-            })
-        except HTTPException as e:
-            failed_docs.append({"nama": file.filename, "alasan": e.detail})
-        except Exception as e:
-            failed_docs.append({"nama": file.filename, "alasan": str(e)})
+    uploaded_docs, failed_docs = await upload_supporting_documents(
+        db, valid_files, id_pengajuan, current_user["id_user"], save_document, detail_only=True
+    )
 
     return {
         "message": f"{len(uploaded_docs)} dokumen berhasil diupload",

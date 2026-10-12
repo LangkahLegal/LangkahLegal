@@ -32,6 +32,32 @@ def get_full_profile(db: Client, current_user: dict) -> dict:
     return user
 
 
+PROFESSIONAL_FIELDS = (
+    "bio_singkat",
+    "deskripsi_lengkap",
+    "nomor_izin_praktik",
+    "gelar_akademik",
+    "pendidikan_terakhir",
+    "kota_praktik",
+    "spesialisasi",
+    "pengalaman_tahun",
+    "tarif_per_sesi",
+    "linkedin",
+)
+
+
+def _professional_fields(payload: ProfileUpdatePayload) -> dict:
+    """Field profil konsultan yang benar-benar diisi (nilai None dilewati)."""
+    k_data = {
+        field: getattr(payload, field)
+        for field in PROFESSIONAL_FIELDS
+        if getattr(payload, field) is not None
+    }
+    if payload.nama:
+        k_data["nama_lengkap"] = payload.nama
+    return k_data
+
+
 async def update_profile(
     db: Client,
     current_user: dict,
@@ -57,41 +83,19 @@ async def update_profile(
         raise ForbiddenError("Hanya konsultan yang dapat mengubah portofolio")
 
     if current_user["role"] == Role.KONSULTAN:
-        k_data = {
-            "bio_singkat": payload.bio_singkat,
-            "deskripsi_lengkap": payload.deskripsi_lengkap,
-            "nomor_izin_praktik": payload.nomor_izin_praktik,
-            "gelar_akademik": payload.gelar_akademik,
-            "pendidikan_terakhir": payload.pendidikan_terakhir,
-            "kota_praktik": payload.kota_praktik,
-            "spesialisasi": payload.spesialisasi,
-            "pengalaman_tahun": payload.pengalaman_tahun,
-            "tarif_per_sesi": payload.tarif_per_sesi,
-            "linkedin": payload.linkedin,
-        }
+        k_data = _professional_fields(payload)
 
         if explicit_portofolio_field:
             k_data["portofolio"] = normalized_portofolio_value
 
-        if payload.nama:
-            k_data["nama_lengkap"] = payload.nama
-
         if portofolio_file is not None:
-            settings = get_settings()
-            portofolio_url = await upload_portfolio_pdf_to_supabase(
+            normalized_portofolio_value = await upload_portfolio_pdf_to_supabase(
                 file=portofolio_file,
                 user_id=current_user["id_user"],
                 db_client=db,
-                bucket_name=settings.supabase_portofolio_bucket,
+                bucket_name=get_settings().supabase_portofolio_bucket,
             )
-            k_data["portofolio"] = portofolio_url
-            normalized_portofolio_value = portofolio_url
-
-        k_data = {
-            k: v
-            for k, v in k_data.items()
-            if v is not None or (k == "portofolio" and explicit_portofolio_field)
-        }
+            k_data["portofolio"] = normalized_portofolio_value
 
         if k_data:
             consultant_repository.update_by_user(db, current_user["id_user"], k_data)

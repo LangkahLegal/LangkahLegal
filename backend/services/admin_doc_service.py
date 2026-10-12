@@ -26,6 +26,10 @@ SELECT_COLS = (
     "pasal_bagian, judul_bab, isi_teks, created_at, updated_at"
 )
 
+INSERT_BATCH_SIZE = 40
+MIN_PDF_BYTES = 100
+MAX_PDF_BYTES = 50 * 1024 * 1024
+
 _jobs: dict[str, dict] = {}
 
 
@@ -64,54 +68,96 @@ def _build_manual_metadata(
     }
 
 
+class DocumentAlreadyExists(Exception):
+    pass
+
+
+def _register_job(message: str, frbr_uri: str | None = None) -> dict:
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {
+        "job_id": job_id,
+        "status": "queued",
+        "message": message,
+        "frbr_uri": frbr_uri,
+        "total_chunks": None,
+        "error": None,
+    }
+    return _jobs[job_id]
+
+
+def _mark_failed(job: dict, error: str, message: str) -> None:
+    job["status"] = "failed"
+    job["error"] = error
+    job["message"] = message
+
+
+def _build_rows(job: dict, pdf_bytes: bytes, metadata: dict | None) -> tuple[list[dict], dict]:
+    records, extracted_metadata = process_pdf_to_records(pdf_bytes, manual_metadata=metadata)
+    job["frbr_uri"] = extracted_metadata.get("frbr_uri", "/akn/id/act/unknown")
+
+    job["message"] = f"Menghasilkan embedding untuk {len(records)} pasal (ini bisa memakan waktu)..."
+    embeddings = generate_embeddings([r["isi_teks"] for r in records])
+
+    rows = [{**rec, "embedding": emb} for rec, emb in zip(records, embeddings)]
+    return rows, extracted_metadata
+
+
+def _clear_or_reject_existing(db: Client, job: dict, replace_uri: str | None) -> None:
+    if replace_uri:
+        job["message"] = f"Menghapus dokumen lama ({replace_uri})..."
+        legal_document_repository.delete_by_uri(db, replace_uri)
+        log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
+        return
+
+    frbr_uri = job["frbr_uri"]
+    if legal_document_repository.count_by_uri(db, frbr_uri) > 0:
+        raise DocumentAlreadyExists(
+            f"Dokumen dengan URI '{frbr_uri}' sudah ada di database. Gunakan fitur Replace jika ingin mengganti."
+        )
+
+
+def _insert_in_batches(db: Client, job: dict, rows: list[dict]) -> int:
+    job["message"] = f"Menyimpan {len(rows)} pasal ke database..."
+    for i in range(0, len(rows), INSERT_BATCH_SIZE):
+        legal_document_repository.insert_many(db, rows[i : i + INSERT_BATCH_SIZE])
+    return len(rows)
+
+
 def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None, replace_uri: str | None = None):
     job = _jobs[job_id]
     job["status"] = "processing"
     job["message"] = "Memproses PDF..."
 
     try:
-        records, extracted_metadata = process_pdf_to_records(pdf_bytes, manual_metadata=metadata)
-        frbr_uri = extracted_metadata.get("frbr_uri", "/akn/id/act/unknown")
-        job["frbr_uri"] = frbr_uri
-
-        job["message"] = f"Menghasilkan embedding untuk {len(records)} pasal (ini bisa memakan waktu)..."
-        texts = [r["isi_teks"] for r in records]
-        embeddings = generate_embeddings(texts)
-
-        rows = [{**rec, "embedding": emb} for rec, emb in zip(records, embeddings)]
-
+        rows, extracted_metadata = _build_rows(job, pdf_bytes, metadata)
         db = get_supabase_client()
-
-        if replace_uri:
-            job["message"] = f"Menghapus dokumen lama ({replace_uri})..."
-            legal_document_repository.delete_by_uri(db, replace_uri)
-            log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
-
-        if not replace_uri:
-            if legal_document_repository.count_by_uri(db, frbr_uri) > 0:
-                job["status"] = "failed"
-                job["error"] = f"Dokumen dengan URI '{frbr_uri}' sudah ada di database. Gunakan fitur Replace jika ingin mengganti."
-                job["message"] = "Gagal: dokumen sudah ada."
-                return
-
-        job["message"] = f"Menyimpan {len(rows)} pasal ke database..."
-        batch_size = 40
-        total_inserted = 0
-        for i in range(0, len(rows), batch_size):
-            batch = rows[i : i + batch_size]
-            legal_document_repository.insert_many(db, batch)
-            total_inserted += len(batch)
+        _clear_or_reject_existing(db, job, replace_uri)
+        total_inserted = _insert_in_batches(db, job, rows)
 
         job["status"] = "completed"
         job["total_chunks"] = total_inserted
         job["message"] = f"Berhasil! {total_inserted} pasal dari '{extracted_metadata.get('nama_uu', 'Dokumen')}' telah disimpan."
-        log.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {frbr_uri}")
+        log.info(f"[ADMIN_DOCS] Job {job_id} completed: {total_inserted} chunks inserted for {job['frbr_uri']}")
 
+    except DocumentAlreadyExists as e:
+        _mark_failed(job, str(e), "Gagal: dokumen sudah ada.")
     except Exception as e:
-        job["status"] = "failed"
-        job["error"] = str(e)
-        job["message"] = f"Gagal memproses PDF: {str(e)[:200]}"
+        _mark_failed(job, str(e), f"Gagal memproses PDF: {str(e)[:200]}")
         log.error(f"[ADMIN_DOCS] Job {job_id} failed: {e}", exc_info=True)
+
+
+def _require_pdf_filename(file: UploadFile) -> None:
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise BadRequestError("File harus berformat PDF.")
+
+
+async def _read_pdf_bytes(file: UploadFile, max_bytes: int | None = None) -> bytes:
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) < MIN_PDF_BYTES:
+        raise BadRequestError("File PDF terlalu kecil atau kosong.")
+    if max_bytes is not None and len(pdf_bytes) > max_bytes:
+        raise BadRequestError("File PDF terlalu besar (maks 50MB).")
+    return pdf_bytes
 
 
 async def create_upload_job(
@@ -124,34 +170,19 @@ async def create_upload_job(
     status_hukum: str,
 ) -> tuple[dict, bytes, dict]:
     _require_admin(user)
+    _require_pdf_filename(file)
 
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise BadRequestError("File harus berformat PDF.")
-
-    pdf_bytes = await file.read()
-    if len(pdf_bytes) < 100:
-        raise BadRequestError("File PDF terlalu kecil atau kosong.")
-    if len(pdf_bytes) > 50 * 1024 * 1024:
-        raise BadRequestError("File PDF terlalu besar (maks 50MB).")
+    pdf_bytes = await _read_pdf_bytes(file, max_bytes=MAX_PDF_BYTES)
 
     frbr_uri = _build_frbr_uri(nomor_uu, tahun_uu, default=None)
     manual_metadata = _build_manual_metadata(
         nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, frbr_uri
     )
 
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "message": f"File '{file.filename}' diterima. Menunggu proses...",
-        "frbr_uri": None,
-        "total_chunks": None,
-        "error": None,
-    }
+    job = _register_job(f"File '{file.filename}' diterima. Menunggu proses...")
+    log.info(f"[ADMIN_DOCS] Job {job['job_id']} queued for '{file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
 
-    log.info(f"[ADMIN_DOCS] Job {job_id} queued for '{file.filename}' ({len(pdf_bytes):,} bytes) with manual metadata.")
-
-    return _jobs[job_id], pdf_bytes, manual_metadata
+    return job, pdf_bytes, manual_metadata
 
 
 async def create_replace_job(
@@ -166,35 +197,25 @@ async def create_replace_job(
     status_hukum: str,
 ) -> tuple[dict, bytes, dict]:
     _require_admin(user)
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise BadRequestError("File harus berformat PDF.")
+    _require_pdf_filename(file)
 
     if not legal_document_repository.count_by_uri(db, frbr_uri):
         raise NotFoundError(f"Dokumen dengan URI '{frbr_uri}' tidak ditemukan.")
 
-    pdf_bytes = await file.read()
-    if len(pdf_bytes) < 100:
-        raise BadRequestError("File PDF terlalu kecil atau kosong.")
-
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "message": f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{file.filename}'...",
-        "frbr_uri": frbr_uri,
-        "total_chunks": None,
-        "error": None,
-    }
+    pdf_bytes = await _read_pdf_bytes(file)
 
     new_frbr_uri = _build_frbr_uri(nomor_uu, tahun_uu, default=frbr_uri)
     manual_metadata = _build_manual_metadata(
         nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, new_frbr_uri
     )
 
-    log.info(f"[ADMIN_DOCS] Replace job {job_id} queued for {frbr_uri}")
+    job = _register_job(
+        f"Akan mengganti dokumen '{frbr_uri}' dengan file baru '{file.filename}'...",
+        frbr_uri=frbr_uri,
+    )
+    log.info(f"[ADMIN_DOCS] Replace job {job['job_id']} queued for {frbr_uri}")
 
-    return _jobs[job_id], pdf_bytes, manual_metadata
+    return job, pdf_bytes, manual_metadata
 
 
 def get_job_status(user: dict, job_id: str) -> dict:

@@ -6,6 +6,7 @@ from supabase import Client
 from core.constants import Role, StatusPembayaran, StatusPengajuan, StatusVerifikasi
 from core.exceptions import BadRequestError, NotFoundError
 from helpers.access import require_role
+from helpers.rating import summarize_ratings
 from repositories import (
     consultant_repository,
     consultation_repository,
@@ -107,12 +108,7 @@ def get_consultant_detail(db: Client, user: dict, id_konsultan: int) -> dict:
     if konsultan is None:
         raise NotFoundError("Konsultan tidak ditemukan.")
 
-    ratings = [r["skor_rating"] for r in konsultan.get("rating_ulasan", []) if r.get("skor_rating")]
-    total_reviews = len(ratings)
-    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-
-    konsultan["rating"] = rating_avg
-    konsultan["total_reviews"] = total_reviews
+    konsultan["rating"], konsultan["total_reviews"] = summarize_ratings(konsultan.get("rating_ulasan", []))
 
     all_pengajuan = consultation_repository.list_by_konsultan(
         db, id_konsultan, "id_pengajuan, status_pengajuan"

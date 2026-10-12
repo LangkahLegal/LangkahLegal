@@ -132,25 +132,56 @@ def get_session_messages(
     return MessageListResponse(messages=messages)
 
 
+def _resolve_session(supabase: Client, current_user: dict, session_id: str | None) -> tuple[str, bool]:
+    """Kembalikan (session_id, is_new_session); buat sesi baru jika belum ada."""
+    if not session_id:
+        created = chat_repository.insert_session(
+            supabase, current_user["id_user"], "Sesi Konsultasi Baru"
+        )
+        session_id = created[0]["id"]
+        log.info(f"[CHATBOT] Auto-created session: {session_id}")
+        return session_id, True
+
+    if not chat_repository.list_owned_session(supabase, session_id, current_user["id_user"]):
+        raise NotFoundError("Sesi tidak ditemukan.")
+
+    return session_id, chat_repository.count_messages(supabase, session_id) == 0
+
+
+def _ai_metadata(result: dict, response_type: str) -> dict:
+    metadata = {
+        "type": response_type,
+        "pasal_referensi": result.get("pasal_referensi", []),
+        "sumber_dokumen": result.get("sumber_dokumen", []),
+        "disclaimer": result.get("disclaimer", ""),
+    }
+    if response_type == "consultant_list":
+        metadata["consultants"] = result.get("consultants", [])
+    return metadata
+
+
+def _to_triage_response(session_id: str, result: dict, response_type: str) -> TriageResponse:
+    return TriageResponse(
+        session_id=session_id,
+        type=response_type,
+        jawaban=result["jawaban"],
+        pasal_referensi=result.get("pasal_referensi", []),
+        sumber_dokumen=result.get("sumber_dokumen", []),
+        consultants=result.get("consultants") if response_type == "consultant_list" else None,
+        disclaimer=result.get("disclaimer", ""),
+    )
+
+
+def _is_overload_error(error: Exception) -> bool:
+    return any(marker in str(error) for marker in ("429", "503", "UNAVAILABLE", "RESOURCE_EXHAUSTED"))
+
+
 def run_triage(supabase: Client, current_user: dict, payload: TriageRequest) -> TriageResponse:
     session_id = payload.session_id
     current_step = "init"
     try:
-        is_new_session = False
-
         current_step = "session_resolve"
-        if not session_id:
-            created = chat_repository.insert_session(
-                supabase, current_user["id_user"], "Sesi Konsultasi Baru"
-            )
-            session_id = created[0]["id"]
-            is_new_session = True
-            log.info(f"[CHATBOT] Auto-created session: {session_id}")
-        else:
-            if not chat_repository.list_owned_session(supabase, session_id, current_user["id_user"]):
-                raise NotFoundError("Sesi tidak ditemukan.")
-
-            is_new_session = chat_repository.count_messages(supabase, session_id) == 0
+        session_id, is_new_session = _resolve_session(supabase, current_user, session_id)
 
         current_step = "load_history"
         chat_history = _get_chat_history_from_db(supabase, session_id, limit=30)
@@ -169,21 +200,12 @@ def run_triage(supabase: Client, current_user: dict, payload: TriageRequest) -> 
         _save_message(supabase, session_id, "user", payload.query)
 
         current_step = "save_ai_msg"
-        ai_metadata = {
-            "type": response_type,
-            "pasal_referensi": result.get("pasal_referensi", []),
-            "sumber_dokumen": result.get("sumber_dokumen", []),
-            "disclaimer": result.get("disclaimer", ""),
-        }
-        if response_type == "consultant_list":
-            ai_metadata["consultants"] = result.get("consultants", [])
-
         _save_message(
             supabase,
             session_id,
             "ai",
             result["jawaban"],
-            metadata=ai_metadata,
+            metadata=_ai_metadata(result, response_type),
         )
 
         current_step = "auto_title"
@@ -191,21 +213,12 @@ def run_triage(supabase: Client, current_user: dict, payload: TriageRequest) -> 
             _auto_generate_title(supabase, session_id, payload.query)
 
         current_step = "build_response"
-        return TriageResponse(
-            session_id=session_id,
-            type=response_type,
-            jawaban=result["jawaban"],
-            pasal_referensi=result.get("pasal_referensi", []),
-            sumber_dokumen=result.get("sumber_dokumen", []),
-            consultants=result.get("consultants") if response_type == "consultant_list" else None,
-            disclaimer=result.get("disclaimer", ""),
-        )
+        return _to_triage_response(session_id, result, response_type)
 
     except HTTPException:
         raise
     except Exception as e:
-        err_str = str(e)
-        if "429" in err_str or "503" in err_str or "UNAVAILABLE" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+        if _is_overload_error(e):
             return TriageResponse(
                 session_id=session_id if session_id else "",
                 type="error",

@@ -1,5 +1,4 @@
 import logging
-import math
 import time
 from datetime import datetime
 
@@ -9,17 +8,15 @@ from supabase import Client
 from core.config import Settings
 from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
-from schemas.payments import CreateTransactionRequest
 from helpers.access import get_konsultan_id, require_role
-from repositories import (
-    consultant_repository,
-    consultation_repository,
-    payment_repository,
-    user_repository,
-)
-from services.email_service import get_frontend_base_url, send_notification_email
+from helpers.schedule import count_sessions
+from repositories import consultation_repository, payment_repository
+from schemas.payments import CreateTransactionRequest
+from services import notification_service
 
 logger = logging.getLogger(__name__)
+
+PLATFORM_COMMISSION_RATE = 0.10
 
 PAYABLE_STATUSES = [
     StatusPengajuan.MENUNGGU_PEMBAYARAN,
@@ -28,6 +25,16 @@ PAYABLE_STATUSES = [
     StatusPengajuan.DIBATALKAN,
 ]
 FINAL_STATUSES = (StatusPembayaran.SETTLEMENT, StatusPembayaran.CANCEL, StatusPembayaran.REFUND)
+
+MIDTRANS_STALE_STATUSES = ("cancel", "deny", "expire")
+MIDTRANS_STATUS_MAP = {
+    "settlement": (StatusPembayaran.SETTLEMENT, StatusPengajuan.TERJADWAL),
+    "cancel": (StatusPembayaran.CANCEL, StatusPengajuan.DIBATALKAN),
+    "deny": (StatusPembayaran.CANCEL, StatusPengajuan.DIBATALKAN),
+    "expire": (StatusPembayaran.EXPIRE, StatusPengajuan.KEDALUWARSA),
+    "pending": (StatusPembayaran.PENDING, None),
+    "refund": (StatusPembayaran.REFUND, StatusPengajuan.DIBATALKAN),
+}
 
 
 def _get_snap_client(settings: Settings) -> midtransclient.Snap:
@@ -46,6 +53,48 @@ def _get_core_api_client(settings: Settings) -> midtransclient.CoreApi:
     )
 
 
+def _map_midtrans_status(transaction_status: str, fraud_status: str) -> tuple[str | None, str | None]:
+    """Ubah status Midtrans menjadi (status_pembayaran, status_pengajuan) internal."""
+    if transaction_status == "capture":
+        if fraud_status == "accept":
+            return StatusPembayaran.SETTLEMENT, StatusPengajuan.TERJADWAL
+        if fraud_status == "challenge":
+            return StatusPembayaran.PENDING, None
+        return None, None
+
+    return MIDTRANS_STATUS_MAP.get(transaction_status, (None, None))
+
+
+def _save_statuses(
+    db: Client,
+    order_id: str,
+    id_pengajuan: int,
+    payment_type: str,
+    new_payment_status: str,
+    new_pengajuan_status: str | None,
+) -> None:
+    update_data = {
+        "status_pembayaran": new_payment_status,
+        "metode_pembayaran": payment_type,
+        "updated_at": datetime.now().isoformat(),
+    }
+    if new_payment_status == StatusPembayaran.SETTLEMENT:
+        update_data["waktu_bayar"] = datetime.now().isoformat()
+
+    payment_repository.update_by_order_id(db, order_id, update_data)
+
+    if new_pengajuan_status:
+        consultation_repository.update(db, id_pengajuan, {
+            "status_pengajuan": new_pengajuan_status,
+            "updated_at": datetime.now().isoformat(),
+        })
+
+    logger.info(
+        f"Order {order_id}: transaksi={new_payment_status}, "
+        f"pengajuan {id_pengajuan}={new_pengajuan_status}"
+    )
+
+
 def _existing_snap_response(tx: dict) -> dict:
     return {
         "snap_token": tx["snap_token"],
@@ -54,97 +103,72 @@ def _existing_snap_response(tx: dict) -> dict:
     }
 
 
-def _calculate_quantity(pengajuan: dict) -> int:
-    jam_mulai_str = str(pengajuan.get("jam_mulai", ""))
-    jam_selesai_str = str(pengajuan.get("jam_selesai", ""))
+def _reuse_pending_transaction(db: Client, settings: Settings, id_pengajuan: int) -> dict | None:
+    """Kembalikan token Snap lama jika transaksi pending sebelumnya masih berlaku."""
+    pending = payment_repository.list_by_pengajuan_and_status(db, id_pengajuan, StatusPembayaran.PENDING)
+    if not pending:
+        return None
 
-    quantity = 1
-    if jam_mulai_str and jam_selesai_str:
-        try:
-            jam_mulai_parts = jam_mulai_str.split(":")
-            jam_selesai_parts = jam_selesai_str.split(":")
+    tx = pending[0]
+    api_client = _get_core_api_client(settings)
+    try:
+        tx_status = api_client.transactions.status(tx["order_id"]).get("transaction_status")
 
-            start_h, start_m = int(jam_mulai_parts[0]), int(jam_mulai_parts[1])
-            end_h, end_m = int(jam_selesai_parts[0]), int(jam_selesai_parts[1])
+        if tx_status in MIDTRANS_STALE_STATUSES:
+            payment_repository.update_by_order_id(db, tx["order_id"], {
+                "status_pembayaran": tx_status,
+                "updated_at": datetime.now().isoformat()
+            })
+            logger.info(f"Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
+            return None
+    except Exception as e:
+        if "404" not in str(e):
+            logger.warning(f"Failed to check status for existing tx {tx['order_id']}: {e}")
+            return None
 
-            start_total = start_h * 60 + start_m
-            end_total = end_h * 60 + end_m
-
-            diff = end_total - start_total
-            if diff < 0:
-                diff += 24 * 60
-
-            calc_quantity = math.ceil(diff / 30.0)
-            if calc_quantity > 0:
-                quantity = calc_quantity
-        except Exception as e:
-            logger.warning(f"Failed to calculate quantity: {e}")
-    return quantity
+    return _existing_snap_response(tx) if tx.get("snap_token") else None
 
 
-def _send_settlement_emails(
-    db: Client, tx: dict, id_pengajuan: int, order_id: str, payment_type: str
-) -> None:
-    pengajuan = consultation_repository.get_by_id_strict(
-        db, id_pengajuan, "id_user, id_konsultan, link_zoom"
-    )
-    if not pengajuan:
-        return
+def _calculate_amounts(pengajuan: dict) -> tuple[int, int, int]:
+    tarif = (pengajuan.get("konsultan") or {}).get("tarif_per_sesi")
 
-    client = user_repository.get_by_id_strict(db, pengajuan["id_user"], "email, nama")
-    if client:
-        client_email = client["email"]
-        client_nama = client["nama"]
-        zoom_link = pengajuan.get("link_zoom") or "Belum ditentukan"
-        subject = "Receipt: Pembayaran Konsultasi Berhasil"
+    if not tarif or float(tarif) <= 0:
+        raise BadRequestError("Tarif konsultan belum diatur")
 
-        gross_amount = tx.get("gross_amount", 0)
-        formatted_amount = f"Rp {int(gross_amount):,}".replace(",", ".")
+    quantity = count_sessions(str(pengajuan.get("jam_mulai", "")), str(pengajuan.get("jam_selesai", "")))
 
-        message = f"""Halo {client_nama},
+    gross_amount = int(float(tarif)) * quantity
+    komisi_platform = int(gross_amount * PLATFORM_COMMISSION_RATE)
+    return gross_amount, komisi_platform, gross_amount - komisi_platform
 
-Terima kasih! Pembayaran Anda untuk pengajuan (ID: {id_pengajuan}) telah berhasil dikonfirmasi.
 
-====================================
-BUKTI PEMBAYARAN (RECEIPT)
-====================================
-Order ID         : {order_id}
-Nominal          : {formatted_amount}
-Metode Pembayaran: {payment_type}
-Waktu Bayar      : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-====================================
+def _create_snap_transaction(
+    settings: Settings, order_id: str, gross_amount: int, pengajuan: dict
+) -> tuple[str, str]:
+    user_data = pengajuan.get("users") or {}
+    transaction_param = {
+        "transaction_details": {
+            "order_id": order_id,
+            "gross_amount": gross_amount,
+        },
+        "customer_details": {
+            "first_name": user_data.get("nama", "Client"),
+            "email": user_data.get("email", "client@langkahlegal.com"),
+        },
+        "expiry": {
+            "unit": "hour",
+            "duration": 1,
+        },
+    }
 
-Link Zoom Anda: {zoom_link}
-(Mohon cek website secara berkala jika link Zoom masih belum ditentukan oleh konsultan).
+    snap = _get_snap_client(settings)
+    try:
+        snap_response = snap.create_transaction(transaction_param)
+    except Exception as e:
+        logger.error(f"Midtrans Snap create_transaction failed: {e}")
+        raise AppError(f"Gagal membuat transaksi pembayaran: {str(e)}", status_code=502)
 
-Salam,
-LangkahLegal
-"""
-        send_notification_email(client_email, subject, message)
-
-    konsultan = consultant_repository.get_by_id_strict(
-        db, pengajuan["id_konsultan"], "id_user, nama_lengkap"
-    )
-    if konsultan:
-        kons_user = user_repository.get_by_id_strict(db, konsultan["id_user"], "email")
-        if kons_user:
-            kons_email = kons_user["email"]
-            kons_nama = konsultan["nama_lengkap"]
-            kons_subject = "Klien Telah Membayar - Segera Isi Link Zoom"
-            frontend_base_url = get_frontend_base_url()
-            kons_message = f"""Halo {kons_nama},
-
-Klien telah berhasil menyelesaikan pembayaran untuk pengajuan konsultasi (ID: {id_pengajuan}).
-Status pengajuan kini menjadi 'Terjadwal'.
-
-Langkah selanjutnya:
-Mohon segera cek detail pengajuan dan masukkan tautan (Link) Zoom untuk konsultasi ini melalui aplikasi LangkahLegal.
-Tautan untuk mengelola pengajuan:
-{frontend_base_url}/consultation/{id_pengajuan}
-
-Terima kasih atas kerja samanya.
-"""
-            send_notification_email(kons_email, kons_subject, kons_message)
+    return snap_response.get("token", ""), snap_response.get("redirect_url", "")
 
 
 def create_transaction(
@@ -170,72 +194,14 @@ def create_transaction(
         raise BadRequestError(
             f"Pengajuan tidak dalam status yang memerlukan pembayaran (status saat ini: {pengajuan['status_pengajuan']})"
         )
-    existing_tx = payment_repository.list_by_pengajuan_and_status(
-        db, payload.id_pengajuan, StatusPembayaran.PENDING
-    )
-    if existing_tx:
-        tx = existing_tx[0]
-        api_client = _get_core_api_client(settings)
-        try:
-            status_response = api_client.transactions.status(tx["order_id"])
-            tx_status = status_response.get("transaction_status")
 
-            if tx_status in ("cancel", "deny", "expire"):
-                payment_repository.update_by_order_id(db, tx["order_id"], {
-                    "status_pembayaran": tx_status,
-                    "updated_at": datetime.now().isoformat()
-                })
-                logger.info(f"Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
-            else:
-                if tx.get("snap_token"):
-                    return _existing_snap_response(tx)
-        except Exception as e:
-            if "404" in str(e):
-                if tx.get("snap_token"):
-                    return _existing_snap_response(tx)
-            else:
-                logger.warning(f"Failed to check status for existing tx {tx['order_id']}: {e}")
-    konsultan_data = pengajuan.get("konsultan") or {}
-    tarif = konsultan_data.get("tarif_per_sesi")
+    existing = _reuse_pending_transaction(db, settings, payload.id_pengajuan)
+    if existing:
+        return existing
 
-    if not tarif or float(tarif) <= 0:
-        raise BadRequestError("Tarif konsultan belum diatur")
-
-    quantity = _calculate_quantity(pengajuan)
-
-    gross_amount = int(float(tarif)) * quantity
-    komisi_platform = int(gross_amount * 0.10)
-    nominal_konsultan = gross_amount - komisi_platform
-
+    gross_amount, komisi_platform, nominal_konsultan = _calculate_amounts(pengajuan)
     order_id = f"LL-{payload.id_pengajuan}-{int(time.time())}"
-
-    user_data = pengajuan.get("users") or {}
-    customer_details = {
-        "first_name": user_data.get("nama", "Client"),
-        "email": user_data.get("email", "client@langkahlegal.com"),
-    }
-
-    snap = _get_snap_client(settings)
-
-    transaction_param = {
-        "transaction_details": {
-            "order_id": order_id,
-            "gross_amount": gross_amount,
-        },
-        "customer_details": customer_details,
-        "expiry": {
-            "unit": "hour",
-            "duration": 1,
-        },
-    }
-    try:
-        snap_response = snap.create_transaction(transaction_param)
-    except Exception as e:
-        logger.error(f"Midtrans Snap create_transaction failed: {e}")
-        raise AppError(f"Gagal membuat transaksi pembayaran: {str(e)}", status_code=502)
-
-    snap_token = snap_response.get("token", "")
-    redirect_url = snap_response.get("redirect_url", "")
+    snap_token, redirect_url = _create_snap_transaction(settings, order_id, gross_amount, pengajuan)
 
     try:
         payment_repository.insert(db, {
@@ -290,55 +256,13 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
         logger.info(f"[MIDTRANS WEBHOOK] Transaksi {order_id} sudah final ({current_payment_status}), skip.")
         return {"status": "ok", "message": f"Already {current_payment_status}"}
 
-    new_payment_status = None
-    new_pengajuan_status = None
-
-    if transaction_status == "capture":
-        if fraud_status == "accept":
-            new_payment_status = StatusPembayaran.SETTLEMENT
-            new_pengajuan_status = StatusPengajuan.TERJADWAL
-        elif fraud_status == "challenge":
-            new_payment_status = StatusPembayaran.PENDING
-    elif transaction_status == "settlement":
-        new_payment_status = StatusPembayaran.SETTLEMENT
-        new_pengajuan_status = StatusPengajuan.TERJADWAL
-    elif transaction_status in ("cancel", "deny"):
-        new_payment_status = StatusPembayaran.CANCEL
-        new_pengajuan_status = StatusPengajuan.DIBATALKAN
-    elif transaction_status == "expire":
-        new_payment_status = StatusPembayaran.EXPIRE
-        new_pengajuan_status = StatusPengajuan.KEDALUWARSA
-    elif transaction_status == "pending":
-        new_payment_status = StatusPembayaran.PENDING
-    elif transaction_status == "refund":
-        new_payment_status = StatusPembayaran.REFUND
-        new_pengajuan_status = StatusPengajuan.DIBATALKAN
+    new_payment_status, new_pengajuan_status = _map_midtrans_status(transaction_status, fraud_status)
 
     if new_payment_status:
-        update_data = {
-            "status_pembayaran": new_payment_status,
-            "metode_pembayaran": payment_type,
-            "updated_at": datetime.now().isoformat(),
-        }
-
-        if new_payment_status == StatusPembayaran.SETTLEMENT:
-            update_data["waktu_bayar"] = datetime.now().isoformat()
-
-        payment_repository.update_by_order_id(db, order_id, update_data)
-        logger.info(f"[MIDTRANS WEBHOOK] Transaksi {order_id} diupdate ke {new_payment_status}")
-
-    if new_pengajuan_status:
-        consultation_repository.update(db, id_pengajuan, {
-            "status_pengajuan": new_pengajuan_status,
-            "updated_at": datetime.now().isoformat(),
-        })
-        logger.info(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
+        _save_statuses(db, order_id, id_pengajuan, payment_type, new_payment_status, new_pengajuan_status)
 
     if new_payment_status == StatusPembayaran.SETTLEMENT:
-        try:
-            _send_settlement_emails(db, tx, id_pengajuan, order_id, payment_type)
-        except Exception as e:
-            logger.error(f"Gagal kirim email webhook settlement: {e}")
+        notification_service.payment_settled(db, tx, id_pengajuan, order_id, payment_type)
 
     return {"status": "ok"}
 
@@ -407,58 +331,22 @@ def sync_payment_status(
 
     logger.info(f"[SYNC] Order {order_id}: midtrans_status={transaction_status}, fraud={fraud_status}")
 
-    new_payment_status = None
-    new_pengajuan_status = None
+    new_payment_status, new_pengajuan_status = _map_midtrans_status(transaction_status, fraud_status)
 
-    if transaction_status == "capture":
-        if fraud_status == "accept":
-            new_payment_status = StatusPembayaran.SETTLEMENT
-            new_pengajuan_status = StatusPengajuan.TERJADWAL
-    elif transaction_status == "settlement":
-        new_payment_status = StatusPembayaran.SETTLEMENT
-        new_pengajuan_status = StatusPengajuan.TERJADWAL
-    elif transaction_status in ("cancel", "deny"):
-        new_payment_status = StatusPembayaran.CANCEL
-        new_pengajuan_status = StatusPengajuan.DIBATALKAN
-    elif transaction_status == "expire":
-        new_payment_status = StatusPembayaran.EXPIRE
-        new_pengajuan_status = StatusPengajuan.KEDALUWARSA
-    elif transaction_status == "pending":
-        new_payment_status = StatusPembayaran.PENDING
-
-    if new_payment_status and new_payment_status != current_status:
-        update_data = {
-            "status_pembayaran": new_payment_status,
-            "metode_pembayaran": payment_type,
-            "updated_at": datetime.now().isoformat(),
-        }
-        if new_payment_status == StatusPembayaran.SETTLEMENT:
-            update_data["waktu_bayar"] = datetime.now().isoformat()
-
-        payment_repository.update_by_order_id(db, order_id, update_data)
-
-        if new_pengajuan_status:
-            consultation_repository.update(db, id_pengajuan, {
-                "status_pengajuan": new_pengajuan_status,
-                "updated_at": datetime.now().isoformat(),
-            })
-
-        logger.info(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
-
-        if new_payment_status == StatusPembayaran.SETTLEMENT:
-            try:
-                _send_settlement_emails(db, tx, id_pengajuan, order_id, payment_type)
-            except Exception as e:
-                logger.error(f"Gagal kirim email sync settlement: {e}")
-
+    if not new_payment_status or new_payment_status == current_status:
         return {
-            "synced": True,
-            "status_pembayaran": new_payment_status,
-            "status_pengajuan": new_pengajuan_status,
+            "synced": False,
+            "message": "Tidak ada perubahan status",
+            "status_pembayaran": current_status,
         }
+
+    _save_statuses(db, order_id, id_pengajuan, payment_type, new_payment_status, new_pengajuan_status)
+
+    if new_payment_status == StatusPembayaran.SETTLEMENT:
+        notification_service.payment_settled(db, tx, id_pengajuan, order_id, payment_type)
 
     return {
-        "synced": False,
-        "message": "Tidak ada perubahan status",
-        "status_pembayaran": current_status,
+        "synced": True,
+        "status_pembayaran": new_payment_status,
+        "status_pengajuan": new_pengajuan_status,
     }

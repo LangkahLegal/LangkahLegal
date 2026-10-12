@@ -7,6 +7,7 @@ from supabase import Client
 from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from helpers.access import require_konsultan_id, require_role
+from helpers.rating import summarize_ratings
 from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
     ConsultantActiveToggle,
@@ -17,12 +18,13 @@ from schemas.consultants import (
 
 logger = logging.getLogger(__name__)
 
-
-def _rating_summary(rating_rows: list[dict]) -> tuple[float, int]:
-    ratings = [r["skor_rating"] for r in rating_rows if r.get("skor_rating")]
-    total_reviews = len(ratings)
-    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-    return rating_avg, total_reviews
+WIB = timezone(timedelta(hours=7))
+UNPAID_STATUSES = [
+    "cancelled",
+    StatusPengajuan.DIBATALKAN,
+    StatusPengajuan.DITOLAK,
+    StatusPengajuan.KEDALUWARSA,
+]
 
 
 def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> dict:
@@ -33,7 +35,7 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
 
         formatted_data = []
         for item in rows:
-            rating_avg, total_reviews = _rating_summary(item.get("rating_ulasan", []))
+            rating_avg, total_reviews = summarize_ratings(item.get("rating_ulasan", []))
             user_data = item.get("users") or {}
 
             formatted_data.append({
@@ -65,7 +67,7 @@ def get_consultant_detail(db: Client, id_konsultan: int) -> dict:
     if konsultan_data is None:
         raise NotFoundError("Konsultan tidak ditemukan")
 
-    rating_avg, total_reviews = _rating_summary(konsultan_data.get("rating_ulasan", []))
+    rating_avg, total_reviews = summarize_ratings(konsultan_data.get("rating_ulasan", []))
 
     konsultan_data.pop("rating_ulasan", None)
     konsultan_data["rating"] = rating_avg
@@ -154,6 +156,66 @@ def get_active_requests(db: Client, current_user: dict) -> list:
     )
 
 
+def _format_upcoming_client(req: dict, now: datetime) -> dict | None:
+    """Baris daftar klien; None jika jadwalnya sudah lewat atau tanggalnya tidak diketahui."""
+    jadwal = req.get("jadwal_ketersediaan") or {}
+    if isinstance(jadwal, list):
+        jadwal = jadwal[0] if len(jadwal) > 0 else {}
+
+    tanggal_konsultasi = req.get("tanggal_pengajuan") or jadwal.get("tanggal")
+    jam_selesai_str = str(req.get("jam_selesai", ""))[:5]
+
+    if not tanggal_konsultasi:
+        return None
+
+    try:
+        deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_str or '23:59'}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
+
+    if now > deadline:
+        return None
+
+    return {
+        "id_pengajuan": req["id_pengajuan"],
+        "nama_klien": req.get("users", {}).get("nama"),
+        "foto_profil": req.get("users", {}).get("foto_profil"),
+        "tanggal_konsultasi": tanggal_konsultasi,
+        "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
+        "waktu_selesai": jam_selesai_str,
+        "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
+    }
+
+
+def _earned_amount(req: dict) -> float:
+    if req.get("status_pengajuan") in UNPAID_STATUSES:
+        return 0
+
+    trans = req.get("transaksi") or []
+    if isinstance(trans, list):
+        trans = trans[0] if trans else {}
+    return trans.get("nominal_konsultan") or 0
+
+
+def _format_history_item(req: dict) -> dict:
+    jadwal = req.get("jadwal_ketersediaan") or {}
+    jm = str(req.get("jam_mulai", ""))[:5]
+    js = str(req.get("jam_selesai", ""))[:5]
+
+    return {
+        "id_pengajuan": req["id_pengajuan"],
+        "id_bursa": req.get("id_bursa"),
+        "nama_klien": req.get("users", {}).get("nama"),
+        "foto_profil": req.get("users", {}).get("foto_profil"),
+        "rentang_waktu": f"{jm} - {js}" if jm and js else "",
+        "status": req.get("status_pengajuan"),
+        "tanggal_konsultasi": jadwal.get("tanggal") or req.get("tanggal_pengajuan", ""),
+        "jam_mulai": jm,
+        "jam_selesai": js,
+        "nominal_konsultan": _earned_amount(req)
+    }
+
+
 def get_scheduled_clients(db: Client, current_user: dict) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
@@ -166,38 +228,10 @@ def get_scheduled_clients(db: Client, current_user: dict) -> dict:
         "*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)",
     )
 
-    wib = timezone(timedelta(hours=7))
-    now = datetime.now(wib).replace(tzinfo=None)
-
-    formatted_data = []
-
-    for req in rows:
-        jadwal = req.get("jadwal_ketersediaan") or {}
-        if isinstance(jadwal, list):
-            jadwal = jadwal[0] if len(jadwal) > 0 else {}
-
-        tanggal_konsultasi = req.get("tanggal_pengajuan") or jadwal.get("tanggal")
-        jam_selesai_str = str(req.get("jam_selesai", ""))[:5]
-
-        if not tanggal_konsultasi:
-            continue
-
-        try:
-            jam_selesai_full = jam_selesai_str if jam_selesai_str else "23:59"
-            deadline = datetime.strptime(f"{tanggal_konsultasi} {jam_selesai_full}", "%Y-%m-%d %H:%M")
-        except ValueError:
-            deadline = datetime.strptime(tanggal_konsultasi, "%Y-%m-%d").replace(hour=23, minute=59)
-
-        if now <= deadline:
-            formatted_data.append({
-                "id_pengajuan": req["id_pengajuan"],
-                "nama_klien": req.get("users", {}).get("nama"),
-                "foto_profil": req.get("users", {}).get("foto_profil"),
-                "tanggal_konsultasi": tanggal_konsultasi,
-                "waktu_mulai": str(req.get("jam_mulai", ""))[:5],
-                "waktu_selesai": jam_selesai_str,
-                "tanggal_pengajuan": req.get("tanggal_pengajuan") or req.get("created_at")
-            })
+    now = datetime.now(WIB).replace(tzinfo=None)
+    formatted_data = [
+        item for item in (_format_upcoming_client(req, now) for req in rows) if item is not None
+    ]
 
     return {
         "total_klien_aktif": len(formatted_data),
@@ -212,43 +246,7 @@ def get_history(db: Client, current_user: dict) -> dict:
 
     rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
-    formatted_data = []
-
-    for req in rows:
-        jadwal = req.get("jadwal_ketersediaan") or {}
-        trans = req.get("transaksi") or []
-
-        nominal = 0
-        if isinstance(trans, list) and len(trans) > 0:
-            nominal = trans[0].get("nominal_konsultan") or 0
-        elif isinstance(trans, dict):
-            nominal = trans.get("nominal_konsultan") or 0
-
-        status_akhir = req.get("status_pengajuan")
-        if status_akhir in [
-            "cancelled",
-            StatusPengajuan.DIBATALKAN,
-            StatusPengajuan.DITOLAK,
-            StatusPengajuan.KEDALUWARSA,
-        ]:
-            nominal = 0
-
-        jm = str(req.get("jam_mulai", ""))[:5]
-        js = str(req.get("jam_selesai", ""))[:5]
-
-        formatted_data.append({
-            "id_pengajuan": req["id_pengajuan"],
-            "id_bursa": req.get("id_bursa"),
-            "nama_klien": req.get("users", {}).get("nama"),
-            "foto_profil": req.get("users", {}).get("foto_profil"),
-            "rentang_waktu": f"{jm} - {js}" if jm and js else "",
-            "status": status_akhir,
-            "tanggal_konsultasi": jadwal.get("tanggal") or req.get("tanggal_pengajuan", ""),
-            "jam_mulai": jm,
-            "jam_selesai": js,
-            "nominal_konsultan": nominal
-        })
-
+    formatted_data = [_format_history_item(req) for req in rows]
     formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
 
     total_selesai = sum(1 for item in formatted_data if item["status"] == StatusPengajuan.SELESAI)

@@ -4,18 +4,12 @@ from typing import Optional
 from fastapi import UploadFile
 from supabase import Client
 
-from core.config import get_settings
 from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from helpers.access import require_konsultan_id, require_role
-from repositories import (
-    case_repository,
-    consultant_repository,
-    consultation_repository,
-    user_repository,
-)
-from services.email_service import get_frontend_base_url, send_notification_email
-from services.storage_service import upload_supporting_document_to_supabase
+from repositories import case_repository, consultation_repository
+from services import notification_service
+from services.storage_service import select_valid_files, upload_supporting_documents
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +33,7 @@ async def post_case(
 ) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
 
-    if dokumen_pendukung_files:
-        valid_files = [f for f in dokumen_pendukung_files if f.filename]
-        if len(valid_files) > 10:
-            raise BadRequestError("Maksimal 10 file dokumen pendukung")
-    else:
-        valid_files = []
+    valid_files = select_valid_files(dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
 
     created = case_repository.insert(db, {
         "id_user": current_user["id_user"],
@@ -61,37 +50,19 @@ async def post_case(
 
     id_bursa = created[0]["id_bursa"]
 
-    settings = get_settings()
-    bucket_name = settings.supabase_berkas_pendukung_bucket
-    uploaded_docs = []
-    failed_docs = []
-    file_urls = []
+    uploaded, failed_docs = await upload_supporting_documents(
+        db, valid_files, id_bursa, current_user["id_user"], lambda doc_meta: doc_meta
+    )
 
-    for file in valid_files:
-        try:
-            doc_meta = await upload_supporting_document_to_supabase(
-                file=file,
-                id_pengajuan=id_bursa,
-                id_user=current_user["id_user"],
-                db_client=db,
-                bucket_name=bucket_name,
-            )
-            uploaded_docs.append(doc_meta["nama_dokumen"])
-            file_urls.append(doc_meta["file_url"])
-        except Exception as e:
-            failed_docs.append({"nama": file.filename, "alasan": str(e)})
-
-    if file_urls:
-        combined = dokumen_bukti or ""
-        if combined:
-            combined += ","
-        combined += ",".join(file_urls)
+    if uploaded:
+        file_urls = [doc["file_url"] for doc in uploaded]
+        combined = ",".join(([dokumen_bukti] if dokumen_bukti else []) + file_urls)
         case_repository.update(db, id_bursa, {"dokumen_bukti": combined})
 
     return {
         "message": "Kasus berhasil diposting secara anonim ke bursa",
         "data": created[0],
-        "dokumen_terupload": uploaded_docs,
+        "dokumen_terupload": [doc["nama_dokumen"] for doc in uploaded],
         "dokumen_gagal": failed_docs,
     }
 
@@ -138,38 +109,6 @@ def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict
             )
 
 
-def _notify_client_case_claimed(
-    db: Client, kasus_data: dict, id_konsultan: int, id_bursa: int, pengajuan: dict
-) -> None:
-    try:
-        id_pengajuan = pengajuan["id_pengajuan"]
-        client = user_repository.get_by_id_strict(db, kasus_data["id_user"], "email, nama")
-        if client:
-            client_email = client["email"]
-            client_nama = client["nama"]
-            frontend_base_url = get_frontend_base_url()
-
-            konsultan = consultant_repository.get_by_id_strict(db, id_konsultan, "nama_lengkap")
-            kons_nama = konsultan["nama_lengkap"] if konsultan else "Seorang konsultan"
-
-            subject = "Kabar Baik! Kasus Anda di Bursa Telah Diambil"
-            message = f"""Halo {client_nama},
-
-Kasus hukum yang Anda posting di bursa (ID Bursa: {id_bursa}) telah diambil oleh {kons_nama}.
-
-Sebuah pengajuan konsultasi telah dibuat secara otomatis untuk Anda (ID Pengajuan: {id_pengajuan}).
-Konsultan akan segera mengatur jadwal untuk sesi Anda. Silakan pantau halaman Dashboard atau halaman Konsultasi di aplikasi LangkahLegal.
-
-Tautan untuk memantau status pengajuan:
-{frontend_base_url}/consultation/{id_pengajuan}
-
-Terima kasih.
-"""
-            send_notification_email(client_email, subject, message)
-    except Exception as e:
-        logger.error(f"Gagal kirim email bursa diklaim: {e}")
-
-
 def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengklaim kasus")
 
@@ -210,7 +149,7 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
         case_repository.update(db, id_bursa, {"status_bursa": StatusBursa.OPEN})
         raise InternalError("Gagal membuat draf konsultasi. Silakan coba lagi.")
 
-    _notify_client_case_claimed(db, kasus_data, real_id_konsultan, id_bursa, created[0])
+    notification_service.client_case_claimed(db, kasus_data, real_id_konsultan, id_bursa, created[0])
 
     return {
         "message": "Kasus berhasil diklaim. Draf konsultasi telah dibuat.",
