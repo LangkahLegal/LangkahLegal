@@ -157,7 +157,6 @@ def get_active_requests(db: Client, current_user: dict) -> list:
 
 
 def _format_upcoming_client(req: dict, now: datetime) -> dict | None:
-    """Baris daftar klien; None jika jadwalnya sudah lewat atau tanggalnya tidak diketahui."""
     jadwal = req.get("jadwal_ketersediaan") or {}
     if isinstance(jadwal, list):
         jadwal = jadwal[0] if len(jadwal) > 0 else {}

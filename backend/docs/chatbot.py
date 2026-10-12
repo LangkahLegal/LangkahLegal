@@ -1,18 +1,3 @@
-"""
-LangkahLegal Chatbot Router
-============================
-Endpoints untuk chatbot AI berbasis RAG + Persistensi History.
-
-CRUD Sesi & Pesan:
-  - POST   /sessions              → Buat sesi baru
-  - GET    /sessions              → Daftar sesi milik user
-  - DELETE /sessions/{session_id} → Hapus sesi
-  - GET    /sessions/{session_id}/messages → Riwayat chat
-
-RAG Pipeline:
-  - POST   /triage                → Kirim pesan + generate jawaban AI
-"""
-
 CREATE_SESSION = {
     "summary": "Buat sesi konsultasi baru",
     "description": "Membuat sesi chat baru untuk user yang sedang login.",

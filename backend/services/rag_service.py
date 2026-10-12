@@ -1,15 +1,3 @@
-"""
-RAG + Agentic pipeline untuk chatbot LangkahLegal.
-
-Flow:
-  1. Rewrite query user (bahasa awam → istilah hukum)
-  2. Embed via Voyage AI (voyage-law-2)
-  3. Retrieve pasal relevan dari Supabase RPC
-  4. Bangun multi-turn contents + panggil Gemini dengan Tool
-  5. Jika Gemini minta tool call → eksekusi → kirim FunctionResponse balik
-  6. Return jawaban final (text biasa ATAU consultant_list)
-"""
-
 import logging
 from typing import Optional
 
@@ -148,7 +136,6 @@ def _get_gemini_client() -> genai.Client:
 
 
 def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
-    """Terjemahkan query awam → query hukum presisi, dengan konteks history."""
     client = _get_gemini_client()
 
 
@@ -186,7 +173,6 @@ def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
 
 
 def embed_query(query: str) -> list[float]:
-    """Embed query pakai Voyage AI (input_type=query)."""
     client = _get_voyage_client()
     result = client.embed([query], model=EMBEDDING_MODEL, input_type="query")
     return result.embeddings[0]
@@ -199,7 +185,6 @@ def retrieve_pasals(
     match_threshold: float = 0.5,
     filter_kategori: Optional[str] = None,
 ) -> list[dict]:
-    """Panggil RPC match_dokumen_hukum untuk ambil pasal relevan."""
     params = {
         "query_embedding": query_embedding,
         "match_threshold": match_threshold,
@@ -216,7 +201,6 @@ def retrieve_pasals(
 
 
 def _build_context(pasals: list[dict]) -> str:
-    """Rangkai teks konteks pasal untuk disisipkan ke prompt."""
     if not pasals:
         return ""
 
@@ -233,7 +217,6 @@ def _build_context(pasals: list[dict]) -> str:
 
 
 def _build_references(pasals: list[dict]) -> list[dict]:
-    """Bangun list referensi pasal untuk response frontend."""
     return [
         {
             "id_dokumen": p.get("id_dokumen"),
@@ -253,11 +236,6 @@ def _build_source_documents(
     min_similarity: float = SOURCE_MIN_SIMILARITY,
     max_documents: int = SOURCE_MAX_DOCUMENTS,
 ) -> list[dict]:
-    """
-    Kelompokkan pasal hasil retrieval per dokumen (frbr_uri) untuk ditampilkan
-    sebagai daftar sumber yang bisa dibuka user. Pasal tanpa id_dokumen/frbr_uri
-    di-skip karena tidak bisa di-resolve ke dokumen.
-    """
     groups: dict[str, dict] = {}
     for p in pasals:
         frbr_uri = p.get("frbr_uri")
@@ -290,11 +268,6 @@ def _build_source_documents(
 
 
 def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]:
-    """
-    Lengkapi status_hukum tiap sumber dari view dokumen_hukum_summary
-    (RPC match_dokumen_hukum tidak mengembalikan kolom ini).
-    Gagal lookup tidak boleh menggagalkan jawaban — status dibiarkan None.
-    """
     if not sources:
         return sources
 
@@ -313,7 +286,6 @@ def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]
 
 
 def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
-    """Eksekusi tool call dari Gemini, return dict untuk FunctionResponse."""
     if fn_name != "search_consultants":
         return {"error": f"Unknown tool: {fn_name}"}
 
@@ -336,7 +308,6 @@ def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
 
 
 def _summarize_consultants(consultants: list[dict]) -> str:
-    """Bikin ringkasan singkat daftar konsultan untuk konteks history."""
     if not consultants:
         return "Tidak ditemukan konsultan."
     names = [c.get("nama_lengkap", "?") for c in consultants[:5]]
@@ -348,14 +319,6 @@ def _build_contents(
     user_query: str,
     pasal_context: str,
 ) -> list[types.Content]:
-    """
-    Konversi chat history dari DB + query terbaru → list[types.Content]
-    yang siap dikirim ke Gemini.
-
-    Setiap pesan jadi Content terpisah dengan role user/model.
-    Pesan AI yang punya metadata consultant_list ditambahkan ringkasan
-    agar Gemini tau "oh, saya sudah pernah kasih rekomendasi konsultan."
-    """
     contents: list[types.Content] = []
 
     for msg in chat_history:
@@ -389,10 +352,6 @@ def _build_contents(
 
 
 def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
-    """
-    Potong pesan history dari AWAL (oldest-first) kalau total karakter
-    melebihi batas. Pesan terakhir (query user terbaru) TIDAK pernah dipotong.
-    """
     if not contents:
         return contents
 
@@ -423,15 +382,6 @@ def agentic_generate(
     chat_history: list[dict] = None,
     supabase: Client = None,
 ) -> dict:
-    """
-    Panggil Gemini dengan Tool support. Kalau Gemini minta tool call,
-    eksekusi fungsinya lalu kirim FunctionResponse balik ke Gemini
-    (true agentic loop). Gemini yang merangkai jawaban final.
-
-    Return dict:
-      - {"type": "text", "jawaban": "..."}
-      - {"type": "consultant_list", "jawaban": "...", "consultants": [...]}
-    """
     client = _get_gemini_client()
 
 
@@ -546,14 +496,6 @@ def triage(
     kategori: Optional[str] = None,
     chat_history: list[dict] = None,
 ) -> dict:
-    """
-    Pipeline utama RAG + Agentic.
-      1. Rewrite query
-      2. Embed
-      3. Retrieve pasal (threshold 0.5 only, no fallback)
-      4. Agentic generate
-      5. Return structured response
-    """
     log.info(f"[TRIAGE] Query masuk: {query[:100]}")
     current_step = "init"
 

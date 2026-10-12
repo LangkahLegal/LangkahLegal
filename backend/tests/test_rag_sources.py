@@ -7,8 +7,6 @@ from services.rag_service import (
 
 
 class _FakeSummaryTable:
-    """Meniru supabase.table("dokumen_hukum_summary").select().in_().execute()."""
-
     def __init__(self, data=None, error=None):
         self._data = data
         self._error = error
@@ -185,8 +183,6 @@ def test_source_documents_skip_rows_without_identifiers():
 
 
 class _FakeSupabase:
-    """RPC match_dokumen_hukum + view dokumen_hukum_summary dalam satu fake client."""
-
     def __init__(self, rpc_rows, summary_rows):
         self._rpc = _FakeRpc(rpc_rows)
         self._summary = _FakeSummaryTable(data=summary_rows)

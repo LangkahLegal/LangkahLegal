@@ -1,12 +1,11 @@
-"""Pydantic schemas untuk Admin Document Management endpoints."""
-
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field
+from docs import schemas as docs
 
 
 class KategoriHukum(str, Enum):
-    """Enum sesuai kategori_hukum_enum di database Supabase."""
+    __doc__ = docs.KATEGORI_HUKUM
     pidana = "pidana"
     perdata = "perdata"
     agama = "agama"
@@ -30,7 +29,7 @@ class KategoriHukum(str, Enum):
 
 
 class UpdateChunkRequest(BaseModel):
-    """Payload untuk update 1 chunk/pasal (fix typo / kategori)."""
+    __doc__ = docs.UPDATE_CHUNK_REQUEST
     kategori: Optional[KategoriHukum] = None
     isi_teks: Optional[str] = Field(None, min_length=10)
 
@@ -38,7 +37,7 @@ class UpdateChunkRequest(BaseModel):
 
 
 class ChunkResponse(BaseModel):
-    """Response untuk 1 chunk/pasal (tanpa embedding)."""
+    __doc__ = docs.CHUNK_RESPONSE
     id_dokumen: int
     frbr_uri: str
     node_id: str
@@ -57,7 +56,7 @@ class ChunkResponse(BaseModel):
 
 
 class DocumentGroupResponse(BaseModel):
-    """Response ringkasan 1 UU (group by frbr_uri)."""
+    __doc__ = docs.DOCUMENT_GROUP_RESPONSE
     frbr_uri: str
     nama_uu: Optional[str] = None
     nomor_uu: Optional[str] = None
@@ -68,7 +67,7 @@ class DocumentGroupResponse(BaseModel):
 
 
 class PaginatedResponse(BaseModel):
-    """Wrapper response dengan pagination."""
+    __doc__ = docs.PAGINATED_RESPONSE
     data: list
     total: int
     page: int
@@ -76,7 +75,7 @@ class PaginatedResponse(BaseModel):
 
 
 class JobStatusResponse(BaseModel):
-    """Response untuk status background job (upload/replace PDF)."""
+    __doc__ = docs.JOB_STATUS_RESPONSE
     job_id: str
     status: str
     message: str

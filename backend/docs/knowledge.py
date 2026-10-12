@@ -1,17 +1,3 @@
-"""
-Knowledge Base Router (Publik, read-only)
-==========================================
-Endpoint untuk user membuka sumber dokumen peraturan yang dipakai chatbot
-(daftar "Sumber dokumen" di bawah jawaban AI).
-
-  - GET /pasal/{id_dokumen}          → Isi 1 pasal + metadata dokumennya
-  - GET /documents/detail?frbr_uri=  → Metadata dokumen + total pasal
-  - GET /documents/pasal?frbr_uri=   → Daftar pasal 1 dokumen (paginasi + search)
-
-Prefix: /api/v1/knowledge
-frbr_uri dikirim via query param karena mengandung "/" (konsisten dengan admin_docs).
-"""
-
 GET_PASAL = {
     "summary": "Isi 1 pasal beserta metadata dokumennya",
     "description": """

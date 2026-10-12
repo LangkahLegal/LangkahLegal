@@ -157,11 +157,6 @@ async def upload_supporting_documents(
     on_uploaded: Callable[[dict], object],
     detail_only: bool = False,
 ) -> tuple[list, list[dict]]:
-    """
-    Upload banyak dokumen pendukung. Tiap file yang berhasil diteruskan ke
-    `on_uploaded(doc_meta)` dan hasilnya dikumpulkan; file yang gagal dicatat
-    beserta alasannya tanpa menghentikan file lain.
-    """
     bucket_name = get_settings().supabase_berkas_pendukung_bucket
     uploaded = []
     failed = []

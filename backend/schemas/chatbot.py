@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field
+from docs import schemas as docs
 
 class CreateSessionRequest(BaseModel):
     title: Optional[str] = Field(
@@ -60,7 +61,7 @@ class SumberPasal(BaseModel):
     similarity: float
 
 class SumberDokumen(BaseModel):
-    """1 dokumen peraturan (group by frbr_uri) yang ditampilkan di bawah jawaban AI."""
+    __doc__ = docs.SUMBER_DOKUMEN
     frbr_uri: str
     nama_uu: Optional[str] = None
     nomor_uu: Optional[str] = None

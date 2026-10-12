@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def _best_effort(label: str):
-    """Notifikasi tidak boleh menggagalkan request utama: error hanya dicatat."""
-
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

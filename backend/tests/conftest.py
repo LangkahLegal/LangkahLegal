@@ -153,7 +153,6 @@ class MockSupabase:
         return MockTable(queue)
 
     def inserted(self, name):
-        """Semua payload yang di-insert ke tabel `name`, sesuai urutan."""
         queue = self._table_queues.get(name)
         return queue.inserted if queue else []
 

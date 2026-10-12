@@ -4,10 +4,6 @@ from repositories import user_repository
 
 
 def find_profile(db: Client, auth_user_id: str, email: str | None, columns: str) -> dict | None:
-    """
-    Cari profil lokal milik akun Supabase Auth. Jika belum tertaut tetapi ada
-    profil dengan email yang sama, tautkan lalu kembalikan profil tersebut.
-    """
     profiles = user_repository.list_by_auth_user_id(db, auth_user_id, columns)
     if profiles:
         return profiles[0]

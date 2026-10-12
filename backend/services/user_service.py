@@ -47,7 +47,6 @@ PROFESSIONAL_FIELDS = (
 
 
 def _professional_fields(payload: ProfileUpdatePayload) -> dict:
-    """Field profil konsultan yang benar-benar diisi (nilai None dilewati)."""
     k_data = {
         field: getattr(payload, field)
         for field in PROFESSIONAL_FIELDS

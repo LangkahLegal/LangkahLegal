@@ -1,12 +1,9 @@
-"""
-Pydantic schemas untuk Admin Dashboard endpoints.
-"""
-
 from pydantic import BaseModel
 from typing import Optional
+from docs import schemas as docs
 
 
 class VerifyConsultantPayload(BaseModel):
-    """Payload untuk approve/reject konsultan."""
+    __doc__ = docs.VERIFY_CONSULTANT_PAYLOAD
     action: str
     alasan: Optional[str] = None

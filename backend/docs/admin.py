@@ -1,12 +1,3 @@
-"""
-Router untuk Admin Dashboard.
-
-Endpoints (admin-only):
-- Verifikasi Konsultan: list, detail, approve/reject
-- Monitoring Komisi: list transaksi, summary
-- Dashboard Stats: ringkasan platform
-"""
-
 GET_ADMIN_STATS = {
     "description": """Ringkasan statistik platform untuk admin dashboard.
 

@@ -54,7 +54,6 @@ def _get_core_api_client(settings: Settings) -> midtransclient.CoreApi:
 
 
 def _map_midtrans_status(transaction_status: str, fraud_status: str) -> tuple[str | None, str | None]:
-    """Ubah status Midtrans menjadi (status_pembayaran, status_pengajuan) internal."""
     if transaction_status == "capture":
         if fraud_status == "accept":
             return StatusPembayaran.SETTLEMENT, StatusPengajuan.TERJADWAL
@@ -104,7 +103,6 @@ def _existing_snap_response(tx: dict) -> dict:
 
 
 def _reuse_pending_transaction(db: Client, settings: Settings, id_pengajuan: int) -> dict | None:
-    """Kembalikan token Snap lama jika transaksi pending sebelumnya masih berlaku."""
     pending = payment_repository.list_by_pengajuan_and_status(db, id_pengajuan, StatusPembayaran.PENDING)
     if not pending:
         return None

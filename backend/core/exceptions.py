@@ -1,11 +1,3 @@
-"""
-Exception domain untuk layer service.
-
-Service me-raise exception di bawah ini, bukan `HTTPException` secara langsung.
-Semua kelas mewarisi `HTTPException` sehingga FastAPI tetap mengubahnya menjadi
-response `{"detail": ...}` dengan status code yang sesuai tanpa handler tambahan.
-"""
-
 from fastapi import HTTPException
 
 

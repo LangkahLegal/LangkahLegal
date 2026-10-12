@@ -1,11 +1,10 @@
-"""Pydantic schemas untuk endpoint Knowledge Base publik (read-only, untuk user)."""
-
 from typing import Optional
 from pydantic import BaseModel
+from docs import schemas as docs
 
 
 class KnowledgeDocument(BaseModel):
-    """Metadata 1 dokumen peraturan (tanpa embedding / field admin)."""
+    __doc__ = docs.KNOWLEDGE_DOCUMENT
     frbr_uri: str
     nama_uu: Optional[str] = None
     nomor_uu: Optional[str] = None

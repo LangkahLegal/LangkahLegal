@@ -1,17 +1,3 @@
-"""
-Admin Document Management Router
-=================================
-CRUD endpoints untuk mengelola dokumen hukum (basis pengetahuan RAG).
-
-Flow utama:
-  - CREATE: Upload PDF → Background Task (OCR → AI Metadata → Chunk → Embed → Insert)
-  - READ:   List dokumen (grouped) & list chunks per dokumen
-  - UPDATE: Patch 1 chunk (re-embed jika teks berubah) ATAU replace full via PDF
-  - DELETE: Hapus 1 dokumen penuh (semua chunk by frbr_uri)
-
-Prefix: /api/v1/admin/documents
-"""
-
 UPLOAD_DOCUMENT = {
     "summary": "Upload PDF dokumen hukum baru (async background)",
     "description": """

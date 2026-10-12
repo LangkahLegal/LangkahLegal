@@ -133,7 +133,6 @@ def get_session_messages(
 
 
 def _resolve_session(supabase: Client, current_user: dict, session_id: str | None) -> tuple[str, bool]:
-    """Kembalikan (session_id, is_new_session); buat sesi baru jika belum ada."""
     if not session_id:
         created = chat_repository.insert_session(
             supabase, current_user["id_user"], "Sesi Konsultasi Baru"

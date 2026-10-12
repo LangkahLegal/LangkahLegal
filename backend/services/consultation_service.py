@@ -160,7 +160,6 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
 
 
 def _detail_scope(db: Client, current_user: dict) -> tuple[int | None, int | None]:
-    """Filter kepemilikan (id_user, id_konsultan) untuk detail pengajuan sesuai role."""
     if current_user.get("role") == Role.CLIENT:
         return current_user["id_user"], None
 
