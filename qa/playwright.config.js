@@ -1,44 +1,69 @@
-// @ts-check
-const { defineConfig, devices } = require('@playwright/test');
-require('dotenv').config({ path: '.env.e2e' });
+import { defineConfig, devices } from "@playwright/test";
+import { defineBddConfig } from "playwright-bdd";
+import { BACKEND_DIR, FRONTEND_DIR, env } from "./support/env.js";
 
-/**
- * Playwright Configuration for LangkahLegal E2E Tests
- * @see https://playwright.dev/docs/test-configuration
- */
-module.exports = defineConfig({
-  testDir: './e2e/specs',
-  fullyParallel: true,
+const testDir = defineBddConfig({
+  features: "features/**/*.feature",
+  steps: ["hooks/*.js", "specs/**/*.spec.js"],
+  outputDir: ".features-gen",
+});
+
+const { port: frontendPort } = new URL(env.baseUrl);
+const { port: backendPort } = new URL(env.apiUrl);
+
+export default defineConfig({
+  testDir,
+  globalSetup: "./support/global-setup.js",
+  // Semua skenario memakai akun uji dan database yang sama, jadi dijalankan berurutan.
+  workers: 1,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: [
-    ['html', { outputFolder: 'e2e/results/html-report', open: 'never' }],
-    ['list'],
-  ],
-  outputDir: 'e2e/results/test-artifacts',
+  retries: process.env.CI ? 1 : 0,
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
+  outputDir: "reports/artifacts",
+  reporter: [["list"], ["html", { outputFolder: "reports/html", open: "never" }]],
 
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    baseURL: env.baseUrl,
+    locale: "id-ID",
+    timezoneId: "Asia/Jakarta",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    launchOptions: { slowMo: env.slowMo },
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "desktop",
+      grepInvert: /@khusus-mobile/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      name: "mobile",
+      grep: /@mobile/,
+      use: { ...devices["Pixel 7"] },
+    },
+  ],
+
+  webServer: [
+    {
+      command: process.env.SIT_BACKEND_COMMAND || `python -m uvicorn main:app --port ${backendPort}`,
+      cwd: BACKEND_DIR,
+      url: `${env.apiUrl}/health`,
+      reuseExistingServer: true,
+      timeout: 120_000,
     },
     {
-      name: 'mobile-safari',
-      use: { ...devices['iPhone 14'] },
+      // Memakai hasil `npm run build:frontend`; binary Next dipanggil langsung karena
+      // pembungkus npx di Windows dapat membuat server berhenti merespons.
+      command: process.env.SIT_FRONTEND_COMMAND || `node node_modules/next/dist/bin/next start -p ${frontendPort}`,
+      cwd: FRONTEND_DIR,
+      url: env.baseUrl,
+      reuseExistingServer: true,
+      timeout: 180_000,
     },
   ],
 });

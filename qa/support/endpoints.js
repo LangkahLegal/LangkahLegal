@@ -1,0 +1,44 @@
+/** Nama layanan backend yang dipakai di file .feature. Path relatif terhadap /api/v1. */
+export const ENDPOINTS = {
+  login: { method: "POST", path: "/auth/login-password" },
+  "login Google": { method: "POST", path: "/auth/oauth/google" },
+  pendaftaran: { method: "POST", path: "/auth/signup" },
+  "verifikasi OTP": { method: "POST", path: "/auth/verify-otp" },
+  "kirim ulang OTP": { method: "POST", path: "/auth/resend-signup-otp" },
+  "lupa kata sandi": { method: "POST", path: "/auth/forgot-password" },
+  "reset kata sandi": { method: "POST", path: "/auth/reset-password" },
+  "tukar kode OAuth": { method: "POST", path: "/auth/exchange-code" },
+  "atur peran": { method: "POST", path: "/auth/role" },
+  "perbarui sesi": { method: "POST", path: "/auth/refresh" },
+  "profil akun": { method: "GET", path: "/auth/profile" },
+  logout: { method: "POST", path: "/auth/logout" },
+  "simpan profil": { method: "PUT", path: "/users/me/profile/update" },
+
+  "katalog konsultan": { method: "GET", path: "/consultants/" },
+  "daftar konsultasi": { method: "GET", path: "/consultations/" },
+  "pemesanan konsultasi": { method: "POST", path: "/consultations/" },
+  "pembuatan transaksi": { method: "POST", path: "/payments/create-transaction" },
+  "sinkronisasi pembayaran": { method: "POST", path: /^\/payments\/sync\/\d+$/ },
+  "simpan tautan Zoom": { method: "PUT", path: /^\/consultations\/\d+\/zoom-link$/ },
+  "kirim ulasan": { method: "POST", path: /^\/consultations\/\d+\/rating$/ },
+  "ubah status konsultasi": { method: "PUT", path: /^\/consultations\/\d+\/status$/ },
+
+  "statistik konsultan": { method: "GET", path: "/consultants/me/dashboard-stats" },
+  "klien aktif konsultan": { method: "GET", path: "/consultants/me/requests/active" },
+  "tambah jadwal": { method: "POST", path: "/consultants/schedules" },
+
+  "tanya AI": { method: "POST", path: "/chatbot/triage" },
+  "hapus sesi AI": { method: "DELETE", path: /^\/chatbot\/sessions\/[^/]+$/ },
+
+  "statistik admin": { method: "GET", path: "/admin/stats" },
+  "daftar pengajuan verifikasi": { method: "GET", path: "/admin/consultants" },
+  "keputusan verifikasi": { method: "PATCH", path: /^\/admin\/consultants\/\d+\/verify$/ },
+  "daftar dokumen": { method: "GET", path: "/admin/documents/" },
+  "unggah dokumen": { method: "POST", path: "/admin/documents/upload" },
+  "ganti dokumen": { method: "PUT", path: "/admin/documents/replace" },
+  "status proses dokumen": { method: "GET", path: /^\/admin\/documents\/jobs\/[^/]+$/ },
+
+  "daftar bursa": { method: "GET", path: "/cases/" },
+  "posting kasus": { method: "POST", path: "/cases/" },
+  "klaim kasus": { method: "POST", path: /^\/cases\/\d+\/claim$/ },
+};
