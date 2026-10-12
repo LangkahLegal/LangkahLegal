@@ -20,6 +20,13 @@ const PRECONDITIONS = {
     await auth.signInWith(world.tempUser);
   },
 
+  /** Klien sekali pakai yang masuk tanpa kata sandi (lewat kode OTP), seperti pengguna Google. */
+  "login-klien-sementara-tanpa-kata-sandi": async ({ auth, world }) => {
+    world.tempUser = await createTempClient();
+    world.cleanups.push(() => removeTempUser(world.tempUser));
+    await auth.signInWithOtp(world.tempUser);
+  },
+
   /** Pengguna sekali pakai yang baru meminta tautan reset; tersedia sebagai world.tempUser. */
   "pengguna-reset-kata-sandi": async ({ world }) => {
     world.tempUser = await createRecoveryUser();

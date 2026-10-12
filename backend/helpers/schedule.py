@@ -36,6 +36,13 @@ def ensure_not_past(tanggal, jam) -> None:
         raise BadRequestError("Waktu konsultasi yang dipilih sudah lewat")
 
 
+def ensure_valid_slot(tanggal, jam_mulai, jam_selesai) -> None:
+    if _to_minutes(str(jam_selesai)) <= _to_minutes(str(jam_mulai)):
+        raise BadRequestError("Jam selesai harus setelah jam mulai")
+    if is_past(tanggal, jam_selesai):
+        raise BadRequestError("Jadwal tidak dapat dibuat pada waktu yang sudah lewat")
+
+
 def _to_minutes(time_str: str) -> int:
     hours, minutes = time_str.split(":")[:2]
     return int(hours) * 60 + int(minutes)

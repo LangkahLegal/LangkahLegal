@@ -6,6 +6,14 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
 import { consultationService } from "@/services/consultation.service";
 
+const isHttpsUrl = (value) => {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export default function ZoomLinkCard({
   link,
   status,
@@ -51,8 +59,13 @@ export default function ZoomLinkCard({
   };
 
   const handleSaveZoom = () => {
-    if (!zoomInput.trim()) return;
-    zoomMutation.mutate(zoomInput.trim());
+    const link = zoomInput.trim();
+    if (!link) return;
+    if (!isHttpsUrl(link)) {
+      alert("Link tidak valid. Gunakan alamat lengkap yang diawali https://");
+      return;
+    }
+    zoomMutation.mutate(link);
   };
 
   const buttonLabel =

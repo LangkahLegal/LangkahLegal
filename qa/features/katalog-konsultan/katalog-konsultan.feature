@@ -71,7 +71,7 @@ Feature: Katalog konsultan
     Then konsultan lain tetap tampil di katalog
     And halaman tidak mengalami galat
 
-  @EXP-011 @fail @BUG-18
+  @EXP-011
   Scenario: Gangguan saat memuat katalog diberitahukan ke klien
     Given layanan katalog konsultan sedang mengalami gangguan
     When pengguna membuka halaman katalog konsultan

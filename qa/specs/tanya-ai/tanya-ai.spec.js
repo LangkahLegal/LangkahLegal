@@ -221,7 +221,7 @@ Then("Tanya AI kembali menampilkan sambutan", async ({ tanyaAiPage }) => {
   await expect(tanyaAiPage.aiMessages.first()).toContainText(WELCOME_TEXT);
 });
 
-// ── AI-013 BUG-26 · Riwayat percakapan tetap terbaca tanpa font ikon
+// ── AI-013 · Riwayat percakapan tetap terbaca tanpa font ikon
 
 Given("font ikon tidak dapat dimuat", async ({ page }) => {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());

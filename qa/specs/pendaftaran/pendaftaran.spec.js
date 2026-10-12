@@ -45,7 +45,7 @@ Then("pesan galat pendaftaran adalah {string}", async ({ pendaftaranPage }, pesa
 // ── AUTH-020 · Nama beraksara non-Latin dan emoji diterima apa adanya
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── AUTH-021 BUG-21 · Kata sandi yang terlalu pendek ditolak sebelum dikirim
+// ── AUTH-021 · Kata sandi yang terlalu pendek ditolak sebelum dikirim
 // Seluruh langkahnya memakai langkah bersama.
 
 // ── AUTH-022 · Pendaftaran tanpa nama ditolak peramban

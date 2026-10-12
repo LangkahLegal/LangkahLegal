@@ -6,17 +6,17 @@ Feature: Proteksi halaman dan pembatasan peran
   Scenario: Pengunjung yang belum login tidak bisa membuka halaman privat
     Then setiap halaman privat mengarahkan pengunjung ke halaman login
 
-  @GRD-002 @fail @BUG-05
+  @GRD-002
   Scenario: Pengunjung yang membuka halaman verifikasi konsultan diminta login
     When pengguna membuka halaman verifikasi konsultan
     Then pengguna segera diarahkan ke halaman login
 
-  @GRD-003 @fail @BUG-05
+  @GRD-003
   Scenario: Pengunjung yang membuka halaman basis pengetahuan diminta login
     When pengguna membuka halaman basis pengetahuan
     Then pengguna segera diarahkan ke halaman login
 
-  @GRD-004 @fail @BUG-06
+  @GRD-004
   Scenario: Pengunjung yang membuka halaman contoh pembayaran diminta login
     When pengguna membuka halaman contoh pembayaran
     Then pengguna segera diarahkan ke halaman login
@@ -68,31 +68,31 @@ Feature: Proteksi halaman dan pembatasan peran
     When pengguna membuka halaman dashboard klien
     Then pengguna diarahkan ke halaman pemilihan peran
 
-  @GRD-013 @fail @BUG-06
+  @GRD-013
   Scenario: Klien yang membuka jadwal dikembalikan ke dashboard klien
     Given pengguna sudah login sebagai klien
     When pengguna membuka halaman jadwal
     Then pengguna segera diarahkan ke halaman dashboard klien
 
-  @GRD-014 @fail @BUG-06
+  @GRD-014
   Scenario: Klien yang membuka bursa kasus dikembalikan ke dashboard klien
     Given pengguna sudah login sebagai klien
     When pengguna membuka halaman bursa kasus
     Then pengguna segera diarahkan ke halaman dashboard klien
 
-  @GRD-015 @fail @BUG-06
+  @GRD-015
   Scenario: Klien yang membuka verifikasi konsultan dikembalikan ke dashboard klien
     Given pengguna sudah login sebagai klien
     When pengguna membuka halaman verifikasi konsultan
     Then pengguna segera diarahkan ke halaman dashboard klien
 
-  @GRD-016 @fail @BUG-06
+  @GRD-016
   Scenario: Konsultan yang membuka posting kasus dikembalikan ke dashboard konsultan
     Given pengguna sudah login sebagai konsultan
     When pengguna membuka halaman posting kasus
     Then pengguna segera diarahkan ke halaman dashboard konsultan
 
-  @GRD-017 @fail @BUG-06
+  @GRD-017
   Scenario: Konsultan yang membuka basis pengetahuan dikembalikan ke dashboard konsultan
     Given pengguna sudah login sebagai konsultan
     When pengguna membuka halaman basis pengetahuan

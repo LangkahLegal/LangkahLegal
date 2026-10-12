@@ -58,7 +58,7 @@ Then("halaman verifikasi menampilkan pesan data tidak ditemukan", async ({ detai
   await expect(detailVerifikasiPage.notFoundMessage).toBeVisible({ timeout: 20_000 });
 });
 
-// ── VER-008 BUG-16 · Kegagalan menyimpan keputusan diberitahukan ke admin
+// ── VER-008 · Kegagalan menyimpan keputusan diberitahukan ke admin
 
 Then("admin diberi tahu bahwa keputusan gagal disimpan", async ({ page, dialogs }) => {
   await expect

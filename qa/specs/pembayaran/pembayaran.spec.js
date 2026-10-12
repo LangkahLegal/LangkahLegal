@@ -75,7 +75,7 @@ When("pembayaran itu dilunasi di luar aplikasi", async ({ pembayaranPage, world 
   await setTransactionStatus(world.consultation.id_pengajuan, PAYMENT_STATUS.settled);
 });
 
-// ── PAY-007 BUG-13 · Layanan pembayaran yang tidak tersedia diberitahukan ke klien
+// ── PAY-007 · Layanan pembayaran yang tidak tersedia diberitahukan ke klien
 
 Given("layanan pembayaran Midtrans tidak dapat dimuat", async ({ page }) => {
   await midtrans.block(page);

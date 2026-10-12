@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { MaterialIcon } from "./Icons";
 import { Button } from "./Button"; // Import komponen Button Anda
 
 export function PasswordField({
   label = "Password",
-  id = "password",
+  id: providedId,
   name = "password",
   className = "",
   "data-testid": dataTestId,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const generatedId = useId();
+  const id = providedId || generatedId;
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>

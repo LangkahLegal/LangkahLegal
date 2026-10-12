@@ -66,7 +66,7 @@ Then("kode otorisasi ditukar bersama kode verifikasinya", async ({ network }) =>
 // ── AUTH-040 · Pengguna Google baru tanpa peran otomatis menjadi klien
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── AUTH-041 BUG-07 · Tujuan lanjutan ke situs luar tidak boleh mengalihkan pengguna
+// ── AUTH-041 · Tujuan lanjutan ke situs luar tidak boleh mengalihkan pengguna
 
 When("pengguna kembali dari Google dengan tujuan lanjutan ke situs luar", async ({ callbackOauthPage }) => {
   await callbackOauthPage.openWith({ code: OAUTH.code, next: OAUTH.externalNext });

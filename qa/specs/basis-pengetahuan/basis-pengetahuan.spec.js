@@ -180,7 +180,7 @@ Then("penggantian dikirim ke backend untuk dokumen uji", async ({ network }) => 
   expect(String(request.body)).toContain(LEGAL_DOCUMENT.frbr_uri);
 });
 
-// ── KNW-010 BUG-35 · Tahun undang-undang di luar rentang ditolak
+// ── KNW-010 · Tahun undang-undang di luar rentang ditolak
 
 When("pengguna mengunggah dokumen dengan tahun yang tidak masuk akal", async ({ basisPengetahuanPage }) => {
   await basisPengetahuanPage.addButton.click();

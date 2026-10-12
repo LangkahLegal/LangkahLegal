@@ -2,7 +2,7 @@
 Feature: Pengaturan bahasa
   Pengguna memilih bahasa tampilan aplikasi.
 
-  @LNG-001 @fail @BUG-25
+  @LNG-001
   Scenario: Pilihan bahasa Inggris tersimpan
     Given pengguna berada di halaman pengaturan bahasa
     When pengguna memilih bahasa Inggris lalu menyimpannya

@@ -28,7 +28,7 @@ Feature: Reset kata sandi
     And pengguna diarahkan ke halaman login
     And kata sandi baru dapat dipakai untuk login
 
-  @AUTH-043 @fail @BUG-33 @precondition:pengguna-reset-kata-sandi
+  @AUTH-043 @precondition:pengguna-reset-kata-sandi
   Scenario: Label formulir reset terhubung ke kolom yang benar
     Given pengguna membuka tautan reset yang diterimanya
     When pengguna memilih label konfirmasi kata sandi baru

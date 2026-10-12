@@ -20,12 +20,12 @@ Feature: Pengaturan keamanan
     Then muncul pemberitahuan "Konfirmasi password baru tidak cocok."
     And tidak ada permintaan reset kata sandi yang dikirim ke backend
 
-  @SEC-003 @fail @BUG-23 @precondition:login-klien
+  @SEC-003 @precondition:login-klien
   Scenario: Aturan panjang minimal kata sandi konsisten
     When pengguna membuka halaman pengaturan keamanan
     Then petunjuk dan validasi kata sandi memakai panjang minimal yang sama
 
-  @SEC-004 @fail @BUG-22 @precondition:login-klien
+  @SEC-004 @precondition:login-klien
   Scenario: Mengganti kata sandi mensyaratkan kata sandi saat ini
     When pengguna membuka halaman pengaturan keamanan
     Then pengguna diminta mengisi kata sandi saat ini
@@ -37,7 +37,7 @@ Feature: Pengaturan keamanan
     Then muncul pemberitahuan "New password should be different from the old password."
     And pengguna tetap berada di halaman pengaturan keamanan
 
-  @SEC-006 @fail @BUG-34 @precondition:login-klien-sementara
+  @SEC-006 @precondition:login-klien-sementara
   Scenario: Sesi di browser dihapus setelah kata sandi diganti
     Given pengguna berada di halaman pengaturan keamanan
     When pengguna mengganti kata sandinya

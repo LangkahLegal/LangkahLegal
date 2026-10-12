@@ -10,7 +10,7 @@ from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
-from helpers.schedule import is_past, now_wib
+from helpers.schedule import ensure_valid_slot, is_past, now_wib
 from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
     ConsultantActiveToggle,
@@ -118,6 +118,9 @@ def get_my_schedules(db: Client, current_user: CurrentUser) -> list:
     return formatted
 
 
+BOOKING_STATUSES = [StatusPengajuan.PENDING, StatusPengajuan.MENUNGGU_PEMBAYARAN, StatusPengajuan.TERJADWAL]
+
+
 def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
@@ -148,6 +151,7 @@ def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
         "total_income": total_income,
         "total_klien": len(unique_klien),
         "total_klien_aktif": len(sesi_aktif),
+        "is_active": consultant_repository.is_active(db, id_kons),
     }
 
 
@@ -289,6 +293,7 @@ def create_schedule(db: Client, current_user: CurrentUser, request: ScheduleCrea
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
     id_kons = require_konsultan_id(db, current_user)
+    ensure_valid_slot(request.tanggal, request.jam_mulai, request.jam_selesai)
 
     created = schedule_repository.insert(
         db,
@@ -311,7 +316,7 @@ def delete_schedule(db: Client, current_user: CurrentUser, id_jadwal: int) -> di
     if jadwal is None:
         raise NotFoundError("Jadwal tidak ditemukan")
 
-    if not jadwal["status_tersedia"]:
+    if consultation_repository.list_by_schedule_and_statuses(db, id_jadwal, BOOKING_STATUSES):
         raise BadRequestError("Jadwal tidak bisa dihapus karena sudah dipesan klien")
 
     schedule_repository.delete(db, id_jadwal)
@@ -322,10 +327,14 @@ def update_schedule(db: Client, current_user: CurrentUser, id_jadwal: int, reque
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
     jadwal = schedule_repository.get_by_id(db, id_jadwal)
-    if jadwal is None or not jadwal["status_tersedia"]:
-        raise BadRequestError("Jadwal tidak ditemukan atau sudah dipesan")
+    if jadwal is None:
+        raise NotFoundError("Jadwal tidak ditemukan")
+    if consultation_repository.list_by_schedule_and_statuses(db, id_jadwal, BOOKING_STATUSES):
+        raise BadRequestError("Jadwal sudah dipesan klien dan tidak dapat diubah")
 
     update_data = {k: v for k, v in request.model_dump().items() if v is not None}
+    merged = {**jadwal, **update_data}
+    ensure_valid_slot(merged["tanggal"], merged["jam_mulai"], merged["jam_selesai"])
 
     updated = schedule_repository.update(db, id_jadwal, update_data)
     return {"message": "Jadwal berhasil diperbarui", "data": updated[0]}

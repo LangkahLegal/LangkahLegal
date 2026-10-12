@@ -57,6 +57,9 @@ export default function VerificationListPage() {
       setShowConfirm(false);
       setReason("");
     },
+    onError: (err) => {
+      alert(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
+    },
   });
 
   const { filteredConsultants, statusCategories } = useMemo(() => {

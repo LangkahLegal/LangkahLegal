@@ -7,6 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
+import { useClientValue } from "@/lib/useClientValue";
 
 const LANGUAGES = [
   { id: "id", name: "Bahasa Indonesia", sub: "INDONESIAN" },
@@ -15,18 +16,27 @@ const LANGUAGES = [
   { id: "ja", name: "日本語", sub: "JAPANESE" },
 ];
 
+const LANGUAGE_KEY = "user-pref-language";
+const DEFAULT_LANGUAGE = "id";
+
+const readStoredLanguage = () => {
+  const stored = localStorage.getItem(LANGUAGE_KEY);
+  return LANGUAGES.some((lang) => lang.id === stored) ? stored : DEFAULT_LANGUAGE;
+};
+
 export default function LanguageSettingsPage() {
-  const [selectedLang, setSelectedLang] = useState("id");
+  const storedLang = useClientValue(readStoredLanguage, DEFAULT_LANGUAGE);
+  const [chosenLang, setSelectedLang] = useState(null);
+  const selectedLang = chosenLang ?? storedLang;
+
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSave = async () => {
     setIsLoading(true);
-    // Simulasi proses penyimpanan
-    setTimeout(() => {
-      setIsLoading(false);
-      router.back();
-    }, 1500);
+    localStorage.setItem(LANGUAGE_KEY, selectedLang);
+    setIsLoading(false);
+    router.push("/setting");
   };
 
   return (

@@ -17,10 +17,7 @@ export const LOGOUT_CONFIRM = "Apakah Anda yakin ingin keluar?";
 
 export const SESSION_KEYS = ["ll_token", "token", "ll_refresh", "refresh_token", "ll_role", "role"];
 
-export const PROFILE_EDIT = {
-  newName: "SIT Klien Diperbarui",
-  newEmail: "sit.klien.baru@example.com",
-};
+export const PROFILE_EDIT = { newName: "SIT Klien Diperbarui" };
 
 /** Kredensial profesional yang diisi konsultan di halaman profil. */
 export const CREDENTIALS = {

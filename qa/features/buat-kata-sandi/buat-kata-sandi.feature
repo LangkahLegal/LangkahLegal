@@ -8,7 +8,7 @@ Feature: Buat kata sandi
     When pengguna membuat kata sandi dengan format tidak valid
     Then setiap kata sandi itu ditolak dengan pesan yang sesuai
 
-  @AUTH-036 @fail @BUG-02 @precondition:login-klien
+  @AUTH-036 @precondition:login-klien-sementara-tanpa-kata-sandi
   Scenario: Kata sandi yang valid tersimpan lalu pengguna menuju dashboard
     Given pengguna diminta membuat kata sandi setelah masuk lewat Google
     And pengguna berada di halaman buat kata sandi

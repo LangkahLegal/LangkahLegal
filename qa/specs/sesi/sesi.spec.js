@@ -39,7 +39,7 @@ Then("token akses di browser sudah diganti dengan yang baru", async ({ page }) =
   expect(token).not.toBe(INVALID_TOKEN);
 });
 
-// ── SES-004 BUG-37 · Setelah token diperbarui, setiap permintaan memakai token yang baru
+// ── SES-004 · Setelah token diperbarui, setiap permintaan memakai token yang baru
 
 Then("semua permintaan ke backend membawa token akses pengguna", async ({ network, world }) => {
   expect(network.requests.length).toBeGreaterThan(0);
@@ -50,7 +50,7 @@ Then("semua permintaan ke backend membawa token akses pengguna", async ({ networ
   }
 });
 
-// ── SES-002 BUG-28 · Sesi yang tidak bisa diperbarui dibersihkan dan pengguna diminta login
+// ── SES-002 · Sesi yang tidak bisa diperbarui dibersihkan dan pengguna diminta login
 
 Given("token akses dan token pembaruan {akun} sudah tidak berlaku", async ({ auth }, akun) => {
   await auth.signIn(akun, { override: { access_token: INVALID_TOKEN, refresh_token: INVALID_REFRESH_TOKEN } });

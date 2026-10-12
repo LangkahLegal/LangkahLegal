@@ -115,7 +115,7 @@ Then("daftar lampiran kembali kosong", async ({ profilKonsultanPage }) => {
   await expect(profilKonsultanPage.attachment(DOCUMENTS.validName)).toHaveCount(0);
 });
 
-// ── BOK-008 BUG-12 · Berkas program tidak boleh dilampirkan
+// ── BOK-008 · Berkas program tidak boleh dilampirkan
 
 When("pengguna melampirkan berkas program", async ({ profilKonsultanPage, page, world }) => {
   world.attachedName = DOCUMENTS.executable.name;
@@ -143,7 +143,7 @@ When(
   },
 );
 
-// ── BOK-011 BUG-19 · Profil konsultan yang tidak ada diberitahukan ke klien
+// ── BOK-011 · Profil konsultan yang tidak ada diberitahukan ke klien
 
 Then("profil menampilkan pesan konsultan tidak ditemukan", async ({ profilKonsultanPage }) => {
   await expect(profilKonsultanPage.notFoundMessage).toBeVisible({ timeout: 6_000 });

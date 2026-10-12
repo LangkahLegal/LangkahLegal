@@ -75,7 +75,7 @@ Feature: Basis pengetahuan dokumen hukum
     Then formulir ganti dokumen terisi data dokumen uji
     And penggantian dikirim ke backend untuk dokumen uji
 
-  @KNW-010 @stub @fail @BUG-35
+  @KNW-010 @stub
   Scenario: Tahun undang-undang di luar rentang ditolak
     Given unggahan dokumen akan diproses sampai selesai
     And pengguna berada di halaman basis pengetahuan

@@ -65,6 +65,13 @@ export const test = base.extend({
       world.session = session;
       return session;
     };
-    await use({ signIn, signInWith, forget: sessions.forget });
+    const signInWithOtp = async (user) => {
+      const session = await sessions.loginWithOtp(user);
+      await seedSession(page, session, user.role);
+      world.account = user;
+      world.session = session;
+      return session;
+    };
+    await use({ signIn, signInWith, signInWithOtp, forget: sessions.forget });
   },
 });

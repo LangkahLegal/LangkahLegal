@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import json
 import secrets
 from typing import Optional
 from urllib.parse import quote, urlencode
@@ -21,6 +22,8 @@ from schemas.auth import (
     SignUpPayload,
     VerifyOtpPayload,
 )
+
+PASSWORD_LOGIN = "password"
 
 
 def _get_service_headers() -> dict:
@@ -311,7 +314,36 @@ async def forgot_password(payload: ForgotPasswordPayload) -> dict:
     return {"sent": True}
 
 
-async def reset_password(token: str, new_password: str) -> None:
+def _token_claims(token: str) -> dict:
+    try:
+        payload = token.split(".")[1]
+        return json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    except (IndexError, ValueError):
+        return {}
+
+
+async def _ensure_current_password(token: str, current_password: Optional[str]) -> None:
+    claims = _token_claims(token)
+    login_methods = {entry.get("method") for entry in claims.get("amr") or [] if isinstance(entry, dict)}
+    if PASSWORD_LOGIN not in login_methods:
+        return
+
+    if not current_password:
+        raise BadRequestError("Kata sandi saat ini wajib diisi.")
+
+    try:
+        await _post_auth(
+            "/auth/v1/token",
+            {"email": claims.get("email"), "password": current_password},
+            params={"grant_type": "password"},
+        )
+    except AppError:
+        raise BadRequestError("Kata sandi saat ini salah.")
+
+
+async def reset_password(token: str, new_password: str, current_password: Optional[str] = None) -> None:
+    await _ensure_current_password(token, current_password)
+
     settings = get_settings()
     url = f"{settings.supabase_url}/auth/v1/user"
 

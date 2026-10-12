@@ -12,13 +12,13 @@ Then("setiap halaman privat mengarahkan pengunjung ke halaman {halaman}", async 
   }
 });
 
-// ── GRD-002 BUG-05 · Pengunjung yang membuka halaman verifikasi konsultan diminta login
+// ── GRD-002 · Pengunjung yang membuka halaman verifikasi konsultan diminta login
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-003 BUG-05 · Pengunjung yang membuka halaman basis pengetahuan diminta login
+// ── GRD-003 · Pengunjung yang membuka halaman basis pengetahuan diminta login
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-004 BUG-06 · Pengunjung yang membuka halaman contoh pembayaran diminta login
+// ── GRD-004 · Pengunjung yang membuka halaman contoh pembayaran diminta login
 // Seluruh langkahnya memakai langkah bersama.
 
 // ── GRD-005 · Pengunjung dapat menjelajahi katalog konsultan
@@ -45,17 +45,17 @@ Then("setiap halaman privat mengarahkan pengunjung ke halaman {halaman}", async 
 // ── GRD-012 · Pengguna yang perannya belum diketahui diminta memilih peran
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-013 BUG-06 · Klien yang membuka jadwal dikembalikan ke dashboard klien
+// ── GRD-013 · Klien yang membuka jadwal dikembalikan ke dashboard klien
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-014 BUG-06 · Klien yang membuka bursa kasus dikembalikan ke dashboard klien
+// ── GRD-014 · Klien yang membuka bursa kasus dikembalikan ke dashboard klien
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-015 BUG-06 · Klien yang membuka verifikasi konsultan dikembalikan ke dashboard klien
+// ── GRD-015 · Klien yang membuka verifikasi konsultan dikembalikan ke dashboard klien
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-016 BUG-06 · Konsultan yang membuka posting kasus dikembalikan ke dashboard konsultan
+// ── GRD-016 · Konsultan yang membuka posting kasus dikembalikan ke dashboard konsultan
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── GRD-017 BUG-06 · Konsultan yang membuka basis pengetahuan dikembalikan ke dashboard konsultan
+// ── GRD-017 · Konsultan yang membuka basis pengetahuan dikembalikan ke dashboard konsultan
 // Seluruh langkahnya memakai langkah bersama.

@@ -149,7 +149,7 @@ Then("pesan galat login menampilkan skrip itu sebagai teks biasa", async ({ logi
 // ── AUTH-012 · Pengunjung yang belum punya akun menuju pendaftaran dari login
 // Seluruh langkahnya memakai langkah bersama.
 
-// ── AUTH-013 BUG-14 · Pengguna yang sudah login tidak perlu melihat halaman login lagi
+// ── AUTH-013 · Pengguna yang sudah login tidak perlu melihat halaman login lagi
 // Seluruh langkahnya memakai langkah bersama.
 
 // ── AUTH-014 · Login Google membawa pengguna ke halaman persetujuan Google

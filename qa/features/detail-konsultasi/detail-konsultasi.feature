@@ -68,7 +68,7 @@ Feature: Detail konsultasi
     When pengguna menyimpan tautan Zoom untuk sesi itu
     Then tautan Zoom tersimpan di database untuk konsultasi itu
 
-  @CON-009 @fail @BUG-27 @precondition:login-konsultan
+  @CON-009 @precondition:login-konsultan
   Scenario: Tautan Zoom yang bukan alamat web ditolak
     Given klien punya konsultasi berstatus terjadwal
     And pengguna berada di halaman detail konsultasi itu

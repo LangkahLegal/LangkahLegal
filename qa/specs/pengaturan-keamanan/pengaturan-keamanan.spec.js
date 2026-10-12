@@ -8,6 +8,7 @@ import { PASSWORD_CHANGE } from "../../test_data/pengaturan.data.js";
 
 When("pengguna mengganti kata sandinya", async ({ pengaturanKeamananPage }) => {
   await pengaturanKeamananPage.change({
+    current: env.accountPassword,
     password: PASSWORD_CHANGE.newPassword,
     confirmation: PASSWORD_CHANGE.newPassword,
   });
@@ -24,12 +25,13 @@ Then("kata sandi baru pengguna itu dapat dipakai untuk login", async ({ world })
 
 When("pengguna mengganti kata sandi dengan konfirmasi yang tidak cocok", async ({ pengaturanKeamananPage }) => {
   await pengaturanKeamananPage.change({
+    current: env.accountPassword,
     password: PASSWORD_CHANGE.newPassword,
     confirmation: PASSWORD_CHANGE.mismatch,
   });
 });
 
-// ── SEC-003 BUG-23 · Aturan panjang minimal kata sandi konsisten
+// ── SEC-003 · Aturan panjang minimal kata sandi konsisten
 
 Then(
   "petunjuk dan validasi kata sandi memakai panjang minimal yang sama",
@@ -47,7 +49,7 @@ Then(
   },
 );
 
-// ── SEC-004 BUG-22 · Mengganti kata sandi mensyaratkan kata sandi saat ini
+// ── SEC-004 · Mengganti kata sandi mensyaratkan kata sandi saat ini
 
 Then("pengguna diminta mengisi kata sandi saat ini", async ({ pengaturanKeamananPage }) => {
   await expect(pengaturanKeamananPage.currentPasswordInput).toBeVisible({ timeout: 3_000 });
@@ -56,8 +58,12 @@ Then("pengguna diminta mengisi kata sandi saat ini", async ({ pengaturanKeamanan
 // ── SEC-005 · Kata sandi baru yang sama dengan yang lama ditolak
 
 When("pengguna mengganti kata sandi dengan kata sandi lamanya", async ({ pengaturanKeamananPage }) => {
-  await pengaturanKeamananPage.change({ password: env.accountPassword, confirmation: env.accountPassword });
+  await pengaturanKeamananPage.change({
+    current: env.accountPassword,
+    password: env.accountPassword,
+    confirmation: env.accountPassword,
+  });
 });
 
-// ── SEC-006 BUG-34 · Sesi di browser dihapus setelah kata sandi diganti
+// ── SEC-006 · Sesi di browser dihapus setelah kata sandi diganti
 // Seluruh langkahnya memakai langkah bersama.

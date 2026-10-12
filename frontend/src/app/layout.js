@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
     <html lang="id">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block"
           rel="stylesheet"
         />
       </head>

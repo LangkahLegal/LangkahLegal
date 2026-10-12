@@ -28,7 +28,17 @@ export function FileUpload({
     if (dropped) validateAndProcess(dropped);
   };
 
+  const allowedExtensions = accept
+    .split(",")
+    .map((ext) => ext.trim().toLowerCase())
+    .filter(Boolean);
+
   const validateAndProcess = (selectedFile) => {
+    const fileName = selectedFile.name.toLowerCase();
+    if (!allowedExtensions.some((ext) => fileName.endsWith(ext))) {
+      alert(`Tipe file tidak didukung. Gunakan ${formattedAcceptText}.`);
+      return;
+    }
     if (selectedFile.size > maxSizeMB * 1024 * 1024) {
       alert(`File terlalu besar! Maksimal ${maxSizeMB}MB`);
       return;

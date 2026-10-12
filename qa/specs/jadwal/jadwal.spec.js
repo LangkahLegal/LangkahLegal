@@ -97,7 +97,7 @@ Then("slot jadwal itu hanya bisa dilihat", async ({ jadwalPage, page }) => {
   await expect(jadwalPage.saveButton).toHaveCount(0);
 });
 
-// ── SCH-005 BUG-15 · Slot dengan jam selesai sebelum jam mulai ditolak
+// ── SCH-005 · Slot dengan jam selesai sebelum jam mulai ditolak
 
 When("pengguna menambah slot dengan jam selesai sebelum jam mulai", async ({ jadwalPage }) => {
   await jadwalPage.openDayNextMonth(SLOTS.reversed.day);
@@ -105,14 +105,14 @@ When("pengguna menambah slot dengan jam selesai sebelum jam mulai", async ({ jad
   await jadwalPage.saveButton.click();
 });
 
-// ── SCH-006 BUG-15 · Slot tidak dapat ditambah pada tanggal yang sudah lewat
+// ── SCH-006 · Slot tidak dapat ditambah pada tanggal yang sudah lewat
 
 When("pengguna memilih tanggal pada bulan lalu", async ({ jadwalPage }) => {
   await jadwalPage.previousMonthButton.click();
   await jadwalPage.day(1).click();
 });
 
-// ── SCH-007 BUG-08 · Status tidak menerima konsultasi tersimpan
+// ── SCH-007 · Status tidak menerima konsultasi tersimpan
 
 When("pengguna menonaktifkan penerimaan konsultasi", async ({ jadwalPage, world }) => {
   world.cleanups.push(() => setKonsultan("konsultan", { is_active: true }));
@@ -132,7 +132,7 @@ When("pengguna menambah slot jadwal yang bentrok", async ({ jadwalPage }) => {
   await jadwalPage.saveButton.click();
 });
 
-// ── SCH-009 BUG-32 · Berpindah bulan dari tanggal 31 tidak melompati bulan
+// ── SCH-009 · Berpindah bulan dari tanggal 31 tidak melompati bulan
 
 Given("hari ini di browser adalah tanggal 31 Januari", async ({ page }) => {
   await page.clock.setFixedTime(new Date(MONTH_END_CHECK.now));

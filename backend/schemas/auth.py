@@ -57,3 +57,4 @@ class ForgotPasswordPayload(BaseModel):
 
 class ResetPasswordPayload(BaseModel):
     new_password: str
+    current_password: Optional[str] = None

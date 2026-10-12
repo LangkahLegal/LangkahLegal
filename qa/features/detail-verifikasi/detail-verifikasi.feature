@@ -36,7 +36,7 @@ Feature: Keputusan verifikasi konsultan
     When pengguna membuka halaman verifikasi konsultan yang tidak ada
     Then halaman verifikasi menampilkan pesan data tidak ditemukan
 
-  @VER-008 @fail @BUG-16
+  @VER-008
   Scenario: Kegagalan menyimpan keputusan diberitahukan ke admin
     Given konsultan baru baru saja mengajukan verifikasi
     And layanan keputusan verifikasi sedang mengalami gangguan

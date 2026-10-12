@@ -51,7 +51,7 @@ Then("kata sandi baru dapat dipakai untuk login", async ({ world }) => {
   expect(session.access_token).toBeTruthy();
 });
 
-// ── AUTH-043 BUG-33 · Label formulir reset terhubung ke kolom yang benar
+// ── AUTH-043 · Label formulir reset terhubung ke kolom yang benar
 
 When("pengguna memilih label konfirmasi kata sandi baru", async ({ resetKataSandiPage }) => {
   await resetKataSandiPage.confirmPasswordLabel.click();

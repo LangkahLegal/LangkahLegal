@@ -63,7 +63,7 @@ Feature: Pembayaran konsultasi
     When pembayaran itu dilunasi di luar aplikasi
     Then pembayaran dikonfirmasi berhasil
 
-  @PAY-007 @fail @BUG-13
+  @PAY-007
   Scenario: Layanan pembayaran yang tidak tersedia diberitahukan ke klien
     Given klien punya konsultasi berstatus menunggu pembayaran
     And layanan pembayaran Midtrans tidak dapat dimuat

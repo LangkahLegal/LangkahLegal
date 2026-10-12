@@ -39,6 +39,9 @@ export default function VerificationDetailPage() {
     onSuccess: () => {
       router.push("/verification");
     },
+    onError: (err) => {
+      alert(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
+    },
   });
 
   const consultant = data?.data;

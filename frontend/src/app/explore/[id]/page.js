@@ -23,6 +23,7 @@ import AboutSection from "@/components/explore/pengajuan/AboutSection";
 import SchedulePicker from "@/components/explore/pengajuan/SchedulePicker";
 import ConsultationForm from "@/components/explore/pengajuan/ConsultationForm";
 import AttachedDocuments from "@/components/documents/AttachedDocuments";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function ConsultantDetailPage() {
   const { id } = useParams();
@@ -46,7 +47,11 @@ export default function ConsultantDetailPage() {
   };
 
   // --- 1. FETCH DATA ---
-  const { data: consultant, isLoading: isLoadingConsultant } = useQuery({
+  const {
+    data: consultant,
+    isLoading: isLoadingConsultant,
+    isError: isConsultantMissing,
+  } = useQuery({
     queryKey: ["consultant", id],
     queryFn: () => consultantService.getConsultantDetail(parseInt(id)),
     enabled: !!id,
@@ -132,6 +137,20 @@ export default function ConsultantDetailPage() {
             Memuat Profil Konsultan...
           </p>
         </div>
+      </div>
+    );
+
+  if (isConsultantMissing || !consultant)
+    return (
+      <div className="bg-bg text-main min-h-screen flex items-center justify-center px-6 transition-colors duration-500">
+        <EmptyState
+          icon="person_off"
+          title="Konsultan Tidak Ditemukan"
+          description="Profil konsultan ini tidak tersedia atau sudah tidak aktif."
+          actionLabel="Kembali ke Katalog"
+          actionIcon="arrow_back"
+          onAction={() => router.push("/explore")}
+        />
       </div>
     );
 

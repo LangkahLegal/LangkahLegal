@@ -8,6 +8,9 @@ import { InputField } from "@/components/ui/InputField";
 import Modal from "@/components/knowledge/Modal";
 import { uploadDocumentPdf, getJobStatus } from "@/services/admin.service";
 
+// Tahun proklamasi; tidak ada peraturan Republik Indonesia sebelum itu.
+const MIN_LAW_YEAR = 1945;
+
 export default function UploadDocumentModal({ open, onClose, setActiveJobId, showToast }) {
   const queryClient = useQueryClient();
   const [fileToUpload, setFileToUpload] = useState(null);
@@ -21,7 +24,10 @@ export default function UploadDocumentModal({ open, onClose, setActiveJobId, sho
     status_hukum: "",
   });
 
-  const isFormValid = fileToUpload && formData.nama_uu && formData.nomor_uu && formData.tahun_uu && formData.kategori && formData.status_hukum;
+  const tahun = Number(formData.tahun_uu);
+  const isYearValid = Number.isInteger(tahun) && tahun >= MIN_LAW_YEAR && tahun <= new Date().getFullYear();
+
+  const isFormValid = fileToUpload && formData.nama_uu && formData.nomor_uu && isYearValid && formData.kategori && formData.status_hukum;
 
   const handleUploadFile = async () => {
     if (!isFormValid) return;

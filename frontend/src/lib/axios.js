@@ -79,6 +79,9 @@ const refreshSession = async () => {
       return session;
     } catch {
       clearAuthSession();
+      if (!window.location.pathname.startsWith("/auth/")) {
+        window.location.replace("/auth/login");
+      }
       return null;
     }
   })();

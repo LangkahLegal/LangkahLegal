@@ -10,13 +10,13 @@ Feature: Sesi dan pembaruan token
     And hanya ada 1 permintaan perbarui sesi yang dikirim ke backend
     And token akses di browser sudah diganti dengan yang baru
 
-  @SES-004 @continue @fail @BUG-37
+  @SES-004 @continue
   Scenario: Setelah token diperbarui, setiap permintaan memakai token yang baru
     When pengguna membuka halaman dashboard klien
     Then dashboard menampilkan nama pengguna
     And semua permintaan ke backend membawa token akses pengguna
 
-  @SES-002 @fail @BUG-28
+  @SES-002
   Scenario: Sesi yang tidak bisa diperbarui dibersihkan dan pengguna diminta login
     Given token akses dan token pembaruan klien sudah tidak berlaku
     When pengguna membuka halaman dashboard klien

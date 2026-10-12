@@ -16,7 +16,7 @@ Feature: Jadwal praktik konsultan
     Then muncul pemberitahuan "Jadwal baru berhasil ditambahkan!"
     And slot jadwal baru tersimpan di database
 
-  @SCH-003 @fail @BUG-38
+  @SCH-003
   Scenario: Konsultan meliburkan slot yang sudah ada
     Given konsultan uji punya slot jadwal pada bulan depan
     And pengguna berada di halaman jadwal
@@ -31,20 +31,20 @@ Feature: Jadwal praktik konsultan
     When pengguna membuka slot jadwal yang sudah dipesan itu
     Then slot jadwal itu hanya bisa dilihat
 
-  @SCH-005 @fail @BUG-15
+  @SCH-005
   Scenario: Slot dengan jam selesai sebelum jam mulai ditolak
     Given konsultan uji belum membuka jadwal praktik
     And pengguna berada di halaman jadwal
     When pengguna menambah slot dengan jam selesai sebelum jam mulai
     Then tidak ada permintaan tambah jadwal yang dikirim ke backend
 
-  @SCH-006 @fail @BUG-15
+  @SCH-006
   Scenario: Slot tidak dapat ditambah pada tanggal yang sudah lewat
     Given pengguna berada di halaman jadwal
     When pengguna memilih tanggal pada bulan lalu
     Then formulir slot jadwal tidak terbuka
 
-  @SCH-007 @fail @BUG-08
+  @SCH-007
   Scenario: Status tidak menerima konsultasi tersimpan
     Given pengguna berada di halaman jadwal
     When pengguna menonaktifkan penerimaan konsultasi
@@ -57,7 +57,7 @@ Feature: Jadwal praktik konsultan
     When pengguna menambah slot jadwal yang bentrok
     Then muncul pemberitahuan "Gagal menambah jadwal. Pastikan jam tidak bertabrakan."
 
-  @SCH-009 @fail @BUG-32
+  @SCH-009
   Scenario: Berpindah bulan dari tanggal 31 tidak melompati bulan
     Given hari ini di browser adalah tanggal 31 Januari
     And pengguna berada di halaman jadwal

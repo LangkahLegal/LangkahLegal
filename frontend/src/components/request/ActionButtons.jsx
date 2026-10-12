@@ -4,13 +4,14 @@ import React from "react";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
 
-export default function ActionButtons({ onReject, onAccept }) {
+export default function ActionButtons({ onReject, onAccept, isLoading = false }) {
   return (
     <div className="flex gap-4 pt-4">
       {/* Tombol Tolak: Menggunakan variant danger (Theme-Aware) */}
       <Button
         variant="danger"
         onClick={onReject}
+        disabled={isLoading}
         fullWidth
         className="!h-14 !rounded-2xl" // Mengunci spesifikasi ukuran kamu
       >
@@ -22,6 +23,7 @@ export default function ActionButtons({ onReject, onAccept }) {
       <Button
         variant="primary"
         onClick={onAccept}
+        isLoading={isLoading}
         fullWidth
         className="!h-14 !rounded-2xl shadow-soft"
       >

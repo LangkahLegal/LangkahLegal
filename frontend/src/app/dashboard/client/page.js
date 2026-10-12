@@ -9,9 +9,21 @@ import FeaturedServices from "@/components/dashboard/FeaturedServices";
 import BottomNav from "@/components/layout/BottomNav";
 import Sidebar from "@/components/layout/Sidebar";
 import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { userService } from "@/services/user.service";
 import { consultationService } from "@/services/consultation.service";
+
+/** Daftar kartu yang disembunyikan pengguna; data yang rusak dianggap kosong dan dibuang. */
+const readHiddenRejectedIds = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("hidden_rejected_ids") || "[]");
+    return Array.isArray(stored) ? stored.map((id) => Number(id)) : [];
+  } catch {
+    localStorage.removeItem("hidden_rejected_ids");
+    return [];
+  }
+};
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -28,7 +40,12 @@ export default function DashboardPage() {
   });
 
   // --- 2. Fetch Consultations ---
-  const { data: consultations, isLoading } = useQuery({
+  const {
+    data: consultations,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["consultations", "aktif"],
     queryFn: consultationService.getActiveConsultations,
   });
@@ -47,9 +64,7 @@ export default function DashboardPage() {
   const activeConsultation = useMemo(() => {
     if (!consultations) return null;
 
-    const persistentHidden = JSON.parse(
-      localStorage.getItem("hidden_rejected_ids") || "[]",
-    ).map((id) => Number(id));
+    const persistentHidden = readHiddenRejectedIds();
 
     // Status yang relevan dan urutan terbaru sudah disaring backend (?aktif=true);
     // di sini hanya kartu yang disembunyikan pengguna yang dibuang.
@@ -66,9 +81,7 @@ export default function DashboardPage() {
     const currentStatus = activeConsultation.status_pengajuan;
 
     if (currentStatus === "ditolak") {
-      const stored = JSON.parse(
-        localStorage.getItem("hidden_rejected_ids") || "[]",
-      );
+      const stored = readHiddenRejectedIds();
       const updated = [...new Set([...stored, currentId])];
       localStorage.setItem("hidden_rejected_ids", JSON.stringify(updated));
       setTempHiddenIds((prev) => [...prev, currentId]);
@@ -105,7 +118,18 @@ export default function DashboardPage() {
           ) : (
             <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12 animate-fade-in">
               <div className="w-full">
-                {activeConsultation ? (
+                {isError ? (
+                  <EmptyState
+                    icon="error"
+                    title="Gagal Memuat Konsultasi"
+                    description="Data konsultasi tidak dapat dimuat. Periksa koneksi Anda lalu coba lagi."
+                    actionLabel="Coba Lagi"
+                    actionIcon="refresh"
+                    onAction={() => refetch()}
+                    variant="card"
+                    className="py-12"
+                  />
+                ) : activeConsultation ? (
                   <ConsultationCard
                     data={activeConsultation}
                     onCancel={handleCancelConsultation}

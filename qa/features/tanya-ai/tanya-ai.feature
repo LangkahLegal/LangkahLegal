@@ -103,7 +103,7 @@ Feature: Tanya AI
     When pengguna memulai percakapan baru
     Then Tanya AI kembali menampilkan sambutan
 
-  @AI-013 @fail @BUG-26
+  @AI-013
   Scenario: Riwayat percakapan tetap terbaca tanpa font ikon
     Given klien punya dua sesi percakapan lama dengan AI
     And font ikon tidak dapat dimuat

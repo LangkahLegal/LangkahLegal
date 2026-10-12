@@ -54,24 +54,32 @@ export default function PaymentPage() {
 
   // --- 3. MUTATION: CREATE TRANSACTION ---
   const transactionMutation = useMutation({
-    mutationFn: () => paymentService.createTransaction(parseInt(id)),
-    onSuccess: (res) => {
-      if (window.snap) {
-        window.snap.pay(res.snap_token, {
-          onSuccess: async () => {
-            await paymentService.syncPaymentStatus(parseInt(id));
-            setIsPaid(true);
-          },
-          onPending: () => {
-            alert("Pembayaran tertunda. Silakan selesaikan di aplikasi Anda.");
-            router.push("/dashboard/client");
-          },
-          onError: () => alert("Pembayaran gagal. Silakan coba lagi."),
-        });
+    mutationFn: () => {
+      // Tanpa jendela pembayaran, transaksi tidak perlu dibuat sama sekali.
+      if (!window.snap) {
+        throw new Error(
+          "Layanan pembayaran tidak tersedia. Muat ulang halaman lalu coba lagi.",
+        );
       }
+      return paymentService.createTransaction(parseInt(id));
+    },
+    onSuccess: (res) => {
+      window.snap.pay(res.snap_token, {
+        onSuccess: async () => {
+          await paymentService.syncPaymentStatus(parseInt(id));
+          setIsPaid(true);
+        },
+        onPending: () => {
+          alert("Pembayaran tertunda. Silakan selesaikan di aplikasi Anda.");
+          router.push("/dashboard/client");
+        },
+        onError: () => alert("Pembayaran gagal. Silakan coba lagi."),
+      });
     },
     onError: (err) => {
-      alert(err.response?.data?.detail || "Gagal memulai transaksi");
+      alert(
+        err.response?.data?.detail || err.message || "Gagal memulai transaksi",
+      );
     },
   });
 

@@ -4,9 +4,6 @@ import { routeOf, urlOf } from "../../pages/routes.js";
 
 const QUICK = { timeout: 5_000 };
 
-// Ketidakcocokan hidrasi React (#418) tidak merusak halaman; dicatat sebagai temuan terpisah.
-const HYDRATION_MISMATCH = /Minified React error #418/;
-
 Given("pengguna berada di halaman {halaman}", async ({ page, world }, halaman) => {
   world.response = await page.goto(routeOf(halaman, world));
 });
@@ -42,5 +39,5 @@ Then("tidak ada dialog yang muncul", async ({ page, dialogs }) => {
 
 Then("halaman tidak mengalami galat", async ({ page, pageErrors }) => {
   await expect(page.getByText(/Application error|client-side exception/i)).toHaveCount(0);
-  expect(pageErrors.filter((message) => !HYDRATION_MISMATCH.test(message))).toEqual([]);
+  expect(pageErrors).toEqual([]);
 });

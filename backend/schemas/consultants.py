@@ -13,6 +13,7 @@ class ScheduleUpdate(BaseModel):
     tanggal: Optional[str] = None
     jam_mulai: Optional[str] = None
     jam_selesai: Optional[str] = None
+    status_tersedia: Optional[bool] = None
 
 
 class ScheduleToggle(BaseModel):
@@ -27,3 +28,4 @@ class ConsultantDashboardStats(BaseModel):
     total_income: float
     total_klien: int
     total_klien_aktif: int
+    is_active: bool

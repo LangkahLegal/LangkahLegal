@@ -34,7 +34,7 @@ Feature: Pendaftaran akun
     When pengguna mendaftar dengan nama beraksara non-Latin dan emoji
     Then data pendaftaran dikirim lengkap ke backend
 
-  @AUTH-021 @stub @fail @BUG-21
+  @AUTH-021 @stub
   Scenario: Kata sandi yang terlalu pendek ditolak sebelum dikirim
     Given pengguna sudah memilih mendaftar sebagai klien
     And layanan pendaftaran menolak dengan pesan "Password should be at least 6 characters"

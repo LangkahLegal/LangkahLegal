@@ -120,7 +120,7 @@ Then("tautan Zoom tersimpan di database untuk konsultasi itu", async ({ detailKo
   expect(saved.link_zoom).toBe(ZOOM.newLink);
 });
 
-// ── CON-009 BUG-27 · Tautan Zoom yang bukan alamat web ditolak
+// ── CON-009 · Tautan Zoom yang bukan alamat web ditolak
 
 When("pengguna menyimpan tautan Zoom yang bukan alamat web", async ({ detailKonsultasiPage }) => {
   await detailKonsultasiPage.saveZoomLink(ZOOM.invalidLink);

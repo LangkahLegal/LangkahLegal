@@ -9,7 +9,7 @@ Feature: Dashboard klien
     Then dashboard klien menampilkan sapaan, layanan unggulan, dan kartu konsultasi kosong
     And halaman tidak mengalami galat
 
-  @CLI-002 @fail @BUG-10
+  @CLI-002
   Scenario: Klien tanpa konsultasi mencari konsultan dari dashboard
     Given klien belum punya konsultasi
     And pengguna berada di halaman dashboard klien
@@ -54,7 +54,7 @@ Feature: Dashboard klien
     When pengguna memuat ulang halaman
     Then kartu konsultasi kosong tampil
 
-  @CLI-008 @fail @BUG-29
+  @CLI-008
   Scenario: Data tersimpan yang rusak di browser tidak merusak dashboard
     Given klien punya konsultasi berstatus pending
     And daftar konsultasi tersembunyi di browser rusak
@@ -62,7 +62,7 @@ Feature: Dashboard klien
     Then kartu konsultasi menampilkan konsultan uji dengan status pending
     And halaman tidak mengalami galat
 
-  @CLI-009 @fail @BUG-18
+  @CLI-009
   Scenario: Gangguan saat memuat konsultasi diberitahukan ke klien
     Given layanan daftar konsultasi sedang mengalami gangguan
     When pengguna membuka halaman dashboard klien

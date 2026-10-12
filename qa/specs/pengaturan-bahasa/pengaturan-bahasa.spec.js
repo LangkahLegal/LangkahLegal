@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 import { Then, When } from "../../hooks/bdd.js";
 
-// ── LNG-001 BUG-25 · Pilihan bahasa Inggris tersimpan
+// ── LNG-001 · Pilihan bahasa Inggris tersimpan
 
 When("pengguna memilih bahasa Inggris lalu menyimpannya", async ({ pengaturanBahasaPage }) => {
   await pengaturanBahasaPage.englishOption.click();

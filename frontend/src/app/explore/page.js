@@ -65,6 +65,8 @@ export default function KonsultasiPage() {
   const {
     data,
     isLoading,
+    isError,
+    refetch,
     isFetching,
     hasNextPage,
     fetchNextPage,
@@ -187,7 +189,19 @@ export default function KonsultasiPage() {
                   isFetching ? "opacity-50" : "opacity-100"
                 }`}
               >
-                {filteredConsultants.length > 0 ? (
+                {isError ? (
+                  <div className="col-span-full">
+                    <EmptyState
+                      icon="error"
+                      title="Gagal Memuat Katalog"
+                      description="Daftar konsultan tidak dapat dimuat. Periksa koneksi Anda lalu coba lagi."
+                      actionLabel="Coba Lagi"
+                      actionIcon="refresh"
+                      onAction={() => refetch()}
+                      className="py-12"
+                    />
+                  </div>
+                ) : filteredConsultants.length > 0 ? (
                   filteredConsultants.map((pro) => (
                     <ConsultantCard key={pro.id} consultant={pro} />
                   ))

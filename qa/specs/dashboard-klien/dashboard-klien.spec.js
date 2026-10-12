@@ -30,7 +30,7 @@ Then(
   },
 );
 
-// ── CLI-002 BUG-10 · Klien tanpa konsultasi mencari konsultan dari dashboard
+// ── CLI-002 · Klien tanpa konsultasi mencari konsultan dari dashboard
 
 When("pengguna memilih cari konsultan", async ({ dashboardKlienPage }) => {
   await dashboardKlienPage.findConsultantLink.click();
@@ -70,13 +70,13 @@ When("pengguna memuat ulang halaman", async ({ page }) => {
   await page.reload();
 });
 
-// ── CLI-008 BUG-29 · Data tersimpan yang rusak di browser tidak merusak dashboard
+// ── CLI-008 · Data tersimpan yang rusak di browser tidak merusak dashboard
 
 Given("daftar konsultasi tersembunyi di browser rusak", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("hidden_rejected_ids", "{rusak"));
 });
 
-// ── CLI-009 BUG-18 · Gangguan saat memuat konsultasi diberitahukan ke klien
+// ── CLI-009 · Gangguan saat memuat konsultasi diberitahukan ke klien
 
 Then("dashboard klien menampilkan pesan gagal memuat", async ({ dashboardKlienPage }) => {
   await expect(dashboardKlienPage.loadErrorMessage).toBeVisible({ timeout: 6_000 });

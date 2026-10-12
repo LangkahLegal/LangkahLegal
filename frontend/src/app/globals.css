@@ -98,6 +98,12 @@ body {
     "opsz" 24;
   display: inline-block;
   vertical-align: middle;
+  /* Tanpa font ikon, nama ikon tampil sebagai teks panjang; batasi ke ukuran satu ikon. */
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* Modern Scrollbar */

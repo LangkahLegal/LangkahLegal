@@ -140,7 +140,7 @@ Then("konsultan lain tetap tampil di katalog", async ({ katalogKonsultanPage, wo
   await expect(katalogKonsultanPage.card(world.stubbedCatalog.name).first()).toBeVisible();
 });
 
-// ── EXP-011 BUG-18 · Gangguan saat memuat katalog diberitahukan ke klien
+// ── EXP-011 · Gangguan saat memuat katalog diberitahukan ke klien
 
 Then("katalog menampilkan pesan gagal memuat", async ({ katalogKonsultanPage }) => {
   await expect(katalogKonsultanPage.loadErrorMessage).toBeVisible({ timeout: 6_000 });

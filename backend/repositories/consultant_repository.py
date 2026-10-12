@@ -123,6 +123,11 @@ def search_by_category(db: Client, params: dict) -> list[dict]:
     return db.rpc("search_consultants_by_category", params).execute().data or []
 
 
+def is_active(db: Client, id_konsultan: int) -> bool:
+    row = get_by_id(db, id_konsultan, "is_active")
+    return bool(row and row.get("is_active"))
+
+
 def exists(db: Client, id_konsultan: int) -> bool:
     return get_by_id(db, id_konsultan, "id_konsultan") is not None
 

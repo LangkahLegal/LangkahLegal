@@ -34,7 +34,7 @@ Feature: Callback login Google
     And peran klien dikirim ke backend
     And akun tanpa peran tersimpan sebagai klien
 
-  @AUTH-041 @stub @fail @BUG-07
+  @AUTH-041 @stub
   Scenario: Tujuan lanjutan ke situs luar tidak boleh mengalihkan pengguna
     Given Google mengenali pengguna sebagai klien
     When pengguna kembali dari Google dengan tujuan lanjutan ke situs luar

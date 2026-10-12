@@ -19,7 +19,7 @@ const imgbbReplies = (page, status, body) =>
 
 /** Mengembalikan profil akun uji ke nilai awalnya setelah skenario mengubahnya. */
 const restoreKlien = (world) =>
-  world.cleanups.push(() => setUser("klien", { nama: account("klien").name, email: account("klien").email, foto_profil: null }));
+  world.cleanups.push(() => setUser("klien", { nama: account("klien").name, foto_profil: null }));
 
 const restoreKonsultanBaru = (world) =>
   world.cleanups.push(() => setKonsultan("konsultan baru", ACCOUNTS["konsultan baru"].konsultan));
@@ -55,18 +55,11 @@ Then(
   },
 );
 
-// ── PRF-002 BUG-24 · Perubahan email tidak boleh hilang diam-diam
+// ── PRF-002 · Email tidak dapat diubah dari formulir profil
 
-When("pengguna mengganti emailnya lalu menyimpan profil", async ({ pengaturanProfilPage, world }) => {
-  restoreKlien(world);
+Then("kolom email profil hanya bisa dibaca", async ({ pengaturanProfilPage }) => {
   await expect(pengaturanProfilPage.emailInput).toHaveValue(account("klien").email);
-  await pengaturanProfilPage.emailInput.fill(PROFILE_EDIT.newEmail);
-  await pengaturanProfilPage.save();
-});
-
-Then("email baru klien tersimpan di database", async ({ network }) => {
-  await network.waitForCall("simpan profil");
-  await expect.poll(async () => (await findUser("klien")).email, { timeout: 5_000 }).toBe(PROFILE_EDIT.newEmail);
+  await expect(pengaturanProfilPage.emailInput).not.toBeEditable();
 });
 
 // ── PRF-003 · Konsultan memperbarui kredensial profesional dan portofolionya
@@ -149,7 +142,7 @@ Then("profil menampilkan penolakan verifikasi beserta alasannya", async ({ penga
   await expect(page.getByText(`"${REJECTION_REASON}"`)).toBeVisible();
 });
 
-// ── PRF-009 BUG-33 · Label kolom profil terhubung ke kolomnya
+// ── PRF-009 · Label kolom profil terhubung ke kolomnya
 
 Then("kolom nama dan email dapat ditemukan lewat labelnya", async ({ page }) => {
   await expect(page.getByLabel("Nama Lengkap")).toHaveValue(account("klien").name, { timeout: 3_000 });

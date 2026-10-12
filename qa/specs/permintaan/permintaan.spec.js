@@ -61,7 +61,7 @@ Then("permintaan dikonfirmasi ditolak", async ({ page }) => {
   await expect(page.getByText(REQUEST_MESSAGES.rejected)).toBeVisible();
 });
 
-// ── REQ-003 BUG-09 · Permintaan yang sedang diproses tidak bisa diterima dua kali
+// ── REQ-003 · Permintaan yang sedang diproses tidak bisa diterima dua kali
 
 When("pengguna menerima permintaan itu lalu menekan tombol terima sekali lagi", async ({ permintaanPage }) => {
   await permintaanPage.acceptTwice();

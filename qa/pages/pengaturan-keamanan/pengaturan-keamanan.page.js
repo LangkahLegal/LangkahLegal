@@ -7,11 +7,12 @@ export class PengaturanKeamananPage extends BasePage {
     super(page);
     this.newPasswordInput = page.getByLabel("Kata Sandi Baru", { exact: true });
     this.confirmPasswordInput = page.getByLabel("Konfirmasi Kata Sandi Baru");
-    this.currentPasswordInput = page.getByLabel(/Kata Sandi Saat Ini|Password Lama/);
+    this.currentPasswordInput = page.getByLabel("Kata Sandi Saat Ini");
     this.saveButton = page.getByRole("button", { name: "Simpan Kata Sandi" });
   }
 
-  async fill({ password, confirmation }) {
+  async fill({ current, password, confirmation }) {
+    if (current) await this.currentPasswordInput.fill(current);
     await this.newPasswordInput.fill(password);
     await this.confirmPasswordInput.fill(confirmation);
   }

@@ -104,7 +104,7 @@ Feature: Login
     When pengguna memilih tautan daftar
     Then pengguna diarahkan ke halaman pemilihan peran
 
-  @AUTH-013 @fail @BUG-14 @precondition:login-klien
+  @AUTH-013 @precondition:login-klien
   Scenario: Pengguna yang sudah login tidak perlu melihat halaman login lagi
     When pengguna membuka halaman login
     Then pengguna diarahkan ke halaman dashboard klien

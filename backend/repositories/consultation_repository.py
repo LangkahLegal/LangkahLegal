@@ -133,6 +133,17 @@ def list_by_konsultan_and_statuses(db: Client, id_konsultan: int, statuses: list
     )
 
 
+def list_by_schedule_and_statuses(db: Client, id_jadwal: int, statuses: list[str]) -> list[dict]:
+    return (
+        db.table(TABLE)
+        .select("id_pengajuan")
+        .eq("id_jadwal", id_jadwal)
+        .in_("status_pengajuan", statuses)
+        .execute()
+        .data
+    )
+
+
 def list_requests_for_konsultan(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
     return (
         db.table(TABLE)

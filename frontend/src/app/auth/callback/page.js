@@ -48,7 +48,9 @@ export default function AuthCallbackPage() {
         }
 
         const nextPath = urlParams.get("next");
-        if (nextPath) {
+        const isInternalPath =
+          nextPath?.startsWith("/") && !nextPath.startsWith("//") && !nextPath.startsWith("/\\");
+        if (isInternalPath) {
           router.replace(nextPath);
           return;
         }

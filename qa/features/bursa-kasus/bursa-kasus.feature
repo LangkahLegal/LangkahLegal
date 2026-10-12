@@ -75,8 +75,9 @@ Feature: Bursa kasus
     Then muncul pemberitahuan "Kasus ini sudah diklaim oleh konsultan lain"
     And jendela konfirmasi klaim tertutup
 
-  @BUR-009 @precondition:login-klien
-  Scenario: Bursa tidak dapat dimuat oleh pengguna yang bukan konsultan
+  @BUR-009 @precondition:login-konsultan
+  Scenario: Gangguan saat memuat bursa diberitahukan ke konsultan
+    Given layanan daftar bursa sedang mengalami gangguan
     When pengguna membuka halaman bursa kasus
     Then bursa menampilkan pesan gagal memuat
 

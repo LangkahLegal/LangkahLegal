@@ -22,7 +22,7 @@ Feature: Permintaan konsultasi
     Then permintaan dikonfirmasi ditolak
     And konsultasi itu tersimpan dengan status ditolak
 
-  @REQ-003 @fail @BUG-09
+  @REQ-003
   Scenario: Permintaan yang sedang diproses tidak bisa diterima dua kali
     Given klien punya konsultasi berstatus pending
     And layanan ubah status konsultasi merespons lambat

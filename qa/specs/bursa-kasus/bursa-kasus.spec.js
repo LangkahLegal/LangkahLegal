@@ -145,7 +145,7 @@ Then("jendela konfirmasi klaim tertutup", async ({ bursaKasusPage }) => {
   await expect(bursaKasusPage.claimModal).toHaveCount(0);
 });
 
-// ── BUR-009 · Bursa tidak dapat dimuat oleh pengguna yang bukan konsultan
+// ── BUR-009 · Gangguan saat memuat bursa diberitahukan ke konsultan
 
 Then("bursa menampilkan pesan gagal memuat", async ({ bursaKasusPage }) => {
   await expect(bursaKasusPage.loadFailedMessage).toBeVisible();

@@ -69,7 +69,7 @@ Feature: Profil konsultan dan pemesanan konsultasi
     When pengguna melampirkan lalu menghapus sebuah dokumen
     Then daftar lampiran kembali kosong
 
-  @BOK-008 @fail @BUG-12
+  @BOK-008
   Scenario: Berkas program tidak boleh dilampirkan
     Given konsultan uji membuka jadwal praktik
     And pengguna berada di halaman profil konsultan uji
@@ -94,7 +94,7 @@ Feature: Profil konsultan dan pemesanan konsultasi
     Then pemesanan dikonfirmasi berhasil
     And hanya ada 1 permintaan pemesanan konsultasi yang dikirim ke backend
 
-  @BOK-011 @fail @BUG-19
+  @BOK-011
   Scenario: Profil konsultan yang tidak ada diberitahukan ke klien
     When pengguna membuka halaman profil konsultan yang tidak ada
     Then profil menampilkan pesan konsultan tidak ditemukan

@@ -10,6 +10,7 @@ import SignupHeader from "@/components/auth/signup/SignupHeader";
 import SignupForm from "@/components/auth/signup/SignupForm";
 import SocialSignup from "@/components/auth/signup/SocialSignup";
 import SignupFooter from "@/components/auth/signup/SignupFooter";
+import { MIN_PASSWORD_LENGTH } from "@/lib/passwordRules";
 
 export default function SignupPage() {
   const [selectedRole, setSelectedRole] = useState("");
@@ -36,6 +37,11 @@ export default function SignupPage() {
   };
 
   const handleSignup = async (formData) => {
+    if ((formData.password || "").length < MIN_PASSWORD_LENGTH) {
+      setErrorMsg(`Password minimal ${MIN_PASSWORD_LENGTH} karakter.`);
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg("");
 

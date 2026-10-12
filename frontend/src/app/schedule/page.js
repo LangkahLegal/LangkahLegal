@@ -13,6 +13,10 @@ import { scheduleService } from "@/services/schedule.service";
 import { consultantService } from "@/services/consultant.service";
 
 // Helper format tanggal YYYY-MM-DD
+/** Tanggal 1 pada bulan sebelum/sesudahnya, agar tanggal 29-31 tidak melompati bulan. */
+const firstDayOfMonth = (date, offset) =>
+  new Date(date.getFullYear(), date.getMonth() + offset, 1);
+
 const formatDate = (date) => {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -60,6 +64,25 @@ export default function SchedulePage() {
       alert("Gagal memperbarui jadwal. Slot mungkin sudah dipesan klien."),
   });
 
+  // Status aktif langsung berubah di layar, lalu dikembalikan bila server menolak.
+  const activeMutation = useMutation({
+    mutationFn: (isActive) => scheduleService.toggleGlobalActive(isActive),
+    onMutate: (isActive) => {
+      const previous = queryClient.getQueryData(["consultantStats"]);
+      queryClient.setQueryData(["consultantStats"], (old) => ({
+        ...old,
+        is_active: isActive,
+      }));
+      return { previous };
+    },
+    onError: (_error, _isActive, context) => {
+      queryClient.setQueryData(["consultantStats"], context?.previous);
+      alert("Gagal menyimpan status konsultasi.");
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["consultantStats"] }),
+  });
+
   // --- 3. DERIVED STATE ---
   const activeDateString = useMemo(
     () => formatDate(selectedDate),
@@ -97,6 +120,10 @@ export default function SchedulePage() {
   // --- 4. HANDLERS ---
   const handleSave = (formData) => {
     const [start, end] = formData.time.split(" - ");
+    if (end <= start) {
+      alert("Jam selesai harus setelah jam mulai.");
+      return;
+    }
     const payload = {
       tanggal: activeDateString,
       jam_mulai: `${start}:00`,
@@ -134,12 +161,7 @@ export default function SchedulePage() {
               <>
                 <AvailabilityToggle
                   isAvailable={stats?.is_active ?? true}
-                  onChange={(s) =>
-                    queryClient.setQueryData(["consultantStats"], (old) => ({
-                      ...old,
-                      is_active: s,
-                    }))
-                  }
+                  onChange={(isActive) => activeMutation.mutate(isActive)}
                 />
 
                 <MonthlyCalendar
@@ -147,30 +169,16 @@ export default function SchedulePage() {
                   selectedDay={activeDateString}
                   onSelectDay={(date) => {
                     setSelectedDate(new Date(date));
-                    setIsModalOpen(true);
+                    // Tanggal yang sudah lewat hanya bisa dibuka bila sudah punya jadwal untuk dilihat.
+                    const isPastDate = date < formatDate(new Date());
+                    setIsModalOpen(!isPastDate || Boolean(allSlotsGrouped[date]));
                   }}
                   monthLabel={selectedDate.toLocaleDateString("id-ID", {
                     month: "long",
                     year: "numeric",
                   })}
-                  onPrev={() =>
-                    setSelectedDate(
-                      new Date(
-                        new Date(selectedDate).setMonth(
-                          selectedDate.getMonth() - 1,
-                        ),
-                      ),
-                    )
-                  }
-                  onNext={() =>
-                    setSelectedDate(
-                      new Date(
-                        new Date(selectedDate).setMonth(
-                          selectedDate.getMonth() + 1,
-                        ),
-                      ),
-                    )
-                  }
+                  onPrev={() => setSelectedDate(firstDayOfMonth(selectedDate, -1))}
+                  onNext={() => setSelectedDate(firstDayOfMonth(selectedDate, 1))}
                 />
               </>
             )}

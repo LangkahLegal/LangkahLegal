@@ -16,11 +16,10 @@ Feature: Pengaturan profil
     When pengguna membuka halaman pengaturan profil
     Then formulir profil terisi data klien tanpa bagian kredensial profesional
 
-  @PRF-002 @fail @BUG-24 @precondition:login-klien
-  Scenario: Perubahan email tidak boleh hilang diam-diam
-    Given pengguna berada di halaman pengaturan profil
-    When pengguna mengganti emailnya lalu menyimpan profil
-    Then email baru klien tersimpan di database
+  @PRF-002 @precondition:login-klien
+  Scenario: Email tidak dapat diubah dari formulir profil
+    When pengguna membuka halaman pengaturan profil
+    Then kolom email profil hanya bisa dibaca
 
   @PRF-003
   Scenario: Konsultan memperbarui kredensial profesional dan portofolionya
@@ -74,7 +73,7 @@ Feature: Pengaturan profil
     When pengguna membuka halaman pengaturan profil
     Then profil menampilkan penolakan verifikasi beserta alasannya
 
-  @PRF-009 @fail @BUG-33 @precondition:login-klien
+  @PRF-009 @precondition:login-klien
   Scenario: Label kolom profil terhubung ke kolomnya
     When pengguna membuka halaman pengaturan profil
     Then kolom nama dan email dapat ditemukan lewat labelnya

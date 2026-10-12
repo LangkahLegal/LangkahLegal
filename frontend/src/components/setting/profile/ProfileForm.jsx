@@ -42,7 +42,9 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
         type="email"
         placeholder="example@langkahlegal.id"
         value={data.email}
-        onChange={(e) => onChange("email", e.target.value)}
+        readOnly
+        disabled
+        title="Email tidak dapat diubah dari halaman ini"
       />
 
       {/* KHUSUS KONSULTAN */}
