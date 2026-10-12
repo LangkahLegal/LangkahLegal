@@ -39,8 +39,9 @@ export default function BursaKasusPage() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["bursaKasus"],
-    queryFn: caseService.listOpenCases,
+    queryKey: ["bursaKasus", filterKategori],
+    queryFn: () => caseService.listOpenCases(filterKategori.toLowerCase()),
+    placeholderData: (previousData) => previousData,
     refetchInterval: 15000,
   });
 
@@ -71,14 +72,8 @@ export default function BursaKasusPage() {
     setExpandedDesc((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // --- Filter logic ---
-  const filteredCases =
-    filterKategori === "Semua"
-      ? cases
-      : cases.filter((c) => {
-          const kasusKat = c.kategori_hukum || "umum";
-          return kasusKat.toLowerCase() === filterKategori.toLowerCase();
-        });
+  // Filter kategori dikerjakan backend (GET /cases/?kategori=...)
+  const filteredCases = cases;
 
   // --- SUCCESS VIEW ---
   if (successData) {

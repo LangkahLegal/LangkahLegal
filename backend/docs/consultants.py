@@ -88,3 +88,8 @@ Menampilkan status: menunggu_pembayaran, terjadwal, selesai, dibatalkan, ditolak
 Disorting berdasarkan terbaru ke terlama.
 """,
 }
+
+GET_NEXT_SESSION = {
+    "summary": "Sesi terjadwal terdekat untuk konsultan",
+    "description": "Mengembalikan satu sesi berstatus `terjadwal` yang paling dekat dan belum lewat (waktu WIB), atau `null`.",
+}

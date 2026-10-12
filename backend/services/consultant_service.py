@@ -8,6 +8,7 @@ from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
+from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
 from helpers.schedule import is_past, now_wib
 from repositories import consultant_repository, consultation_repository, schedule_repository
@@ -20,6 +21,8 @@ from schemas.consultants import (
 
 logger = logging.getLogger(__name__)
 
+VERIFIED_FILTERS = {"terverifikasi": True, "non-verified": False}
+
 UNPAID_STATUSES = [
     "cancelled",
     StatusPengajuan.DIBATALKAN,
@@ -28,9 +31,28 @@ UNPAID_STATUSES = [
 ]
 
 
-def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> dict:
+def list_active_consultants(
+    db: Client,
+    spesialisasi: Optional[str] = None,
+    search: Optional[str] = None,
+    verified: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    page: Optional[int] = None,
+    page_size: int = 20,
+) -> dict:
     try:
-        rows = consultant_repository.list_active_catalog(db, spesialisasi if spesialisasi != "semua" else None)
+        offset, limit = page_window(page, page_size)
+        rows, total = consultant_repository.list_active_catalog(
+            db,
+            spesialisasi=spesialisasi if spesialisasi != "semua" else None,
+            search=clean_search(search) or None,
+            verified=VERIFIED_FILTERS.get(verified),
+            min_price=min_price,
+            max_price=max_price,
+            offset=offset,
+            limit=limit,
+        )
 
         formatted_data = []
         for item in rows:
@@ -51,10 +73,8 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
                 }
             )
 
-        return {
-            "message": "Katalog konsultan berhasil dimuat",
-            "data": formatted_data,
-        }
+        payload = {"message": "Katalog konsultan berhasil dimuat", "data": formatted_data}
+        return with_pagination(payload, total if total is not None else len(formatted_data), page, page_size)
     except Exception as e:
         logger.error(f"Backend Error: {e}")
         return {"data": [], "message": str(e)}
@@ -230,6 +250,26 @@ def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
     return {"total_klien_aktif": len(formatted_data), "data": formatted_data}
 
 
+def get_next_session(db: Client, current_user: CurrentUser) -> dict:
+    """Sesi terjadwal terdekat yang belum lewat (waktu WIB), atau None."""
+    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
+
+    id_kons = require_konsultan_id(db, current_user)
+    rows = consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.TERJADWAL])
+
+    now = now_wib()
+    upcoming = [
+        row
+        for row in rows
+        if row.get("tanggal_pengajuan")
+        and row.get("jam_mulai")
+        and not is_past(row["tanggal_pengajuan"], row["jam_mulai"], now)
+    ]
+    upcoming.sort(key=lambda row: (str(row["tanggal_pengajuan"]).split("T")[0], str(row["jam_mulai"])))
+
+    return {"data": upcoming[0] if upcoming else None}
+
+
 def get_history(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
@@ -238,7 +278,7 @@ def get_history(db: Client, current_user: CurrentUser) -> dict:
     rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
     formatted_data = [_format_history_item(req) for req in rows]
-    formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
+    formatted_data.sort(key=lambda x: (x["tanggal_konsultasi"] or "", x["jam_mulai"] or ""), reverse=True)
 
     total_selesai = sum(1 for item in formatted_data if item["status"] == StatusPengajuan.SELESAI)
 

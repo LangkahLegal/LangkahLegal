@@ -51,6 +51,119 @@ export function multipartFilenames(raw, name) {
   return [...raw.matchAll(re)].map((m) => m[1]);
 }
 
+
+/* ------------------------------------------------------------------------------------------
+ * Emulasi pemrosesan sisi server.
+ *
+ * Filter, urutan, dan paginasi daftar dikerjakan backend (lihat qa/api/test_listing.py untuk
+ * pengujian logika aslinya). Agar mock statis di tiap test tetap bermakna, respons mock
+ * diproses di sini dengan aturan yang sama seperti backend.
+ * ---------------------------------------------------------------------------------------- */
+const includesText = (value, keyword) => String(value ?? "").toLowerCase().includes(keyword);
+
+const isPastSession = (row) => {
+  if (typeof row.sudah_lewat === "boolean") return row.sudah_lewat;
+  if (!row.tanggal_pengajuan || !row.jam_mulai) return false;
+  return new Date(`${String(row.tanggal_pengajuan).split("T")[0]}T${row.jam_mulai}`) < new Date();
+};
+
+const DASHBOARD_STATUSES = ["pending", "menunggu_pembayaran", "terjadwal", "ditolak"];
+const HISTORY_PRIORITY = ["terjadwal", "pending", "menunggu_pembayaran"];
+const byNewest = (a, b) => new Date(b.created_at) - new Date(a.created_at);
+
+function emulateCatalog(query, json) {
+  let data = json.data;
+  const keyword = (query.search || "").toLowerCase();
+  if (keyword) data = data.filter((c) => includesText(c.name, keyword) || includesText(c.spec, keyword));
+  if (query.verified === "terverifikasi") data = data.filter((c) => c.status_verifikasi === "terverifikasi");
+  if (query.verified === "non-verified") data = data.filter((c) => c.status_verifikasi !== "terverifikasi");
+  if (query.min_price !== undefined) data = data.filter((c) => (c.tarif_per_sesi || 0) >= Number(query.min_price));
+  if (query.max_price !== undefined) data = data.filter((c) => (c.tarif_per_sesi || 0) <= Number(query.max_price));
+
+  const total = data.length;
+  if (query.page) {
+    const size = Number(query.page_size || 20);
+    const start = (Number(query.page) - 1) * size;
+    data = data.slice(start, start + size);
+  }
+  return { ...json, data, total };
+}
+
+function emulateCases(query, json) {
+  const kategori = (query.kategori || "").toLowerCase();
+  if (!kategori || kategori === "semua") return json;
+  const data = json.data.filter((c) => (c.kategori_hukum || "umum").toLowerCase() === kategori);
+  return { ...json, data, total: data.length };
+}
+
+function emulateConsultations(query, json) {
+  if (query.aktif !== "true") return json;
+  const data = json.data.filter((c) => DASHBOARD_STATUSES.includes(c.status_pengajuan)).sort(byNewest);
+  return { ...json, data };
+}
+
+function emulateAdminConsultants(query, json) {
+  const keyword = (query.search || "").toLowerCase();
+  const data = keyword
+    ? json.data.filter((c) => includesText(c.nama_lengkap, keyword) || includesText(c.spesialisasi, keyword))
+    : json.data;
+  const countOf = (status) => json.data.filter((c) => c.status_verifikasi === status).length;
+  const counts = json.counts || {
+    all: json.data.length,
+    pending: countOf("pending"),
+    terverifikasi: countOf("terverifikasi"),
+    ditolak: countOf("ditolak"),
+  };
+  return { ...json, data, total: data.length, counts };
+}
+
+function emulateConsultantHistory(_query, json) {
+  const when = (r) => `${r.tanggal_konsultasi || ""}T${r.jam_mulai || ""}`;
+  const data = json.data
+    .filter((r) => String(r.status).toLowerCase() !== "pending")
+    .sort((a, b) => when(b).localeCompare(when(a)));
+  return { ...json, data };
+}
+
+const LIST_EMULATORS = {
+  "/consultants/me/history": emulateConsultantHistory,
+  "/consultants/": emulateCatalog,
+  "/cases/": emulateCases,
+  "/consultations/": emulateConsultations,
+  "/admin/consultants": emulateAdminConsultants,
+};
+
+/** Endpoint yang hasilnya diturunkan backend dari data endpoint lain. */
+const DERIVED_ENDPOINTS = {
+  "/consultations/history": {
+    from: "/consultations/",
+    build: (json) => {
+      const rank = (c) => {
+        const index = HISTORY_PRIORITY.indexOf(c.status_pengajuan);
+        return index === -1 ? HISTORY_PRIORITY.length : index;
+      };
+      const data = [...(json.data || [])].sort((a, b) => rank(a) - rank(b) || byNewest(a, b));
+      return { total_sesi_selesai: data.filter((c) => c.status_pengajuan === "selesai").length, data };
+    },
+  },
+  "/consultants/me/next-session": {
+    from: "/consultants/me/requests/active",
+    build: (json) => {
+      const upcoming = (Array.isArray(json) ? json : [])
+        .filter((r) => String(r.status_pengajuan).toLowerCase() === "terjadwal")
+        .filter((r) => r.tanggal_pengajuan && r.jam_mulai && !isPastSession(r))
+        .sort(
+          (a, b) =>
+            new Date(`${String(a.tanggal_pengajuan).split("T")[0]}T${a.jam_mulai}`) -
+            new Date(`${String(b.tanggal_pengajuan).split("T")[0]}T${b.jam_mulai}`),
+        );
+      return { data: upcoming[0] || null };
+    },
+  },
+};
+
+const isSuccess = (res) => !res.abort && (!res.status || res.status < 400) && res.json !== undefined;
+
 export class MockApi {
   /** @param {import('@playwright/test').Page} page */
   constructor(page) {
@@ -108,7 +221,9 @@ export class MockApi {
     };
     this.requests.push(record);
 
-    const handler = this.handlers.find((h) => this._match(h, method, path));
+    let handler = this.handlers.find((h) => this._match(h, method, path));
+    const derived = !handler && method === "GET" ? DERIVED_ENDPOINTS[path] : null;
+    if (derived) handler = this.handlers.find((h) => this._match(h, method, derived.from));
     if (!handler) {
       this.unmatched.push(`${method} ${path}`);
       return route.fulfill({
@@ -120,6 +235,12 @@ export class MockApi {
 
     let res = typeof handler.response === "function" ? await handler.response(record) : handler.response;
     res = res || {};
+    if (method === "GET" && isSuccess(res)) {
+      if (derived) res = { ...res, json: derived.build(res.json) };
+      else if (LIST_EMULATORS[path] && Array.isArray(res.json?.data)) {
+        res = { ...res, json: LIST_EMULATORS[path](record.query, res.json) };
+      }
+    }
     if (res.delay) await new Promise((r) => setTimeout(r, res.delay));
     if (res.abort) return route.abort(res.abort === true ? "failed" : res.abort);
 

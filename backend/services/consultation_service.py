@@ -27,6 +27,17 @@ from services.storage_service import (
 logger = logging.getLogger(__name__)
 
 BLOCKING_STATUSES = [StatusPengajuan.TERJADWAL]
+DASHBOARD_STATUSES = [
+    StatusPengajuan.PENDING,
+    StatusPengajuan.MENUNGGU_PEMBAYARAN,
+    StatusPengajuan.TERJADWAL,
+    StatusPengajuan.DITOLAK,
+]
+HISTORY_PRIORITY = {
+    StatusPengajuan.TERJADWAL: 0,
+    StatusPengajuan.PENDING: 1,
+    StatusPengajuan.MENUNGGU_PEMBAYARAN: 2,
+}
 
 # Perubahan status yang boleh dilakukan lewat endpoint status: {role: {status sekarang: status tujuan}}.
 # Status lain (terjadwal, selesai, kedaluwarsa) hanya diubah oleh alur pembayaran, rating, dan penyelesaian.
@@ -157,7 +168,7 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
 
 
-def list_my_consultations(db: Client, current_user: CurrentUser) -> dict:
+def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = False) -> dict:
     id_user = None
     id_kons = None
 
@@ -166,7 +177,26 @@ def list_my_consultations(db: Client, current_user: CurrentUser) -> dict:
     elif current_user.role == Role.KONSULTAN:
         id_kons = get_konsultan_id(db, current_user)
 
-    return {"data": consultation_repository.list_with_relations(db, id_user=id_user, id_konsultan=id_kons)}
+    rows = consultation_repository.list_with_relations(
+        db,
+        id_user=id_user,
+        id_konsultan=id_kons,
+        statuses=DASHBOARD_STATUSES if aktif else None,
+        newest_first=aktif,
+    )
+    return {"data": rows}
+
+
+def get_client_history(db: Client, current_user: CurrentUser) -> dict:
+    """Riwayat klien: sesi yang masih berjalan lebih dulu, lalu sisanya dari yang terbaru."""
+    require_role(current_user, Role.CLIENT, "Hanya untuk klien")
+
+    rows = consultation_repository.list_with_relations(db, id_user=current_user.id_user) or []
+    rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
+    rows.sort(key=lambda row: HISTORY_PRIORITY.get(row.get("status_pengajuan"), len(HISTORY_PRIORITY)))
+
+    total_selesai = sum(1 for row in rows if row.get("status_pengajuan") == StatusPengajuan.SELESAI)
+    return {"total_sesi_selesai": total_selesai, "data": rows}
 
 
 def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:

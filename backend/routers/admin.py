@@ -23,10 +23,11 @@ def get_admin_stats(
 def get_consultants_list(
     status_filter: str = None,
     spesialisasi: str = None,
+    search: str = None,
     user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    return admin_service.list_consultants(db, user, status_filter, spesialisasi)
+    return admin_service.list_consultants(db, user, status_filter, spesialisasi, search)
 
 
 @router.get("/consultants/{id_konsultan}", **docs.GET_CONSULTANT_DETAIL)

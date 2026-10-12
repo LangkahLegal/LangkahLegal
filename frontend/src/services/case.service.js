@@ -20,8 +20,9 @@ export const caseService = {
   },
 
   // Konsultan: melihat semua kasus open di bursa
-  listOpenCases: async () => {
-    const response = await api.get("/cases/");
+  listOpenCases: async (kategori = null) => {
+    const params = kategori && kategori !== "semua" ? { kategori } : {};
+    const response = await api.get("/cases/", { params });
     return response.data.data;
   },
 

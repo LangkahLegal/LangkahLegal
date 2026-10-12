@@ -26,6 +26,12 @@ export const consultantService = {
     return response.data;
   },
 
+  // Sesi terjadwal terdekat yang belum lewat (ditentukan backend, waktu WIB).
+  getNextSession: async () => {
+    const response = await api.get("/consultants/me/next-session");
+    return response.data.data;
+  },
+
   getDashboardStats: async () => {
     try {
       const response = await api.get("/consultants/me/dashboard-stats");

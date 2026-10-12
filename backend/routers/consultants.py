@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from supabase import Client
 
 from core.database import get_supabase_client
@@ -20,8 +20,27 @@ router = APIRouter()
 
 
 @router.get("/", status_code=status.HTTP_200_OK, **docs.GET_ALL_CONSULTANTS)
-def get_all_consultants(spesialisasi: Optional[str] = None, db: Client = Depends(get_supabase_client)):
-    return consultant_service.list_active_consultants(db, spesialisasi)
+def get_all_consultants(
+    spesialisasi: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=100, description="Cari nama atau keahlian"),
+    verified: Optional[str] = Query(None, description="`terverifikasi` atau `non-verified`"),
+    min_price: Optional[float] = Query(None, ge=0),
+    max_price: Optional[float] = Query(None, ge=0),
+    page: Optional[int] = Query(None, ge=1, description="Kosongkan untuk mengambil semua"),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Client = Depends(get_supabase_client),
+):
+    return consultant_service.list_active_consultants(
+        db, spesialisasi, search, verified, min_price, max_price, page, page_size
+    )
+
+
+@router.get("/me/next-session", **docs.GET_NEXT_SESSION)
+def get_next_session(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    return consultant_service.get_next_session(db, current_user)
 
 
 @router.get("/me/schedules", **docs.GET_MY_SCHEDULES)

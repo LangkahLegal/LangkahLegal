@@ -38,22 +38,8 @@ export default function ConsultantHistoryPage() {
 
     const rawData = historyData.data || [];
 
-    const formatted = rawData
-      .filter(
-        (req) =>
-          (req.status)?.toLowerCase() !==
-          "pending",
-      )
-      .sort((a, b) => {
-        const dateA = new Date(
-          `${a.tanggal_konsultasi}T${a.jam_mulai || "00:00"}`,
-        );
-        const dateB = new Date(
-          `${b.tanggal_konsultasi}T${b.jam_mulai || "00:00"}`,
-        );
-        return dateB - dateA;
-      })
-      .map((req) => ({
+    // Urutan dan penyaringan status dikerjakan backend (/consultants/me/history).
+    const formatted = rawData.map((req) => ({
         id_pengajuan: req.id_pengajuan,
         id_bursa: req.id_bursa || null,
         status_pengajuan: req.status,

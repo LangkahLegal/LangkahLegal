@@ -87,6 +87,8 @@ def list_with_relations(
     db: Client,
     id_user: Optional[int] = None,
     id_konsultan: Optional[int] = None,
+    statuses: Optional[list[str]] = None,
+    newest_first: bool = False,
 ) -> list[dict]:
     query = db.table(TABLE).select("""
         *,
@@ -108,6 +110,10 @@ def list_with_relations(
         query = query.eq("id_user", id_user)
     if id_konsultan is not None:
         query = query.eq("id_konsultan", id_konsultan)
+    if statuses:
+        query = query.in_("status_pengajuan", statuses)
+    if newest_first:
+        query = query.order("created_at", desc=True)
 
     return query.execute().data
 

@@ -32,9 +32,19 @@ def update_consultation_status(
 
 @router.get("/", status_code=status.HTTP_200_OK, **docs.GET_MY_CONSULTATIONS)
 def get_my_consultations(
-    current_user: CurrentUser = Depends(get_current_user), db: Client = Depends(get_supabase_client)
+    aktif: bool = False,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
 ):
-    return consultation_service.list_my_consultations(db, current_user)
+    return consultation_service.list_my_consultations(db, current_user, aktif)
+
+
+@router.get("/history", status_code=status.HTTP_200_OK, **docs.GET_CLIENT_HISTORY)
+def get_client_history(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Client = Depends(get_supabase_client),
+):
+    return consultation_service.get_client_history(db, current_user)
 
 
 @router.get("/{id_pengajuan}", status_code=status.HTTP_200_OK, **docs.GET_DETAIL_PENGAJUAN)

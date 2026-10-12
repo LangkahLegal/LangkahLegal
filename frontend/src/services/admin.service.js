@@ -14,8 +14,9 @@ export const getAdminStats = async () => {
 
 // ─── Verifikasi Konsultan ─────────────────────────────────────────────────
 
-export const getConsultants = async (statusFilter = null) => {
+export const getConsultants = async (statusFilter = null, search = "") => {
   const params = statusFilter ? { status_filter: statusFilter } : {};
+  if (search) params.search = search;
   const response = await api.get("/admin/consultants", { params });
   return response.data;
 };

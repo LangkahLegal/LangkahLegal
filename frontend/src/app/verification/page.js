@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
@@ -37,14 +37,17 @@ export default function VerificationListPage() {
   const activeColors = themeColors[theme] || themeColors["dark-tech"];
 
   // --- 2. Fetch Data ---
-  const { data: allData } = useQuery({
-    queryKey: ["consultants", "all"],
-    queryFn: () => getConsultants(),
-  });
+  // Pencarian dikirim ke backend setelah jeda singkat agar tidak memanggil API tiap ketikan.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const { data: categoryData, isLoading } = useQuery({
-    queryKey: ["consultants", activeCategory],
-    queryFn: () => getConsultants(activeCategory),
+    queryKey: ["consultants", activeCategory, debouncedSearch],
+    queryFn: () => getConsultants(activeCategory, debouncedSearch),
+    placeholderData: (previousData) => previousData,
   });
 
   const mutation = useMutation({
@@ -57,8 +60,8 @@ export default function VerificationListPage() {
   });
 
   const { filteredConsultants, statusCategories } = useMemo(() => {
-    const rawAll = allData?.data || [];
     const rawCategory = categoryData?.data || [];
+    const counts = categoryData?.counts || {};
 
     const formatTanggal = (date) =>
       date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
@@ -83,23 +86,18 @@ export default function VerificationListPage() {
       };
     });
 
-    const filtered = mapped.filter((pro) => {
-      const keyword = search.toLowerCase();
-      return (
-        pro.nama_lengkap.toLowerCase().includes(keyword) ||
-        pro.spesialisasi?.toLowerCase().includes(keyword)
-      );
-    });
+    // Pencarian dan jumlah per status dihitung backend.
+    const filtered = mapped;
 
     const categories = [
-      { id: "all", label: `Semua (${rawAll.length})` },
-      { id: "pending", label: `Pending (${rawAll.filter((i) => i.status_verifikasi === "pending").length})` },
-      { id: "terverifikasi", label: `Terverifikasi (${rawAll.filter((i) => i.status_verifikasi === "terverifikasi").length})` },
-      { id: "ditolak", label: `Ditolak (${rawAll.filter((i) => i.status_verifikasi === "ditolak").length})` },
+      { id: "all", label: `Semua (${counts.all ?? 0})` },
+      { id: "pending", label: `Pending (${counts.pending ?? 0})` },
+      { id: "terverifikasi", label: `Terverifikasi (${counts.terverifikasi ?? 0})` },
+      { id: "ditolak", label: `Ditolak (${counts.ditolak ?? 0})` },
     ];
 
     return { filteredConsultants: filtered, statusCategories: categories };
-  }, [allData, categoryData, search, activeColors]);
+  }, [categoryData, activeColors]);
 
   return (
     <div className="bg-bg text-main font-primary min-h-screen flex overflow-hidden transition-colors duration-500">

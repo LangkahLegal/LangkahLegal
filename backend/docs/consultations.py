@@ -109,3 +109,12 @@ SUBMIT_RATING = {
     "summary": "Berikan rating dan ulasan untuk konsultasi yang sudah selesai",
     "description": "Khusus klien. Digunakan untuk memberi rating dan menandai konsultasi telah selesai.",
 }
+
+GET_CLIENT_HISTORY = {
+    "summary": "Riwayat konsultasi klien",
+    "description": """
+Khusus role client. Mengembalikan seluruh pengajuan milik klien dalam urutan tampil:
+sesi `terjadwal`, lalu `pending`, lalu `menunggu_pembayaran`, lalu sisanya dari yang terbaru.
+Disertai `total_sesi_selesai`.
+""",
+}

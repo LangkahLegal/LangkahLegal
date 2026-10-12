@@ -58,6 +58,12 @@ class MockTable:
     def neq(self, *args, **kwargs):
         return self
 
+    def gte(self, *args, **kwargs):
+        return self
+
+    def lte(self, *args, **kwargs):
+        return self
+
     def limit(self, *args, **kwargs):
         return self
 

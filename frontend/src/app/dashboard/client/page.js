@@ -29,8 +29,8 @@ export default function DashboardPage() {
 
   // --- 2. Fetch Consultations ---
   const { data: consultations, isLoading } = useQuery({
-    queryKey: ["consultations"],
-    queryFn: consultationService.getConsultations,
+    queryKey: ["consultations", "aktif"],
+    queryFn: consultationService.getActiveConsultations,
   });
 
   // --- 3. Mutation untuk Update Status ---
@@ -51,18 +51,11 @@ export default function DashboardPage() {
       localStorage.getItem("hidden_rejected_ids") || "[]",
     ).map((id) => Number(id));
 
-    const allowedStatuses = [
-      "pending",
-      "menunggu_pembayaran",
-      "terjadwal",
-      "ditolak",
-    ];
-
+    // Status yang relevan dan urutan terbaru sudah disaring backend (?aktif=true);
+    // di sini hanya kartu yang disembunyikan pengguna yang dibuang.
     const filtered = consultations
-      .filter((item) => allowedStatuses.includes(item.status_pengajuan))
       .filter((item) => !persistentHidden.includes(Number(item.id_pengajuan)))
-      .filter((item) => !tempHiddenIds.includes(Number(item.id_pengajuan)))
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      .filter((item) => !tempHiddenIds.includes(Number(item.id_pengajuan)));
 
     return filtered.length > 0 ? filtered[0] : null;
   }, [consultations, tempHiddenIds]);

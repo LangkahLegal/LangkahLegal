@@ -7,6 +7,7 @@ from core.constants import Role, StatusPembayaran, StatusPengajuan, StatusVerifi
 from core.exceptions import BadRequestError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_role
+from helpers.listing import clean_search
 from helpers.rating import summarize_ratings
 from repositories import (
     consultant_repository,
@@ -70,6 +71,7 @@ def list_consultants(
     user: CurrentUser,
     status_filter: str | None = None,
     spesialisasi: str | None = None,
+    search: str | None = None,
 ) -> dict:
     require_admin(user)
 
@@ -83,14 +85,16 @@ def list_consultants(
             db,
             status_verifikasi=status_filter if status_filter in valid_statuses else None,
             spesialisasi=spesialisasi if spesialisasi != "semua" else None,
+            search=clean_search(search) or None,
         )
         or []
     )
 
-    return {
-        "data": rows,
-        "total": len(rows),
-    }
+    counts = {"all": consultant_repository.count(db)}
+    for status in valid_statuses:
+        counts[status] = consultant_repository.count(db, status_verifikasi=status)
+
+    return {"data": rows, "total": len(rows), "counts": counts}
 
 
 def get_consultant_detail(db: Client, user: CurrentUser, id_konsultan: int) -> dict:

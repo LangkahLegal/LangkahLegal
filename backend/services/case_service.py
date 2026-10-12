@@ -6,6 +6,7 @@ from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
+from helpers.listing import page_window, with_pagination
 from helpers.schedule import ensure_not_past, find_conflict
 from repositories import case_repository, consultation_repository
 from schemas.cases import CaseForm
@@ -63,13 +64,27 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
     }
 
 
-def list_open_cases(db: Client, current_user: CurrentUser) -> dict:
+def list_open_cases(
+    db: Client,
+    current_user: CurrentUser,
+    kategori: str | None = None,
+    page: int | None = None,
+    page_size: int = 20,
+) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa melihat bursa")
 
-    return {
-        "message": "Berhasil mengambil data bursa kasus",
-        "data": case_repository.list_by_status(db, StatusBursa.OPEN),
-    }
+    kategori = (kategori or "").strip().lower()
+    offset, limit = page_window(page, page_size)
+    rows, total = case_repository.list_by_status(
+        db,
+        StatusBursa.OPEN,
+        kategori=kategori if kategori and kategori != "semua" else None,
+        offset=offset,
+        limit=limit,
+    )
+
+    payload = {"message": "Berhasil mengambil data bursa kasus", "data": rows}
+    return with_pagination(payload, total if total is not None else len(rows), page, page_size)
 
 
 def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict) -> None:

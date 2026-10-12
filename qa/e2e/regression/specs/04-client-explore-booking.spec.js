@@ -218,7 +218,6 @@ test.describe("Katalog Konsultan @explore", () => {
     input: "Placeholder 'Cari keahlian atau nama...', ketik 'Pidana'",
     expected: "Konsultan dengan spesialisasi Pidana (Andi Wijaya, Dewi Lestari) tampil",
   }), async ({ page, loginAs }) => {
-    knownDefect("BUG-17");
     await loginAs("client");
     await page.goto("/explore");
     await page.getByTestId("explore-search-input").fill("Pidana");
@@ -322,7 +321,6 @@ test.describe("Katalog Konsultan @explore", () => {
     input: "GET /consultants/ berisi item {name:null} (profil konsultan belum lengkap)",
     expected: "Katalog tetap tampil (kartu lain terlihat), tidak ada 'Application error'",
   }), async ({ page, api, loginAs, pageErrors }) => {
-    knownDefect("BUG-11");
     await loginAs("client");
     api.on("GET", "/consultants/", { json: { data: [...CATALOG, { ...CATALOG[0], id: 99, name: null }] } });
     await page.goto("/explore");

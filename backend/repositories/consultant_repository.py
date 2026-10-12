@@ -23,10 +23,20 @@ def get_by_id(db: Client, id_konsultan: int, columns: str = "*") -> dict | None:
     return rows[0] if rows else None
 
 
-def list_active_catalog(db: Client, spesialisasi: Optional[str] = None) -> list[dict]:
+def list_active_catalog(
+    db: Client,
+    spesialisasi: Optional[str] = None,
+    search: Optional[str] = None,
+    verified: Optional[bool] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    offset: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> tuple[list[dict], int | None]:
     query = (
         db.table(TABLE)
-        .select("""
+        .select(
+            """
             id_konsultan,
             nama_lengkap,
             spesialisasi,
@@ -35,14 +45,31 @@ def list_active_catalog(db: Client, spesialisasi: Optional[str] = None) -> list[
             tarif_per_sesi,
             users (foto_profil),
             rating_ulasan (skor_rating)
-        """)
+        """,
+            count="exact",
+        )
         .eq("is_active", True)
     )
 
     if spesialisasi:
         query = query.ilike("spesialisasi", f"%{spesialisasi}%")
+    if search:
+        query = query.or_(f"nama_lengkap.ilike.%{search}%,spesialisasi.ilike.%{search}%")
+    if verified is True:
+        query = query.eq("status_verifikasi", "terverifikasi")
+    elif verified is False:
+        query = query.or_("status_verifikasi.neq.terverifikasi,status_verifikasi.is.null")
+    if min_price is not None:
+        query = query.gte("tarif_per_sesi", min_price)
+    if max_price is not None:
+        query = query.or_(f"tarif_per_sesi.lte.{max_price},tarif_per_sesi.is.null")
 
-    return query.execute().data
+    query = query.order("id_konsultan")
+    if limit is not None:
+        query = query.range(offset or 0, (offset or 0) + limit - 1)
+
+    result = query.execute()
+    return result.data or [], result.count
 
 
 def count(db: Client, status_verifikasi: str | None = None) -> int:
@@ -56,6 +83,7 @@ def list_for_admin(
     db: Client,
     status_verifikasi: Optional[str] = None,
     spesialisasi: Optional[str] = None,
+    search: Optional[str] = None,
 ) -> list[dict]:
     query = db.table(TABLE).select("""
             id_konsultan,
@@ -76,6 +104,9 @@ def list_for_admin(
 
     if spesialisasi:
         query = query.ilike("spesialisasi", f"%{spesialisasi}%")
+
+    if search:
+        query = query.or_(f"nama_lengkap.ilike.%{search}%,spesialisasi.ilike.%{search}%")
 
     return query.order("updated_at", desc=True).execute().data
 

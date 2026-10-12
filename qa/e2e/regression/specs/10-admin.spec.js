@@ -172,7 +172,6 @@ test.describe("Verifikasi Konsultan @admin", () => {
     input: "GET /admin/consultants berisi item nama_lengkap=null (profil baru)",
     expected: "Daftar tetap tampil, tidak ada 'Application error'",
   }), async ({ page, api, pageErrors }) => {
-    knownDefect("BUG-11");
     api.on("GET", "/admin/consultants", { json: { data: [adminConsultant(), adminConsultant({ id_konsultan: 30, nama_lengkap: null })] } });
     await page.goto("/verification");
     await expect(page.getByText("Fajar Nugroho")).toBeVisible({ timeout: 5000 });
