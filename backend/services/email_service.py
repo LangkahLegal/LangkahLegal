@@ -1,7 +1,7 @@
 import logging
 from email.utils import parseaddr
 import httpx
-from config import get_settings
+from core.config import get_settings
 
 logger = logging.getLogger(__name__)
 

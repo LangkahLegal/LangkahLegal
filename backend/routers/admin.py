@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from supabase import Client
 
-from database import get_supabase_client
-from dependencies import get_current_user
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
 from schemas.admin import VerifyConsultantPayload
 from services import admin_service
 from docs import admin as docs

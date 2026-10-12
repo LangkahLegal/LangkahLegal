@@ -68,7 +68,7 @@ def test_get_consultant_schedules_success(app_client):
 
 def test_get_my_schedules_success(app_client):
     table_responses = {
-        "konsultan": [{"id_konsultan": 7}],
+        "konsultan": [[{"id_konsultan": 7}]],
         "jadwal_ketersediaan": [
             [
                 {
@@ -268,7 +268,7 @@ def test_pending_requests_forbidden(app_client):
 
 def test_pending_requests_success(app_client):
     table_responses = {
-        "konsultan": [{"id_konsultan": 7}],
+        "konsultan": [[{"id_konsultan": 7}]],
         "pengajuan_konsultasi": [[{"id_pengajuan": 1}]],
     }
     client, _ = app_client(

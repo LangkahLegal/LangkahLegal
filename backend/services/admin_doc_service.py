@@ -7,9 +7,11 @@ import voyageai
 from fastapi import UploadFile
 from supabase import Client
 
-from database import get_supabase_client
-from exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.constants import Role
+from core.database import get_supabase_client
+from core.exceptions import BadRequestError, InternalError, NotFoundError
 from schemas.admin_docs import PaginatedResponse, UpdateChunkRequest
+from helpers.access import require_role
 from services.doc_processing import (
     generate_embeddings,
     process_pdf_to_records,
@@ -27,8 +29,7 @@ _jobs: dict[str, dict] = {}
 
 
 def _require_admin(user: dict):
-    if user.get("role") != "admin":
-        raise ForbiddenError("Akses ditolak. Hanya admin.")
+    require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin.")
 
 
 def _embed_single(text: str) -> list[float]:

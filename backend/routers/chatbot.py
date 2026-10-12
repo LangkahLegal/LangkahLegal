@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, status, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from database import get_supabase_client
-from dependencies import get_current_user
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
 from schemas.chatbot import (
     CreateSessionRequest,
     SessionResponse,

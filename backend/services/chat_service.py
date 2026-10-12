@@ -3,8 +3,8 @@ import logging
 from fastapi import HTTPException
 from supabase import Client
 
-from exceptions import InternalError, NotFoundError
-from rag_service import triage
+from core.exceptions import InternalError, NotFoundError
+from services.rag_service import triage
 from schemas.chatbot import (
     CreateSessionRequest,
     MessageListResponse,
@@ -60,7 +60,7 @@ def _save_message(
 
 
 def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> None:
-    from rag_service import _get_gemini_client, LLM_MODEL
+    from services.rag_service import _get_gemini_client, LLM_MODEL
     from google.genai import types
 
     try:

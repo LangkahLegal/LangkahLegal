@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from supabase import Client
 from pydantic import ValidationError
-from database import get_supabase_client
-from dependencies import get_current_user
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
 from schemas.users import ProfileUpdatePayload
 from services import user_service
 from docs import users as docs

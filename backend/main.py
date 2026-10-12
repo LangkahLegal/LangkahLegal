@@ -1,14 +1,20 @@
+import logging
+
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from routers import auth, cases, consultations, consultants, users, payments, chatbot, admin, admin_docs, knowledge
-from dependencies import get_current_user
 
-from config import get_settings, Settings
-from database import check_db_connection
-from limiter import limiter
+from core.config import get_settings, Settings
+from core.database import check_db_connection
+from core.limiter import limiter
 from docs import main as docs
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 app = FastAPI(
     title="LangkahLegal API",

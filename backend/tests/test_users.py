@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from services import user_service
 
 

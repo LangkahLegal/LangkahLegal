@@ -1,92 +1,28 @@
-import os
-import httpx
-from fastapi import Depends, HTTPException, status, Cookie
+from fastapi import Depends, HTTPException, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
-from database import get_supabase_client
-
-
-def _get_supabase_config() -> tuple[str, str]:
-    supabase_url = os.getenv("SUPABASE_URL", "").strip()
-    supabase_key = (
-        os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-        or os.getenv("SUPABASE_KEY", "").strip()
-    )
-
-    if not supabase_url or not supabase_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Konfigurasi Supabase belum lengkap.",
-        )
-
-    return supabase_url, supabase_key
-
-
-def _get_supabase_user(token: str) -> dict:
-    supabase_url, supabase_key = _get_supabase_config()
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "apikey": supabase_key,
-    }
-
-    try:
-        with httpx.Client(timeout=5.0) as client:
-            response = client.get(
-                f"{supabase_url}/auth/v1/user",
-                headers=headers,
-            )
-    except httpx.RequestError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Gagal terhubung ke Supabase Auth.",
-        )
-
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token tidak valid.",
-        )
-
-    user_payload = response.json()
-    auth_user_id = user_payload.get("id")
-    if not auth_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token tidak memiliki user id.",
-        )
-
-    db = get_supabase_client()
-    user_profile = (
-        db.table("users")
-        .select("id_user, role")
-        .eq("auth_user_id", auth_user_id)
-        .single()
-        .execute()
-    )
-
-    if not user_profile.data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Profil user belum terdaftar.",
-        )
-
-    return {
-        "id_user": user_profile.data["id_user"],
-        "role": user_profile.data["role"],
-    }
+from core.database import get_supabase_client
 
 
 security = HTTPBearer(auto_error=False)
+
+
+def get_token_from_request(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    ll_token: str | None = Cookie(default=None),
+) -> str:
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    if ll_token:
+        return ll_token
+    raise HTTPException(status_code=401, detail="Token tidak valid atau tidak ditemukan")
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     ll_token: str | None = Cookie(default=None),
     db: Client = Depends(get_supabase_client)
 ):
-    """
-    Refactor: Validasi token menggunakan API resmi Supabase.
-    Membaca token dari Cookie (ll_token) atau dari header Authorization.
-    """
     token = None
     if credentials and credentials.credentials:
         token = credentials.credentials

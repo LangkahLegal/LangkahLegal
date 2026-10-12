@@ -1,8 +1,9 @@
 from fastapi import UploadFile
 from supabase import Client
 
-from config import get_settings
-from exceptions import ForbiddenError
+from core.config import get_settings
+from core.constants import Role
+from core.exceptions import ForbiddenError
 from schemas.users import ProfileUpdatePayload
 from services.storage_service import upload_portfolio_pdf_to_supabase
 
@@ -19,7 +20,7 @@ def get_settings_info(db: Client, current_user: dict) -> dict:
 def get_full_profile(db: Client, current_user: dict) -> dict:
     user = db.table("users").select("nama, email, foto_profil, role").eq("id_user", current_user["id_user"]).single().execute().data
 
-    if user["role"] == "konsultan":
+    if user["role"] == Role.KONSULTAN:
         kons = db.table("konsultan").select("*").eq("id_user", current_user["id_user"]).single().execute().data
         return {
             **user,
@@ -51,10 +52,10 @@ async def update_profile(
     if u_data:
         db.table("users").update(u_data).eq("id_user", current_user["id_user"]).execute()
 
-    if current_user["role"] != "konsultan" and (payload.portofolio is not None or portofolio_file is not None):
+    if current_user["role"] != Role.KONSULTAN and (payload.portofolio is not None or portofolio_file is not None):
         raise ForbiddenError("Hanya konsultan yang dapat mengubah portofolio")
 
-    if current_user["role"] == "konsultan":
+    if current_user["role"] == Role.KONSULTAN:
         k_data = {
             "bio_singkat": payload.bio_singkat,
             "deskripsi_lengkap": payload.deskripsi_lengkap,

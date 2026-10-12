@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from supabase import Client
-from database import get_supabase_client
+from core.database import get_supabase_client
 from schemas.consultations import AssignSchedule, RatingCreate
-from dependencies import get_current_user
+from core.dependencies import get_current_user
 from services import consultation_service
 from docs import consultations as docs
 

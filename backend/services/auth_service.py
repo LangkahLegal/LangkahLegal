@@ -7,8 +7,8 @@ from urllib.parse import quote, urlencode
 import httpx
 from supabase import Client
 
-from config import get_settings
-from exceptions import AppError, BadRequestError, InternalError, UnauthorizedError
+from core.config import get_settings
+from core.exceptions import AppError, BadRequestError, InternalError, UnauthorizedError
 from schemas.auth import (
     ForgotPasswordPayload,
     OAuthPayload,

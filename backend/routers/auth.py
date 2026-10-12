@@ -1,12 +1,9 @@
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, Depends, Request, Response
 from supabase import Client
 
-from config import get_settings
-from database import get_supabase_client
-from limiter import limiter
+from core.database import get_supabase_client
+from core.dependencies import get_token_from_request
+from core.limiter import limiter
 
 from schemas.auth import (
     ForgotPasswordPayload,
@@ -20,82 +17,22 @@ from schemas.auth import (
     VerifyOtpPayload,
 )
 from services import auth_service
+from helpers.cookies import (
+    clear_auth_cookies,
+    clear_oauth_verifier_cookie,
+    set_auth_cookies,
+    set_oauth_verifier_cookie,
+    set_role_cookie,
+)
 from docs import auth as docs
 
 router = APIRouter()
-security = HTTPBearer(auto_error=False)
-
-
-def _get_cookie_flags() -> dict:
-    settings = get_settings()
-    is_production = settings.app_env.lower() == "production"
-    cookie_domain = settings.cookie_domain.strip() or None
-
-    return {
-        "samesite": "none" if is_production else "lax",
-        "secure": is_production,
-        "domain": cookie_domain,
-    }
-
-def get_token_from_request(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    ll_token: Optional[str] = Cookie(None)
-) -> str:
-    if credentials and credentials.credentials:
-        return credentials.credentials
-    if ll_token:
-        return ll_token
-    raise HTTPException(status_code=401, detail="Token tidak valid atau tidak ditemukan")
-
-def _set_auth_cookies(response: Response, session_data: dict):
-    if not isinstance(session_data, dict):
-        return
-
-    cookie_flags = _get_cookie_flags()
-
-    access_token = session_data.get("access_token")
-    refresh_token = session_data.get("refresh_token")
-    expires_in = session_data.get("expires_in", 3600)
-
-    if access_token:
-        response.set_cookie(
-            key="ll_token",
-            value=access_token,
-            max_age=expires_in,
-            httponly=True,
-            samesite=cookie_flags["samesite"],
-            secure=cookie_flags["secure"],
-            domain=cookie_flags["domain"],
-            path="/"
-        )
-
-    if refresh_token:
-        response.set_cookie(
-            key="ll_refresh",
-            value=refresh_token,
-            max_age=30 * 24 * 60 * 60,
-            httponly=True,
-            samesite=cookie_flags["samesite"],
-            secure=cookie_flags["secure"],
-            domain=cookie_flags["domain"],
-            path="/"
-        )
-
-def _clear_auth_cookies(response: Response):
-    cookie_flags = _get_cookie_flags()
-    response.delete_cookie("ll_token", path="/", domain=cookie_flags["domain"])
-    response.delete_cookie("ll_refresh", path="/", domain=cookie_flags["domain"])
-    response.delete_cookie("ll_oauth_verifier", path="/", domain=cookie_flags["domain"])
-    response.delete_cookie("ll_role", path="/", domain=cookie_flags["domain"])
-
-def _set_role_cookie(response: Response, role: str):
-    response.set_cookie("ll_role", role, max_age=30*24*3600, path="/", samesite="lax")
 
 
 @router.post("/signup", **docs.SIGN_UP)
 async def sign_up(payload: SignUpPayload, response: Response):
     data = await auth_service.sign_up(payload)
-    _set_auth_cookies(response, data["session"])
+    set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
@@ -114,33 +51,21 @@ async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
 @router.post("/verify-otp", **docs.VERIFY_OTP)
 async def verify_otp(payload: VerifyOtpPayload, response: Response):
     data = await auth_service.verify_otp(payload)
-    _set_auth_cookies(response, data["session"])
+    set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
 @router.post("/login-password", **docs.LOGIN_WITH_PASSWORD)
 async def login_with_password(payload: PasswordLoginPayload, response: Response):
     data = await auth_service.login_with_password(payload)
-    _set_auth_cookies(response, data["session"])
+    set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
 @router.post("/oauth/google", **docs.SIGN_IN_WITH_GOOGLE)
 async def sign_in_with_google(payload: OAuthPayload, response: Response):
     data = auth_service.build_google_oauth_url(payload)
-    cookie_flags = _get_cookie_flags()
-
-    response.set_cookie(
-        key="ll_oauth_verifier",
-        value=data["code_verifier"],
-        max_age=3600,
-        httponly=True,
-        samesite=cookie_flags["samesite"],
-        secure=cookie_flags["secure"],
-        domain=cookie_flags["domain"],
-        path="/"
-    )
-
+    set_oauth_verifier_cookie(response, data["code_verifier"])
     return {"data": data}
 
 
@@ -155,8 +80,8 @@ async def exchange_code(
 
     data = await auth_service.exchange_code(code, code_verifier)
 
-    _set_auth_cookies(response, data["session"])
-    response.delete_cookie("ll_oauth_verifier", path="/", domain=_get_cookie_flags()["domain"])
+    set_auth_cookies(response, data["session"])
+    clear_oauth_verifier_cookie(response)
 
     return {"data": data}
 
@@ -169,7 +94,7 @@ async def refresh_session(request: Request, response: Response, payload: dict = 
 
     data = await auth_service.refresh_session(refresh_token)
 
-    _set_auth_cookies(response, data["session"])
+    set_auth_cookies(response, data["session"])
 
     return {"data": data}
 
@@ -182,7 +107,7 @@ def get_profile(
 ):
     profile = auth_service.get_profile(db, token)
     if profile is not None:
-        _set_role_cookie(response, profile["role"])
+        set_role_cookie(response, profile["role"])
     return {"data": profile}
 
 
@@ -194,14 +119,14 @@ def update_role(
     db: Client = Depends(get_supabase_client),
 ):
     data = auth_service.update_role(db, token, payload)
-    _set_role_cookie(response, payload.role)
+    set_role_cookie(response, payload.role)
     return {"data": data}
 
 
 @router.post("/logout", **docs.LOGOUT)
 async def logout(response: Response, token: str = Depends(get_token_from_request)):
     await auth_service.logout(token)
-    _clear_auth_cookies(response)
+    clear_auth_cookies(response)
     return {"data": {"logout": True}}
 
 
@@ -218,5 +143,5 @@ async def reset_password(
     token: str = Depends(get_token_from_request),
 ):
     await auth_service.reset_password(token, payload.new_password)
-    _clear_auth_cookies(response)
+    clear_auth_cookies(response)
     return {"data": {"updated": True}}

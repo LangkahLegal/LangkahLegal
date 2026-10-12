@@ -1,9 +1,7 @@
-import os
 import re
 import json
 import time
 import logging
-from pathlib import Path
 
 import fitz
 import voyageai

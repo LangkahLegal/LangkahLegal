@@ -3,9 +3,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Request
 from supabase import Client
 
-from database import get_supabase_client
-from dependencies import get_current_user
-from limiter import limiter
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
+from core.limiter import limiter
 from schemas.knowledge import (
     KnowledgeDocumentDetail,
     PasalDetailResponse,

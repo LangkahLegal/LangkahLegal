@@ -3,7 +3,7 @@ from typing import Optional
 
 from supabase import Client
 
-from exceptions import AppError, NotFoundError
+from core.exceptions import AppError, NotFoundError
 
 DOC_COLS = "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum"
 PASAL_COLS = "id_dokumen, pasal_bagian, judul_bab, isi_teks"

@@ -1,15 +1,21 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import logging
+
 from supabase import Client
 
-from exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.constants import Role, StatusPembayaran, StatusPengajuan
+from core.exceptions import BadRequestError, InternalError, NotFoundError
 from schemas.consultants import (
     ConsultantActiveToggle,
     ScheduleCreate,
     ScheduleToggle,
     ScheduleUpdate,
 )
+from helpers.access import require_konsultan_id, require_role
+
+logger = logging.getLogger(__name__)
 
 
 def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> dict:
@@ -60,7 +66,7 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
             "data": formatted_data,
         }
     except Exception as e:
-        print(f"Backend Error: {e}")
+        logger.error(f"Backend Error: {e}")
         return {"data": [], "message": str(e)}
 
 
@@ -119,13 +125,7 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
 
 
 def get_my_schedules(db: Client, current_user: dict) -> list:
-    kons = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
+    id_kons = require_konsultan_id(db, current_user["id_user"])
     query = (
         db.table("jadwal_ketersediaan")
         .select(
@@ -134,7 +134,7 @@ def get_my_schedules(db: Client, current_user: dict) -> list:
         pengajuan_konsultasi ( users ( nama ) )
     """
         )
-        .eq("id_konsultan", kons.data["id_konsultan"])
+        .eq("id_konsultan", id_kons)
         .execute()
     )
 
@@ -151,13 +151,9 @@ def get_my_schedules(db: Client, current_user: dict) -> list:
 
 
 def get_dashboard_stats(db: Client, current_user: dict) -> dict:
-    if current_user["role"] != "konsultan":
-        raise ForbiddenError("Hanya untuk konsultan")
+    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
-    if not kons_profile.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
-    id_kons = kons_profile.data[0]["id_konsultan"]
+    id_kons = require_konsultan_id(db, current_user["id_user"])
 
     pengajuan_with_tx = (
         db.table("pengajuan_konsultasi")
@@ -169,16 +165,17 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
     total_income = 0
     for p in pengajuan_with_tx.data:
         tx_list = p.get("transaksi") or []
-        if isinstance(tx_list, dict): tx_list = [tx_list]
+        if isinstance(tx_list, dict):
+            tx_list = [tx_list]
         for tx in tx_list:
-            if tx.get("status_pembayaran") == "settlement":
+            if tx.get("status_pembayaran") == StatusPembayaran.SETTLEMENT:
                 total_income += float(tx.get("nominal_konsultan") or 0)
 
     klien_data_res = (
         db.table("pengajuan_konsultasi")
         .select("id_user, status_pengajuan")
         .eq("id_konsultan", id_kons)
-        .in_("status_pengajuan", ["terjadwal", "selesai"])
+        .in_("status_pengajuan", [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI])
         .execute()
     )
 
@@ -186,7 +183,7 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
 
     unique_klien = set(p["id_user"] for p in all_data)
 
-    sesi_aktif = [p for p in all_data if p["status_pengajuan"] == "terjadwal"]
+    sesi_aktif = [p for p in all_data if p["status_pengajuan"] == StatusPengajuan.TERJADWAL]
 
     return {
         "total_income": total_income,
@@ -196,19 +193,9 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
 
 
 def get_pending_requests(db: Client, current_user: dict) -> list:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya untuk konsultan")
+    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-
-    if not kons_profile.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user["id_user"])
 
     response = (
         db.table("pengajuan_konsultasi")
@@ -228,8 +215,8 @@ def get_pending_requests(db: Client, current_user: dict) -> list:
             )
         """
         )
-        .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .eq("status_pengajuan", "pending")
+        .eq("id_konsultan", id_kons)
+        .eq("status_pengajuan", StatusPengajuan.PENDING)
         .order("created_at", desc=True)
         .execute()
     )
@@ -238,19 +225,9 @@ def get_pending_requests(db: Client, current_user: dict) -> list:
 
 
 def get_active_requests(db: Client, current_user: dict) -> list:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya untuk konsultan")
+    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-
-    if not kons_profile.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user["id_user"])
 
     response = (
         db.table("pengajuan_konsultasi")
@@ -267,8 +244,8 @@ def get_active_requests(db: Client, current_user: dict) -> list:
             users ( nama, foto_profil )
         """
         )
-        .eq("id_konsultan", kons_profile.data["id_konsultan"])
-        .in_("status_pengajuan", ["terjadwal", "menunggu_pembayaran"])
+        .eq("id_konsultan", id_kons)
+        .in_("status_pengajuan", [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN])
         .order("created_at", desc=True)
         .execute()
     )
@@ -277,20 +254,15 @@ def get_active_requests(db: Client, current_user: dict) -> list:
 
 
 def get_scheduled_clients(db: Client, current_user: dict) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Akses ditolak")
+    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
-    if not kons_profile.data:
-        raise NotFoundError("Profil tidak ditemukan")
-
-    id_kons = kons_profile.data["id_konsultan"]
+    id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
 
     response = (
         db.table("pengajuan_konsultasi")
         .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)")
         .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", "terjadwal")
+        .eq("status_pengajuan", StatusPengajuan.TERJADWAL)
         .execute()
     )
 
@@ -334,20 +306,15 @@ def get_scheduled_clients(db: Client, current_user: dict) -> dict:
 
 
 def get_history(db: Client, current_user: dict) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Akses ditolak")
+    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).limit(1).execute()
-    if not kons_profile.data:
-        raise NotFoundError("Profil tidak ditemukan")
-
-    id_kons = kons_profile.data[0]["id_konsultan"]
+    id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
 
     response = (
         db.table("pengajuan_konsultasi")
         .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
         .eq("id_konsultan", id_kons)
-        .neq("status_pengajuan", "pending")
+        .neq("status_pengajuan", StatusPengajuan.PENDING)
         .execute()
     )
 
@@ -364,7 +331,12 @@ def get_history(db: Client, current_user: dict) -> dict:
              nominal = trans.get("nominal_konsultan") or 0
 
         status_akhir = req.get("status_pengajuan")
-        if status_akhir in ["cancelled", "dibatalkan", "ditolak", "kedaluwarsa"]:
+        if status_akhir in [
+            "cancelled",
+            StatusPengajuan.DIBATALKAN,
+            StatusPengajuan.DITOLAK,
+            StatusPengajuan.KEDALUWARSA,
+        ]:
             nominal = 0
 
         jm = str(req.get("jam_mulai", ""))[:5]
@@ -385,7 +357,7 @@ def get_history(db: Client, current_user: dict) -> dict:
 
     formatted_data.sort(key=lambda x: x["tanggal_konsultasi"], reverse=True)
 
-    total_selesai = sum(1 for item in formatted_data if item["status"] == "selesai")
+    total_selesai = sum(1 for item in formatted_data if item["status"] == StatusPengajuan.SELESAI)
 
     return {
         "total_sesi_selesai": total_selesai,
@@ -394,21 +366,12 @@ def get_history(db: Client, current_user: dict) -> dict:
 
 
 def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya konsultan yang bisa mengatur jadwal")
+    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    konsultan = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .execute()
-    )
-
-    if not konsultan.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user["id_user"])
 
     new_schedule = {
-        "id_konsultan": konsultan.data[0]["id_konsultan"],
+        "id_konsultan": id_kons,
         "tanggal": request.tanggal,
         "jam_mulai": request.jam_mulai,
         "jam_selesai": request.jam_selesai,
@@ -421,8 +384,7 @@ def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> 
 
 
 def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Akses ditolak")
+    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
     jadwal = (
         db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
@@ -440,8 +402,7 @@ def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
 def update_schedule(
     db: Client, current_user: dict, id_jadwal: int, request: ScheduleUpdate
 ) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Akses ditolak")
+    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
     jadwal = (
         db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()

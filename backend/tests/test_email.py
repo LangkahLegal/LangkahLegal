@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import httpx
 from services.email_service import get_frontend_base_url, send_recovery_email, send_notification_email
-from config import Settings
+from core.config import Settings
 
 
 @pytest.fixture

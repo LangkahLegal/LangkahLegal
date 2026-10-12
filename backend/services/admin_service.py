@@ -3,15 +3,16 @@ from datetime import datetime
 
 from supabase import Client
 
-from exceptions import BadRequestError, ForbiddenError, NotFoundError
+from core.constants import Role, StatusPembayaran, StatusPengajuan, StatusVerifikasi
+from core.exceptions import BadRequestError, NotFoundError
 from schemas.admin import VerifyConsultantPayload
+from helpers.access import require_role
 
 logger = logging.getLogger(__name__)
 
 
 def require_admin(user: dict):
-    if user.get("role") != "admin":
-        raise ForbiddenError("Akses ditolak. Hanya admin yang bisa mengakses fitur ini.")
+    require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin yang bisa mengakses fitur ini.")
 
 
 def get_admin_stats(db: Client, user: dict) -> dict:
@@ -20,12 +21,12 @@ def get_admin_stats(db: Client, user: dict) -> dict:
     users_res = db.table("users").select("id_user, role").execute()
     all_users = users_res.data or []
     total_users = len(all_users)
-    total_clients = sum(1 for u in all_users if u.get("role") == "client")
+    total_clients = sum(1 for u in all_users if u.get("role") == Role.CLIENT)
 
     konsultan_res = db.table("konsultan").select("id_konsultan, status_verifikasi").execute()
     all_konsultan = konsultan_res.data or []
     total_konsultan = len(all_konsultan)
-    pending_verification = sum(1 for k in all_konsultan if k.get("status_verifikasi") == "pending")
+    pending_verification = sum(1 for k in all_konsultan if k.get("status_verifikasi") == StatusVerifikasi.PENDING)
 
     try:
         view_res = db.table("admin_transaction_stats").select("*").execute()
@@ -41,7 +42,7 @@ def get_admin_stats(db: Client, user: dict) -> dict:
         tx_res = (
             db.table("transaksi")
             .select("gross_amount, komisi_platform")
-            .eq("status_pembayaran", "settlement")
+            .eq("status_pembayaran", StatusPembayaran.SETTLEMENT)
             .execute()
         )
         settled_txs = tx_res.data or []
@@ -85,7 +86,11 @@ def list_consultants(
         """)
     )
 
-    if status_filter and status_filter in ("pending", "terverifikasi", "ditolak"):
+    if status_filter and status_filter in (
+        StatusVerifikasi.PENDING,
+        StatusVerifikasi.TERVERIFIKASI,
+        StatusVerifikasi.DITOLAK,
+    ):
         query = query.eq("status_verifikasi", status_filter)
 
     if spesialisasi and spesialisasi != "semua":
@@ -135,7 +140,7 @@ def get_consultant_detail(db: Client, user: dict, id_konsultan: int) -> dict:
     all_pengajuan = pengajuan_res.data or []
     konsultan["total_consultations"] = len(all_pengajuan)
     konsultan["completed_consultations"] = sum(
-        1 for p in all_pengajuan if p.get("status_pengajuan") == "selesai"
+        1 for p in all_pengajuan if p.get("status_pengajuan") == StatusPengajuan.SELESAI
     )
 
     return {"data": konsultan}
@@ -146,7 +151,7 @@ def verify_consultant(
 ) -> dict:
     require_admin(user)
 
-    valid_actions = ("terverifikasi", "ditolak")
+    valid_actions = (StatusVerifikasi.TERVERIFIKASI, StatusVerifikasi.DITOLAK)
     if payload.action not in valid_actions:
         raise BadRequestError(f"Action harus salah satu dari: {', '.join(valid_actions)}")
 
@@ -164,10 +169,10 @@ def verify_consultant(
         "updated_at": datetime.now().isoformat()
     }
 
-    if payload.action == "terverifikasi":
+    if payload.action == StatusVerifikasi.TERVERIFIKASI:
         update_data["is_active"] = True
         update_data["alasan_penolakan"] = None
-    elif payload.action == "ditolak" and payload.alasan:
+    elif payload.action == StatusVerifikasi.DITOLAK and payload.alasan:
         update_data["alasan_penolakan"] = payload.alasan
 
     result = (
@@ -177,7 +182,7 @@ def verify_consultant(
         .execute()
     )
 
-    action_label = "diverifikasi" if payload.action == "terverifikasi" else "ditolak"
+    action_label = "diverifikasi" if payload.action == StatusVerifikasi.TERVERIFIKASI else "ditolak"
     logger.info(f"Konsultan {id_konsultan} {action_label} oleh admin {user['id_user']}")
 
     return {

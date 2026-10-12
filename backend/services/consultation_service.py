@@ -1,13 +1,18 @@
+import logging
 import math
 
 from fastapi import HTTPException, UploadFile
 from supabase import Client
 
-from config import get_settings
-from exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.config import get_settings
+from core.constants import Role, StatusPengajuan
+from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
 from schemas.consultations import AssignSchedule, RatingCreate
 from services.email_service import get_frontend_base_url, send_notification_email
+from helpers.access import get_konsultan_id, require_konsultan_id, require_role
 from services.storage_service import upload_supporting_document_to_supabase
+
+logger = logging.getLogger(__name__)
 
 
 def _notify_consultant_new_request(db: Client, id_konsultan: int, id_pengajuan: int) -> None:
@@ -44,7 +49,7 @@ def _notify_client_rejected(db: Client, data_pengajuan: dict, id_pengajuan: int)
             message = f"Halo {client_nama}, mohon maaf, pengajuan konsultasi Anda (ID: {id_pengajuan}) telah ditolak oleh konsultan."
             send_notification_email(client_email, subject, message)
     except Exception as e:
-        print(f"[EMAIL ERROR] Gagal kirim email di update_status (ditolak): {e}")
+        logger.error(f"Gagal kirim email di update_status (ditolak): {e}")
 
 
 def _notify_client_awaiting_payment(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
@@ -68,7 +73,7 @@ Terima kasih.
 """
             send_notification_email(client_email, subject, message)
     except Exception as e:
-        print(f"[EMAIL ERROR] Gagal kirim email di update_status (menunggu_pembayaran): {e}")
+        logger.error(f"Gagal kirim email di update_status (menunggu_pembayaran): {e}")
 
 
 def _notify_client_schedule_assigned(db: Client, data_pengajuan: dict, id_pengajuan: int) -> None:
@@ -92,7 +97,7 @@ Terima kasih.
 """
             send_notification_email(client_email, subject, message)
     except Exception as e:
-        print(f"[EMAIL ERROR] Gagal kirim email di assign-schedule: {e}")
+        logger.error(f"Gagal kirim email di assign-schedule: {e}")
 
 
 def _notify_client_zoom_link(db: Client, id_pengajuan: int) -> None:
@@ -115,7 +120,7 @@ Terima kasih.
 """
                 send_notification_email(client_email, subject, message)
     except Exception as e:
-        print(f"[EMAIL ERROR] Gagal kirim email di zoom-link: {e}")
+        logger.error(f"Gagal kirim email di zoom-link: {e}")
 
 
 async def create_consultation(
@@ -127,8 +132,7 @@ async def create_consultation(
     jam_selesai: str,
     dokumen_pendukung_files: list[UploadFile] | None,
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang dapat membuat pengajuan")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
 
     if dokumen_pendukung_files:
         valid_files = [f for f in dokumen_pendukung_files if f.filename]
@@ -157,7 +161,7 @@ async def create_consultation(
         "jam_mulai": jam_mulai,
         "jam_selesai": jam_selesai,
         "deskripsi_kasus": deskripsi_kasus,
-        "status_pengajuan": "pending"
+        "status_pengajuan": StatusPengajuan.PENDING
     }
 
     res_pengajuan = db.table("pengajuan_konsultasi").insert(new_pengajuan).execute()
@@ -200,7 +204,7 @@ async def create_consultation(
             "id_pengajuan": id_pengajuan,
             "tanggal_konsultasi": data_jadwal["tanggal"],
             "jam_diajukan": f"{jam_mulai} - {jam_selesai}",
-            "status": "pending",
+            "status": StatusPengajuan.PENDING,
             "dokumen_terupload": uploaded_docs,
             "dokumen_gagal": failed_docs,
         }
@@ -217,21 +221,21 @@ def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status:
     user_role = current_user.get("role")
     user_id = current_user.get("id_user")
 
-    if user_role == "client":
-        if new_status != "dibatalkan":
+    if user_role == Role.CLIENT:
+        if new_status != StatusPengajuan.DIBATALKAN:
             raise ForbiddenError("Klien hanya diizinkan untuk membatalkan pengajuan")
         if data_pengajuan["id_user"] != user_id:
             raise ForbiddenError("Anda tidak diizinkan mengubah pengajuan orang lain")
 
-    elif user_role == "konsultan":
-        kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", user_id).single().execute()
-        if not kons_profile.data or data_pengajuan["id_konsultan"] != kons_profile.data["id_konsultan"]:
+    elif user_role == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, user_id)
+        if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
              raise ForbiddenError("Akses ditolak: Pengajuan ini bukan milik Anda")
 
     else:
         raise ForbiddenError("Role tidak dikenali")
 
-    if new_status.lower() in ["ditolak", "dibatalkan"]:
+    if new_status.lower() in [StatusPengajuan.DITOLAK, StatusPengajuan.DIBATALKAN]:
         if data_pengajuan.get("id_jadwal"):
             db.table("jadwal_ketersediaan")\
                 .update({"status_tersedia": True})\
@@ -246,9 +250,9 @@ def update_status(db: Client, current_user: dict, id_pengajuan: int, new_status:
     if not response.data:
         raise InternalError("Gagal memperbarui status")
 
-    if new_status.lower() == "ditolak":
+    if new_status.lower() == StatusPengajuan.DITOLAK:
         _notify_client_rejected(db, data_pengajuan, id_pengajuan)
-    elif new_status.lower() == "menunggu_pembayaran":
+    elif new_status.lower() == StatusPengajuan.MENUNGGU_PEMBAYARAN:
         _notify_client_awaiting_payment(db, data_pengajuan, id_pengajuan)
 
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
@@ -271,12 +275,12 @@ def list_my_consultations(db: Client, current_user: dict) -> dict:
         )
     """)
 
-    if current_user["role"] == "client":
+    if current_user["role"] == Role.CLIENT:
         query = query.eq("id_user", current_user["id_user"])
-    elif current_user["role"] == "konsultan":
-        kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", current_user["id_user"]).single().execute()
-        if kons_profile.data:
-            query = query.eq("id_konsultan", kons_profile.data["id_konsultan"])
+    elif current_user["role"] == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, current_user["id_user"])
+        if id_kons is not None:
+            query = query.eq("id_konsultan", id_kons)
 
     response = query.execute()
     return {"data": response.data}
@@ -337,14 +341,13 @@ def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -
         """)\
         .eq("id_pengajuan", id_pengajuan)
 
-    if current_user.get("role") == "client":
+    if current_user.get("role") == Role.CLIENT:
         query = query.eq("id_user", current_user["id_user"])
-    elif current_user.get("role") == "konsultan":
-        kons_profile = db.table("konsultan").select("id_konsultan")\
-            .eq("id_user", current_user["id_user"]).single().execute()
-        if not kons_profile.data:
+    elif current_user.get("role") == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, current_user["id_user"])
+        if id_kons is None:
             raise ForbiddenError("Akses ditolak")
-        query = query.eq("id_konsultan", kons_profile.data["id_konsultan"])
+        query = query.eq("id_konsultan", id_kons)
     else:
         raise ForbiddenError("Akses ditolak")
 
@@ -403,20 +406,9 @@ def get_consultation_detail(db: Client, current_user: dict, id_pengajuan: int) -
 def assign_schedule(
     db: Client, current_user: dict, id_pengajuan: int, request: AssignSchedule
 ) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya konsultan yang bisa mengatur jadwal")
+    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-    if not kons_profile.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
-
-    real_id_konsultan = kons_profile.data["id_konsultan"]
+    real_id_konsultan = require_konsultan_id(db, current_user["id_user"])
 
     pengajuan = (
         db.table("pengajuan_konsultasi")
@@ -432,7 +424,7 @@ def assign_schedule(
     if data_pengajuan["id_konsultan"] != real_id_konsultan:
         raise ForbiddenError("Pengajuan ini bukan milik Anda")
 
-    if data_pengajuan["status_pengajuan"] != "pending":
+    if data_pengajuan["status_pengajuan"] != StatusPengajuan.PENDING:
         raise BadRequestError("Hanya pengajuan berstatus pending yang bisa dijadwalkan")
 
     jadwal = (
@@ -462,7 +454,7 @@ def assign_schedule(
         "tanggal_pengajuan": data_jadwal["tanggal"],
         "jam_mulai": request.jam_mulai,
         "jam_selesai": request.jam_selesai,
-        "status_pengajuan": "menunggu_pembayaran",
+        "status_pengajuan": StatusPengajuan.MENUNGGU_PEMBAYARAN,
     }
 
     response = (
@@ -488,31 +480,26 @@ def assign_schedule(
 
 
 def update_zoom_link(db: Client, current_user: dict, id_pengajuan: int, link_zoom: str) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya konsultan yang bisa mengatur link Zoom")
+    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur link Zoom")
 
-    kons_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .single()
-        .execute()
-    )
-    if not kons_profile.data:
-        raise NotFoundError("Profil konsultan tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user["id_user"])
 
     pengajuan = (
         db.table("pengajuan_konsultasi")
         .select("id_pengajuan, id_konsultan, status_pengajuan")
         .eq("id_pengajuan", id_pengajuan)
-        .eq("id_konsultan", kons_profile.data["id_konsultan"])
+        .eq("id_konsultan", id_kons)
         .execute()
     )
 
     if not pengajuan.data:
         raise NotFoundError("Pengajuan tidak ditemukan atau bukan milik Anda")
 
-    if pengajuan.data[0]["status_pengajuan"] not in ["terjadwal", "menunggu_pembayaran", "selesai"]:
+    if pengajuan.data[0]["status_pengajuan"] not in [
+        StatusPengajuan.TERJADWAL,
+        StatusPengajuan.MENUNGGU_PEMBAYARAN,
+        StatusPengajuan.SELESAI,
+    ]:
         raise BadRequestError("Link Zoom hanya bisa diatur untuk sesi yang relevan")
 
     response = (
@@ -534,8 +521,7 @@ def update_zoom_link(db: Client, current_user: dict, id_pengajuan: int, link_zoo
 
 
 def mark_completed(db: Client, current_user: dict, id_pengajuan: int) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang bisa menandai konsultasi selesai")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa menandai konsultasi selesai")
 
     user_id = current_user["id_user"]
 
@@ -553,12 +539,12 @@ def mark_completed(db: Client, current_user: dict, id_pengajuan: int) -> dict:
     if cek.data["id_user"] != user_id:
         raise ForbiddenError("Akses ditolak: Pengajuan ini bukan milik Anda")
 
-    if cek.data["status_pengajuan"] != "terjadwal":
+    if cek.data["status_pengajuan"] != StatusPengajuan.TERJADWAL:
         raise BadRequestError("Hanya pengajuan dengan status 'terjadwal' yang bisa diselesaikan")
 
     response = (
         db.table("pengajuan_konsultasi")
-        .update({"status_pengajuan": "selesai"})
+        .update({"status_pengajuan": StatusPengajuan.SELESAI})
         .eq("id_pengajuan", id_pengajuan)
         .execute()
     )
@@ -574,7 +560,7 @@ def get_booked_slots(db: Client, id_konsultan: int) -> dict:
         db.table("pengajuan_konsultasi")
         .select("jam_mulai, jam_selesai, tanggal_pengajuan")
         .eq("id_konsultan", id_konsultan)
-        .eq("status_pengajuan", "terjadwal")
+        .eq("status_pengajuan", StatusPengajuan.TERJADWAL)
         .execute()
     )
 
@@ -593,12 +579,12 @@ def list_documents(db: Client, current_user: dict, id_pengajuan: int) -> dict:
     user_role = current_user.get("role")
     user_id = current_user.get("id_user")
 
-    if user_role == "client":
+    if user_role == Role.CLIENT:
         if data_pengajuan["id_user"] != user_id:
             raise ForbiddenError("Akses ditolak")
-    elif user_role == "konsultan":
-        kons_profile = db.table("konsultan").select("id_konsultan").eq("id_user", user_id).single().execute()
-        if not kons_profile.data or data_pengajuan["id_konsultan"] != kons_profile.data["id_konsultan"]:
+    elif user_role == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, user_id)
+        if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
             raise ForbiddenError("Akses ditolak")
     else:
         raise ForbiddenError("Role tidak dikenali")
@@ -624,8 +610,7 @@ async def upload_documents(
     id_pengajuan: int,
     dokumen_pendukung_files: list[UploadFile],
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang dapat mengunggah dokumen")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat mengunggah dokumen")
 
     pengajuan = db.table("pengajuan_konsultasi").select("id_user").eq("id_pengajuan", id_pengajuan).execute()
     if not pengajuan.data:
@@ -683,8 +668,7 @@ async def upload_documents(
 
 
 def delete_document(db: Client, current_user: dict, id_pengajuan: int, id_dokumen: int) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang dapat menghapus dokumen")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat menghapus dokumen")
 
     pengajuan = db.table("pengajuan_konsultasi").select("id_user").eq("id_pengajuan", id_pengajuan).execute()
     if not pengajuan.data:
@@ -707,7 +691,7 @@ def delete_document(db: Client, current_user: dict, id_pengajuan: int, id_dokume
             storage_path = file_url.split(f"/storage/v1/object/public/{bucket_name}/")[1]
             db.storage.from_(bucket_name).remove([storage_path])
     except Exception as e:
-        print(f"[WARN] Gagal hapus file dari storage: {e}")
+        logger.warning(f"Gagal hapus file dari storage: {e}")
 
     db.table("dokumen_pendukung").delete().eq("id_dokumen", id_dokumen).execute()
 
@@ -717,8 +701,7 @@ def delete_document(db: Client, current_user: dict, id_pengajuan: int, id_dokume
 def submit_rating(
     db: Client, current_user: dict, id_pengajuan: int, rating_data: RatingCreate
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang dapat memberikan rating")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memberikan rating")
 
     user_id = current_user.get("id_user")
 
@@ -732,7 +715,7 @@ def submit_rating(
     if data_pengajuan["id_user"] != user_id:
         raise ForbiddenError("Anda tidak berhak memberi rating pada pengajuan orang lain")
 
-    if data_pengajuan["status_pengajuan"] not in ["terjadwal", "selesai"]:
+    if data_pengajuan["status_pengajuan"] not in [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI]:
         raise BadRequestError("Rating hanya dapat diberikan untuk sesi yang sedang berjalan (terjadwal) atau sudah selesai.")
 
     existing_rating = db.table("rating_ulasan").select("id_rating").eq("id_pengajuan", id_pengajuan).execute()
@@ -751,7 +734,7 @@ def submit_rating(
     if not insert_res.data:
         raise InternalError("Gagal menyimpan ulasan")
 
-    if data_pengajuan["status_pengajuan"] != "selesai":
-        db.table("pengajuan_konsultasi").update({"status_pengajuan": "selesai"}).eq("id_pengajuan", id_pengajuan).execute()
+    if data_pengajuan["status_pengajuan"] != StatusPengajuan.SELESAI:
+        db.table("pengajuan_konsultasi").update({"status_pengajuan": StatusPengajuan.SELESAI}).eq("id_pengajuan", id_pengajuan).execute()
 
     return {"message": "Ulasan berhasil dikirim dan konsultasi telah selesai.", "data": insert_res.data[0]}

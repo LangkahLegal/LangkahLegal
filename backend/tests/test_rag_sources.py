@@ -1,4 +1,4 @@
-from rag_service import (
+from services.rag_service import (
     _attach_document_status,
     _build_references,
     _build_source_documents,
@@ -199,8 +199,7 @@ class _FakeSupabase:
 
 
 def test_triage_returns_grouped_sources_with_status(monkeypatch):
-    import rag_service
-
+    from services import rag_service
     rpc_rows = [
         {"id": 812, "frbr_uri": "/akn/id/act/uu-13-2003", "nama_uu": "UU Ketenagakerjaan",
          "nomor_uu": "UU No. 13 Tahun 2003", "tahun_uu": 2003, "pasal_bagian": "Pasal 156",

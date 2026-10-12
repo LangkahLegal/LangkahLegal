@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import Client
 
-from config import Settings, get_settings
-from database import get_supabase_client
-from dependencies import get_current_user
+from core.config import Settings, get_settings
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
 from schemas.payments import CreateTransactionRequest
 from services import payment_service
 from docs import payments as docs

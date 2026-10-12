@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, UploadFile, File, Form, status
 from supabase import Client
 
-from database import get_supabase_client
-from dependencies import get_current_user
+from core.database import get_supabase_client
+from core.dependencies import get_current_user
 from schemas.admin_docs import (
     ChunkResponse,
     JobStatusResponse,

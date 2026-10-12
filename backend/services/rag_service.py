@@ -10,7 +10,6 @@ Flow:
   6. Return jawaban final (text biasa ATAU consultant_list)
 """
 
-import json
 import logging
 from typing import Optional
 
@@ -19,7 +18,7 @@ from google import genai
 from google.genai import types
 from supabase import Client
 
-from config import get_settings
+from core.config import get_settings
 
 log = logging.getLogger(__name__)
 
@@ -566,10 +565,10 @@ def triage(
 
         current_step = "rewrite"
         if len(query.split()) < 5:
-            log.info(f"[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
+            log.info("[TRIAGE] Query singkat (<5 kata), melakukan rewrite...")
             search_query = rewrite_query(query, chat_history)
         else:
-            log.info(f"[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
+            log.info("[TRIAGE] Query panjang (>=5 kata), skip rewrite untuk hemat kuota.")
             search_query = query
 
 

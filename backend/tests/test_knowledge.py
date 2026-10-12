@@ -1,6 +1,6 @@
 import pytest
 
-from limiter import limiter
+from core.limiter import limiter
 
 CLIENT = {"id_user": 1, "role": "client", "nama": "Client"}
 UU_13 = "/akn/id/act/uu-13-2003"

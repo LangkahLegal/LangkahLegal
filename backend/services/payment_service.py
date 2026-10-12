@@ -1,3 +1,4 @@
+import logging
 import math
 import time
 from datetime import datetime
@@ -5,13 +6,22 @@ from datetime import datetime
 import midtransclient
 from supabase import Client
 
-from config import Settings
-from exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.config import Settings
+from core.constants import Role, StatusPembayaran, StatusPengajuan
+from core.exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
 from schemas.payments import CreateTransactionRequest
+from helpers.access import get_konsultan_id, require_role
 from services.email_service import get_frontend_base_url, send_notification_email
 
-PAYABLE_STATUSES = ["menunggu_pembayaran", "pembayaran_gagal", "kedaluwarsa", "dibatalkan"]
-FINAL_STATUSES = ("settlement", "cancel", "refund")
+logger = logging.getLogger(__name__)
+
+PAYABLE_STATUSES = [
+    StatusPengajuan.MENUNGGU_PEMBAYARAN,
+    StatusPengajuan.PEMBAYARAN_GAGAL,
+    StatusPengajuan.KEDALUWARSA,
+    StatusPengajuan.DIBATALKAN,
+]
+FINAL_STATUSES = (StatusPembayaran.SETTLEMENT, StatusPembayaran.CANCEL, StatusPembayaran.REFUND)
 
 
 def _get_snap_client(settings: Settings) -> midtransclient.Snap:
@@ -62,7 +72,7 @@ def _calculate_quantity(pengajuan: dict) -> int:
             if calc_quantity > 0:
                 quantity = calc_quantity
         except Exception as e:
-            print(f"[WARN] Failed to calculate quantity: {e}")
+            logger.warning(f"Failed to calculate quantity: {e}")
     return quantity
 
 
@@ -133,8 +143,7 @@ def create_transaction(
     settings: Settings,
     payload: CreateTransactionRequest,
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang bisa melakukan pembayaran")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa melakukan pembayaran")
 
     try:
         pengajuan_res = (
@@ -146,7 +155,7 @@ def create_transaction(
             .execute()
         )
     except Exception as e:
-        print(f"[ERROR] Gagal query pengajuan: {e}")
+        logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
 
     if not pengajuan_res.data:
@@ -162,7 +171,7 @@ def create_transaction(
         db.table("transaksi")
         .select("*")
         .eq("id_pengajuan", payload.id_pengajuan)
-        .eq("status_pembayaran", "pending")
+        .eq("status_pembayaran", StatusPembayaran.PENDING)
         .execute()
     )
     if existing_tx.data:
@@ -177,7 +186,7 @@ def create_transaction(
                     "status_pembayaran": tx_status,
                     "updated_at": datetime.now().isoformat()
                 }).eq("order_id", tx["order_id"]).execute()
-                print(f"[INFO] Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
+                logger.info(f"Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
             else:
                 if tx.get("snap_token"):
                     return _existing_snap_response(tx)
@@ -186,7 +195,7 @@ def create_transaction(
                 if tx.get("snap_token"):
                     return _existing_snap_response(tx)
             else:
-                print(f"[WARN] Failed to check status for existing tx {tx['order_id']}: {e}")
+                logger.warning(f"Failed to check status for existing tx {tx['order_id']}: {e}")
     konsultan_data = pengajuan.get("konsultan") or {}
     tarif = konsultan_data.get("tarif_per_sesi")
 
@@ -223,7 +232,7 @@ def create_transaction(
     try:
         snap_response = snap.create_transaction(transaction_param)
     except Exception as e:
-        print(f"[ERROR] Midtrans Snap create_transaction failed: {e}")
+        logger.error(f"Midtrans Snap create_transaction failed: {e}")
         raise AppError(f"Gagal membuat transaksi pembayaran: {str(e)}", status_code=502)
 
     snap_token = snap_response.get("token", "")
@@ -236,12 +245,12 @@ def create_transaction(
             "gross_amount": gross_amount,
             "nominal_konsultan": nominal_konsultan,
             "komisi_platform": komisi_platform,
-            "status_pembayaran": "pending",
+            "status_pembayaran": StatusPembayaran.PENDING,
             "snap_token": snap_token,
             "snap_redirect_url": redirect_url,
         }).execute()
     except Exception as e:
-        print(f"[ERROR] Gagal menyimpan transaksi ke DB: {e}")
+        logger.error(f"Gagal menyimpan transaksi ke DB: {e}")
         raise InternalError("Gagal menyimpan data transaksi")
 
     return {
@@ -252,14 +261,14 @@ def create_transaction(
 
 
 def handle_notification(db: Client, settings: Settings, notification_json: dict) -> dict:
-    print(f"[MIDTRANS WEBHOOK] Received notification: {notification_json}")
+    logger.info(f"[MIDTRANS WEBHOOK] Received notification: {notification_json}")
 
     api_client = _get_core_api_client(settings)
 
     try:
         status_response = api_client.transactions.notification(notification_json)
     except Exception as e:
-        print(f"[ERROR] Midtrans notification verification failed: {e}")
+        logger.error(f"Midtrans notification verification failed: {e}")
         raise BadRequestError("Verifikasi notifikasi gagal")
 
     order_id = status_response.get("order_id", "")
@@ -267,7 +276,7 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
     fraud_status = status_response.get("fraud_status", "")
     payment_type = status_response.get("payment_type", "")
 
-    print(f"[MIDTRANS WEBHOOK] Order: {order_id}, Status: {transaction_status}, Fraud: {fraud_status}")
+    logger.info(f"[MIDTRANS WEBHOOK] Order: {order_id}, Status: {transaction_status}, Fraud: {fraud_status}")
 
     tx_res = (
         db.table("transaksi")
@@ -277,7 +286,7 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
     )
 
     if not tx_res.data:
-        print(f"[WARN] Transaksi dengan order_id '{order_id}' tidak ditemukan di DB")
+        logger.warning(f"Transaksi dengan order_id '{order_id}' tidak ditemukan di DB")
         return {"status": "ok", "message": "Order not found, ignored"}
 
     tx = tx_res.data[0]
@@ -285,7 +294,7 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
     current_payment_status = tx.get("status_pembayaran", "")
 
     if current_payment_status in FINAL_STATUSES:
-        print(f"[MIDTRANS WEBHOOK] Transaksi {order_id} sudah final ({current_payment_status}), skip.")
+        logger.info(f"[MIDTRANS WEBHOOK] Transaksi {order_id} sudah final ({current_payment_status}), skip.")
         return {"status": "ok", "message": f"Already {current_payment_status}"}
 
     new_payment_status = None
@@ -293,24 +302,24 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
 
     if transaction_status == "capture":
         if fraud_status == "accept":
-            new_payment_status = "settlement"
-            new_pengajuan_status = "terjadwal"
+            new_payment_status = StatusPembayaran.SETTLEMENT
+            new_pengajuan_status = StatusPengajuan.TERJADWAL
         elif fraud_status == "challenge":
-            new_payment_status = "pending"
+            new_payment_status = StatusPembayaran.PENDING
     elif transaction_status == "settlement":
-        new_payment_status = "settlement"
-        new_pengajuan_status = "terjadwal"
+        new_payment_status = StatusPembayaran.SETTLEMENT
+        new_pengajuan_status = StatusPengajuan.TERJADWAL
     elif transaction_status in ("cancel", "deny"):
-        new_payment_status = "cancel"
-        new_pengajuan_status = "dibatalkan"
+        new_payment_status = StatusPembayaran.CANCEL
+        new_pengajuan_status = StatusPengajuan.DIBATALKAN
     elif transaction_status == "expire":
-        new_payment_status = "expire"
-        new_pengajuan_status = "kedaluwarsa"
+        new_payment_status = StatusPembayaran.EXPIRE
+        new_pengajuan_status = StatusPengajuan.KEDALUWARSA
     elif transaction_status == "pending":
-        new_payment_status = "pending"
+        new_payment_status = StatusPembayaran.PENDING
     elif transaction_status == "refund":
-        new_payment_status = "refund"
-        new_pengajuan_status = "dibatalkan"
+        new_payment_status = StatusPembayaran.REFUND
+        new_pengajuan_status = StatusPengajuan.DIBATALKAN
 
     if new_payment_status:
         update_data = {
@@ -319,24 +328,24 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
             "updated_at": datetime.now().isoformat(),
         }
 
-        if new_payment_status == "settlement":
+        if new_payment_status == StatusPembayaran.SETTLEMENT:
             update_data["waktu_bayar"] = datetime.now().isoformat()
 
         db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
-        print(f"[MIDTRANS WEBHOOK] Transaksi {order_id} diupdate ke {new_payment_status}")
+        logger.info(f"[MIDTRANS WEBHOOK] Transaksi {order_id} diupdate ke {new_payment_status}")
 
     if new_pengajuan_status:
         db.table("pengajuan_konsultasi").update({
             "status_pengajuan": new_pengajuan_status,
             "updated_at": datetime.now().isoformat(),
         }).eq("id_pengajuan", id_pengajuan).execute()
-        print(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
+        logger.info(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
 
-    if new_payment_status == "settlement":
+    if new_payment_status == StatusPembayaran.SETTLEMENT:
         try:
             _send_settlement_emails(db, tx, id_pengajuan, order_id, payment_type)
         except Exception as e:
-            print(f"[EMAIL ERROR] Gagal kirim email webhook settlement: {e}")
+            logger.error(f"Gagal kirim email webhook settlement: {e}")
 
     return {"status": "ok"}
 
@@ -351,7 +360,7 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
             .execute()
         )
     except Exception as e:
-        print(f"[ERROR] Gagal query pengajuan: {e}")
+        logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
 
     if not pengajuan_res.data:
@@ -361,17 +370,11 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
     user_role = current_user.get("role")
     user_id = current_user.get("id_user")
 
-    if user_role == "client" and pengajuan["id_user"] != user_id:
+    if user_role == Role.CLIENT and pengajuan["id_user"] != user_id:
         raise ForbiddenError("Akses ditolak")
-    elif user_role == "konsultan":
-        kons_res = (
-            db.table("konsultan")
-            .select("id_konsultan")
-            .eq("id_user", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not kons_res.data or kons_res.data[0]["id_konsultan"] != pengajuan["id_konsultan"]:
+    elif user_role == Role.KONSULTAN:
+        id_kons = get_konsultan_id(db, user_id)
+        if id_kons is None or id_kons != pengajuan["id_konsultan"]:
             raise ForbiddenError("Akses ditolak")
 
     tx_res = (
@@ -392,8 +395,7 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
 def sync_payment_status(
     db: Client, current_user: dict, settings: Settings, id_pengajuan: int
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang bisa sinkronisasi pembayaran")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa sinkronisasi pembayaran")
 
     tx_res = (
         db.table("transaksi")
@@ -423,33 +425,33 @@ def sync_payment_status(
     try:
         midtrans_status = api_client.transactions.status(order_id)
     except Exception as e:
-        print(f"[SYNC] Gagal query Midtrans status for {order_id}: {e}")
+        logger.error(f"[SYNC] Gagal query Midtrans status for {order_id}: {e}")
         raise AppError(f"Gagal cek status ke Midtrans: {str(e)}", status_code=502)
 
     transaction_status = midtrans_status.get("transaction_status", "")
     fraud_status = midtrans_status.get("fraud_status", "")
     payment_type = midtrans_status.get("payment_type", "")
 
-    print(f"[SYNC] Order {order_id}: midtrans_status={transaction_status}, fraud={fraud_status}")
+    logger.info(f"[SYNC] Order {order_id}: midtrans_status={transaction_status}, fraud={fraud_status}")
 
     new_payment_status = None
     new_pengajuan_status = None
 
     if transaction_status == "capture":
         if fraud_status == "accept":
-            new_payment_status = "settlement"
-            new_pengajuan_status = "terjadwal"
+            new_payment_status = StatusPembayaran.SETTLEMENT
+            new_pengajuan_status = StatusPengajuan.TERJADWAL
     elif transaction_status == "settlement":
-        new_payment_status = "settlement"
-        new_pengajuan_status = "terjadwal"
+        new_payment_status = StatusPembayaran.SETTLEMENT
+        new_pengajuan_status = StatusPengajuan.TERJADWAL
     elif transaction_status in ("cancel", "deny"):
-        new_payment_status = "cancel"
-        new_pengajuan_status = "dibatalkan"
+        new_payment_status = StatusPembayaran.CANCEL
+        new_pengajuan_status = StatusPengajuan.DIBATALKAN
     elif transaction_status == "expire":
-        new_payment_status = "expire"
-        new_pengajuan_status = "kedaluwarsa"
+        new_payment_status = StatusPembayaran.EXPIRE
+        new_pengajuan_status = StatusPengajuan.KEDALUWARSA
     elif transaction_status == "pending":
-        new_payment_status = "pending"
+        new_payment_status = StatusPembayaran.PENDING
 
     if new_payment_status and new_payment_status != current_status:
         update_data = {
@@ -457,7 +459,7 @@ def sync_payment_status(
             "metode_pembayaran": payment_type,
             "updated_at": datetime.now().isoformat(),
         }
-        if new_payment_status == "settlement":
+        if new_payment_status == StatusPembayaran.SETTLEMENT:
             update_data["waktu_bayar"] = datetime.now().isoformat()
 
         db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
@@ -468,13 +470,13 @@ def sync_payment_status(
                 "updated_at": datetime.now().isoformat(),
             }).eq("id_pengajuan", id_pengajuan).execute()
 
-        print(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
+        logger.info(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
 
-        if new_payment_status == "settlement":
+        if new_payment_status == StatusPembayaran.SETTLEMENT:
             try:
                 _send_settlement_emails(db, tx, id_pengajuan, order_id, payment_type)
             except Exception as e:
-                print(f"[EMAIL ERROR] Gagal kirim email sync settlement: {e}")
+                logger.error(f"Gagal kirim email sync settlement: {e}")
 
         return {
             "synced": True,

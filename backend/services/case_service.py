@@ -1,12 +1,17 @@
+import logging
 from typing import Optional
 
 from fastapi import UploadFile
 from supabase import Client
 
-from config import get_settings
-from exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
+from core.config import get_settings
+from core.constants import Role, StatusBursa, StatusPengajuan
+from core.exceptions import BadRequestError, InternalError, NotFoundError
+from helpers.access import require_konsultan_id, require_role
 from services.email_service import get_frontend_base_url, send_notification_email
 from services.storage_service import upload_supporting_document_to_supabase
+
+logger = logging.getLogger(__name__)
 
 
 async def post_case(
@@ -20,8 +25,7 @@ async def post_case(
     dokumen_bukti: Optional[str],
     dokumen_pendukung_files: list[UploadFile] | None,
 ) -> dict:
-    if current_user.get("role") != "client":
-        raise ForbiddenError("Hanya klien yang dapat memposting kasus")
+    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
 
     if dokumen_pendukung_files:
         valid_files = [f for f in dokumen_pendukung_files if f.filename]
@@ -38,7 +42,7 @@ async def post_case(
         "tanggal_konsultasi": tanggal_konsultasi,
         "jam_mulai": jam_mulai,
         "jam_selesai": jam_selesai,
-        "status_bursa": "open",
+        "status_bursa": StatusBursa.OPEN,
     }
 
     response = db.table("bursa_kasus").insert(data_kasus).execute()
@@ -83,10 +87,9 @@ async def post_case(
 
 
 def list_open_cases(db: Client, current_user: dict) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya konsultan yang bisa melihat bursa")
+    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa melihat bursa")
 
-    response = db.table("bursa_kasus").select("*").eq("status_bursa", "open").execute()
+    response = db.table("bursa_kasus").select("*").eq("status_bursa", StatusBursa.OPEN).execute()
     return {"message": "Berhasil mengambil data bursa kasus", "data": response.data}
 
 
@@ -102,7 +105,14 @@ def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict
         db.table("pengajuan_konsultasi")
         .select("jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan")
         .eq("id_konsultan", id_konsultan)
-        .in_("status_pengajuan", ["pending", "menunggu_pembayaran", "terjadwal"])
+        .in_(
+            "status_pengajuan",
+            [
+                StatusPengajuan.PENDING,
+                StatusPengajuan.MENUNGGU_PEMBAYARAN,
+                StatusPengajuan.TERJADWAL,
+            ],
+        )
         .execute()
     )
 
@@ -153,26 +163,17 @@ Terima kasih.
 """
             send_notification_email(client_email, subject, message)
     except Exception as e:
-        print(f"[EMAIL ERROR] Gagal kirim email bursa diklaim: {e}")
+        logger.error(f"Gagal kirim email bursa diklaim: {e}")
 
 
 def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
-    if current_user.get("role") != "konsultan":
-        raise ForbiddenError("Hanya konsultan yang bisa mengklaim kasus")
+    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengklaim kasus")
 
-    konsultan_profile = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", current_user["id_user"])
-        .execute()
+    real_id_konsultan = require_konsultan_id(
+        db,
+        current_user["id_user"],
+        "Profil konsultan tidak ditemukan. Pastikan Anda sudah terdaftar sebagai konsultan.",
     )
-
-    if not konsultan_profile.data:
-        raise NotFoundError(
-            "Profil konsultan tidak ditemukan. Pastikan Anda sudah terdaftar sebagai konsultan."
-        )
-
-    real_id_konsultan = konsultan_profile.data[0]["id_konsultan"]
 
     kasus = (
         db.table("bursa_kasus")
@@ -186,12 +187,12 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
 
     kasus_data = kasus.data[0]
 
-    if kasus_data["status_bursa"] != "open":
+    if kasus_data["status_bursa"] != StatusBursa.OPEN:
         raise BadRequestError("Kasus ini sudah diklaim oleh konsultan lain")
 
     _ensure_no_schedule_conflict(db, real_id_konsultan, kasus_data)
 
-    db.table("bursa_kasus").update({"status_bursa": "closed"}).eq(
+    db.table("bursa_kasus").update({"status_bursa": StatusBursa.CLOSED}).eq(
         "id_bursa", id_bursa
     ).execute()
 
@@ -199,7 +200,7 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
         "id_user": kasus_data["id_user"],
         "id_konsultan": real_id_konsultan,
         "id_bursa": id_bursa,
-        "status_pengajuan": "terjadwal",
+        "status_pengajuan": StatusPengajuan.TERJADWAL,
         "deskripsi_kasus": kasus_data.get("deskripsi_kasus_awam", "Hasil dari Bursa Kasus"),
         "tanggal_pengajuan": kasus_data.get("tanggal_konsultasi"),
         "jam_mulai": kasus_data.get("jam_mulai"),
@@ -211,7 +212,7 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
     )
 
     if not insert_response.data:
-        db.table("bursa_kasus").update({"status_bursa": "open"}).eq(
+        db.table("bursa_kasus").update({"status_bursa": StatusBursa.OPEN}).eq(
             "id_bursa", id_bursa
         ).execute()
         raise InternalError("Gagal membuat draf konsultasi. Silakan coba lagi.")

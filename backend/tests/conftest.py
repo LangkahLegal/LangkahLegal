@@ -13,8 +13,8 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from main import app  # noqa: E402
-from database import get_supabase_client  # noqa: E402
-from dependencies import get_current_user  # noqa: E402
+from core.database import get_supabase_client  # noqa: E402
+from core.dependencies import get_current_user  # noqa: E402
 
 
 class MockResponse:
