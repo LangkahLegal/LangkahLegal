@@ -8,18 +8,20 @@
  *  - live-api         : uji non-destruktif langsung ke backend FastAPI (butuh backend berjalan)
  *
  * Jalankan:
- *   npm run build                 # sekali, suite memakai `next start`
+ *   (di ../frontend) npm run build   # sekali, suite memakai `next start`
  *   npm run test:regression       # UI suite (desktop + mobile)
  *   npm run test:live-api         # live API suite (backend harus jalan di :8000)
  */
+const path = require("path");
 const { defineConfig, devices } = require("@playwright/test");
 require("dotenv").config({ path: ".env.e2e" });
 
 const PORT = Number(process.env.E2E_REGRESSION_PORT || 3100);
+const FRONTEND_DIR = path.resolve(__dirname, "../frontend");
 const BASE_URL = process.env.E2E_REGRESSION_BASE_URL || `http://localhost:${PORT}`;
 
 module.exports = defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -28,13 +30,13 @@ module.exports = defineConfig({
   workers: Number(process.env.E2E_WORKERS || 2),
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  globalSetup: require.resolve("./tests/e2e/regression/support/global-setup.js"),
+  globalSetup: require.resolve("./e2e/regression/support/global-setup.js"),
   reporter: [
     ["list"],
-    ["html", { outputFolder: "tests/e2e/results/regression-html", open: "never" }],
-    ["json", { outputFile: "tests/e2e/results/regression-results.json" }],
+    ["html", { outputFolder: "e2e/results/regression-html", open: "never" }],
+    ["json", { outputFile: "e2e/results/regression-results.json" }],
   ],
-  outputDir: "tests/e2e/results/regression-artifacts",
+  outputDir: "e2e/results/regression-artifacts",
 
   use: {
     baseURL: BASE_URL,
@@ -72,6 +74,7 @@ module.exports = defineConfig({
         // Panggil binary Next langsung (bukan via npx/cmd.exe) — di Windows wrapper npx
         // dapat membuat server berhenti merespons ketika dijalankan sebagai child process.
         command: process.env.E2E_REGRESSION_SERVER_COMMAND || `node node_modules/next/dist/bin/next start -p ${PORT}`,
+        cwd: FRONTEND_DIR,
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

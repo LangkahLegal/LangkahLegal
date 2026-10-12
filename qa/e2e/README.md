@@ -6,14 +6,16 @@ End-to-End tests for LangkahLegal using [Playwright](https://playwright.dev/) wi
 
 Suite lengkap (251 test case, 36 fitur) yang **tidak membutuhkan akun/database**: frontend build produksi
 dijalankan di browser dan seluruh panggilan `/api/v1/*` di-mock di level jaringan (`regression/support/mock-api.js`).
-Laporan hasil: [`E2E_REGRESSION_REPORT.md`](../../../E2E_REGRESSION_REPORT.md) dan versi interaktif [`E2E_REGRESSION_REPORT.html`](../../../E2E_REGRESSION_REPORT.html).
+Laporan hasil: [`E2E_REGRESSION_REPORT.md`](../reports/E2E_REGRESSION_REPORT.md) dan versi interaktif [`E2E_REGRESSION_REPORT.html`](../reports/E2E_REGRESSION_REPORT.html).
+
+Semua perintah `npm run test:*` dijalankan dari folder `qa/`.
 
 ```bash
-npm run build                    # sekali; suite memakai `next start -p 3100`
+(cd ../frontend && npm run build)  # sekali; suite memakai `next start -p 3100` dari folder frontend
 npm run test:regression          # desktop + mobile (Pixel 7)
 npm run test:regression:smoke    # subset @smoke
 npm run test:live-api            # live API non-destruktif (backend harus jalan di :8000)
-npm run test:regression:report   # regenerasi E2E_REGRESSION_REPORT.md + .html dari hasil terakhir
+npm run test:regression:report   # regenerasi qa/reports/E2E_REGRESSION_REPORT.md + .html dari hasil terakhir
 ```
 
 | Path | Isi |
@@ -42,14 +44,14 @@ npm run test:regression:report   # regenerasi E2E_REGRESSION_REPORT.md + .html d
 
 ```bash
 # 1. Install dependencies
-cd frontend
+cd qa
 npm install
 
 # 2. Install Playwright browsers
 npx playwright install chromium
 
 # 3. Configure test accounts
-cp .env.e2e .env.e2e.local  # Edit with real credentials
+cp .env.e2e.example .env.e2e  # Edit with real credentials
 
 # 4. Start services (in separate terminals)
 # Terminal 1: Backend
@@ -58,7 +60,7 @@ cd backend && uvicorn main:app --reload
 # Terminal 2: Frontend
 cd frontend && npm run dev
 
-# 5. Run tests
+# 5. Run tests (from qa/)
 npm run test:e2e
 ```
 
@@ -84,7 +86,7 @@ npm run test:e2e
 ## Project Structure
 
 ```
-tests/e2e/
+qa/e2e/
 ├── fixtures/          # Reusable test fixtures (auth sessions)
 │   ├── auth.fixture.js    # Pre-authenticated page contexts
 │   └── index.js           # Barrel export

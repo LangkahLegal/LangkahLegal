@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# hasil test Playwright
+/e2e/results/
+/test-results/
+/blob-report/
+/playwright-report/
+
+# pytest
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# env
+.env.e2e
+.env.e2e.*
+!.env.e2e.example

@@ -2,7 +2,7 @@
  * Pengumpul data laporan E2E & Regression — dipakai bersama oleh
  * generate-report.js (Markdown) dan generate-report-html.js (HTML).
  *
- * Sumber: tests/e2e/results/regression-results.json (JSON reporter Playwright),
+ * Sumber: e2e/results/regression-results.json (JSON reporter Playwright),
  * anotasi test dari helper tc()/knownDefect(), dan findings.js.
  */
 const fs = require("fs");
@@ -10,8 +10,8 @@ const os = require("os");
 const path = require("path");
 const { execSync } = require("child_process");
 
-const ROOT = path.resolve(__dirname, "../../../..");
-const RESULTS = path.join(ROOT, "tests/e2e/results/regression-results.json");
+const ROOT = path.resolve(__dirname, "../../..");
+const RESULTS = path.join(ROOT, "e2e/results/regression-results.json");
 
 const FEATURES = {
   F01: ["Landing Page", "Publik"], F02: ["Halaman Informasi Publik (About/Privacy/Terms/Compliance)", "Publik"],

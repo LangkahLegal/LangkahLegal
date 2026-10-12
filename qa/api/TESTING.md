@@ -1,6 +1,6 @@
 # Backend API Tests
 
-Dokumen ini menjelaskan alur kerja dan cakupan pengujian pada folder `backend/tests`.
+Dokumen ini menjelaskan alur kerja dan cakupan pengujian API backend pada folder `qa/api`.
 
 ## Ringkas
 
@@ -132,13 +132,13 @@ Catatan:
 Dari root repo:
 
 ```bash
-python -m pip install -r backend/requirements-dev.txt
-python -m ruff check backend
-python -m ruff format --check backend
-python -m pytest backend/tests
+python -m pip install -r qa/api/requirements.txt
+python -m ruff check backend qa/api
+python -m ruff format --check backend qa/api
+python -m pytest qa/api
 ```
 
-Dari folder `backend`:
+Dari folder `qa/api`:
 
 ```bash
 python -m pytest

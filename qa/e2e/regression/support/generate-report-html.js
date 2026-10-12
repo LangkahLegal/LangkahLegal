@@ -3,7 +3,7 @@
  * Satu file mandiri (CSS/JS inline, tanpa dependensi eksternal) — bisa dibuka offline.
  *
  * Pemakaian:
- *   node tests/e2e/regression/support/generate-report-html.js [output.html]
+ *   node e2e/regression/support/generate-report-html.js [output.html]
  */
 const fs = require("fs");
 const path = require("path");
@@ -11,7 +11,7 @@ const { buildReportData, runKind } = require("./report-data.js");
 
 const D = buildReportData();
 const { ROOT, findings, all, stat, byProject, features, sevCount, catCount, env, SEV_ORDER, VER_LABEL, PROJ_SHORT } = D;
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, "..", "E2E_REGRESSION_REPORT.html"));
+const OUT = path.resolve(process.argv[2] || path.join(ROOT, "reports", "E2E_REGRESSION_REPORT.html"));
 
 const h = (s = "") => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const pct = (a, b) => (b ? (a / b) * 100 : 0);
@@ -375,7 +375,7 @@ npm run build                   # suite memakai build produksi (next start :3100
 npm run test:regression         # E2E + regression UI (desktop + mobile)
 npm run test:live-api           # live API (backend harus jalan di :8000)
 npm run test:regression:report  # buat ulang laporan Markdown + HTML</code></pre>
-  <p class="muted small">Trace &amp; screenshot kegagalan: <a href="frontend/tests/e2e/results/regression-html/index.html">HTML report Playwright</a> · Versi Markdown: <a href="E2E_REGRESSION_REPORT.md">E2E_REGRESSION_REPORT.md</a></p>
+  <p class="muted small">Trace &amp; screenshot kegagalan: <a href="../e2e/results/regression-html/index.html">HTML report Playwright</a> · Versi Markdown: <a href="E2E_REGRESSION_REPORT.md">E2E_REGRESSION_REPORT.md</a></p>
   </div>
 </section>
 </main>

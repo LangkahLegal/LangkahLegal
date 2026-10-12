@@ -6,27 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:auth": "playwright test --grep @auth",
-    "test:e2e:explore": "playwright test --grep @explore",
-    "test:e2e:consultation": "playwright test --grep @consultation",
-    "test:e2e:schedule": "playwright test --grep @schedule",
-    "test:e2e:bursa": "playwright test --grep @bursa",
-    "test:e2e:profile": "playwright test --grep @profile",
-    "test:e2e:payment": "playwright test --grep @payment",
-    "test:e2e:chatbot": "playwright test --grep @chatbot",
-    "test:e2e:admin": "playwright test --grep @admin",
-    "test:e2e:report": "playwright show-report tests/e2e/results/html-report",
-    "test:regression": "playwright test -c playwright.regression.config.js --project=desktop-chromium --project=mobile-chromium",
-    "test:regression:smoke": "playwright test -c playwright.regression.config.js --project=desktop-chromium --grep @smoke",
-    "test:live-api": "playwright test -c playwright.regression.config.js --project=live-api",
-    "test:all": "playwright test -c playwright.regression.config.js",
-    "test:regression:html": "playwright show-report tests/e2e/results/regression-html",
-    "test:regression:report": "node tests/e2e/regression/support/generate-report.js && node tests/e2e/regression/support/generate-report-html.js"
+    "lint": "eslint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
@@ -45,10 +25,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "babel-plugin-react-compiler": "1.0.0",
-    "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4"

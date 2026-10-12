@@ -1,6 +1,6 @@
 /**
  * Ringkas hasil JSON reporter Playwright di terminal.
- * Pemakaian: node tests/e2e/regression/support/summarize.js [path-json] [--failed]
+ * Pemakaian: node e2e/regression/support/summarize.js [path-json] [--failed]
  */
 const fs = require("fs");
 const path = require("path");

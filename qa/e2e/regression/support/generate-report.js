@@ -3,10 +3,10 @@
  *
  * Pemakaian:
  *   npx playwright test -c playwright.regression.config.js      # menghasilkan results JSON
- *   node tests/e2e/regression/support/generate-report.js [output.md]
+ *   node e2e/regression/support/generate-report.js [output.md]
  *
  * Sumber data:
- *   - tests/e2e/results/regression-results.json (JSON reporter Playwright)
+ *   - e2e/results/regression-results.json (JSON reporter Playwright)
  *   - anotasi test (feature, category, input, expected, bug, actual) via helper tc()
  *   - findings.js (daftar defect + severity)
  */
@@ -16,7 +16,7 @@ const { buildReportData, runLabel } = require("./report-data.js");
 
 const D = buildReportData();
 const { ROOT, FEATURES, findings, all, stat, byProject, features, sevCount, catCount, env, PROJ_SHORT: projShort } = D;
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, "..", "E2E_REGRESSION_REPORT.md"));
+const OUT = path.resolve(process.argv[2] || path.join(ROOT, "reports", "E2E_REGRESSION_REPORT.md"));
 const sevOrder = D.SEV_ORDER;
 const verLabel = D.VER_LABEL;
 const esc = (s = "") => String(s).replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
@@ -152,8 +152,8 @@ p(`## 10. Cara Menjalankan Ulang`, "", "```bash",
   "npm run test:regression:html       # laporan HTML Playwright (trace & screenshot)",
   "# E2E_STRICT=1 → nonaktifkan penanda known defect (lihat kegagalan apa adanya)",
   "```", "");
-p(`Artefak: \`E2E_REGRESSION_REPORT.html\` (versi interaktif laporan ini), \`frontend/tests/e2e/results/regression-html/\` (HTML report Playwright + trace/screenshot kegagalan), \`frontend/tests/e2e/results/regression-results.json\`.`, "");
-p(`---`, `_Laporan dibuat otomatis oleh \`tests/e2e/regression/support/generate-report.js\` dari hasil eksekusi Playwright._`);
+p(`Artefak: \`E2E_REGRESSION_REPORT.html\` (versi interaktif laporan ini), \`qa/e2e/results/regression-html/\` (HTML report Playwright + trace/screenshot kegagalan), \`qa/e2e/results/regression-results.json\`.`, "");
+p(`---`, `_Laporan dibuat otomatis oleh \`e2e/regression/support/generate-report.js\` dari hasil eksekusi Playwright._`);
 
 fs.writeFileSync(OUT, L.join("\n"), "utf8");
 console.log(`Laporan ditulis ke ${OUT}`);

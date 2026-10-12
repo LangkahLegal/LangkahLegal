@@ -68,9 +68,9 @@ hanya dipakai oleh fitur tertentu.
 |---|---|
 | `backend/main.py` | FastAPI app (`app`) — entrypoint yang dideteksi Vercel |
 | `backend/requirements.txt` | Dependency runtime (direct deps saja) |
-| `backend/requirements-dev.txt` | `requirements.txt` + pytest, dipakai CI |
+| `qa/api/requirements.txt` | `backend/requirements.txt` + pytest dan ruff, dipakai CI |
 | `backend/vercel.json` | Hanya `regions: ["sin1"]` |
-| `backend/.vercelignore` | Exclude `tests/`, `__pycache__`, `.env` |
+| `backend/.vercelignore` | Exclude `__pycache__`, `.env` (test berada di `qa/`, di luar project) |
 
 ## Step 4: Deploy
 
