@@ -19,6 +19,7 @@ from google.genai import types
 from supabase import Client
 
 from core.config import get_settings
+from repositories import consultant_repository, legal_document_repository
 
 log = logging.getLogger(__name__)
 
@@ -207,8 +208,7 @@ def retrieve_pasals(
     if filter_kategori:
         params["filter_kategori"] = filter_kategori
 
-    result = supabase.rpc("match_dokumen_hukum", params).execute()
-    rows = result.data or []
+    rows = legal_document_repository.match_by_embedding(supabase, params)
     for row in rows:
         if "id_dokumen" not in row:
             row["id_dokumen"] = row.get("id")
@@ -299,13 +299,10 @@ def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]
         return sources
 
     try:
-        result = (
-            supabase.table("dokumen_hukum_summary")
-            .select("frbr_uri, status_hukum")
-            .in_("frbr_uri", [s["frbr_uri"] for s in sources])
-            .execute()
+        rows = legal_document_repository.list_statuses_by_uris(
+            supabase, [s["frbr_uri"] for s in sources]
         )
-        status_by_uri = {r["frbr_uri"]: r.get("status_hukum") for r in (result.data or [])}
+        status_by_uri = {r["frbr_uri"]: r.get("status_hukum") for r in rows}
     except Exception as e:
         log.warning(f"[TRIAGE] Gagal ambil status_hukum sumber dokumen: {e}")
         return sources
@@ -330,8 +327,7 @@ def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
         params["p_max_budget"] = max_budget
 
     try:
-        result = supabase.rpc("search_consultants_by_category", params).execute()
-        consultants = result.data or []
+        consultants = consultant_repository.search_by_category(supabase, params)
         log.info(f"[TOOL] search_consultants → {len(consultants)} hasil (kategori={kategori})")
         return {"consultants": consultants, "count": len(consultants)}
     except Exception as e:

@@ -1,54 +1,42 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
-import logging
 
 from supabase import Client
 
 from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
+from helpers.access import require_konsultan_id, require_role
+from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
     ConsultantActiveToggle,
     ScheduleCreate,
     ScheduleToggle,
     ScheduleUpdate,
 )
-from helpers.access import require_konsultan_id, require_role
 
 logger = logging.getLogger(__name__)
 
 
+def _rating_summary(rating_rows: list[dict]) -> tuple[float, int]:
+    ratings = [r["skor_rating"] for r in rating_rows if r.get("skor_rating")]
+    total_reviews = len(ratings)
+    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
+    return rating_avg, total_reviews
+
+
 def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> dict:
     try:
-        query = (
-            db.table("konsultan")
-            .select("""
-                id_konsultan,
-                nama_lengkap,
-                spesialisasi,
-                is_active,
-                status_verifikasi,
-                tarif_per_sesi,
-                users (foto_profil),
-                rating_ulasan (skor_rating)
-            """)
-            .eq("is_active", True)
+        rows = consultant_repository.list_active_catalog(
+            db, spesialisasi if spesialisasi != "semua" else None
         )
 
-        if spesialisasi and spesialisasi != "semua":
-            query = query.ilike("spesialisasi", f"%{spesialisasi}%")
-
-        response = query.execute()
-
         formatted_data = []
-        for item in response.data:
-            ratings = [r["skor_rating"] for r in item.get("rating_ulasan", []) if r.get("skor_rating")]
-            total_reviews = len(ratings)
-            rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
-
+        for item in rows:
+            rating_avg, total_reviews = _rating_summary(item.get("rating_ulasan", []))
             user_data = item.get("users") or {}
 
-            formatted_item = {
+            formatted_data.append({
                 "id": item["id_konsultan"],
                 "name": item["nama_lengkap"],
                 "spec": item["spesialisasi"],
@@ -58,8 +46,7 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
                 "foto_profil": user_data.get("foto_profil"),
                 "status_verifikasi": item.get("status_verifikasi"),
                 "tarif_per_sesi": item.get("tarif_per_sesi")
-            }
-            formatted_data.append(formatted_item)
+            })
 
         return {
             "message": "Katalog konsultan berhasil dimuat",
@@ -71,54 +58,29 @@ def list_active_consultants(db: Client, spesialisasi: Optional[str] = None) -> d
 
 
 def get_consultant_detail(db: Client, id_konsultan: int) -> dict:
-    response = (
-        db.table("konsultan")
-        .select("*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
-        .eq("id_konsultan", id_konsultan)
-        .execute()
+    konsultan_data = consultant_repository.get_by_id(
+        db, id_konsultan, "*, users(nama, email, foto_profil), rating_ulasan(skor_rating)"
     )
 
-    if not response.data:
+    if konsultan_data is None:
         raise NotFoundError("Konsultan tidak ditemukan")
 
-    konsultan_data = response.data[0]
-
-    ratings = [r["skor_rating"] for r in konsultan_data.get("rating_ulasan", []) if r.get("skor_rating")]
-    total_reviews = len(ratings)
-    rating_avg = round(sum(ratings) / total_reviews, 1) if total_reviews > 0 else 0.0
+    rating_avg, total_reviews = _rating_summary(konsultan_data.get("rating_ulasan", []))
 
     konsultan_data.pop("rating_ulasan", None)
     konsultan_data["rating"] = rating_avg
     konsultan_data["reviews"] = total_reviews
-
-    jadwal_response = (
-        db.table("jadwal_ketersediaan")
-        .select("id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia")
-        .eq("id_konsultan", id_konsultan)
-        .eq("status_tersedia", True)
-        .order("tanggal")
-        .execute()
-    )
-
-    konsultan_data["jadwal_ketersediaan"] = jadwal_response.data
+    konsultan_data["jadwal_ketersediaan"] = schedule_repository.list_available_by_date(db, id_konsultan)
 
     return {"message": "Detail profil ditemukan", "data": konsultan_data}
 
 
 def get_available_schedules(db: Client, id_konsultan: int) -> dict:
     try:
-        response = (
-            db.table("jadwal_ketersediaan")
-            .select("*")
-            .eq("id_konsultan", id_konsultan)
-            .eq("status_tersedia", True)
-            .execute()
-        )
-
         return {
             "status": "success",
             "id_konsultan": id_konsultan,
-            "data": response.data,
+            "data": schedule_repository.list_available(db, id_konsultan),
         }
     except Exception as e:
         raise InternalError(f"Gagal mengambil jadwal: {str(e)}")
@@ -126,20 +88,9 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
 
 def get_my_schedules(db: Client, current_user: dict) -> list:
     id_kons = require_konsultan_id(db, current_user["id_user"])
-    query = (
-        db.table("jadwal_ketersediaan")
-        .select(
-            """
-        id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia,
-        pengajuan_konsultasi ( users ( nama ) )
-    """
-        )
-        .eq("id_konsultan", id_kons)
-        .execute()
-    )
 
     formatted = []
-    for item in query.data:
+    for item in schedule_repository.list_with_clients(db, id_kons):
         pengajuan = item.get("pengajuan_konsultasi", [])
         nama_klien = (
             pengajuan[0]["users"]["nama"]
@@ -155,15 +106,12 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
 
     id_kons = require_konsultan_id(db, current_user["id_user"])
 
-    pengajuan_with_tx = (
-        db.table("pengajuan_konsultasi")
-        .select("transaksi(nominal_konsultan, status_pembayaran)")
-        .eq("id_konsultan", id_kons)
-        .execute()
+    pengajuan_with_tx = consultation_repository.list_by_konsultan(
+        db, id_kons, "transaksi(nominal_konsultan, status_pembayaran)"
     )
 
     total_income = 0
-    for p in pengajuan_with_tx.data:
+    for p in pengajuan_with_tx:
         tx_list = p.get("transaksi") or []
         if isinstance(tx_list, dict):
             tx_list = [tx_list]
@@ -171,18 +119,14 @@ def get_dashboard_stats(db: Client, current_user: dict) -> dict:
             if tx.get("status_pembayaran") == StatusPembayaran.SETTLEMENT:
                 total_income += float(tx.get("nominal_konsultan") or 0)
 
-    klien_data_res = (
-        db.table("pengajuan_konsultasi")
-        .select("id_user, status_pengajuan")
-        .eq("id_konsultan", id_kons)
-        .in_("status_pengajuan", [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI])
-        .execute()
-    )
-
-    all_data = klien_data_res.data or []
+    all_data = consultation_repository.list_by_konsultan_and_statuses(
+        db,
+        id_kons,
+        [StatusPengajuan.TERJADWAL, StatusPengajuan.SELESAI],
+        "id_user, status_pengajuan",
+    ) or []
 
     unique_klien = set(p["id_user"] for p in all_data)
-
     sesi_aktif = [p for p in all_data if p["status_pengajuan"] == StatusPengajuan.TERJADWAL]
 
     return {
@@ -197,31 +141,7 @@ def get_pending_requests(db: Client, current_user: dict) -> list:
 
     id_kons = require_konsultan_id(db, current_user["id_user"])
 
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select(
-            """
-            id_pengajuan,
-            deskripsi_kasus,
-            status_pengajuan,
-            created_at,
-            tanggal_pengajuan,
-            jam_mulai,
-            jam_selesai,
-            id_bursa,
-            users (
-                nama,
-                foto_profil
-            )
-        """
-        )
-        .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", StatusPengajuan.PENDING)
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    return response.data
+    return consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING])
 
 
 def get_active_requests(db: Client, current_user: dict) -> list:
@@ -229,28 +149,9 @@ def get_active_requests(db: Client, current_user: dict) -> list:
 
     id_kons = require_konsultan_id(db, current_user["id_user"])
 
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select(
-            """
-            id_pengajuan,
-            deskripsi_kasus,
-            status_pengajuan,
-            created_at,
-            tanggal_pengajuan,
-            jam_mulai,
-            jam_selesai,
-            id_bursa,
-            users ( nama, foto_profil )
-        """
-        )
-        .eq("id_konsultan", id_kons)
-        .in_("status_pengajuan", [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN])
-        .order("created_at", desc=True)
-        .execute()
+    return consultation_repository.list_requests_for_konsultan(
+        db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
     )
-
-    return response.data
 
 
 def get_scheduled_clients(db: Client, current_user: dict) -> dict:
@@ -258,12 +159,11 @@ def get_scheduled_clients(db: Client, current_user: dict) -> dict:
 
     id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
 
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)")
-        .eq("id_konsultan", id_kons)
-        .eq("status_pengajuan", StatusPengajuan.TERJADWAL)
-        .execute()
+    rows = consultation_repository.list_by_konsultan_and_statuses(
+        db,
+        id_kons,
+        [StatusPengajuan.TERJADWAL],
+        "*, users(nama, foto_profil), jadwal_ketersediaan(tanggal)",
     )
 
     wib = timezone(timedelta(hours=7))
@@ -271,7 +171,7 @@ def get_scheduled_clients(db: Client, current_user: dict) -> dict:
 
     formatted_data = []
 
-    for req in response.data:
+    for req in rows:
         jadwal = req.get("jadwal_ketersediaan") or {}
         if isinstance(jadwal, list):
             jadwal = jadwal[0] if len(jadwal) > 0 else {}
@@ -310,17 +210,11 @@ def get_history(db: Client, current_user: dict) -> dict:
 
     id_kons = require_konsultan_id(db, current_user["id_user"], "Profil tidak ditemukan")
 
-    response = (
-        db.table("pengajuan_konsultasi")
-        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
-        .eq("id_konsultan", id_kons)
-        .neq("status_pengajuan", StatusPengajuan.PENDING)
-        .execute()
-    )
+    rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
     formatted_data = []
 
-    for req in response.data:
+    for req in rows:
         jadwal = req.get("jadwal_ketersediaan") or {}
         trans = req.get("transaksi") or []
 
@@ -328,7 +222,7 @@ def get_history(db: Client, current_user: dict) -> dict:
         if isinstance(trans, list) and len(trans) > 0:
             nominal = trans[0].get("nominal_konsultan") or 0
         elif isinstance(trans, dict):
-             nominal = trans.get("nominal_konsultan") or 0
+            nominal = trans.get("nominal_konsultan") or 0
 
         status_akhir = req.get("status_pengajuan")
         if status_akhir in [
@@ -370,32 +264,28 @@ def create_schedule(db: Client, current_user: dict, request: ScheduleCreate) -> 
 
     id_kons = require_konsultan_id(db, current_user["id_user"])
 
-    new_schedule = {
+    created = schedule_repository.insert(db, {
         "id_konsultan": id_kons,
         "tanggal": request.tanggal,
         "jam_mulai": request.jam_mulai,
         "jam_selesai": request.jam_selesai,
         "status_tersedia": True,
-    }
+    })
 
-    response = db.table("jadwal_ketersediaan").insert(new_schedule).execute()
-
-    return {"message": "Jadwal berhasil ditambahkan", "data": response.data[0]}
+    return {"message": "Jadwal berhasil ditambahkan", "data": created[0]}
 
 
 def delete_schedule(db: Client, current_user: dict, id_jadwal: int) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    jadwal = (
-        db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
-    )
-    if not jadwal.data:
+    jadwal = schedule_repository.get_by_id(db, id_jadwal)
+    if jadwal is None:
         raise NotFoundError("Jadwal tidak ditemukan")
 
-    if not jadwal.data[0]["status_tersedia"]:
+    if not jadwal["status_tersedia"]:
         raise BadRequestError("Jadwal tidak bisa dihapus karena sudah dipesan klien")
 
-    db.table("jadwal_ketersediaan").delete().eq("id_jadwal", id_jadwal).execute()
+    schedule_repository.delete(db, id_jadwal)
     return {"message": "Jadwal berhasil dihapus"}
 
 
@@ -404,36 +294,23 @@ def update_schedule(
 ) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    jadwal = (
-        db.table("jadwal_ketersediaan").select("*").eq("id_jadwal", id_jadwal).execute()
-    )
-    if not jadwal.data or not jadwal.data[0]["status_tersedia"]:
+    jadwal = schedule_repository.get_by_id(db, id_jadwal)
+    if jadwal is None or not jadwal["status_tersedia"]:
         raise BadRequestError("Jadwal tidak ditemukan atau sudah dipesan")
 
-    update_data = {k: v for k, v in request.dict().items() if v is not None}
+    update_data = {k: v for k, v in request.model_dump().items() if v is not None}
 
-    response = (
-        db.table("jadwal_ketersediaan")
-        .update(update_data)
-        .eq("id_jadwal", id_jadwal)
-        .execute()
+    updated = schedule_repository.update(db, id_jadwal, update_data)
+    return {"message": "Jadwal berhasil diperbarui", "data": updated[0]}
+
+
+def toggle_schedule_slot(db: Client, id_jadwal: int, payload: ScheduleToggle) -> dict:
+    updated = schedule_repository.set_available(db, id_jadwal, payload.status_tersedia)
+    return {"data": updated, "count": None}
+
+
+def toggle_global_active(db: Client, current_user: dict, payload: ConsultantActiveToggle) -> dict:
+    updated = consultant_repository.update_by_user(
+        db, current_user["id_user"], {"is_active": payload.is_active}
     )
-    return {"message": "Jadwal berhasil diperbarui", "data": response.data[0]}
-
-
-def toggle_schedule_slot(db: Client, id_jadwal: int, payload: ScheduleToggle):
-    return (
-        db.table("jadwal_ketersediaan")
-        .update({"status_tersedia": payload.status_tersedia})
-        .eq("id_jadwal", id_jadwal)
-        .execute()
-    )
-
-
-def toggle_global_active(db: Client, current_user: dict, payload: ConsultantActiveToggle):
-    return (
-        db.table("konsultan")
-        .update({"is_active": payload.is_active})
-        .eq("id_user", current_user["id_user"])
-        .execute()
-    )
+    return {"data": updated, "count": None}

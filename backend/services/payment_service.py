@@ -11,6 +11,12 @@ from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
 from schemas.payments import CreateTransactionRequest
 from helpers.access import get_konsultan_id, require_role
+from repositories import (
+    consultant_repository,
+    consultation_repository,
+    payment_repository,
+    user_repository,
+)
 from services.email_service import get_frontend_base_url, send_notification_email
 
 logger = logging.getLogger(__name__)
@@ -79,15 +85,17 @@ def _calculate_quantity(pengajuan: dict) -> int:
 def _send_settlement_emails(
     db: Client, tx: dict, id_pengajuan: int, order_id: str, payment_type: str
 ) -> None:
-    pengajuan_res = db.table("pengajuan_konsultasi").select("id_user, id_konsultan, link_zoom").eq("id_pengajuan", id_pengajuan).single().execute()
-    if not pengajuan_res.data:
+    pengajuan = consultation_repository.get_by_id_strict(
+        db, id_pengajuan, "id_user, id_konsultan, link_zoom"
+    )
+    if not pengajuan:
         return
 
-    client_res = db.table("users").select("email, nama").eq("id_user", pengajuan_res.data["id_user"]).single().execute()
-    if client_res.data:
-        client_email = client_res.data["email"]
-        client_nama = client_res.data["nama"]
-        zoom_link = pengajuan_res.data.get("link_zoom") or "Belum ditentukan"
+    client = user_repository.get_by_id_strict(db, pengajuan["id_user"], "email, nama")
+    if client:
+        client_email = client["email"]
+        client_nama = client["nama"]
+        zoom_link = pengajuan.get("link_zoom") or "Belum ditentukan"
         subject = "Receipt: Pembayaran Konsultasi Berhasil"
 
         gross_amount = tx.get("gross_amount", 0)
@@ -114,12 +122,14 @@ LangkahLegal
 """
         send_notification_email(client_email, subject, message)
 
-    kons_res = db.table("konsultan").select("id_user, nama_lengkap").eq("id_konsultan", pengajuan_res.data["id_konsultan"]).single().execute()
-    if kons_res.data:
-        kons_user_res = db.table("users").select("email").eq("id_user", kons_res.data["id_user"]).single().execute()
-        if kons_user_res.data:
-            kons_email = kons_user_res.data["email"]
-            kons_nama = kons_res.data["nama_lengkap"]
+    konsultan = consultant_repository.get_by_id_strict(
+        db, pengajuan["id_konsultan"], "id_user, nama_lengkap"
+    )
+    if konsultan:
+        kons_user = user_repository.get_by_id_strict(db, konsultan["id_user"], "email")
+        if kons_user:
+            kons_email = kons_user["email"]
+            kons_nama = konsultan["nama_lengkap"]
             kons_subject = "Klien Telah Membayar - Segera Isi Link Zoom"
             frontend_base_url = get_frontend_base_url()
             kons_message = f"""Halo {kons_nama},
@@ -146,46 +156,35 @@ def create_transaction(
     require_role(current_user, Role.CLIENT, "Hanya klien yang bisa melakukan pembayaran")
 
     try:
-        pengajuan_res = (
-            db.table("pengajuan_konsultasi")
-            .select("*, konsultan(tarif_per_sesi, nama_lengkap), users(nama, email)")
-            .eq("id_pengajuan", payload.id_pengajuan)
-            .eq("id_user", current_user["id_user"])
-            .limit(1)
-            .execute()
+        pengajuan = consultation_repository.get_for_payment(
+            db, payload.id_pengajuan, current_user["id_user"]
         )
     except Exception as e:
         logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
 
-    if not pengajuan_res.data:
+    if pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
-
-    pengajuan = pengajuan_res.data[0]
 
     if pengajuan["status_pengajuan"] not in PAYABLE_STATUSES:
         raise BadRequestError(
             f"Pengajuan tidak dalam status yang memerlukan pembayaran (status saat ini: {pengajuan['status_pengajuan']})"
         )
-    existing_tx = (
-        db.table("transaksi")
-        .select("*")
-        .eq("id_pengajuan", payload.id_pengajuan)
-        .eq("status_pembayaran", StatusPembayaran.PENDING)
-        .execute()
+    existing_tx = payment_repository.list_by_pengajuan_and_status(
+        db, payload.id_pengajuan, StatusPembayaran.PENDING
     )
-    if existing_tx.data:
-        tx = existing_tx.data[0]
+    if existing_tx:
+        tx = existing_tx[0]
         api_client = _get_core_api_client(settings)
         try:
             status_response = api_client.transactions.status(tx["order_id"])
             tx_status = status_response.get("transaction_status")
 
             if tx_status in ("cancel", "deny", "expire"):
-                db.table("transaksi").update({
+                payment_repository.update_by_order_id(db, tx["order_id"], {
                     "status_pembayaran": tx_status,
                     "updated_at": datetime.now().isoformat()
-                }).eq("order_id", tx["order_id"]).execute()
+                })
                 logger.info(f"Transaksi sebelumnya ternyata {tx_status}, membuat token baru...")
             else:
                 if tx.get("snap_token"):
@@ -239,7 +238,7 @@ def create_transaction(
     redirect_url = snap_response.get("redirect_url", "")
 
     try:
-        db.table("transaksi").insert({
+        payment_repository.insert(db, {
             "id_pengajuan": payload.id_pengajuan,
             "order_id": order_id,
             "gross_amount": gross_amount,
@@ -248,7 +247,7 @@ def create_transaction(
             "status_pembayaran": StatusPembayaran.PENDING,
             "snap_token": snap_token,
             "snap_redirect_url": redirect_url,
-        }).execute()
+        })
     except Exception as e:
         logger.error(f"Gagal menyimpan transaksi ke DB: {e}")
         raise InternalError("Gagal menyimpan data transaksi")
@@ -278,18 +277,12 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
 
     logger.info(f"[MIDTRANS WEBHOOK] Order: {order_id}, Status: {transaction_status}, Fraud: {fraud_status}")
 
-    tx_res = (
-        db.table("transaksi")
-        .select("*, pengajuan_konsultasi(id_pengajuan, status_pengajuan)")
-        .eq("order_id", order_id)
-        .execute()
-    )
+    tx = payment_repository.get_by_order_id(db, order_id)
 
-    if not tx_res.data:
+    if tx is None:
         logger.warning(f"Transaksi dengan order_id '{order_id}' tidak ditemukan di DB")
         return {"status": "ok", "message": "Order not found, ignored"}
 
-    tx = tx_res.data[0]
     id_pengajuan = tx["id_pengajuan"]
     current_payment_status = tx.get("status_pembayaran", "")
 
@@ -331,14 +324,14 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
         if new_payment_status == StatusPembayaran.SETTLEMENT:
             update_data["waktu_bayar"] = datetime.now().isoformat()
 
-        db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
+        payment_repository.update_by_order_id(db, order_id, update_data)
         logger.info(f"[MIDTRANS WEBHOOK] Transaksi {order_id} diupdate ke {new_payment_status}")
 
     if new_pengajuan_status:
-        db.table("pengajuan_konsultasi").update({
+        consultation_repository.update(db, id_pengajuan, {
             "status_pengajuan": new_pengajuan_status,
             "updated_at": datetime.now().isoformat(),
-        }).eq("id_pengajuan", id_pengajuan).execute()
+        })
         logger.info(f"[MIDTRANS WEBHOOK] Pengajuan {id_pengajuan} diupdate ke {new_pengajuan_status}")
 
     if new_payment_status == StatusPembayaran.SETTLEMENT:
@@ -352,21 +345,16 @@ def handle_notification(db: Client, settings: Settings, notification_json: dict)
 
 def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dict:
     try:
-        pengajuan_res = (
-            db.table("pengajuan_konsultasi")
-            .select("id_pengajuan, id_user, id_konsultan")
-            .eq("id_pengajuan", id_pengajuan)
-            .limit(1)
-            .execute()
+        pengajuan = consultation_repository.get_by_id(
+            db, id_pengajuan, "id_pengajuan, id_user, id_konsultan"
         )
     except Exception as e:
         logger.error(f"Gagal query pengajuan: {e}")
         raise InternalError("Gagal mengambil data pengajuan")
 
-    if not pengajuan_res.data:
+    if pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
-    pengajuan = pengajuan_res.data[0]
     user_role = current_user.get("role")
     user_id = current_user.get("id_user")
 
@@ -377,19 +365,12 @@ def get_payment_status(db: Client, current_user: dict, id_pengajuan: int) -> dic
         if id_kons is None or id_kons != pengajuan["id_konsultan"]:
             raise ForbiddenError("Akses ditolak")
 
-    tx_res = (
-        db.table("transaksi")
-        .select("*")
-        .eq("id_pengajuan", id_pengajuan)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
+    tx = payment_repository.get_latest_by_pengajuan(db, id_pengajuan)
 
-    if not tx_res.data:
+    if tx is None:
         return {"data": None, "message": "Belum ada transaksi pembayaran"}
 
-    return {"data": tx_res.data[0]}
+    return {"data": tx}
 
 
 def sync_payment_status(
@@ -397,19 +378,11 @@ def sync_payment_status(
 ) -> dict:
     require_role(current_user, Role.CLIENT, "Hanya klien yang bisa sinkronisasi pembayaran")
 
-    tx_res = (
-        db.table("transaksi")
-        .select("*")
-        .eq("id_pengajuan", id_pengajuan)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
+    tx = payment_repository.get_latest_by_pengajuan(db, id_pengajuan)
 
-    if not tx_res.data:
+    if tx is None:
         raise NotFoundError("Transaksi tidak ditemukan")
 
-    tx = tx_res.data[0]
     order_id = tx["order_id"]
     current_status = tx.get("status_pembayaran", "")
 
@@ -462,13 +435,13 @@ def sync_payment_status(
         if new_payment_status == StatusPembayaran.SETTLEMENT:
             update_data["waktu_bayar"] = datetime.now().isoformat()
 
-        db.table("transaksi").update(update_data).eq("order_id", order_id).execute()
+        payment_repository.update_by_order_id(db, order_id, update_data)
 
         if new_pengajuan_status:
-            db.table("pengajuan_konsultasi").update({
+            consultation_repository.update(db, id_pengajuan, {
                 "status_pengajuan": new_pengajuan_status,
                 "updated_at": datetime.now().isoformat(),
-            }).eq("id_pengajuan", id_pengajuan).execute()
+            })
 
         logger.info(f"[SYNC] Updated: transaksi={new_payment_status}, pengajuan={new_pengajuan_status}")
 

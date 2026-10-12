@@ -131,3 +131,7 @@ async def upload_supporting_document_to_supabase(
             status_code=500,
             detail=f"Gagal upload dokumen pendukung: {str(exc)}",
         )
+
+
+def remove_file_from_supabase(db_client, bucket_name: str, storage_path: str) -> None:
+    db_client.storage.from_(bucket_name).remove([storage_path])

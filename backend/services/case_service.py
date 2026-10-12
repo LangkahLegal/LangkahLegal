@@ -8,10 +8,22 @@ from core.config import get_settings
 from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from helpers.access import require_konsultan_id, require_role
+from repositories import (
+    case_repository,
+    consultant_repository,
+    consultation_repository,
+    user_repository,
+)
 from services.email_service import get_frontend_base_url, send_notification_email
 from services.storage_service import upload_supporting_document_to_supabase
 
 logger = logging.getLogger(__name__)
+
+ACTIVE_STATUSES = [
+    StatusPengajuan.PENDING,
+    StatusPengajuan.MENUNGGU_PEMBAYARAN,
+    StatusPengajuan.TERJADWAL,
+]
 
 
 async def post_case(
@@ -34,7 +46,7 @@ async def post_case(
     else:
         valid_files = []
 
-    data_kasus = {
+    created = case_repository.insert(db, {
         "id_user": current_user["id_user"],
         "kategori_hukum": kategori_hukum.lower().strip(),
         "deskripsi_kasus_awam": deskripsi_kasus_awam,
@@ -43,13 +55,11 @@ async def post_case(
         "jam_mulai": jam_mulai,
         "jam_selesai": jam_selesai,
         "status_bursa": StatusBursa.OPEN,
-    }
-
-    response = db.table("bursa_kasus").insert(data_kasus).execute()
-    if not response.data:
+    })
+    if not created:
         raise InternalError("Gagal memposting kasus")
 
-    id_bursa = response.data[0]["id_bursa"]
+    id_bursa = created[0]["id_bursa"]
 
     settings = get_settings()
     bucket_name = settings.supabase_berkas_pendukung_bucket
@@ -76,11 +86,11 @@ async def post_case(
         if combined:
             combined += ","
         combined += ",".join(file_urls)
-        db.table("bursa_kasus").update({"dokumen_bukti": combined}).eq("id_bursa", id_bursa).execute()
+        case_repository.update(db, id_bursa, {"dokumen_bukti": combined})
 
     return {
         "message": "Kasus berhasil diposting secara anonim ke bursa",
-        "data": response.data[0],
+        "data": created[0],
         "dokumen_terupload": uploaded_docs,
         "dokumen_gagal": failed_docs,
     }
@@ -89,8 +99,10 @@ async def post_case(
 def list_open_cases(db: Client, current_user: dict) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa melihat bursa")
 
-    response = db.table("bursa_kasus").select("*").eq("status_bursa", StatusBursa.OPEN).execute()
-    return {"message": "Berhasil mengambil data bursa kasus", "data": response.data}
+    return {
+        "message": "Berhasil mengambil data bursa kasus",
+        "data": case_repository.list_by_status(db, StatusBursa.OPEN),
+    }
 
 
 def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict) -> None:
@@ -101,22 +113,14 @@ def _ensure_no_schedule_conflict(db: Client, id_konsultan: int, kasus_data: dict
     if not (kasus_date and kasus_start and kasus_end):
         return
 
-    active_consultations = (
-        db.table("pengajuan_konsultasi")
-        .select("jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan")
-        .eq("id_konsultan", id_konsultan)
-        .in_(
-            "status_pengajuan",
-            [
-                StatusPengajuan.PENDING,
-                StatusPengajuan.MENUNGGU_PEMBAYARAN,
-                StatusPengajuan.TERJADWAL,
-            ],
-        )
-        .execute()
+    active_consultations = consultation_repository.list_by_konsultan_and_statuses(
+        db,
+        id_konsultan,
+        ACTIVE_STATUSES,
+        "jam_mulai, jam_selesai, jadwal_ketersediaan(tanggal, jam_mulai, jam_selesai), tanggal_pengajuan",
     )
 
-    for active in active_consultations.data:
+    for active in active_consultations:
         active_jadwal = active.get("jadwal_ketersediaan") or {}
 
         a_date_raw = active_jadwal.get("tanggal") or active.get("tanggal_pengajuan")
@@ -139,14 +143,14 @@ def _notify_client_case_claimed(
 ) -> None:
     try:
         id_pengajuan = pengajuan["id_pengajuan"]
-        client_res = db.table("users").select("email, nama").eq("id_user", kasus_data["id_user"]).single().execute()
-        if client_res.data:
-            client_email = client_res.data["email"]
-            client_nama = client_res.data["nama"]
+        client = user_repository.get_by_id_strict(db, kasus_data["id_user"], "email, nama")
+        if client:
+            client_email = client["email"]
+            client_nama = client["nama"]
             frontend_base_url = get_frontend_base_url()
 
-            kons_res = db.table("konsultan").select("nama_lengkap").eq("id_konsultan", id_konsultan).single().execute()
-            kons_nama = kons_res.data["nama_lengkap"] if kons_res.data else "Seorang konsultan"
+            konsultan = consultant_repository.get_by_id_strict(db, id_konsultan, "nama_lengkap")
+            kons_nama = konsultan["nama_lengkap"] if konsultan else "Seorang konsultan"
 
             subject = "Kabar Baik! Kasus Anda di Bursa Telah Diambil"
             message = f"""Halo {client_nama},
@@ -175,28 +179,23 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
         "Profil konsultan tidak ditemukan. Pastikan Anda sudah terdaftar sebagai konsultan.",
     )
 
-    kasus = (
-        db.table("bursa_kasus")
-        .select("id_bursa, id_user, status_bursa, deskripsi_kasus_awam, tanggal_konsultasi, jam_mulai, jam_selesai, dokumen_bukti")
-        .eq("id_bursa", id_bursa)
-        .execute()
+    kasus_data = case_repository.get_by_id(
+        db,
+        id_bursa,
+        "id_bursa, id_user, status_bursa, deskripsi_kasus_awam, tanggal_konsultasi, jam_mulai, jam_selesai, dokumen_bukti",
     )
 
-    if not kasus.data:
+    if kasus_data is None:
         raise NotFoundError("Kasus bursa tidak ditemukan")
-
-    kasus_data = kasus.data[0]
 
     if kasus_data["status_bursa"] != StatusBursa.OPEN:
         raise BadRequestError("Kasus ini sudah diklaim oleh konsultan lain")
 
     _ensure_no_schedule_conflict(db, real_id_konsultan, kasus_data)
 
-    db.table("bursa_kasus").update({"status_bursa": StatusBursa.CLOSED}).eq(
-        "id_bursa", id_bursa
-    ).execute()
+    case_repository.update(db, id_bursa, {"status_bursa": StatusBursa.CLOSED})
 
-    new_consultation = {
+    created = consultation_repository.insert(db, {
         "id_user": kasus_data["id_user"],
         "id_konsultan": real_id_konsultan,
         "id_bursa": id_bursa,
@@ -205,27 +204,15 @@ def claim_case(db: Client, current_user: dict, id_bursa: int) -> dict:
         "tanggal_pengajuan": kasus_data.get("tanggal_konsultasi"),
         "jam_mulai": kasus_data.get("jam_mulai"),
         "jam_selesai": kasus_data.get("jam_selesai"),
-    }
+    })
 
-    insert_response = (
-        db.table("pengajuan_konsultasi").insert(new_consultation).execute()
-    )
-
-    if not insert_response.data:
-        db.table("bursa_kasus").update({"status_bursa": StatusBursa.OPEN}).eq(
-            "id_bursa", id_bursa
-        ).execute()
+    if not created:
+        case_repository.update(db, id_bursa, {"status_bursa": StatusBursa.OPEN})
         raise InternalError("Gagal membuat draf konsultasi. Silakan coba lagi.")
 
-    _notify_client_case_claimed(
-        db,
-        kasus_data,
-        real_id_konsultan,
-        id_bursa,
-        insert_response.data[0],
-    )
+    _notify_client_case_claimed(db, kasus_data, real_id_konsultan, id_bursa, created[0])
 
     return {
         "message": "Kasus berhasil diklaim. Draf konsultasi telah dibuat.",
-        "data": insert_response.data[0],
+        "data": created[0],
     }

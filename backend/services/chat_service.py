@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from supabase import Client
 
 from core.exceptions import InternalError, NotFoundError
-from services.rag_service import triage
+from repositories import chat_repository
 from schemas.chatbot import (
     CreateSessionRequest,
     MessageListResponse,
@@ -14,27 +14,21 @@ from schemas.chatbot import (
     TriageRequest,
     TriageResponse,
 )
+from services.rag_service import triage
 
 log = logging.getLogger(__name__)
 
 
 def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 30) -> list[dict]:
     try:
-        result = (
-            supabase.table("chat_messages")
-            .select("role, content, metadata")
-            .eq("session_id", session_id)
-            .order("created_at", desc=False)
-            .limit(limit)
-            .execute()
-        )
+        rows = chat_repository.list_history(supabase, session_id, limit)
         return [
             {
                 "role": msg["role"],
                 "content": msg["content"],
                 "metadata": msg.get("metadata"),
             }
-            for msg in (result.data or [])
+            for msg in (rows or [])
         ]
     except Exception as e:
         log.warning(f"[CHATBOT] Gagal ambil history session {session_id}: {e}")
@@ -56,7 +50,7 @@ def _save_message(
     if metadata:
         row["metadata"] = metadata
 
-    supabase.table("chat_messages").insert(row).execute()
+    chat_repository.insert_message(supabase, row)
 
 
 def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> None:
@@ -77,28 +71,13 @@ def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> 
         title = title.replace("*", "").replace("#", "").replace("`", "").replace("_", " ").strip()
         title = title[:100]
         if title:
-            supabase.table("chat_sessions").update({"title": title}).eq("id", session_id).execute()
+            chat_repository.update_session_title(supabase, session_id, title)
             log.info(f"[CHATBOT] Auto-generated title for {session_id}: {title}")
     except Exception as e:
         log.warning(f"[CHATBOT] Failed to auto-generate title: {e}")
 
 
-def create_session(
-    supabase: Client, current_user: dict, request: CreateSessionRequest
-) -> SessionResponse:
-    result = (
-        supabase.table("chat_sessions")
-        .insert({
-            "user_id": current_user["id_user"],
-            "title": request.title,
-        })
-        .execute()
-    )
-
-    if not result.data:
-        raise InternalError("Gagal membuat sesi baru.")
-
-    session = result.data[0]
+def _to_session_response(session: dict) -> SessionResponse:
     return SessionResponse(
         id=session["id"],
         title=session["title"],
@@ -107,65 +86,36 @@ def create_session(
     )
 
 
+def create_session(
+    supabase: Client, current_user: dict, request: CreateSessionRequest
+) -> SessionResponse:
+    created = chat_repository.insert_session(supabase, current_user["id_user"], request.title)
+
+    if not created:
+        raise InternalError("Gagal membuat sesi baru.")
+
+    return _to_session_response(created[0])
+
+
 def list_sessions(supabase: Client, current_user: dict, limit: int = 50) -> SessionListResponse:
-    result = (
-        supabase.table("chat_sessions")
-        .select("id, title, created_at, updated_at")
-        .eq("user_id", current_user["id_user"])
-        .order("updated_at", desc=True)
-        .limit(limit)
-        .execute()
-    )
-
-    sessions = [
-        SessionResponse(
-            id=s["id"],
-            title=s["title"],
-            created_at=s["created_at"],
-            updated_at=s["updated_at"],
-        )
-        for s in (result.data or [])
-    ]
-
-    return SessionListResponse(sessions=sessions)
+    rows = chat_repository.list_sessions(supabase, current_user["id_user"], limit)
+    return SessionListResponse(sessions=[_to_session_response(s) for s in (rows or [])])
 
 
 def delete_session(supabase: Client, current_user: dict, session_id: str) -> None:
-    check = (
-        supabase.table("chat_sessions")
-        .select("id")
-        .eq("id", session_id)
-        .eq("user_id", current_user["id_user"])
-        .execute()
-    )
-
-    if not check.data:
+    if not chat_repository.list_owned_session(supabase, session_id, current_user["id_user"]):
         raise NotFoundError(f"Sesi dengan ID {session_id} tidak ditemukan atau Anda tidak memiliki akses.")
 
-    supabase.table("chat_sessions").delete().eq("id", session_id).execute()
+    chat_repository.delete_session(supabase, session_id)
 
 
 def get_session_messages(
     supabase: Client, current_user: dict, session_id: str
 ) -> MessageListResponse:
-    check = (
-        supabase.table("chat_sessions")
-        .select("id")
-        .eq("id", session_id)
-        .eq("user_id", current_user["id_user"])
-        .execute()
-    )
-
-    if not check.data:
+    if not chat_repository.list_owned_session(supabase, session_id, current_user["id_user"]):
         raise NotFoundError("Sesi tidak ditemukan.")
 
-    result = (
-        supabase.table("chat_messages")
-        .select("id, session_id, role, content, metadata, created_at")
-        .eq("session_id", session_id)
-        .order("created_at", desc=False)
-        .execute()
-    )
+    rows = chat_repository.list_messages(supabase, session_id)
 
     messages = [
         MessageResponse(
@@ -176,7 +126,7 @@ def get_session_messages(
             metadata=m.get("metadata"),
             created_at=m["created_at"],
         )
-        for m in (result.data or [])
+        for m in (rows or [])
     ]
 
     return MessageListResponse(messages=messages)
@@ -190,35 +140,17 @@ def run_triage(supabase: Client, current_user: dict, payload: TriageRequest) -> 
 
         current_step = "session_resolve"
         if not session_id:
-            session_result = (
-                supabase.table("chat_sessions")
-                .insert({
-                    "user_id": current_user["id_user"],
-                    "title": "Sesi Konsultasi Baru",
-                })
-                .execute()
+            created = chat_repository.insert_session(
+                supabase, current_user["id_user"], "Sesi Konsultasi Baru"
             )
-            session_id = session_result.data[0]["id"]
+            session_id = created[0]["id"]
             is_new_session = True
             log.info(f"[CHATBOT] Auto-created session: {session_id}")
         else:
-            check = (
-                supabase.table("chat_sessions")
-                .select("id")
-                .eq("id", session_id)
-                .eq("user_id", current_user["id_user"])
-                .execute()
-            )
-            if not check.data:
+            if not chat_repository.list_owned_session(supabase, session_id, current_user["id_user"]):
                 raise NotFoundError("Sesi tidak ditemukan.")
 
-            msg_count = (
-                supabase.table("chat_messages")
-                .select("id", count="exact")
-                .eq("session_id", session_id)
-                .execute()
-            )
-            is_new_session = (msg_count.count or 0) == 0
+            is_new_session = chat_repository.count_messages(supabase, session_id) == 0
 
         current_step = "load_history"
         chat_history = _get_chat_history_from_db(supabase, session_id, limit=30)

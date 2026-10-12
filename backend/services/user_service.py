@@ -4,24 +4,25 @@ from supabase import Client
 from core.config import get_settings
 from core.constants import Role
 from core.exceptions import ForbiddenError
+from repositories import consultant_repository, user_repository
 from schemas.users import ProfileUpdatePayload
 from services.storage_service import upload_portfolio_pdf_to_supabase
 
 
 def get_settings_info(db: Client, current_user: dict) -> dict:
-    user = db.table("users").select("nama, email, foto_profil").eq("id_user", current_user["id_user"]).single().execute()
+    user = user_repository.get_by_id_strict(db, current_user["id_user"], "nama, email, foto_profil")
     return {
-        "nama": user.data["nama"],
-        "email": user.data["email"],
-        "foto_profil": user.data.get("foto_profil")
+        "nama": user["nama"],
+        "email": user["email"],
+        "foto_profil": user.get("foto_profil")
     }
 
 
 def get_full_profile(db: Client, current_user: dict) -> dict:
-    user = db.table("users").select("nama, email, foto_profil, role").eq("id_user", current_user["id_user"]).single().execute().data
+    user = user_repository.get_by_id_strict(db, current_user["id_user"], "nama, email, foto_profil, role")
 
     if user["role"] == Role.KONSULTAN:
-        kons = db.table("konsultan").select("*").eq("id_user", current_user["id_user"]).single().execute().data
+        kons = consultant_repository.get_by_user_strict(db, current_user["id_user"])
         return {
             **user,
             "foto_profil": user["foto_profil"],
@@ -50,7 +51,7 @@ async def update_profile(
         u_data["foto_profil"] = payload.foto_profil
 
     if u_data:
-        db.table("users").update(u_data).eq("id_user", current_user["id_user"]).execute()
+        user_repository.update(db, current_user["id_user"], u_data)
 
     if current_user["role"] != Role.KONSULTAN and (payload.portofolio is not None or portofolio_file is not None):
         raise ForbiddenError("Hanya konsultan yang dapat mengubah portofolio")
@@ -93,7 +94,7 @@ async def update_profile(
         }
 
         if k_data:
-            db.table("konsultan").update(k_data).eq("id_user", current_user["id_user"]).execute()
+            consultant_repository.update_by_user(db, current_user["id_user"], k_data)
 
     return {
         "message": "Profil dan kredensial berhasil diperbarui",

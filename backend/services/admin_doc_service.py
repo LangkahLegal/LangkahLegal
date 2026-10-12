@@ -12,6 +12,7 @@ from core.database import get_supabase_client
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from schemas.admin_docs import PaginatedResponse, UpdateChunkRequest
 from helpers.access import require_role
+from repositories import legal_document_repository
 from services.doc_processing import (
     generate_embeddings,
     process_pdf_to_records,
@@ -83,17 +84,11 @@ def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
 
         if replace_uri:
             job["message"] = f"Menghapus dokumen lama ({replace_uri})..."
-            db.table("dokumen_hukum").delete().eq("frbr_uri", replace_uri).execute()
+            legal_document_repository.delete_by_uri(db, replace_uri)
             log.info(f"[ADMIN_DOCS] Deleted old document: {replace_uri}")
 
         if not replace_uri:
-            existing = (
-                db.table("dokumen_hukum")
-                .select("id_dokumen", count="exact")
-                .eq("frbr_uri", frbr_uri)
-                .execute()
-            )
-            if existing.count and existing.count > 0:
+            if legal_document_repository.count_by_uri(db, frbr_uri) > 0:
                 job["status"] = "failed"
                 job["error"] = f"Dokumen dengan URI '{frbr_uri}' sudah ada di database. Gunakan fitur Replace jika ingin mengganti."
                 job["message"] = "Gagal: dokumen sudah ada."
@@ -104,7 +99,7 @@ def process_pdf_job(job_id: str, pdf_bytes: bytes, metadata: dict | None = None,
         total_inserted = 0
         for i in range(0, len(rows), batch_size):
             batch = rows[i : i + batch_size]
-            db.table("dokumen_hukum").insert(batch).execute()
+            legal_document_repository.insert_many(db, batch)
             total_inserted += len(batch)
 
         job["status"] = "completed"
@@ -175,13 +170,7 @@ async def create_replace_job(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise BadRequestError("File harus berformat PDF.")
 
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen", count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .execute()
-    )
-    if not (existing.count or 0):
+    if not legal_document_repository.count_by_uri(db, frbr_uri):
         raise NotFoundError(f"Dokumen dengan URI '{frbr_uri}' tidak ditemukan.")
 
     pdf_bytes = await file.read()
@@ -227,20 +216,10 @@ def list_documents(
 ) -> PaginatedResponse:
     _require_admin(user)
 
-    query = db.table("dokumen_hukum_summary").select(
-        "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum, total_chunks", count="exact"
-    )
-
-    if kategori:
-        query = query.eq("kategori", kategori)
-    if search:
-        query = query.ilike("nama_uu", f"%{search}%")
-
     offset = (page - 1) * page_size
-    result = query.order("frbr_uri").range(offset, offset + page_size - 1).execute()
-
-    rows = result.data or []
-    total = result.count or 0
+    rows, total = legal_document_repository.list_summaries(
+        db, offset, page_size, kategori=kategori, search=search
+    )
 
     return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
 
@@ -255,55 +234,30 @@ def list_chunks(
 ) -> PaginatedResponse:
     _require_admin(user)
 
-    count_query = db.table("dokumen_hukum").select("id_dokumen", count="exact").eq("frbr_uri", frbr_uri)
-    data_query = db.table("dokumen_hukum").select(SELECT_COLS).eq("frbr_uri", frbr_uri)
-
-    if search:
-        search_filter = f"pasal_bagian.ilike.%{search}%,isi_teks.ilike.%{search}%"
-        count_query = count_query.or_(search_filter)
-        data_query = data_query.or_(search_filter)
-
-    count_result = count_query.execute()
-    total = count_result.count or 0
+    total = legal_document_repository.count_by_uri(db, frbr_uri, search)
 
     offset = (page - 1) * page_size
-    result = (
-        data_query
-        .order("id_dokumen")
-        .range(offset, offset + page_size - 1)
-        .execute()
+    rows = legal_document_repository.list_by_uri(
+        db, frbr_uri, SELECT_COLS, offset, page_size, search
     )
 
-    return PaginatedResponse(
-        data=result.data or [], total=total, page=page, page_size=page_size
-    )
+    return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
 
 
 def get_chunk(db: Client, user: dict, id_dokumen: int) -> dict:
     _require_admin(user)
 
-    result = (
-        db.table("dokumen_hukum")
-        .select(SELECT_COLS)
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
+    chunk = legal_document_repository.get_by_id(db, id_dokumen, SELECT_COLS)
 
-    if not result.data:
+    if chunk is None:
         raise NotFoundError("Chunk tidak ditemukan.")
-    return result.data[0]
+    return chunk
 
 
 def update_chunk(db: Client, user: dict, id_dokumen: int, payload: UpdateChunkRequest) -> dict:
     _require_admin(user)
 
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen")
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
-    if not existing.data:
+    if legal_document_repository.get_by_id(db, id_dokumen, "id_dokumen") is None:
         raise NotFoundError("Chunk tidak ditemukan.")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -319,31 +273,21 @@ def update_chunk(db: Client, user: dict, id_dokumen: int, payload: UpdateChunkRe
 
     update_data["updated_at"] = datetime.now().isoformat()
 
-    result = (
-        db.table("dokumen_hukum")
-        .update(update_data)
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
+    updated = legal_document_repository.update(db, id_dokumen, update_data)
 
-    if not result.data:
+    if not updated:
         raise InternalError("Gagal update chunk.")
 
     log.info(f"[ADMIN_DOCS] Updated chunk {id_dokumen}")
-    return result.data[0]
+    return updated[0]
 
 
 def delete_document(db: Client, user: dict, frbr_uri: str) -> None:
     _require_admin(user)
 
-    existing = (
-        db.table("dokumen_hukum")
-        .select("id_dokumen", count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .execute()
-    )
-    if not (existing.count or 0):
+    total = legal_document_repository.count_by_uri(db, frbr_uri)
+    if not total:
         raise NotFoundError("Dokumen dengan URI tersebut tidak ditemukan.")
 
-    db.table("dokumen_hukum").delete().eq("frbr_uri", frbr_uri).execute()
-    log.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({existing.count} rows)")
+    legal_document_repository.delete_by_uri(db, frbr_uri)
+    log.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({total} rows)")

@@ -4,6 +4,7 @@ from typing import Optional
 from supabase import Client
 
 from core.exceptions import AppError, NotFoundError
+from repositories import legal_document_repository
 
 DOC_COLS = "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum"
 PASAL_COLS = "id_dokumen, pasal_bagian, judul_bab, isi_teks"
@@ -31,16 +32,10 @@ def _document_from_row(row: dict) -> dict:
 
 
 def get_pasal(db: Client, id_dokumen: int) -> dict:
-    result = (
-        db.table("dokumen_hukum")
-        .select(f"{PASAL_COLS}, {DOC_COLS}")
-        .eq("id_dokumen", id_dokumen)
-        .execute()
-    )
-    if not result.data:
+    row = legal_document_repository.get_by_id(db, id_dokumen, f"{PASAL_COLS}, {DOC_COLS}")
+    if row is None:
         raise NotFoundError("Pasal tidak ditemukan. Dokumen mungkin sudah diperbarui.")
 
-    row = result.data[0]
     return {
         "id_dokumen": row["id_dokumen"],
         "pasal_bagian": row["pasal_bagian"],
@@ -53,18 +48,11 @@ def get_pasal(db: Client, id_dokumen: int) -> dict:
 def get_document_detail(db: Client, frbr_uri: str) -> dict:
     _validate_frbr_uri(frbr_uri)
 
-    result = (
-        db.table("dokumen_hukum")
-        .select(DOC_COLS, count="exact")
-        .eq("frbr_uri", frbr_uri)
-        .order("id_dokumen")
-        .limit(1)
-        .execute()
-    )
-    if not result.data:
+    row, total_pasal = legal_document_repository.get_first_by_uri(db, frbr_uri, DOC_COLS)
+    if row is None:
         raise NotFoundError("Dokumen tidak ditemukan.")
 
-    return {**_document_from_row(result.data[0]), "total_pasal": result.count or 0}
+    return {**_document_from_row(row), "total_pasal": total_pasal}
 
 
 def list_document_pasal(
@@ -76,17 +64,14 @@ def list_document_pasal(
 ) -> dict:
     _validate_frbr_uri(frbr_uri)
 
-    query = db.table("dokumen_hukum").select(PASAL_COLS, count="exact").eq("frbr_uri", frbr_uri)
-
     search_term = _SEARCH_UNSAFE_RE.sub(" ", search).strip() if search else ""
-    if search_term:
-        query = query.or_(f"pasal_bagian.ilike.%{search_term}%,isi_teks.ilike.%{search_term}%")
-
     offset = (page - 1) * page_size
-    result = query.order("id_dokumen").range(offset, offset + page_size - 1).execute()
 
-    total = result.count or 0
+    rows, total = legal_document_repository.list_by_uri_with_count(
+        db, frbr_uri, PASAL_COLS, offset, page_size, search_term or None
+    )
+
     if total == 0 and not search_term:
         raise NotFoundError("Dokumen tidak ditemukan.")
 
-    return {"data": result.data or [], "total": total, "page": page, "page_size": page_size}
+    return {"data": rows, "total": total, "page": page, "page_size": page_size}

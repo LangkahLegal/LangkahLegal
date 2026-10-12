@@ -9,6 +9,7 @@ from supabase import Client
 
 from core.config import get_settings
 from core.exceptions import AppError, BadRequestError, InternalError, UnauthorizedError
+from repositories import user_repository
 from schemas.auth import (
     ForgotPasswordPayload,
     OAuthPayload,
@@ -249,32 +250,21 @@ async def refresh_session(refresh_token: Optional[str]) -> dict:
 def get_profile(db: Client, token: str) -> Optional[dict]:
     user = _get_auth_user(token, db)
 
-    result = (
-        db.table("users")
-        .select("id_user, nama, email, role, auth_user_id")
-        .eq("auth_user_id", user.id)
-        .execute()
-    )
+    columns = "id_user, nama, email, role, auth_user_id"
+    profiles = user_repository.list_by_auth_user_id(db, user.id, columns)
 
-    if not result.data:
+    if not profiles:
         if user.email:
-            email_result = (
-                db.table("users")
-                .select("id_user, nama, email, role, auth_user_id")
-                .eq("email", user.email)
-                .execute()
-            )
-            if email_result.data:
-                db.table("users").update({"auth_user_id": user.id}).eq(
-                    "email", user.email
-                ).execute()
-                profile = email_result.data[0]
+            email_profiles = user_repository.list_by_email(db, user.email, columns)
+            if email_profiles:
+                user_repository.link_auth_user(db, user.email, user.id)
+                profile = email_profiles[0]
                 profile["auth_user_id"] = user.id
                 return profile
 
         return None
 
-    return result.data[0]
+    return profiles[0]
 
 
 def update_role(db: Client, token: str, payload: RolePayload) -> dict:
@@ -295,17 +285,17 @@ def update_role(db: Client, token: str, payload: RolePayload) -> dict:
         "role": payload.role,
     }
 
-    result_existing = db.table("users").select("id_user").eq("auth_user_id", user.id).execute()
+    existing = user_repository.list_by_auth_user_id(db, user.id, "id_user")
 
-    if result_existing.data:
-        profile = result_existing.data[0]
-        db.table("users").update(payload_data).eq("id_user", profile["id_user"]).execute()
+    if existing:
+        profile = existing[0]
+        user_repository.update(db, profile["id_user"], payload_data)
         return {**payload_data, "id_user": profile["id_user"]}
 
-    result = db.table("users").insert(payload_data).execute()
+    created = user_repository.insert(db, payload_data)
 
-    if result.data:
-        return result.data[0]
+    if created:
+        return created[0]
 
     raise InternalError("Gagal memperbarui role.")
 

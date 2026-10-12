@@ -1,6 +1,7 @@
 from supabase import Client
 
 from core.exceptions import ForbiddenError, NotFoundError
+from repositories import consultant_repository
 
 
 def require_role(current_user: dict, role: str, detail: str) -> None:
@@ -9,14 +10,7 @@ def require_role(current_user: dict, role: str, detail: str) -> None:
 
 
 def get_konsultan_id(db: Client, id_user: int) -> int | None:
-    result = (
-        db.table("konsultan")
-        .select("id_konsultan")
-        .eq("id_user", id_user)
-        .limit(1)
-        .execute()
-    )
-    return result.data[0]["id_konsultan"] if result.data else None
+    return consultant_repository.get_id_by_user(db, id_user)
 
 
 def require_konsultan_id(
