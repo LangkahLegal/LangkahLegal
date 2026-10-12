@@ -26,7 +26,7 @@
     "test:live-api": "playwright test -c playwright.regression.config.js --project=live-api",
     "test:all": "playwright test -c playwright.regression.config.js",
     "test:regression:html": "playwright show-report tests/e2e/results/regression-html",
-    "test:regression:report": "node tests/e2e/regression/support/generate-report.js"
+    "test:regression:report": "node tests/e2e/regression/support/generate-report.js && node tests/e2e/regression/support/generate-report-html.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

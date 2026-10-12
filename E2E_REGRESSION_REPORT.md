@@ -1403,7 +1403,7 @@ npm run test:regression:html       # laporan HTML Playwright (trace & screenshot
 # E2E_STRICT=1 → nonaktifkan penanda known defect (lihat kegagalan apa adanya)
 ```
 
-Artefak: `frontend/tests/e2e/results/regression-html/` (HTML report + trace/screenshot kegagalan), `frontend/tests/e2e/results/regression-results.json`.
+Artefak: `E2E_REGRESSION_REPORT.html` (versi interaktif laporan ini), `frontend/tests/e2e/results/regression-html/` (HTML report Playwright + trace/screenshot kegagalan), `frontend/tests/e2e/results/regression-results.json`.
 
 ---
 _Laporan dibuat otomatis oleh `tests/e2e/regression/support/generate-report.js` dari hasil eksekusi Playwright._

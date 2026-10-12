@@ -11,142 +11,19 @@
  *   - findings.js (daftar defect + severity)
  */
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
-const { execSync } = require("child_process");
+const { buildReportData, runLabel } = require("./report-data.js");
 
-const ROOT = path.resolve(__dirname, "../../../..");
-const RESULTS = path.join(ROOT, "tests/e2e/results/regression-results.json");
+const D = buildReportData();
+const { ROOT, FEATURES, findings, all, stat, byProject, features, sevCount, catCount, env, PROJ_SHORT: projShort } = D;
 const OUT = path.resolve(process.argv[2] || path.join(ROOT, "..", "E2E_REGRESSION_REPORT.md"));
-const findings = require("./findings.js");
-const report = JSON.parse(fs.readFileSync(RESULTS, "utf8"));
-
-const FEATURES = {
-  F01: ["Landing Page", "Publik"], F02: ["Halaman Informasi Publik (About/Privacy/Terms/Compliance)", "Publik"],
-  F03: ["Login Email & Password", "Semua"], F04: ["Login Google (OAuth)", "Semua"], F05: ["Pemilihan Role", "Tamu"],
-  F06: ["Registrasi (Signup)", "Tamu"], F07: ["Verifikasi OTP Email", "Tamu"], F08: ["Lupa Password", "Semua"],
-  F09: ["Reset Password via Link", "Semua"], F10: ["Buat Password (akun OAuth)", "Semua"], F11: ["OAuth Callback", "Semua"],
-  F12: ["Proteksi Route & Role Guard", "Semua"], F13: ["Dashboard Client", "Client"], F14: ["Katalog Konsultan (Explore)", "Client/Tamu"],
-  F15: ["Detail Konsultan & Booking", "Client"], F16: ["Pembayaran (Midtrans Snap)", "Client"], F17: ["Riwayat Konsultasi Client", "Client"],
-  F18: ["Detail Konsultasi (Zoom & Ulasan)", "Client/Konsultan"], F19: ["Posting Kasus Anonim (Bursa)", "Client"],
-  F20: ["Dashboard Konsultan", "Konsultan"], F21: ["Detail Permintaan Konsultasi (Terima/Tolak/Jadwalkan)", "Konsultan"],
-  F22: ["Daftar Klien Aktif", "Konsultan"], F23: ["Kelola Jadwal Ketersediaan", "Konsultan"], F24: ["Bursa Kasus (Klaim)", "Konsultan"],
-  F25: ["Riwayat Sesi Konsultan", "Konsultan"], F26: ["Tanya AI (Chatbot Hukum RAG)", "Semua"], F27: ["Pengaturan Akun (Tema & Logout)", "Semua"],
-  F28: ["Edit Profil (Client & Konsultan)", "Semua"], F29: ["Keamanan & Ganti Kata Sandi", "Semua"], F30: ["Pengaturan Bahasa", "Semua"],
-  F31: ["Tentang Aplikasi", "Semua"], F32: ["Dashboard Admin", "Admin"], F33: ["Verifikasi Konsultan", "Admin"],
-  F34: ["Knowledge Base Dokumen Hukum", "Admin"], F35: ["Manajemen Sesi & Refresh Token", "Semua"], F36: ["Kontrak & Keamanan API Backend (Live)", "Sistem"],
-};
-
+const sevOrder = D.SEV_ORDER;
+const verLabel = D.VER_LABEL;
 const esc = (s = "") => String(s).replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
-const stripAnsi = (s = "") => s.replace(/\u001b\[[0-9;]*m/g, "");
-const sh = (cmd) => { try { return execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); } catch { return "n/a"; } };
-
-// ─── Kumpulkan hasil per test case (gabung lintas project) ─────────────────
-const cases = new Map();
-const walk = (suite, file) => {
-  const f = suite.file || file;
-  (suite.specs || []).forEach((spec) => {
-    const id = spec.title.split(" ")[0];
-    spec.tests.forEach((t) => {
-      const ann = [...(t.annotations || []), ...((t.results[t.results.length - 1] || {}).annotations || [])];
-      const get = (type) => ann.find((a) => a.type === type)?.description;
-      const r = t.results[t.results.length - 1] || {};
-      if (!cases.has(id)) {
-        cases.set(id, {
-          id, title: spec.title.replace(/^\S+\s/, "").replace(/\s@\S+/g, "").trim(), file: f,
-          feature: get("feature") || "-", category: get("category") || "-", input: get("input") || "-",
-          expected: get("expected") || "-", bug: get("bug"), runs: [],
-        });
-      }
-      const c = cases.get(id);
-      c.bug = c.bug || get("bug");
-      const actualAnn = [...new Set(ann.filter((a) => a.type === "actual").map((a) => a.description))].join("; ");
-      const skipReason = ann.find((a) => a.type === "skip")?.description;
-      c.runs.push({
-        project: t.projectName, status: r.status, expectedStatus: t.expectedStatus, outcome: t.status,
-        duration: r.duration || 0, error: stripAnsi(r.error?.message || ""), actualAnn, skipReason,
-      });
-    });
-  });
-  (suite.suites || []).forEach((s) => walk(s, f));
-};
-report.suites.forEach((s) => walk(s, s.file));
-
-const runLabel = (run) => {
-  if (run.status === "skipped") return "⏭️ SKIP";
-  if (run.outcome === "flaky") return "⚠️ FLAKY";
-  if (run.expectedStatus === "failed" && run.outcome === "expected") return "❌ FAIL (known defect)";
-  if (run.expectedStatus === "failed" && run.outcome === "unexpected") return "⚠️ LULUS (defect diperbaiki?)";
-  if (run.outcome === "unexpected") return "❌ FAIL";
-  return "✅ PASS";
-};
-const caseStatus = (c) => {
-  const labels = c.runs.map(runLabel);
-  if (labels.some((l) => l === "❌ FAIL (known defect)")) return "known";
-  if (labels.some((l) => l === "❌ FAIL" || l.startsWith("⚠️"))) return "fail";
-  if (labels.every((l) => l.startsWith("⏭️"))) return "skip";
-  return "pass";
-};
-const projShort = { "desktop-chromium": "Desktop", "mobile-chromium": "Mobile", "live-api": "Live API" };
-
-function summarizeError(msg) {
-  if (!msg) return "";
-  const lines = msg.split("\n").map((l) => l.trim()).filter(Boolean);
-  const custom = lines[0].startsWith("Error: ") && !/expect\(/.test(lines[0]) ? lines[0].replace(/^Error: /, "") : null;
-  const pick = lines.filter((l) => /^(Expected|Received|Locator)/.test(l)).slice(0, 3).join(" · ");
-  return (custom ? `${custom}${pick ? " · " + pick : ""}` : pick || lines[0]).slice(0, 260);
-}
-
-function actualOutput(c) {
-  const run = c.runs.find((r) => r.expectedStatus === "failed" || r.outcome === "unexpected") || c.runs[0];
-  const label = runLabel(run);
-  const finding = c.bug && findings.find((f) => f.id === c.bug);
-  if (label.startsWith("✅")) return `Sesuai expected${run.actualAnn ? ` — ${run.actualAnn}` : ""}`;
-  if (label.startsWith("⏭️")) return `Tidak dijalankan: ${run.skipReason || "prasyarat tidak terpenuhi"}`;
-  const err = summarizeError(run.error);
-  if (finding) return `${finding.actual}${err ? ` _(assert: ${err})_` : ""}`;
-  return run.actualAnn || err || "Gagal";
-}
-
+const nextVer = env.next, pwVer = env.playwright, reactVer = env.react, tqVer = env.tanstack;
+const pyVer = env.python, fastapiVer = env.fastapi, chromiumDir = env.browser, durMin = env.durationMin;
+const actualOutput = (c) => `${c.actual.text}${c.actual.assert ? ` _(assert: ${c.actual.assert})_` : ""}`;
 const statusCell = (c) => c.runs.map((r) => `${c.runs.length > 1 ? projShort[r.project] + ": " : ""}${runLabel(r)}${r.expectedStatus === "failed" && c.bug ? ` [${c.bug}](#${c.bug.toLowerCase()})` : ""}`).join("<br>");
-
-// ─── Statistik ─────────────────────────────────────────────────────────────
-const all = [...cases.values()];
-const runs = all.flatMap((c) => c.runs);
-const count = (pred) => runs.filter(pred).length;
-const stat = {
-  cases: all.length,
-  runs: runs.length,
-  pass: count((r) => runLabel(r).startsWith("✅")),
-  known: count((r) => runLabel(r) === "❌ FAIL (known defect)"),
-  fail: count((r) => runLabel(r) === "❌ FAIL"),
-  fixed: count((r) => runLabel(r).startsWith("⚠️ LULUS")),
-  flaky: count((r) => runLabel(r) === "⚠️ FLAKY"),
-  skip: count((r) => r.status === "skipped"),
-};
-const byProject = {};
-for (const r of runs) {
-  const p = (byProject[r.project] ||= { total: 0, pass: 0, known: 0, fail: 0, skip: 0, dur: 0 });
-  p.total++; p.dur += r.duration;
-  const l = runLabel(r);
-  if (l.startsWith("✅")) p.pass++; else if (l === "❌ FAIL (known defect)") p.known++; else if (r.status === "skipped") p.skip++; else p.fail++;
-}
-const sevOrder = ["Critical", "High", "Medium", "Low"];
-const sevCount = Object.fromEntries(sevOrder.map((s) => [s, findings.filter((f) => f.severity === s).length]));
-const catCount = all.reduce((m, c) => ((m[c.category] = (m[c.category] || 0) + 1), m), {});
-
-// ─── Environment ───────────────────────────────────────────────────────────
-const pkg = require(path.join(ROOT, "package.json"));
-const nextVer = require(path.join(ROOT, "node_modules/next/package.json")).version;
-const pwVer = report.config?.version || require(path.join(ROOT, "node_modules/@playwright/test/package.json")).version;
-const reactVer = require(path.join(ROOT, "node_modules/react/package.json")).version;
-const tqVer = require(path.join(ROOT, "node_modules/@tanstack/react-query/package.json")).version;
-const pyVer = sh("python --version");
-const fastapiVer = sh('python -c "import fastapi;print(fastapi.__version__)"');
-const chromiumDir = (() => { try { const b = require(path.join(ROOT, "node_modules/playwright-core/browsers.json")).browsers.find((x) => x.name === "chromium-headless-shell" || x.name === "chromium"); return `Chromium ${b.browserVersion} (headless shell, revisi ${b.revision})`; } catch { return "Chromium"; } })();
-const started = new Date(report.stats?.startTime || Date.now());
-const durMin = ((report.stats?.duration || 0) / 60000).toFixed(1);
-const fmtDate = (d) => d.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" }) + " WIB";
 
 // ─── Susun Markdown ────────────────────────────────────────────────────────
 const L = [];
@@ -156,7 +33,7 @@ p(`# Laporan E2E & Regression Testing — LangkahLegal`, "");
 p(`| | |`, `|---|---|`,
   `| **Aplikasi** | LangkahLegal — platform konsultasi hukum (Next.js ${nextVer} + FastAPI + Supabase) |`,
   `| **Jenis pengujian** | End-to-End (UI) · Regression · Edge case · Negative · Security · Accessibility · Live API |`,
-  `| **Tanggal eksekusi** | ${fmtDate(started)} |`,
+  `| **Tanggal eksekusi** | ${env.startedText} |`,
   `| **Durasi eksekusi** | ${durMin} menit (${stat.runs} eksekusi test) |`,
   `| **Tool** | Playwright ${pwVer} (Chromium) |`,
   `| **Status akhir** | ${stat.fail === 0 ? "Suite regression hijau — semua kegagalan adalah defect yang sudah tercatat" : `${stat.fail} kegagalan baru perlu ditinjau`} |`, "");
@@ -165,11 +42,11 @@ p(`## 1. Ringkasan Eksekutif`, "");
 p(`Seluruh fitur aplikasi (${Object.keys(FEATURES).length} fitur, 3 role + publik) diuji melalui **${stat.cases} test case** ` +
   `yang dieksekusi **${stat.runs} kali** pada 3 project (Desktop Chromium, Mobile Chromium/Pixel 7, Live API).`, "");
 p(`| Metrik | Jumlah |`, `|---|---:|`,
-  `| Test case unik | ${stat.cases} (✅ ${all.filter((c) => caseStatus(c) === "pass").length} lulus · ❌ ${all.filter((c) => caseStatus(c) === "known").length} known defect · ⏭️ ${all.filter((c) => caseStatus(c) === "skip").length} skip) |`, `| Total eksekusi (desktop + mobile + live) | ${stat.runs} |`,
+  `| Test case unik | ${stat.cases} (✅ ${stat.casePass} lulus · ❌ ${stat.caseKnown} known defect · ⏭️ ${stat.caseSkip} skip) |`, `| Total eksekusi (desktop + mobile + live) | ${stat.runs} |`,
   `| ✅ Lulus | ${stat.pass} |`, `| ❌ Gagal — defect terkonfirmasi (known defect) | ${stat.known} |`,
   `| ❌ Gagal — tidak terduga | ${stat.fail} |`, `| ⚠️ Flaky | ${stat.flaky} |`, `| ⚠️ Defect tampak sudah diperbaiki | ${stat.fixed} |`,
   `| ⏭️ Dilewati (butuh kredensial akun uji) | ${stat.skip} |`,
-  `| **Pass rate eksekusi (tanpa skip)** | **${((stat.pass / (stat.runs - stat.skip)) * 100).toFixed(1)}%** — seluruh kegagalan adalah defect aplikasi yang terdokumentasi di Bagian 6 |`, "");
+  `| **Pass rate eksekusi (tanpa skip)** | **${stat.passRate.toFixed(1)}%** — seluruh kegagalan adalah defect aplikasi yang terdokumentasi di Bagian 6 |`, "");
 p(`**Temuan:** ${findings.length} defect — ` + sevOrder.map((s) => `**${sevCount[s]} ${s}**`).join(", ") + ".", "");
 p(`Temuan paling kritis:`, "");
 findings.filter((f) => ["Critical", "High"].includes(f.severity)).forEach((f) => p(`- **[${f.id}](#${f.id.toLowerCase()}) (${f.severity})** — ${f.title}.`));
@@ -178,21 +55,18 @@ p("");
 p(`## 2. Lingkup & Daftar Fitur`, "");
 p(`Status dihitung per test case (gabungan semua project): sebuah TC dihitung "Known defect" bila gagal sesuai temuan di salah satu project, "Skip" bila tidak dijalankan di project mana pun.`, "");
 p(`| Kode | Fitur | Role | Jumlah TC | ✅ Lulus | ❌ Known defect | ⏭️ Skip |`, `|---|---|---|---:|---:|---:|---:|`);
-const tot = { tc: 0, pass: 0, known: 0, skip: 0, fail: 0 };
-for (const [code, [name, role]] of Object.entries(FEATURES)) {
-  const cs = all.filter((c) => c.feature.startsWith(code + " ") || c.feature.includes(code + "/") || c.feature === code);
-  const st = cs.map(caseStatus);
-  const n = (k) => st.filter((x) => x === k).length;
-  tot.tc += cs.length; tot.pass += n("pass"); tot.known += n("known"); tot.skip += n("skip"); tot.fail += n("fail");
-  p(`| ${code} | ${name} | ${role} | ${cs.length} | ${n("pass")} | ${n("known")} | ${n("skip")} |`);
+const tot = { tc: 0, pass: 0, known: 0, skip: 0 };
+for (const f of features) {
+  tot.tc += f.total; tot.pass += f.pass; tot.known += f.known; tot.skip += f.skip;
+  p(`| ${f.code} | ${f.name} | ${f.role} | ${f.total} | ${f.pass} | ${f.known} | ${f.skip} |`);
 }
 p(`| **Total** | | | **${tot.tc}** | **${tot.pass}** | **${tot.known}** | **${tot.skip}** |`);
 p("", `Distribusi kategori test case: ` + Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ") + ".", "");
 
 p(`## 3. Test Environment`, "");
 p(`| Komponen | Detail |`, `|---|---|`,
-  `| Sistem operasi | ${os.type()} ${os.release()} (${os.arch()}), ${os.cpus().length} CPU, RAM ${(os.totalmem() / 1024 ** 3).toFixed(1)} GB |`,
-  `| Node.js | ${process.version} |`,
+  `| Sistem operasi | ${env.os} |`,
+  `| Node.js | ${env.node} |`,
   `| Frontend | Next.js ${nextVer} (build produksi \`next build\` + \`next start\` port 3100), React ${reactVer}, TanStack Query ${tqVer} |`,
   `| Backend (live API) | ${pyVer}, FastAPI ${fastapiVer}, Uvicorn — \`http://127.0.0.1:8000\`, APP_ENV=development, Supabase project development |`,
   `| Test runner | @playwright/test ${pwVer} |`,
@@ -223,12 +97,11 @@ p("");
 
 p(`## 6. Findings (Temuan Defect)`, "");
 p(`| ID | Severity | Komponen | Fitur | Judul | Verifikasi | Test terkait |`, `|---|---|---|---|---|---|---|`);
-const verLabel = { "UI-E2E": "Test UI E2E", "LIVE-API": "Live API", CODE: "Code review" };
-for (const f of [...findings].sort((a, b) => sevOrder.indexOf(a.severity) - sevOrder.indexOf(b.severity) || a.id.localeCompare(b.id))) {
+for (const f of findings) {
   p(`| [${f.id}](#${f.id.toLowerCase()}) | ${f.severity} | ${f.component} | ${esc(f.feature)} | ${esc(f.title)} | ${verLabel[f.verification]} | ${f.tests.join(", ") || "—"} |`);
 }
 p("");
-for (const f of [...findings].sort((a, b) => sevOrder.indexOf(a.severity) - sevOrder.indexOf(b.severity) || a.id.localeCompare(b.id))) {
+for (const f of findings) {
   p(`### ${f.id}`, "", `**${f.title}**`, "");
   p(`| Atribut | Detail |`, `|---|---|`,
     `| Severity | **${f.severity}** |`, `| Komponen | ${f.component} |`, `| Fitur | ${esc(f.feature)} |`,
@@ -244,11 +117,10 @@ p(`Kolom **Status** menampilkan hasil per project bila test dijalankan di lebih 
   `"FAIL (known defect)" berarti test gagal **sesuai temuan** yang tercatat di Bagian 6.`, "");
 const groups = {};
 for (const c of all) (groups[c.feature] ||= []).push(c);
-const featureKey = (f) => { const m = f.match(/F(\d+)/); return m ? Number(m[1]) : 999; };
-for (const feat of Object.keys(groups).sort((a, b) => featureKey(a) - featureKey(b) || a.localeCompare(b))) {
+for (const feat of Object.keys(groups)) {
   p(`### ${feat}`, "");
   p(`| ID | Skenario | Tipe | Input | Expected Output | Actual Output | Status |`, `|---|---|---|---|---|---|---|`);
-  for (const c of groups[feat].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))) {
+  for (const c of groups[feat]) {
     p(`| <a id="tc-${c.id.toLowerCase()}"></a>${c.id} | ${esc(c.title)} | ${esc(c.category)} | ${esc(c.input)} | ${esc(c.expected)} | ${esc(actualOutput(c))} | ${statusCell(c)} |`);
   }
   p("");
@@ -280,7 +152,7 @@ p(`## 10. Cara Menjalankan Ulang`, "", "```bash",
   "npm run test:regression:html       # laporan HTML Playwright (trace & screenshot)",
   "# E2E_STRICT=1 → nonaktifkan penanda known defect (lihat kegagalan apa adanya)",
   "```", "");
-p(`Artefak: \`frontend/tests/e2e/results/regression-html/\` (HTML report + trace/screenshot kegagalan), \`frontend/tests/e2e/results/regression-results.json\`.`, "");
+p(`Artefak: \`E2E_REGRESSION_REPORT.html\` (versi interaktif laporan ini), \`frontend/tests/e2e/results/regression-html/\` (HTML report Playwright + trace/screenshot kegagalan), \`frontend/tests/e2e/results/regression-results.json\`.`, "");
 p(`---`, `_Laporan dibuat otomatis oleh \`tests/e2e/regression/support/generate-report.js\` dari hasil eksekusi Playwright._`);
 
 fs.writeFileSync(OUT, L.join("\n"), "utf8");
