@@ -97,7 +97,7 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
             raise ForbiddenError("Anda tidak diizinkan mengubah pengajuan orang lain")
 
     elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, user_id)
+        id_kons = get_konsultan_id(db, current_user)
         if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
             raise ForbiddenError("Akses ditolak: Pengajuan ini bukan milik Anda")
 
@@ -128,7 +128,7 @@ def list_my_consultations(db: Client, current_user: CurrentUser) -> dict:
     if current_user.role == Role.CLIENT:
         id_user = current_user.id_user
     elif current_user.role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user.id_user)
+        id_kons = get_konsultan_id(db, current_user)
 
     return {"data": consultation_repository.list_with_relations(db, id_user=id_user, id_konsultan=id_kons)}
 
@@ -162,7 +162,7 @@ def _detail_scope(db: Client, current_user: CurrentUser) -> tuple[int | None, in
         return current_user.id_user, None
 
     if current_user.role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user.id_user)
+        id_kons = get_konsultan_id(db, current_user)
         if id_kons is not None:
             return None, id_kons
 
@@ -257,7 +257,7 @@ def _get_available_schedule_of(db: Client, id_jadwal: int, id_konsultan: int) ->
 def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, request: AssignSchedule) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    real_id_konsultan = require_konsultan_id(db, current_user.id_user)
+    real_id_konsultan = require_konsultan_id(db, current_user)
 
     data_pengajuan = _get_pending_consultation_of(db, id_pengajuan, real_id_konsultan)
     data_jadwal = _get_available_schedule_of(db, request.id_jadwal, real_id_konsultan)
@@ -292,7 +292,7 @@ def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, re
 def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, link_zoom: str) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur link Zoom")
 
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     pengajuan = consultation_repository.get_for_konsultan(db, id_pengajuan, id_kons)
 
@@ -362,7 +362,7 @@ def list_documents(db: Client, current_user: CurrentUser, id_pengajuan: int) -> 
         if data_pengajuan["id_user"] != user_id:
             raise ForbiddenError("Akses ditolak")
     elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, user_id)
+        id_kons = get_konsultan_id(db, current_user)
         if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
             raise ForbiddenError("Akses ditolak")
     else:

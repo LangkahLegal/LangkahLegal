@@ -88,7 +88,7 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
 
 
 def get_my_schedules(db: Client, current_user: CurrentUser) -> list:
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     formatted = []
     for item in schedule_repository.list_with_clients(db, id_kons):
@@ -101,7 +101,7 @@ def get_my_schedules(db: Client, current_user: CurrentUser) -> list:
 def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     pengajuan_with_tx = consultation_repository.list_income_rows(db, id_kons)
 
@@ -134,7 +134,7 @@ def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
 def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     return consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING])
 
@@ -142,7 +142,7 @@ def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
 def get_active_requests(db: Client, current_user: CurrentUser) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     return consultation_repository.list_requests_for_konsultan(
         db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
@@ -211,7 +211,7 @@ def _format_history_item(req: dict) -> dict:
 def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    id_kons = require_konsultan_id(db, current_user.id_user, "Profil tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user, "Profil tidak ditemukan")
 
     rows = consultation_repository.list_with_client_and_date(db, id_kons, [StatusPengajuan.TERJADWAL])
 
@@ -224,7 +224,7 @@ def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
 def get_history(db: Client, current_user: CurrentUser) -> dict:
     require_role(current_user, Role.KONSULTAN, "Akses ditolak")
 
-    id_kons = require_konsultan_id(db, current_user.id_user, "Profil tidak ditemukan")
+    id_kons = require_konsultan_id(db, current_user, "Profil tidak ditemukan")
 
     rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
@@ -239,7 +239,7 @@ def get_history(db: Client, current_user: CurrentUser) -> dict:
 def create_schedule(db: Client, current_user: CurrentUser, request: ScheduleCreate) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
 
-    id_kons = require_konsultan_id(db, current_user.id_user)
+    id_kons = require_konsultan_id(db, current_user)
 
     created = schedule_repository.insert(
         db,

@@ -6,8 +6,8 @@ def test_admin_stats_forbidden(app_client):
 
 def test_admin_stats_success_view(app_client):
     table_responses = {
-        "users": [[{"role": "client"}, {"role": "konsultan"}]],
-        "konsultan": [[{"status_verifikasi": "pending"}, {"status_verifikasi": "terverifikasi"}]],
+        "users": [([], 2), ([], 1)],
+        "konsultan": [([], 2), ([], 1)],
         "admin_transaction_stats": [[{"total_transactions": 2, "total_revenue": 5000, "total_commission": 500}]],
     }
     client, _ = app_client(
@@ -20,14 +20,16 @@ def test_admin_stats_success_view(app_client):
     assert response.status_code == 200
     body = response.json()
     assert body["total_users"] == 2
+    assert body["total_clients"] == 1
     assert body["total_consultants"] == 2
+    assert body["pending_verification"] == 1
     assert body["total_transactions"] == 2
 
 
 def test_admin_stats_fallback(app_client):
     table_responses = {
-        "users": [[{"role": "client"}]],
-        "konsultan": [[{"status_verifikasi": "pending"}]],
+        "users": [([], 1), ([], 1)],
+        "konsultan": [([], 1), ([], 1)],
         "admin_transaction_stats": [[]],
         "transaksi": [[{"gross_amount": 1000, "komisi_platform": 100}]],
     }

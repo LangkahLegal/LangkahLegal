@@ -165,3 +165,17 @@ def test_logout_unauthorized(app_client):
     client, _ = app_client()
     response = client.post("/api/v1/auth/logout")
     assert response.status_code == 401
+
+
+def test_current_user_carries_konsultan_id(app_client):
+    auth_user = SimpleNamespace(id="auth-7", email="kons@example.com", user_metadata={})
+    table_responses = {
+        "users": [[{"id_user": 3, "role": "konsultan", "nama": "Kons", "konsultan": {"id_konsultan": 7}}]],
+        "pengajuan_konsultasi": [[]],
+    }
+    client, supabase = app_client(table_responses=table_responses, auth_user=auth_user)
+
+    response = client.get("/api/v1/consultants/me/requests/pending", headers={"Authorization": "Bearer token"})
+
+    assert response.status_code == 200
+    assert "konsultan" not in supabase._table_queues

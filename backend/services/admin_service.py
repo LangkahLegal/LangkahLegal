@@ -47,13 +47,10 @@ def _transaction_totals(db: Client) -> tuple[int, float, float]:
 def get_admin_stats(db: Client, user: CurrentUser) -> dict:
     require_admin(user)
 
-    all_users = user_repository.list_roles(db) or []
-    total_users = len(all_users)
-    total_clients = sum(1 for u in all_users if u.get("role") == Role.CLIENT)
-
-    all_konsultan = consultant_repository.list_verification_statuses(db) or []
-    total_konsultan = len(all_konsultan)
-    pending_verification = sum(1 for k in all_konsultan if k.get("status_verifikasi") == StatusVerifikasi.PENDING)
+    total_users = user_repository.count(db)
+    total_clients = user_repository.count(db, role=Role.CLIENT)
+    total_konsultan = consultant_repository.count(db)
+    pending_verification = consultant_repository.count(db, status_verifikasi=StatusVerifikasi.PENDING)
 
     total_transactions, total_revenue, total_commission = _transaction_totals(db)
 

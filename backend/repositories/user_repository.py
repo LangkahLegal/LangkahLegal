@@ -15,8 +15,11 @@ def list_by_email(db: Client, email: str, columns: str = "*") -> list[dict]:
     return db.table(TABLE).select(columns).eq("email", email).execute().data
 
 
-def list_roles(db: Client) -> list[dict]:
-    return db.table(TABLE).select("id_user, role").execute().data
+def count(db: Client, role: str | None = None) -> int:
+    query = db.table(TABLE).select("id_user", count="exact")
+    if role:
+        query = query.eq("role", role)
+    return query.limit(1).execute().count or 0
 
 
 def insert(db: Client, data: dict) -> list[dict]:

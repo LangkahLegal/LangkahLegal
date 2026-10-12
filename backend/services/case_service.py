@@ -102,7 +102,7 @@ def claim_case(db: Client, current_user: CurrentUser, id_bursa: int) -> dict:
 
     real_id_konsultan = require_konsultan_id(
         db,
-        current_user.id_user,
+        current_user,
         "Profil konsultan tidak ditemukan. Pastikan Anda sudah terdaftar sebagai konsultan.",
     )
 

@@ -281,7 +281,7 @@ def get_payment_status(db: Client, current_user: CurrentUser, id_pengajuan: int)
     if user_role == Role.CLIENT and pengajuan["id_user"] != user_id:
         raise ForbiddenError("Akses ditolak")
     elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, user_id)
+        id_kons = get_konsultan_id(db, current_user)
         if id_kons is None or id_kons != pengajuan["id_konsultan"]:
             raise ForbiddenError("Akses ditolak")
 

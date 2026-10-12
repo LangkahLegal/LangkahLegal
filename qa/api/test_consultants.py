@@ -266,3 +266,19 @@ def test_pending_requests_success(app_client):
 
     assert response.status_code == 200
     assert response.json()[0]["id_pengajuan"] == 1
+
+
+def test_konsultan_id_from_session_skips_profile_lookup(app_client):
+    table_responses = {
+        "pengajuan_konsultasi": [[{"id_pengajuan": 1}]],
+    }
+    client, supabase = app_client(
+        table_responses=table_responses,
+        current_user={"id_user": 3, "role": "konsultan", "id_konsultan": 7},
+    )
+
+    response = client.get("/api/v1/consultants/me/requests/pending")
+
+    assert response.status_code == 200
+    assert response.json() == [{"id_pengajuan": 1}]
+    assert "konsultan" not in supabase._table_queues

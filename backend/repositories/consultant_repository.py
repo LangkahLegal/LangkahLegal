@@ -45,8 +45,11 @@ def list_active_catalog(db: Client, spesialisasi: Optional[str] = None) -> list[
     return query.execute().data
 
 
-def list_verification_statuses(db: Client) -> list[dict]:
-    return db.table(TABLE).select("id_konsultan, status_verifikasi").execute().data
+def count(db: Client, status_verifikasi: str | None = None) -> int:
+    query = db.table(TABLE).select("id_konsultan", count="exact")
+    if status_verifikasi:
+        query = query.eq("status_verifikasi", status_verifikasi)
+    return query.limit(1).execute().count or 0
 
 
 def list_for_admin(
