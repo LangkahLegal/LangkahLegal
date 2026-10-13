@@ -10,7 +10,7 @@ from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
-from helpers.schedule import ensure_valid_slot, is_past, now_wib
+from helpers.schedule import ensure_valid_slot, generate_available_slots, is_past, now_wib
 from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
     ConsultantActiveToggle,
@@ -105,6 +105,78 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
         }
     except Exception as e:
         raise InternalError(f"Gagal mengambil jadwal: {str(e)}")
+
+
+ACTIVE_BOOKING_STATUSES = [
+    StatusPengajuan.TERJADWAL,
+    StatusPengajuan.PENDING,
+    StatusPengajuan.MENUNGGU_PEMBAYARAN,
+]
+
+
+def get_available_slots(
+    db: Client,
+    id_konsultan: int,
+    tanggal: str,
+    durasi: int = 30,
+) -> dict:
+    """Kembalikan daftar slot waktu tersedia untuk konsultan pada tanggal & durasi tertentu.
+
+    Args:
+        db: Supabase client.
+        id_konsultan: ID konsultan.
+        tanggal: Tanggal format YYYY-MM-DD.
+        durasi: Durasi konsultasi dalam menit (kelipatan 30, 30–240).
+
+    Returns:
+        Dict dengan key `tanggal`, `durasi`, dan `slots` (list slot).
+    """
+    # 1. Cari jadwal konsultan untuk tanggal tersebut
+    jadwal_rows = (
+        db.table("jadwal_ketersediaan")
+        .select("id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia")
+        .eq("id_konsultan", id_konsultan)
+        .eq("tanggal", tanggal)
+        .eq("status_tersedia", True)
+        .limit(1)
+        .execute()
+        .data
+    )
+
+    if not jadwal_rows:
+        return {
+            "message": "Tidak ada jadwal tersedia pada tanggal ini",
+            "tanggal": tanggal,
+            "durasi": durasi,
+            "slots": [],
+        }
+
+    day_schedule = jadwal_rows[0]
+
+    # 2. Ambil booking aktif konsultan untuk tanggal tersebut
+    booked_sessions = consultation_repository.list_booked_slots(
+        db, id_konsultan, ACTIVE_BOOKING_STATUSES
+    )
+    # Filter hanya tanggal yang relevan (list_booked_slots sudah filter by id_konsultan)
+    booked_for_date = [
+        b for b in booked_sessions
+        if str(b.get("tanggal_pengajuan", "")).split("T")[0] == tanggal
+    ]
+
+    # 3. Generate slot pills
+    slots = generate_available_slots(
+        day_schedule=day_schedule,
+        booked_sessions=booked_for_date,
+        duration_minutes=durasi,
+    )
+
+    return {
+        "message": "Slot tersedia berhasil dimuat",
+        "tanggal": tanggal,
+        "durasi": durasi,
+        "id_jadwal": day_schedule.get("id_jadwal"),
+        "slots": slots,
+    }
 
 
 def get_my_schedules(db: Client, current_user: CurrentUser) -> list:

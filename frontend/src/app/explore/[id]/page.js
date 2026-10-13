@@ -74,6 +74,14 @@ export default function ConsultantDetailPage() {
     }));
   }, [files]);
 
+  const selectedDurationMinutes = useMemo(() => {
+    if (!startTime || !endTime) return 30;
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const diff = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+    return diff > 0 ? diff : 30;
+  }, [startTime, endTime]);
+
   // --- 2. MUTATION ---
   const bookingMutation = useMutation({
     mutationFn: ({ payload, files }) =>
@@ -188,6 +196,7 @@ export default function ConsultantDetailPage() {
 
             <PriceCard
               price={consultant?.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
+              durationMinutes={selectedDurationMinutes}
             />
 
             <AboutSection
@@ -196,6 +205,7 @@ export default function ConsultantDetailPage() {
             />
 
             <SchedulePicker
+              consultantId={parseInt(id)}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               startTime={startTime}

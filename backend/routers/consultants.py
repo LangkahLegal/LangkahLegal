@@ -80,6 +80,16 @@ def get_active_requests(
     return consultant_service.get_active_requests(db, current_user)
 
 
+@router.get("/{id_konsultan}/available-slots", status_code=status.HTTP_200_OK, **docs.GET_AVAILABLE_SLOTS)
+def get_available_slots(
+    id_konsultan: int,
+    tanggal: str = Query(..., description="Tanggal format YYYY-MM-DD"),
+    durasi: int = Query(30, ge=30, le=240, description="Durasi konsultasi dalam menit (kelipatan 30)"),
+    db: Client = Depends(get_supabase_client),
+):
+    return consultant_service.get_available_slots(db, id_konsultan, tanggal, durasi)
+
+
 @router.get("/{id_konsultan}", status_code=status.HTTP_200_OK, **docs.GET_CONSULTANT_DETAIL)
 def get_consultant_detail(id_konsultan: int, db: Client = Depends(get_supabase_client)):
     return consultant_service.get_consultant_detail(db, id_konsultan)

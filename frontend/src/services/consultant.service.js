@@ -62,4 +62,12 @@ export const consultantService = {
       throw error;
     }
   },
+
+  // Ambil slot waktu tersedia dari backend untuk tanggal & durasi tertentu.
+  getAvailableSlots: async (idKonsultan, tanggal, durasi = 30) => {
+    const response = await api.get(`/consultants/${idKonsultan}/available-slots`, {
+      params: { tanggal, durasi },
+    });
+    return response.data;
+  },
 };

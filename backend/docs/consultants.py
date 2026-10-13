@@ -93,3 +93,11 @@ GET_NEXT_SESSION = {
     "summary": "Sesi terjadwal terdekat untuk konsultan",
     "description": "Mengembalikan satu sesi berstatus `terjadwal` yang paling dekat dan belum lewat (waktu WIB), atau `null`.",
 }
+
+GET_AVAILABLE_SLOTS = {
+    "summary": "Slot waktu tersedia per konsultan per tanggal & durasi",
+    "description": """\
+Menghasilkan daftar slot waktu 30-menit yang bisa dipesan klien pada tanggal tertentu,
+disesuaikan dengan durasi konsultasi yang dipilih.
+""",
+}

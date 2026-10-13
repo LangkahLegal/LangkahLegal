@@ -97,3 +97,73 @@ def find_conflict(tanggal, jam_mulai, jam_selesai, bookings: list[dict]) -> tupl
             return str(start)[:5], str(end)[:5]
 
     return None
+
+
+def generate_available_slots(
+    day_schedule: dict,
+    booked_sessions: list[dict],
+    duration_minutes: int = 30,
+    now: datetime | None = None,
+) -> list[dict]:
+    """Hasilkan daftar slot waktu untuk satu hari berdasarkan jadwal konsultan.
+
+    Args:
+        day_schedule: Dict jadwal dari tabel jadwal_ketersediaan (jam_mulai, jam_selesai, tanggal).
+        booked_sessions: List booking aktif konsultan pada tanggal tersebut (jam_mulai, jam_selesai).
+        duration_minutes: Durasi konsultasi yang diminta (kelipatan 30, default 30).
+        now: Waktu sekarang dalam WIB (opsional, diambil otomatis jika None).
+
+    Returns:
+        List dict: [{ "start": "HH:MM", "end": "HH:MM", "label": "HH:MM - HH:MM", "status": "available"|"booked"|"disabled" }]
+    """
+    _now = now or now_wib()
+    tanggal = str(day_schedule.get("tanggal", "")).split("T")[0]
+
+    try:
+        open_min = _to_minutes(str(day_schedule.get("jam_mulai", "00:00"))[:5])
+        close_min = _to_minutes(str(day_schedule.get("jam_selesai", "23:59"))[:5])
+    except (ValueError, IndexError):
+        return []
+
+    # Precompute booked intervals untuk tanggal ini
+    booked_intervals: list[tuple[int, int]] = []
+    for b in booked_sessions:
+        b_date = str(b.get("tanggal_pengajuan", "")).split("T")[0]
+        if b_date != tanggal:
+            continue
+        try:
+            b_start = _to_minutes(str(b.get("jam_mulai", ""))[:5])
+            b_end = _to_minutes(str(b.get("jam_selesai", ""))[:5])
+            booked_intervals.append((b_start, b_end))
+        except (ValueError, IndexError):
+            continue
+
+    # Tentukan menit sekarang jika tanggal hari ini
+    today_str = _now.strftime("%Y-%m-%d")
+    is_today = tanggal == today_str
+    current_min = _now.hour * 60 + _now.minute if is_today else -1
+
+    slots = []
+    step = SESSION_MINUTES  # 30 menit
+    m = open_min
+    while m <= close_min - duration_minutes:
+        end_m = m + duration_minutes
+        start_str = f"{m // 60:02d}:{m % 60:02d}"
+        end_str = f"{end_m // 60:02d}:{end_m % 60:02d}"
+
+        if is_today and m <= current_min:
+            status = "disabled"
+        elif any(max(m, bs) < min(end_m, be) for bs, be in booked_intervals):
+            status = "booked"
+        else:
+            status = "available"
+
+        slots.append({
+            "start": start_str,
+            "end": end_str,
+            "label": f"{start_str} - {end_str}",
+            "status": status,
+        })
+        m += step
+
+    return slots
