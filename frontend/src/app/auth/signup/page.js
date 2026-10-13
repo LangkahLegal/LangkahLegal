@@ -10,6 +10,7 @@ import SignupHeader from "@/components/auth/signup/SignupHeader";
 import SignupForm from "@/components/auth/signup/SignupForm";
 import SocialSignup from "@/components/auth/signup/SocialSignup";
 import SignupFooter from "@/components/auth/signup/SignupFooter";
+import AuthBrand from "@/components/auth/AuthBrand";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordRules";
 
 export default function SignupPage() {
@@ -90,8 +91,9 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-12 bg-bg text-main overflow-x-hidden transition-colors duration-500">
-      <main className="relative z-10 w-full max-w-[400px] mx-auto my-auto">
+    <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-12 md:pt-24 bg-bg text-main overflow-x-hidden transition-colors duration-500">
+      <AuthBrand />
+      <main className="relative z-10 w-full max-w-[400px] mx-auto">
         <SignupHeader
           title={headerContent.title}
           subtitle={headerContent.subtitle}

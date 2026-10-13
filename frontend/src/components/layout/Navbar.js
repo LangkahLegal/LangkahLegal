@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const navbarRef = useRef(null);
   const [session, setSession] = useState({ isLoggedIn: false, role: null });
   const [activeSection, setActiveSection] = useState("hero");
 
@@ -79,7 +80,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-xl border-b border-surface transition-colors duration-500">
+    <nav ref={navbarRef} className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-xl border-b border-surface transition-colors duration-500">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 max-w-7xl mx-auto w-full">
         <div className="flex-1 flex justify-start">
           <Link href="/" className="flex items-center gap-3 group">
@@ -110,7 +111,16 @@ export default function Navbar() {
                     e.preventDefault();
                     const el = document.getElementById(link.sectionId);
                     if (el) {
-                      el.scrollIntoView({ behavior: "smooth" });
+                      if (link.sectionId === "about") {
+                        const headerHeight = navbarRef.current?.getBoundingClientRect().height || 0;
+                        const sectionTop = window.scrollY + el.getBoundingClientRect().top;
+                        window.scrollTo({
+                          top: Math.max(0, sectionTop - headerHeight),
+                          behavior: "smooth",
+                        });
+                      } else {
+                        el.scrollIntoView({ behavior: "smooth" });
+                      }
                       setActiveSection(link.sectionId);
                     }
                   }

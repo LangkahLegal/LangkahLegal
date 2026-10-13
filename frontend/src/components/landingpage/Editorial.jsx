@@ -62,7 +62,7 @@ const itemVariants = {
 
 export default function Editorial() {
   return (
-    <section id="about" className="relative w-full z-10 bg-bg overflow-hidden">
+    <section id="about" className="relative w-full z-10 bg-bg overflow-hidden scroll-mt-[calc(4.5rem+1px)] md:scroll-mt-[calc(5rem+1px)]">
       <div className="flex flex-col md:flex-row items-stretch w-full">
         {/* KOLOM KIRI */}
         <motion.div
