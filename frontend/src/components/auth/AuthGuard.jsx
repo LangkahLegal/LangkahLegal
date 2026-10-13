@@ -7,6 +7,7 @@ import {
   getStoredRefreshToken,
   getStoredRole,
 } from "@/lib/authStorage";
+import { useClientValue } from "@/lib/useClientValue";
 
 const ROLE_HOME = {
   admin: "/dashboard/admin",
@@ -14,6 +15,21 @@ const ROLE_HOME = {
   consultant: "/dashboard/consultant",
   client: "/dashboard/client",
 };
+
+// Halaman yang hanya boleh dibuka peran tertentu. Aturan paling spesifik ditulis lebih dulu.
+// `exact` berarti hanya alamat itu sendiri, bukan sub-halamannya.
+const ROUTE_ROLES = [
+  { path: "/bursa/post", roles: ["client"] },
+  { path: "/bursa", roles: ["konsultan"] },
+  { path: "/schedule", roles: ["konsultan"] },
+  { path: "/request", roles: ["konsultan"] },
+  { path: "/consultation", roles: ["konsultan"], exact: true },
+  { path: "/history/client", roles: ["client"] },
+  { path: "/history/consultant", roles: ["konsultan"] },
+  { path: "/payment", roles: ["client"] },
+  { path: "/verification", roles: ["admin"] },
+  { path: "/knowledge", roles: ["admin"] },
+];
 
 const normalizeRole = (role) => {
   if (!role) return null;
@@ -25,37 +41,40 @@ const normalizeRole = (role) => {
   return null;
 };
 
-const readSessionSnapshot = () => {
-  if (typeof window === "undefined") {
-    return {
-      hasSession: false,
-      role: null,
-      isReady: false,
-    };
-  }
-
-  const accessToken = getStoredAccessToken();
-  const refreshToken = getStoredRefreshToken();
-  const storedRole = normalizeRole(getStoredRole());
-
-  return {
-    hasSession: Boolean(accessToken || refreshToken),
-    role: storedRole,
-    isReady: true,
-  };
+const allowedRolesFor = (pathname) => {
+  const rule = ROUTE_ROLES.find(({ path, exact }) =>
+    exact
+      ? pathname === path
+      : pathname === path || pathname.startsWith(`${path}/`),
+  );
+  return rule ? rule.roles : null;
 };
+
+const readHasSession = () =>
+  Boolean(getStoredAccessToken() || getStoredRefreshToken());
+
+const readRole = () => normalizeRole(getStoredRole());
+
+const readIsReady = () => true;
 
 export default function AuthGuard({
   children,
   requireAuth = true,
   requireRole = false,
   redirectToRoleHome = false,
+  guestOnlyPaths = [],
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const sessionSnapshot = useMemo(() => readSessionSnapshot(), []);
+  // Sesi hanya ada di browser; server selalu merender keadaan "belum siap".
+  const isReady = useClientValue(readIsReady, false);
+  const hasSession = useClientValue(readHasSession, false);
+  const role = useClientValue(readRole, null);
 
-  const { hasSession, role, isReady } = sessionSnapshot;
+  const allowedRoles = allowedRolesFor(pathname);
+  const isWrongRole = Boolean(role && allowedRoles && !allowedRoles.includes(role));
+  const isGuestOnly = Boolean(role && guestOnlyPaths.includes(pathname));
+  const mustLeave = hasSession && (isWrongRole || isGuestOnly);
 
   useEffect(() => {
     if (!isReady) return;
@@ -63,6 +82,11 @@ export default function AuthGuard({
     if (!hasSession) {
       if (!requireAuth) return;
       router.replace("/auth/login");
+      return;
+    }
+
+    if (mustLeave) {
+      router.replace(ROLE_HOME[role]);
       return;
     }
 
@@ -80,6 +104,7 @@ export default function AuthGuard({
   }, [
     hasSession,
     isReady,
+    mustLeave,
     requireAuth,
     pathname,
     requireRole,
@@ -89,7 +114,10 @@ export default function AuthGuard({
   ]);
 
   const content = useMemo(() => {
-    if (!isReady || (requireAuth && !hasSession && pathname !== "/auth/role")) {
+    const isWaitingForLogin =
+      requireAuth && !hasSession && pathname !== "/auth/role";
+
+    if (!isReady || isWaitingForLogin || mustLeave) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-bg text-main">
           <div className="flex flex-col items-center gap-3">
@@ -103,7 +131,7 @@ export default function AuthGuard({
     }
 
     return children;
-  }, [children, hasSession, isReady, pathname, requireAuth]);
+  }, [children, hasSession, isReady, mustLeave, pathname, requireAuth]);
 
   return content;
 }

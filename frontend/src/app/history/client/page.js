@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
@@ -14,34 +13,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function HistoryPage() {
   // --- 1. Fetch Data via TanStack Query ---
-  const { data: consultations, isLoading } = useQuery({
+  const { data: history, isLoading } = useQuery({
     queryKey: ["history", "client"],
-    queryFn: consultationService.getConsultations,
+    queryFn: consultationService.getClientHistory,
   });
 
-  // --- 2. Logic Data (Sorting & Stats) ---
-  const { sortedHistory, completedCount } = useMemo(() => {
-    // Pastikan consultations tidak undefined sebelum diproses
-    const data = consultations || [];
-
-    const sorted = [...data].sort((a, b) => {
-      const priority = ["terjadwal", "pending", "menunggu_pembayaran"];
-      const aPriority = priority.indexOf(a.status_pengajuan);
-      const bPriority = priority.indexOf(b.status_pengajuan);
-
-      if (aPriority !== bPriority) {
-        if (aPriority === -1) return 1;
-        if (bPriority === -1) return -1;
-        return aPriority - bPriority;
-      }
-
-      return new Date(b.created_at) - new Date(a.created_at);
-    });
-
-    const count = data.filter((i) => i.status_pengajuan === "selesai").length;
-
-    return { sortedHistory: sorted, completedCount: count };
-  }, [consultations]);
+  // --- 2. Urutan & jumlah sesi selesai dihitung backend (/consultations/history) ---
+  const sortedHistory = history?.data || [];
+  const completedCount = history?.total_sesi_selesai ?? 0;
 
 
   return (

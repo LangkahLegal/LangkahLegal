@@ -10,6 +10,7 @@ import LoginHeader from "@/components/auth/login/LoginHeader";
 import LoginForm from "@/components/auth/login/LoginForm";
 import SocialLogin from "@/components/auth/login/SocialLogin";
 import LoginFooter from "@/components/auth/login/LoginFooter";
+import AuthBrand from "@/components/auth/AuthBrand";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +69,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-8 bg-bg text-main overflow-hidden transition-colors duration-500">
+    <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-center px-6 py-8 md:pt-24 bg-bg text-main overflow-x-hidden transition-colors duration-500">
+      <AuthBrand />
       <main className="relative z-10 w-full max-w-[400px] mx-auto">
         <LoginHeader />
 

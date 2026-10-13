@@ -1,36 +1,27 @@
-"""
-Document Processing Service
-============================
-
-
-Dipindahkan dari tests/rag_test.py dan tests/scrapper_fast.py
-agar bisa dipakai oleh router admin_docs.
-"""
-
-import os
-import re
 import json
-import time
 import logging
-from pathlib import Path
+import re
+import time
 
-import fitz  # PyMuPDF
+import fitz
 import voyageai
 from google import genai
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
 )
 
-log = logging.getLogger(__name__)
+from helpers.embedding import get_voyage_client
+
+logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
 MIN_CHUNK_LEN = 30
 MAX_CHARS_PER_BATCH = 10_000
-BATCH_DELAY_SECONDS = 21.0  # Voyage free tier: ~3 RPM
+BATCH_DELAY_SECONDS = 21.0
 
 
 OCR_NOISE_PATTERNS = [
@@ -49,7 +40,6 @@ _NOISE_RE = re.compile("|".join(OCR_NOISE_PATTERNS), re.IGNORECASE)
 
 
 def _is_noise_line(line: str) -> bool:
-    """Deteksi apakah baris ini noise (watermark, header, footer, sampah OCR)."""
     s = line.strip()
     if not s:
         return True
@@ -73,7 +63,6 @@ def _is_noise_line(line: str) -> bool:
 
 
 def _normalize_lines(raw: str) -> str:
-    """Bersihkan noise per baris dan gabung ulang."""
     lines = []
     for line in raw.splitlines():
         s = line.strip()
@@ -85,7 +74,6 @@ def _normalize_lines(raw: str) -> str:
 
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
-    """Ekstrak teks dari PDF bytes menggunakan PyMuPDF (fitz)."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     all_parts = []
 
@@ -106,14 +94,12 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     full = _normalize_lines("\n\n".join(all_parts))
 
     if len(full.strip()) < 100:
-        log.warning("[DOC_SERVICE] Teks hasil ekstraksi sangat sedikit (<100 chars).")
+        logger.warning("[DOC_SERVICE] Teks hasil ekstraksi sangat sedikit (<100 chars).")
 
     return full
 
 
 def clean_ocr_text(raw: str) -> str:
-    """Bersihkan teks OCR dari typo umum dan noise."""
-
     raw = re.sub(r"Pasa[7l]\s*", "Pasal ", raw)
     raw = re.sub(r"(Pasal\s+\d+)\s*[Il]", r"\1 1", raw, flags=re.I)
     raw = re.sub(r"(Pasal\s+\d+)\s*[O]", r"\1 0", raw, flags=re.I)
@@ -135,7 +121,6 @@ def clean_ocr_text(raw: str) -> str:
 
 
 def split_into_chunks(text: str) -> list[dict]:
-    """Pecah teks bersih menjadi chunk per-pasal."""
     pasal_re = re.compile(r"(?m)^Pasal\s+(\d+[a-z]?A?B?C?)\s*$", re.IGNORECASE)
     matches = list(pasal_re.finditer(text))
 
@@ -190,15 +175,28 @@ TEKS DOKUMEN (500 karakter pertama):
 """
 
 VALID_KATEGORI = {
-    "pidana", "perdata", "agama", "umum", "ketenagakerjaan", "perusahaan",
-    "konsumen", "pajak", "internasional", "tata_usaha_negara", "lingkungan",
-    "hak_asasi_manusia", "kesehatan", "teknologi_informasi",
-    "kekayaan_intelektual", "maritim", "agraria", "lainnya",
+    "pidana",
+    "perdata",
+    "agama",
+    "umum",
+    "ketenagakerjaan",
+    "perusahaan",
+    "konsumen",
+    "pajak",
+    "internasional",
+    "tata_usaha_negara",
+    "lingkungan",
+    "hak_asasi_manusia",
+    "kesehatan",
+    "teknologi_informasi",
+    "kekayaan_intelektual",
+    "maritim",
+    "agraria",
+    "lainnya",
 }
 
 
 def extract_metadata_with_ai(full_text: str) -> dict:
-    """Gunakan Gemini untuk mengekstrak metadata dari teks dokumen hukum."""
     client = genai.Client()
     preview = full_text[:2000]
     prompt = AI_METADATA_PROMPT + preview
@@ -208,13 +206,13 @@ def extract_metadata_with_ai(full_text: str) -> dict:
 
     for model in models:
         try:
-            log.info(f"[DOC_SERVICE] Mencoba AI metadata extraction dengan {model}...")
+            logger.info(f"[DOC_SERVICE] Mencoba AI metadata extraction dengan {model}...")
             resp = client.models.generate_content(model=model, contents=prompt)
             response_text = resp.text.strip()
             break
         except Exception as e:
             if "429" in str(e):
-                log.warning(f"[DOC_SERVICE] Model {model} rate-limited, coba fallback...")
+                logger.warning(f"[DOC_SERVICE] Model {model} rate-limited, coba fallback...")
                 continue
             raise
 
@@ -230,18 +228,17 @@ def extract_metadata_with_ai(full_text: str) -> dict:
     try:
         meta = json.loads(cleaned)
     except json.JSONDecodeError:
-        log.error(f"[DOC_SERVICE] Gagal parse JSON dari AI: {cleaned[:200]}")
+        logger.error(f"[DOC_SERVICE] Gagal parse JSON dari AI: {cleaned[:200]}")
         raise ValueError(f"AI mengembalikan format bukan JSON valid: {cleaned[:100]}")
 
     if meta.get("kategori") not in VALID_KATEGORI:
-        log.warning(f"[DOC_SERVICE] Kategori '{meta.get('kategori')}' tidak valid, fallback ke 'lainnya'")
+        logger.warning(f"[DOC_SERVICE] Kategori '{meta.get('kategori')}' tidak valid, fallback ke 'lainnya'")
         meta["kategori"] = "lainnya"
 
     return meta
 
 
 def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
-    """Bangun list record siap-insert dari chunks + metadata AI."""
     frbr_uri = metadata.get("frbr_uri", "/akn/id/act/unknown")
     kategori = metadata.get("kategori", "lainnya")
     nama_uu = metadata.get("nama_uu")
@@ -253,20 +250,22 @@ def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
     for chunk in chunks:
         pasal = chunk["nomor_pasal"]
         node_id = str(pasal)
-        records.append({
-            "frbr_uri": frbr_uri,
-            "node_id": node_id,
-            "node_type": "pasal" if pasal != "1_FULL_DOC" else "chunk",
-            "kategori": kategori,
-            "nama_uu": nama_uu,
-            "nomor_uu": nomor_uu,
-            "tahun_uu": tahun_uu,
-            "status_hukum": status_hukum,
-            "sumber_undang_undang": nomor_uu or nama_uu or "unknown",
-            "pasal_bagian": "Preambule" if pasal == "PREAMBULE" else f"Pasal {pasal}",
-            "judul_bab": chunk.get("judul_bab"),
-            "isi_teks": chunk["teks"],
-        })
+        records.append(
+            {
+                "frbr_uri": frbr_uri,
+                "node_id": node_id,
+                "node_type": "pasal" if pasal != "1_FULL_DOC" else "chunk",
+                "kategori": kategori,
+                "nama_uu": nama_uu,
+                "nomor_uu": nomor_uu,
+                "tahun_uu": tahun_uu,
+                "status_hukum": status_hukum,
+                "sumber_undang_undang": nomor_uu or nama_uu or "unknown",
+                "pasal_bagian": "Preambule" if pasal == "PREAMBULE" else f"Pasal {pasal}",
+                "judul_bab": chunk.get("judul_bab"),
+                "isi_teks": chunk["teks"],
+            }
+        )
     return records
 
 
@@ -276,19 +275,17 @@ def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
     retry=retry_if_exception_type(Exception),
 )
 def _embed_batch_with_retry(client: voyageai.Client, texts: list[str]) -> list[list[float]]:
-    """Embed satu batch teks, dengan retry pada 429."""
     try:
         resp = client.embed(texts, model=EMBEDDING_MODEL, input_type="document")
         return resp.embeddings
     except Exception as e:
         if "429" in str(e):
-            log.warning("[DOC_SERVICE] Voyage 429 rate limit, retrying via exponential backoff...")
+            logger.warning("[DOC_SERVICE] Voyage 429 rate limit, retrying via exponential backoff...")
         raise
 
 
 def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECONDS) -> list[list[float]]:
-    """Embed batch teks dengan dynamic chunking dan rate-limit handling."""
-    client = voyageai.Client()
+    client = get_voyage_client()
     all_embeddings = []
 
     batches: list[list[str]] = []
@@ -311,45 +308,40 @@ def generate_embeddings(texts: list[str], batch_delay: float = BATCH_DELAY_SECON
 
     total = len(batches)
     for i, batch in enumerate(batches):
-        log.info(f"[DOC_SERVICE] Embedding batch {i + 1}/{total} ({len(batch)} teks)...")
+        logger.info(f"[DOC_SERVICE] Embedding batch {i + 1}/{total} ({len(batch)} teks)...")
         embs = _embed_batch_with_retry(client, batch)
         all_embeddings.extend(embs)
         if i + 1 < total:
-            log.info(f"[DOC_SERVICE] Menunggu {batch_delay}s sebelum batch berikutnya (rate limit)...")
+            logger.info(f"[DOC_SERVICE] Menunggu {batch_delay}s sebelum batch berikutnya (rate limit)...")
             time.sleep(batch_delay)
 
     return all_embeddings
 
 
 def process_pdf_to_records(pdf_bytes: bytes, manual_metadata: dict | None = None) -> tuple[list[dict], dict]:
-    """
-    Pipeline lengkap: PDF bytes → records siap insert.
-    Jika manual_metadata disupply, lewati tahap ekstraksi AI.
-    Returns (records_tanpa_embedding, metadata).
-    """
-    log.info("[DOC_SERVICE] Step 1/4: Ekstraksi teks dari PDF...")
+    logger.info("[DOC_SERVICE] Step 1/4: Ekstraksi teks dari PDF...")
     raw_text = extract_text_from_pdf(pdf_bytes)
     if not raw_text or len(raw_text.strip()) < 50:
         raise ValueError("PDF tidak mengandung teks yang cukup untuk diproses.")
 
-    log.info("[DOC_SERVICE] Step 2/4: Membersihkan noise OCR...")
+    logger.info("[DOC_SERVICE] Step 2/4: Membersihkan noise OCR...")
     cleaned = clean_ocr_text(raw_text)
 
     if manual_metadata:
-        log.info("[DOC_SERVICE] Step 3/4: Menggunakan metadata manual (bypass AI)...")
+        logger.info("[DOC_SERVICE] Step 3/4: Menggunakan metadata manual (bypass AI)...")
         metadata = manual_metadata
     else:
-        log.info("[DOC_SERVICE] Step 3/4: Mengekstrak metadata via AI...")
+        logger.info("[DOC_SERVICE] Step 3/4: Mengekstrak metadata via AI...")
         metadata = extract_metadata_with_ai(cleaned)
-        
-    log.info(f"[DOC_SERVICE] Metadata: {metadata.get('nama_uu')} | {metadata.get('kategori')}")
 
-    log.info("[DOC_SERVICE] Step 4/4: Chunking per pasal...")
+    logger.info(f"[DOC_SERVICE] Metadata: {metadata.get('nama_uu')} | {metadata.get('kategori')}")
+
+    logger.info("[DOC_SERVICE] Step 4/4: Chunking per pasal...")
     chunks = split_into_chunks(cleaned)
     if not chunks:
         chunks = [{"nomor_pasal": "1_FULL_DOC", "teks": cleaned[:MAX_CHARS_PER_BATCH]}]
 
-    log.info(f"[DOC_SERVICE] Ditemukan {len(chunks)} chunk/pasal.")
+    logger.info(f"[DOC_SERVICE] Ditemukan {len(chunks)} chunk/pasal.")
 
     records = build_records(chunks, metadata)
     return records, metadata

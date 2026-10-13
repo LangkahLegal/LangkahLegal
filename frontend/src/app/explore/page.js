@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
@@ -29,6 +29,15 @@ const VERIFIED_OPTIONS = [
   { id: "non-verified", label: "Belum Verified" },
 ];
 
+const PAGE_SIZE = 12;
+
+// Angka harga yang valid untuk dikirim ke backend; input kosong atau negatif diabaikan.
+const toPrice = (value) => {
+  if (value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : undefined;
+};
+
 export default function KonsultasiPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -37,38 +46,49 @@ export default function KonsultasiPage() {
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
 
-  // --- 1. Fetch Katalog via TanStack Query ---
+  // Pencarian dikirim ke backend setelah jeda singkat agar tidak memanggil API tiap ketikan.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // --- 1. Katalog: filter, pencarian, dan paginasi dikerjakan backend ---
+  const filters = {
+    spesialisasi: activeCategory,
+    search: debouncedSearch,
+    verified: filterVerified,
+    minPrice: toPrice(priceMin),
+    maxPrice: toPrice(priceMax),
+  };
+
   const {
-    data: consultants = [],
+    data,
     isLoading,
+    isError,
+    refetch,
     isFetching,
-  } = useQuery({
-    queryKey: ["consultantCatalog", activeCategory],
-    queryFn: () => consultationService.getConsultantCatalog(activeCategory),
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["consultantCatalog", filters],
+    queryFn: ({ pageParam }) =>
+      consultationService.getConsultantCatalogPage({
+        ...filters,
+        page: pageParam,
+        pageSize: PAGE_SIZE,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce((sum, page) => sum + page.data.length, 0);
+      return loaded < lastPage.total ? pages.length + 1 : undefined;
+    },
     placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000,
   });
 
-  // --- 2. Client-side Filtering ---
-  const filteredConsultants = consultants.filter((pro) => {
-    const matchSearch = pro.name.toLowerCase().includes(search.toLowerCase());
-
-    let matchVerified = true;
-    if (filterVerified === "terverifikasi") {
-      matchVerified = pro.status_verifikasi === "terverifikasi";
-    } else if (filterVerified === "non-verified") {
-      matchVerified = pro.status_verifikasi !== "terverifikasi";
-    }
-
-    let matchPrice = true;
-    const price = pro.tarif_per_sesi || 0;
-    const min = priceMin !== "" ? Number(priceMin) : null;
-    const max = priceMax !== "" ? Number(priceMax) : null;
-    if (min !== null && price < min) matchPrice = false;
-    if (max !== null && price > max) matchPrice = false;
-
-    return matchSearch && matchVerified && matchPrice;
-  });
+  const filteredConsultants = data?.pages.flatMap((page) => page.data) ?? [];
 
   // --- Reset ---
   const hasActiveFilter =
@@ -169,7 +189,19 @@ export default function KonsultasiPage() {
                   isFetching ? "opacity-50" : "opacity-100"
                 }`}
               >
-                {filteredConsultants.length > 0 ? (
+                {isError ? (
+                  <div className="col-span-full">
+                    <EmptyState
+                      icon="error"
+                      title="Gagal Memuat Katalog"
+                      description="Daftar konsultan tidak dapat dimuat. Periksa koneksi Anda lalu coba lagi."
+                      actionLabel="Coba Lagi"
+                      actionIcon="refresh"
+                      onAction={() => refetch()}
+                      className="py-12"
+                    />
+                  </div>
+                ) : filteredConsultants.length > 0 ? (
                   filteredConsultants.map((pro) => (
                     <ConsultantCard key={pro.id} consultant={pro} />
                   ))
@@ -184,6 +216,19 @@ export default function KonsultasiPage() {
                   </div>
                 )}
               </section>
+            )}
+
+            {hasNextPage && (
+              <div className="flex justify-center pt-8">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  data-testid="catalog-load-more"
+                  className="px-6 py-3 rounded-full border border-primary/30 text-primary text-[11px] font-bold uppercase tracking-wide hover:bg-primary/10 transition-all disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? "Memuat..." : "Muat lebih banyak"}
+                </button>
+              </div>
             )}
 
             {!isLoading && isFetching && (

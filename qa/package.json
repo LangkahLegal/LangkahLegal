@@ -1,0 +1,20 @@
+{
+  "name": "langkahlegal-qa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:frontend": "npm --prefix ../frontend run build",
+    "sit": "bddgen && playwright test",
+    "sit:headed": "bddgen && playwright test --project=desktop --headed",
+    "sit:ui": "bddgen && playwright test --ui",
+    "regression": "bddgen && playwright test --grep @critical",
+    "regression:headed": "bddgen && playwright test --project=desktop --headed --grep @critical",
+    "report": "playwright show-report reports/html"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1",
+    "dotenv": "^16.4.7",
+    "playwright-bdd": "^9.2.1"
+  }
+}

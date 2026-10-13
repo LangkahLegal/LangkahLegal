@@ -26,6 +26,12 @@ export const consultantService = {
     return response.data;
   },
 
+  // Sesi terjadwal terdekat yang belum lewat (ditentukan backend, waktu WIB).
+  getNextSession: async () => {
+    const response = await api.get("/consultants/me/next-session");
+    return response.data.data;
+  },
+
   getDashboardStats: async () => {
     try {
       const response = await api.get("/consultants/me/dashboard-stats");
@@ -55,5 +61,13 @@ export const consultantService = {
       console.error("Gagal load riwayat konsultan:", error);
       throw error;
     }
+  },
+
+  // Ambil slot waktu tersedia dari backend untuk tanggal & durasi tertentu.
+  getAvailableSlots: async (idKonsultan, tanggal, durasi = 30) => {
+    const response = await api.get(`/consultants/${idKonsultan}/available-slots`, {
+      params: { tanggal, durasi },
+    });
+    return response.data;
   },
 };

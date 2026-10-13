@@ -33,6 +33,11 @@ const isSchedulePast = (dateStr, timeStr) => {
   return scheduleDateTime < now;
 };
 
+// Backend (waktu WIB) yang menentukan apakah jadwal sudah lewat; jam perangkat hanya cadangan
+// bila field `sudah_lewat` tidak tersedia.
+const isRequestPast = (req) =>
+  req.sudah_lewat ?? isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
+
 export default function ConsultantDashboardPage() {
   const router = useRouter();
 
@@ -64,9 +69,9 @@ export default function ConsultantDashboardPage() {
     refetchInterval: 30000,
   });
 
-  const { data: activeRequests = [], isLoading: isActiveLoading } = useQuery({
-    queryKey: ["activeRequests"],
-    queryFn: () => consultantService.getActiveRequests(),
+  const { data: nextSession = null, isLoading: isActiveLoading } = useQuery({
+    queryKey: ["nextSession"],
+    queryFn: () => consultantService.getNextSession(),
     refetchInterval: 60000,
   });
 
@@ -86,29 +91,15 @@ export default function ConsultantDashboardPage() {
     },
   });
 
-  const closestSession = useMemo(() => {
-    if (!activeRequests?.length) return null;
-    const filtered = activeRequests.filter((req) => {
-      const isScheduled = req.status_pengajuan?.toLowerCase() === "terjadwal";
-      const isFuture = !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai);
-      return isScheduled && isFuture;
-    });
-    if (!filtered.length) return null;
-    const sorted = filtered.sort((a, b) => {
-      const dateTimeA = new Date(
-        `${a.tanggal_pengajuan.split("T")[0]}T${a.jam_mulai}`,
-      );
-      const dateTimeB = new Date(
-        `${b.tanggal_pengajuan.split("T")[0]}T${b.jam_mulai}`,
-      );
-      return dateTimeA - dateTimeB;
-    });
-    return transformToCardData(sorted[0]);
-  }, [activeRequests]);
+  // Sesi terdekat dipilih backend (/consultants/me/next-session)
+  const closestSession = useMemo(
+    () => (nextSession ? transformToCardData(nextSession) : null),
+    [nextSession],
+  );
 
   const mappedRequests = useMemo(() => {
     return pendingRequests
-      .filter((req) => !isSchedulePast(req.tanggal_pengajuan, req.jam_mulai))
+      .filter((req) => !isRequestPast(req))
       .map((req) => transformToCardData(req));
   }, [pendingRequests]);
 

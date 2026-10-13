@@ -21,9 +21,45 @@ export const consultationService = {
     }
   },
 
+  // Katalog dengan filter, pencarian, dan paginasi yang dikerjakan backend.
+  getConsultantCatalogPage: async ({
+    spesialisasi,
+    search,
+    verified,
+    minPrice,
+    maxPrice,
+    page = 1,
+    pageSize = 12,
+  } = {}) => {
+    const params = { page, page_size: pageSize };
+    if (spesialisasi && spesialisasi !== "semua") params.spesialisasi = spesialisasi;
+    if (search) params.search = search;
+    if (verified && verified !== "semua") params.verified = verified;
+    if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice;
+    if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice;
+
+    const response = await api.get("/consultants/", { params });
+    return {
+      data: response.data.data || [],
+      total: response.data.total ?? (response.data.data || []).length,
+    };
+  },
+
   getConsultations: async () => {
     const response = await api.get("/consultations/");
     return response.data.data;
+  },
+
+  // Konsultasi yang masih relevan untuk dashboard klien, terbaru lebih dulu (disaring backend).
+  getActiveConsultations: async () => {
+    const response = await api.get("/consultations/", { params: { aktif: true } });
+    return response.data.data;
+  },
+
+  // Riwayat klien yang sudah diurutkan backend, beserta jumlah sesi selesai.
+  getClientHistory: async () => {
+    const response = await api.get("/consultations/history");
+    return response.data;
   },
 
   createConsultation: async (payload, files = []) => {
@@ -47,13 +83,6 @@ export const consultationService = {
   getConsultationDetail: async (id) => {
     const response = await api.get(`/consultations/${id}`);
     return response.data.data;
-  },
-
-  respondToConsultation: async (id, statusPersetujuan) => {
-    const response = await api.put(`/consultations/${id}/respond`, {
-      status_persetujuan: statusPersetujuan,
-    });
-    return response.data;
   },
 
   markConsultationComplete: async (id) => {

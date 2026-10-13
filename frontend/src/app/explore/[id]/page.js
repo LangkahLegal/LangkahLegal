@@ -23,6 +23,7 @@ import AboutSection from "@/components/explore/pengajuan/AboutSection";
 import SchedulePicker from "@/components/explore/pengajuan/SchedulePicker";
 import ConsultationForm from "@/components/explore/pengajuan/ConsultationForm";
 import AttachedDocuments from "@/components/documents/AttachedDocuments";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function ConsultantDetailPage() {
   const { id } = useParams();
@@ -46,7 +47,11 @@ export default function ConsultantDetailPage() {
   };
 
   // --- 1. FETCH DATA ---
-  const { data: consultant, isLoading: isLoadingConsultant } = useQuery({
+  const {
+    data: consultant,
+    isLoading: isLoadingConsultant,
+    isError: isConsultantMissing,
+  } = useQuery({
     queryKey: ["consultant", id],
     queryFn: () => consultantService.getConsultantDetail(parseInt(id)),
     enabled: !!id,
@@ -68,6 +73,14 @@ export default function ConsultantDetailPage() {
       url: file ? URL.createObjectURL(file) : "",
     }));
   }, [files]);
+
+  const selectedDurationMinutes = useMemo(() => {
+    if (!startTime || !endTime) return 30;
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const diff = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+    return diff > 0 ? diff : 30;
+  }, [startTime, endTime]);
 
   // --- 2. MUTATION ---
   const bookingMutation = useMutation({
@@ -135,6 +148,20 @@ export default function ConsultantDetailPage() {
       </div>
     );
 
+  if (isConsultantMissing || !consultant)
+    return (
+      <div className="bg-bg text-main min-h-screen flex items-center justify-center px-6 transition-colors duration-500">
+        <EmptyState
+          icon="person_off"
+          title="Konsultan Tidak Ditemukan"
+          description="Profil konsultan ini tidak tersedia atau sudah tidak aktif."
+          actionLabel="Kembali ke Katalog"
+          actionIcon="arrow_back"
+          onAction={() => router.push("/explore")}
+        />
+      </div>
+    );
+
   // --- SUCCESS STATE ---
   if (isSubmitted) {
     return (
@@ -169,6 +196,7 @@ export default function ConsultantDetailPage() {
 
             <PriceCard
               price={consultant?.tarif_per_sesi?.toLocaleString("id-ID") || "0"}
+              durationMinutes={selectedDurationMinutes}
             />
 
             <AboutSection
@@ -177,6 +205,7 @@ export default function ConsultantDetailPage() {
             />
 
             <SchedulePicker
+              consultantId={parseInt(id)}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               startTime={startTime}

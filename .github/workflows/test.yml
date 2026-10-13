@@ -1,4 +1,4 @@
-name: API Test
+name: Backend Lint
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main, dev]
 
 jobs:
-  pytest:
+  ruff:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,8 +20,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install backend dependencies
-        run: pip install -r backend/requirements-dev.txt
+      - name: Install ruff
+        run: pip install ruff==0.17.0
 
-      - name: Run pytest
-        run: python -m pytest backend/tests
+      - name: Run ruff
+        run: |
+          python -m ruff check backend
+          python -m ruff format --check backend

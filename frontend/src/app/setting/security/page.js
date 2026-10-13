@@ -8,6 +8,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui";
 import { PasswordField } from "@/components/ui/PasswordField";
+import { clearAuthSession, isPasswordSession } from "@/lib/authStorage";
+import { MIN_PASSWORD_LENGTH } from "@/lib/passwordRules";
+import { useClientValue } from "@/lib/useClientValue";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -19,11 +22,14 @@ export default function ChangePasswordPage() {
     confirmPassword: "",
   });
 
+  // Pengguna yang masuk lewat Google belum punya kata sandi, jadi tidak diminta kata sandi lama.
+  const needsCurrentPassword = useClientValue(isPasswordSession, false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (formData.newPassword.length < 6) {
-      alert("Kata sandi minimal 6 karakter.");
+
+    if (formData.newPassword.length < MIN_PASSWORD_LENGTH) {
+      alert(`Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter.`);
       return;
     }
 
@@ -36,8 +42,10 @@ export default function ChangePasswordPage() {
     try {
       await authService.resetPassword({
         newPassword: formData.newPassword,
+        currentPassword: needsCurrentPassword ? formData.currentPassword : undefined,
       });
       alert("Kata sandi berhasil diperbarui! Silakan login kembali dengan sandi baru Anda.");
+      clearAuthSession();
       router.replace("/auth/login");
     } catch (err) {
       alert(err?.message || "Gagal memperbarui kata sandi.");
@@ -74,17 +82,27 @@ export default function ChangePasswordPage() {
             {/* Form Section */}
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-6">
-                {/* Kolom 'Kata Sandi Saat Ini' dihapus agar pengguna yang mendaftar via Google (OAuth)
-                    tetap dapat membuat kata sandi tanpa terhalang validasi kata sandi lama. */}
+                {needsCurrentPassword && (
+                  <PasswordField
+                    label="Kata Sandi Saat Ini"
+                    id="currentPassword"
+                    name="currentPassword"
+                    value={formData.currentPassword}
+                    onChange={handleInputChange}
+                    placeholder="Masukkan kata sandi saat ini"
+                    required
+                  />
+                )}
+
                 <PasswordField
                   label="Kata Sandi Baru"
                   id="newPassword"
                   name="newPassword"
                   value={formData.newPassword}
                   onChange={handleInputChange}
-                  placeholder="Min. 8 karakter"
+                  placeholder={`Min. ${MIN_PASSWORD_LENGTH} karakter`}
                   required
-                  minLength={8}
+                  minLength={MIN_PASSWORD_LENGTH}
                 />
 
                 <PasswordField

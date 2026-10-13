@@ -1,12 +1,15 @@
-"""Pydantic schemas untuk Admin Document Management endpoints."""
-
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
+
+from docs import schemas as docs
 
 
 class KategoriHukum(str, Enum):
-    """Enum sesuai kategori_hukum_enum di database Supabase."""
+    __doc__ = docs.KATEGORI_HUKUM
     pidana = "pidana"
     perdata = "perdata"
     agama = "agama"
@@ -27,18 +30,14 @@ class KategoriHukum(str, Enum):
     lainnya = "lainnya"
 
 
-
-
 class UpdateChunkRequest(BaseModel):
-    """Payload untuk update 1 chunk/pasal (fix typo / kategori)."""
+    __doc__ = docs.UPDATE_CHUNK_REQUEST
     kategori: Optional[KategoriHukum] = None
     isi_teks: Optional[str] = Field(None, min_length=10)
 
 
-
-
 class ChunkResponse(BaseModel):
-    """Response untuk 1 chunk/pasal (tanpa embedding)."""
+    __doc__ = docs.CHUNK_RESPONSE
     id_dokumen: int
     frbr_uri: str
     node_id: str
@@ -56,19 +55,8 @@ class ChunkResponse(BaseModel):
     updated_at: Optional[str] = None
 
 
-class DocumentGroupResponse(BaseModel):
-    """Response ringkasan 1 UU (group by frbr_uri)."""
-    frbr_uri: str
-    nama_uu: Optional[str] = None
-    nomor_uu: Optional[str] = None
-    tahun_uu: Optional[int] = None
-    kategori: str
-    status_hukum: Optional[str] = None
-    total_chunks: int
-
-
 class PaginatedResponse(BaseModel):
-    """Wrapper response dengan pagination."""
+    __doc__ = docs.PAGINATED_RESPONSE
     data: list
     total: int
     page: int
@@ -76,10 +64,26 @@ class PaginatedResponse(BaseModel):
 
 
 class JobStatusResponse(BaseModel):
-    """Response untuk status background job (upload/replace PDF)."""
+    __doc__ = docs.JOB_STATUS_RESPONSE
     job_id: str
-    status: str  # queued, processing, completed, failed
+    status: str
     message: str
     frbr_uri: Optional[str] = None
     total_chunks: Optional[int] = None
     error: Optional[str] = None
+
+
+@dataclass
+class DocumentUploadForm:
+    file: UploadFile = File(..., description="File PDF dokumen hukum")
+    nama_uu: str = Form(..., description="Nama lengkap undang-undang")
+    nomor_uu: str | None = Form(None, description="Nomor undang-undang")
+    tahun_uu: int | None = Form(None, description="Tahun undang-undang")
+    kategori: str = Form(..., description="Kategori hukum")
+    status_hukum: str = Form(..., description="Status hukum")
+
+
+@dataclass
+class DocumentReplaceForm(DocumentUploadForm):
+    file: UploadFile = File(..., description="File PDF pengganti")
+    frbr_uri: str = Form(..., description="FRBR URI dokumen yang akan di-replace")

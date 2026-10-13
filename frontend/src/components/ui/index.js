@@ -10,3 +10,4 @@ export { default as LegalCard } from "./LegalCard";
 export * from "./Skeleton";
 export * from "./EmptyState";
 export * from "./Spinner";
+export * from "./Calendar";

@@ -2,6 +2,7 @@ const ACCESS_TOKEN_KEYS = ["ll_token", "token"];
 const REFRESH_TOKEN_KEYS = ["ll_refresh", "refresh_token"];
 const ROLE_KEYS = ["ll_role", "role"];
 const OAUTH_VERIFIER_KEY = "pending_oauth_verifier";
+const APP_ROLES = ["client", "konsultan", "admin"];
 
 const readFirst = (keys) => {
   if (typeof window === "undefined") return null;
@@ -19,6 +20,17 @@ export const getStoredAccessToken = () => readFirst(ACCESS_TOKEN_KEYS);
 export const getStoredRefreshToken = () => readFirst(REFRESH_TOKEN_KEYS);
 
 export const getStoredRole = () => readFirst(ROLE_KEYS);
+
+/** Benar bila sesi sekarang didapat dari login email + password (bukan Google atau tautan reset). */
+export const isPasswordSession = () => {
+  try {
+    const payload = getStoredAccessToken().split(".")[1];
+    const claims = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return (claims.amr || []).some((entry) => entry?.method === "password");
+  } catch {
+    return false;
+  }
+};
 
 export const getStoredOAuthVerifier = () => {
   if (typeof window === "undefined") return null;
@@ -46,8 +58,13 @@ export const setAuthSession = (session) => {
 
   const accessToken = session.access_token || null;
   const refreshToken = session.refresh_token || null;
+  // `session.user.role` milik Supabase selalu "authenticated"; itu bukan peran aplikasi.
   const role =
-    session?.user?.role || session?.user_metadata?.role || session?.role || null;
+    [
+      session?.user?.user_metadata?.role,
+      session?.user_metadata?.role,
+      session?.role,
+    ].find((candidate) => APP_ROLES.includes(candidate)) || null;
 
   if (accessToken) {
     ACCESS_TOKEN_KEYS.forEach((key) => window.localStorage.setItem(key, accessToken));

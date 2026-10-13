@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 export function InputField({
   label,
@@ -9,7 +9,8 @@ export function InputField({
   "data-testid": dataTestId,
   ...props
 }) {
-  const inputId = id || name;
+  const generatedId = useId();
+  const inputId = id || name || generatedId;
 
   return (
     <div className={`flex flex-col gap-2 ml-1 ${className}`}>
