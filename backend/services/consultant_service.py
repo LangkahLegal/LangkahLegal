@@ -154,14 +154,9 @@ def get_available_slots(
     day_schedule = jadwal_rows[0]
 
     # 2. Ambil booking aktif konsultan untuk tanggal tersebut
-    booked_sessions = consultation_repository.list_booked_slots(
-        db, id_konsultan, ACTIVE_BOOKING_STATUSES
-    )
+    booked_sessions = consultation_repository.list_booked_slots(db, id_konsultan, ACTIVE_BOOKING_STATUSES)
     # Filter hanya tanggal yang relevan (list_booked_slots sudah filter by id_konsultan)
-    booked_for_date = [
-        b for b in booked_sessions
-        if str(b.get("tanggal_pengajuan", "")).split("T")[0] == tanggal
-    ]
+    booked_for_date = [b for b in booked_sessions if str(b.get("tanggal_pengajuan", "")).split("T")[0] == tanggal]
 
     # 3. Generate slot pills
     slots = generate_available_slots(
