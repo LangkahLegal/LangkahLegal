@@ -158,12 +158,14 @@ def generate_available_slots(
         else:
             status = "available"
 
-        slots.append({
-            "start": start_str,
-            "end": end_str,
-            "label": f"{start_str} - {end_str}",
-            "status": status,
-        })
+        slots.append(
+            {
+                "start": start_str,
+                "end": end_str,
+                "label": f"{start_str} - {end_str}",
+                "status": status,
+            }
+        )
         m += step
 
     return slots
