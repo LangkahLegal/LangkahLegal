@@ -24,7 +24,6 @@ import { RiwayatKonsultanPage } from "./riwayat-konsultan/riwayat-konsultan.page
 import { PengaturanPage } from "./pengaturan/pengaturan.page.js";
 import { PengaturanProfilPage } from "./pengaturan-profil/pengaturan-profil.page.js";
 import { PengaturanKeamananPage } from "./pengaturan-keamanan/pengaturan-keamanan.page.js";
-import { PengaturanBahasaPage } from "./pengaturan-bahasa/pengaturan-bahasa.page.js";
 import { DashboardAdminPage } from "./dashboard-admin/dashboard-admin.page.js";
 import { VerifikasiKonsultanPage } from "./verifikasi-konsultan/verifikasi-konsultan.page.js";
 import { DetailVerifikasiPage } from "./detail-verifikasi/detail-verifikasi.page.js";
@@ -59,7 +58,6 @@ export const PAGE_OBJECTS = {
   pengaturanPage: PengaturanPage,
   pengaturanProfilPage: PengaturanProfilPage,
   pengaturanKeamananPage: PengaturanKeamananPage,
-  pengaturanBahasaPage: PengaturanBahasaPage,
   dashboardAdminPage: DashboardAdminPage,
   verifikasiKonsultanPage: VerifikasiKonsultanPage,
   detailVerifikasiPage: DetailVerifikasiPage,
