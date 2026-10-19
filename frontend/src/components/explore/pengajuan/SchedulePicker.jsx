@@ -286,19 +286,20 @@ export default function SchedulePicker({
       {/* 1. Header Judul & Legenda Ketersediaan */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
+          <div className="w-1.5 h-6 bg-primary rounded-full shadow-md shadow-primary/40" />
           <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline">
             Pilih Jadwal Sesi
           </h2>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-muted font-medium">
-          <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_6px_rgba(var(--primary-rgb),0.7)]" />
+          <span className="w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/60" />
           <span>Jadwal Tersedia</span>
         </div>
       </div>
 
-      {/* 2. Date Picker Kalender Bersama (Gaya Visual Bulat Identik dengan Jadwal Konsultan) */}
+      {/* 2. Date Picker Kalender Bersama (Gaya Visual Bulat Identik dengan Jadwal Konsultan, mode compact) */}
       <Calendar
+        compact={true}
         days={calendarCells}
         selectedDay={selectedDate}
         onSelectDay={(date) => {
@@ -315,22 +316,29 @@ export default function SchedulePicker({
 
       {/* 3. Pemilihan Durasi & Jam Sesi */}
       {!selectedDate ? (
-        <div className="bg-card/40 border border-dashed border-surface rounded-[2rem] p-6 text-center text-muted text-xs flex flex-col items-center justify-center gap-2">
-          <MaterialIcon name="touch_app" className="text-2xl text-primary/60" />
-          <p className="font-medium">
-            Pilih salah satu tanggal di atas untuk melihat pilihan durasi dan jam konsultasi.
+        <div className="w-full bg-card/70 border border-surface rounded-[2.5rem] p-8 text-center text-muted text-xs flex flex-col items-center justify-center gap-3 backdrop-blur-xl shadow-soft">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <MaterialIcon name="touch_app" className="text-2xl" />
+          </div>
+          <p className="font-semibold text-main/80 text-sm">
+            Pilih tanggal di kalender terlebih dahulu
+          </p>
+          <p className="text-xs text-muted max-w-sm">
+            Setelah memilih tanggal, pilihan durasi dan jam konsultasi yang tersedia akan otomatis ditampilkan.
           </p>
         </div>
       ) : (
-        <div className="space-y-5 animate-fade-in">
+        <div className="w-full bg-card/70 border border-surface rounded-[2.5rem] p-6 sm:p-8 backdrop-blur-xl shadow-soft space-y-6 animate-fade-in transition-colors duration-500">
           {/* Fitur Duration Chips: Pilihan Durasi Konsultasi */}
-          <div className="bg-card/50 border border-surface rounded-[2rem] p-5 sm:p-6 space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <label className="text-[10px] sm:text-[11px] font-black text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
-                <MaterialIcon name="timelapse" className="text-sm text-primary" />
-                <span>Pilih Durasi Konsultasi</span>
-              </label>
-              <span className="text-[11px] text-primary font-bold">
+              <div className="flex items-center gap-2">
+                <MaterialIcon name="timelapse" className="text-base text-primary" />
+                <span className="text-xs font-normal text-muted uppercase tracking-wider">
+                  Durasi Konsultasi
+                </span>
+              </div>
+              <span className="text-xs text-muted font-normal">
                 {selectedDuration} Menit ({selectedDuration / 30} Sesi)
               </span>
             </div>
@@ -368,90 +376,103 @@ export default function SchedulePicker({
             </div>
           </div>
 
-          {/* Header Slot Pills */}
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <MaterialIcon name="schedule" className="text-primary text-base" />
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-main font-headline">
-                Pilih Jam Sesi ({formattedSelectedDate})
-              </h3>
+          <div className="h-px w-full bg-surface" />
+
+          {/* Bagian Pemilihan Jam Sesi */}
+          <div className="space-y-4">
+            <div className="flex items-start justify-between px-1">
+              <div className="flex items-start gap-2">
+                <MaterialIcon name="schedule" className="text-primary text-base mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-normal uppercase tracking-wider text-muted">
+                    Jam Sesi
+                  </span>
+                  {formattedSelectedDate && (
+                    <span className="text-[11px] text-muted font-normal">
+                      {formattedSelectedDate}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-muted font-normal mt-0.5">
+                Durasi {selectedDuration} menit
+              </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-muted font-medium">
-              Durasi {selectedDuration} menit
-            </span>
+
+            {/* Container Slot Pills dengan Max-Height (4 slot awal tampil) dan Visible Scrollbar */}
+            {isSlotsFetching ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[4.2rem] rounded-2xl bg-input/40 border border-surface animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : dynamicSlotPills.length === 0 ? (
+              <div className="bg-input/40 border border-surface rounded-2xl p-5 text-center text-muted text-xs">
+                Tidak ada rentang jam praktik konsultan yang cukup untuk durasi {selectedDuration} menit pada tanggal ini.
+              </div>
+            ) : (
+              <div className="max-h-[148px] sm:max-h-[82px] overflow-y-auto pr-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pb-1">
+                  {dynamicSlotPills.map((slot) => {
+                    const isSlotSelected =
+                      startTime === slot.start && endTime === slot.end;
+                    const isBooked = slot.status === "booked";
+                    const isDisabled = slot.status === "disabled" || isBooked;
+
+                    return (
+                      <button
+                        key={slot.start}
+                        type="button"
+                        data-testid={`time-slot-${slot.start}`}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          onStartTimeChange?.(slot.start);
+                          onEndTimeChange?.(slot.end);
+                        }}
+                        className={`
+                          relative flex flex-col items-center justify-center py-3 px-3 rounded-2xl border text-xs transition-all duration-300
+                          ${
+                            isSlotSelected
+                              ? "bg-primary text-white border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
+                              : isBooked
+                                ? "bg-danger/5 border-danger/20 text-muted/50 cursor-not-allowed"
+                                : isDisabled
+                                  ? "opacity-30 bg-transparent border-dashed border-surface text-muted cursor-not-allowed"
+                                  : "bg-input/60 border-surface text-main hover:border-primary/50 hover:bg-input cursor-pointer font-medium"
+                          }
+                        `}
+                      >
+                        <span className="font-headline tracking-wide text-xs sm:text-sm">
+                          {slot.label}
+                        </span>
+                        <span
+                          className={`text-[9px] mt-0.5 uppercase tracking-wider font-bold ${
+                            isSlotSelected
+                              ? "text-white/80"
+                              : isBooked
+                                ? "text-danger"
+                                : "text-primary-light"
+                          }`}
+                        >
+                          {isBooked
+                            ? "Terisi"
+                            : isSlotSelected
+                              ? "Dipilih"
+                              : `${selectedDuration / 30} Sesi · Tersedia`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Deretan Slot Pills Dinamis */}
-          {isSlotsFetching ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[4.5rem] rounded-2xl bg-input/40 border border-surface animate-pulse"
-                />
-              ))}
-            </div>
-          ) : dynamicSlotPills.length === 0 ? (
-            <div className="bg-card border border-surface rounded-2xl p-5 text-center text-muted text-xs">
-              Tidak ada rentang jam praktik konsultan yang cukup untuk durasi {selectedDuration} menit pada tanggal ini.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-              {dynamicSlotPills.map((slot) => {
-                const isSlotSelected =
-                  startTime === slot.start && endTime === slot.end;
-                const isBooked = slot.status === "booked";
-                const isDisabled = slot.status === "disabled" || isBooked;
-
-                return (
-                  <button
-                    key={slot.start}
-                    type="button"
-                    data-testid={`time-slot-${slot.start}`}
-                    disabled={isDisabled}
-                    onClick={() => {
-                      onStartTimeChange?.(slot.start);
-                      onEndTimeChange?.(slot.end);
-                    }}
-                    className={`
-                      relative flex flex-col items-center justify-center py-3 px-3 rounded-2xl border text-xs transition-all duration-300
-                      ${
-                        isSlotSelected
-                          ? "bg-primary text-white border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
-                          : isBooked
-                            ? "bg-danger/5 border-danger/20 text-muted/50 cursor-not-allowed"
-                            : isDisabled
-                              ? "opacity-30 bg-transparent border-dashed border-surface text-muted cursor-not-allowed"
-                              : "bg-input/60 border-surface text-main hover:border-primary/50 hover:bg-input cursor-pointer font-semibold"
-                      }
-                    `}
-                  >
-                    <span className="font-headline tracking-wide text-xs sm:text-sm">
-                      {slot.label}
-                    </span>
-                    <span
-                      className={`text-[9px] mt-0.5 uppercase tracking-wider font-bold ${
-                        isSlotSelected
-                          ? "text-white/80"
-                          : isBooked
-                            ? "text-danger"
-                            : "text-emerald-500"
-                      }`}
-                    >
-                      {isBooked
-                        ? "Terisi"
-                        : isSlotSelected
-                          ? "Dipilih"
-                          : `${selectedDuration / 30} Sesi · Tersedia`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Rangkuman Jam Konsultasi Terpilih (Bersih & Rapi tanpa dropdown bertingkat) */}
-          <div className="bg-card border border-surface rounded-2xl px-5 py-4 flex items-center justify-between shadow-soft">
+          {/* Rangkuman Jam Konsultasi Terpilih */}
+          <div className="bg-input/50 border border-surface rounded-2xl px-5 py-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
               <MaterialIcon name="schedule" className="text-primary text-base" />
               <span className="text-xs text-muted font-bold uppercase tracking-wider">
@@ -460,7 +481,9 @@ export default function SchedulePicker({
             </div>
             <span
               data-testid="selected-time-display"
-              className="text-xs sm:text-sm font-extrabold text-main font-headline tracking-wide"
+              className={`text-xs sm:text-sm font-bold font-headline tracking-wide ${
+                startTime && endTime ? "text-main" : "text-muted"
+              }`}
             >
               {startTime && endTime
                 ? `${startTime} - ${endTime} (${selectedDuration} Menit)`

@@ -140,7 +140,7 @@ function AddSlotModalContent({
                 <div className="flex items-center gap-3">
                   <MaterialIcon
                     name={opt.icon}
-                    className={`text-[20px] ${opt.value === "available" ? "text-emerald-500" : "text-danger"}`}
+                    className={`text-[20px] ${opt.value === "available" ? "text-primary-light" : "text-danger"}`}
                   />
                   <span className="font-bold text-sm tracking-wide">
                     {opt.label}
