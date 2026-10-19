@@ -14,6 +14,7 @@ export default function SearchBar({
   placeholder = "Cari keahlian atau nama...",
   className = "",
   inputClassName = "",
+  testId = "explore-search-input",
 }) {
   return (
     <section className={`w-full transition-all duration-300 ${className}`}>
@@ -32,7 +33,7 @@ export default function SearchBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          data-testid="explore-search-input"
+          data-testid={testId}
           className={`w-full bg-input border border-muted/30 rounded-2xl py-4 pl-14 pr-16 text-main placeholder:text-muted/6 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-muted/5 transition-all duration-30 shadow-inner ${inputClassName}`}
         />
       </div>

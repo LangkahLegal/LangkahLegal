@@ -138,7 +138,7 @@ export default function KonsultasiPage() {
               <button
                 onClick={resetFilters}
                 disabled={!hasActiveFilter}
-                className={`flex flex-1 md:flex-none items-center justify-center gap-1.5 px-4 py-3.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all duration-300 whitespace-nowrap ${
+                className={`flex flex-1 md:flex-none items-center justify-center gap-1.5 h-11 px-4 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all duration-300 whitespace-nowrap ${
                   hasActiveFilter
                     ? "border-danger/30 text-danger bg-danger/5 hover:bg-danger/10"
                     : "border-muted/30 text-muted bg-surface/50 opacity-50 cursor-not-allowed"
@@ -148,7 +148,7 @@ export default function KonsultasiPage() {
               </button>
 
               {/* Harga Min-Max — Width ditambah dan dibuat penuh (w-full) di tampilan mobile */}
-              <div className="flex flex-1 md:flex-none items-center justify-between gap-2 px-4 py-2.5 rounded-full border border-surface bg-input/50 shrink-0 w-full md:w-auto">
+              <div className="flex flex-1 md:flex-none items-center justify-between gap-2 h-11 px-4 rounded-full border border-surface bg-input/50 shrink-0 w-full md:w-auto">
                 <span className="text-[10px] font-bold text-muted uppercase tracking-wide shrink-0">
                   Rp
                 </span>

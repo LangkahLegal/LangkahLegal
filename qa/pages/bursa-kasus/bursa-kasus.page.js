@@ -26,8 +26,10 @@ export class BursaKasusPage extends BasePage {
     return this.card(idBursa).getByTestId("bursa-card-description");
   }
 
-  categoryButton(name) {
-    return this.page.getByRole("button", { name, exact: true });
+  /** Dropdown kategori berlabel "Kategori" selama belum ada kategori yang dipilih. */
+  async chooseCategory(label) {
+    await this.page.getByRole("button", { name: /^Kategori/ }).click();
+    await this.page.locator("div.cursor-pointer", { hasText: new RegExp(`^${label}$`) }).click();
   }
 
   async startClaim(idBursa) {
