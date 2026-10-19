@@ -185,7 +185,7 @@ export default function KonsultasiPage() {
               </div>
             ) : (
               <section
-                className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 w-full transition-opacity duration-300 ${
+                className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5 w-full transition-opacity duration-300 ${
                   isFetching ? "opacity-50" : "opacity-100"
                 }`}
               >
