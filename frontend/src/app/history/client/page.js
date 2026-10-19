@@ -1,27 +1,43 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 
-// Import Komponen
-import HistoryStats from "@/components/history/HistoryStats";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
-import { consultationService } from "@/services/consultation.service";
+import { MaterialIcon } from "@/components/ui/Icons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { consultationService } from "@/services/consultation.service";
+import HistoryFilter, {
+  CLIENT_HISTORY_FILTERS,
+  processHistorySessions,
+  isSessionPast,
+} from "@/components/history/HistoryFilter";
 
 export default function HistoryPage() {
-  // --- 1. Fetch Data via TanStack Query ---
+  const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState("semua");
+  const [search, setSearch] = useState("");
+
+  // --- 1. Fetch Data Riwayat via TanStack Query ---
   const { data: history, isLoading } = useQuery({
     queryKey: ["history", "client"],
     queryFn: consultationService.getClientHistory,
   });
 
-  // --- 2. Urutan & jumlah sesi selesai dihitung backend (/consultations/history) ---
-  const sortedHistory = history?.data || [];
-  const completedCount = history?.total_sesi_selesai ?? 0;
+  const rawHistory = useMemo(() => history?.data || [], [history]);
 
+  // --- 2. Pemrosesan Data: Filter status, Search nama konsultan, dan Sort now() via Reusable Helper ---
+  const { upcoming, past, allSorted } = useMemo(() => {
+    return processHistorySessions(rawHistory, activeFilter, search, "client");
+  }, [rawHistory, activeFilter, search]);
+
+  const activeFilterLabel =
+    CLIENT_HISTORY_FILTERS.find((f) => f.id === activeFilter)?.label ||
+    "Semua";
 
   return (
     <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
@@ -31,16 +47,21 @@ export default function HistoryPage() {
         <PageHeader title="Riwayat Konsultasi" />
 
         <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
-            {/* Stats Section */}
-            <HistoryStats count={completedCount} isLoading={isLoading} />
+          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 animate-fade-in">
+            {/* Search Bar & Tombol Kategorisasi (Komponen Reusable HistoryFilter) */}
+            {!isLoading && (
+              <HistoryFilter
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Cari nama konsultan..."
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+                filterOptions={CLIENT_HISTORY_FILTERS}
+              />
+            )}
 
             {/* List Section */}
-            <div className="space-y-6">
-              <h3 className="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2">
-                Daftar Aktivitas
-              </h3>
-
+            <div className="space-y-6 pt-2">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-5">
                   <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -48,24 +69,131 @@ export default function HistoryPage() {
                     Memuat Riwayat...
                   </p>
                 </div>
-              ) : sortedHistory.length > 0 ? (
-                <div className="space-y-4">
-                  {sortedHistory.map((item) => (
-                    <ConsultationCard
-                      key={item.id_pengajuan}
-                      data={item}
-                      onHide={() => {}}
-                      onCancel={() => {}}
-                    />
-                  ))}
-                </div>
-              ) : (
+              ) : rawHistory.length === 0 ? (
                 <EmptyState
                   icon="history"
-                  title="Riwayat Kosong"
-                  description="Belum ada riwayat sesi konsultasi."
+                  title="Belum Ada Riwayat Konsultasi"
+                  description="Kamu belum memiliki riwayat sesi konsultasi. Temukan konsultan hukum profesional untuk mulai berkonsultasi."
+                  actionLabel="Cari Konsultan"
+                  actionIcon="search"
+                  onAction={() => router.push("/explore")}
+                  className="py-16"
+                />
+              ) : allSorted.length === 0 ? (
+                /* Empty state saat hasil search / filter tidak ditemukan */
+                <EmptyState
+                  icon="search_off"
+                  title="Tidak Ada Sesi Ditemukan"
+                  description={
+                    search
+                      ? `Tidak ditemukan sesi dengan konsultan "${search}".`
+                      : `Belum ada sesi dengan status "${activeFilterLabel}".`
+                  }
                   className="py-12"
                 />
+              ) : activeFilter === "semua" && !search ? (
+                /* Mode Kategori: Pisahkan Sesi Mendatang vs Riwayat Lampau */
+                <div className="space-y-8">
+                  {/* 1. Sesi Mendatang & Berjalan (Waktu terdekat now() di atas) */}
+                  {upcoming.length > 0 && (
+                    <section className="space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
+                          Sesi Mendatang & Aktif
+                        </h3>
+                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                          {upcoming.length} Sesi
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {upcoming.map((item) => (
+                          <ConsultationCard
+                            key={item.id_pengajuan}
+                            data={item}
+                            role="client"
+                            onHide={() => { }}
+                            onCancel={() => { }}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* 2. Seluruh Riwayat */}
+                  {past.length > 0 && (
+                    <section className="space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
+                          Seluruh Riwayat
+                        </h3>
+                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                          {past.length} Sesi
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {past.map((item) => {
+                          const isPast = isSessionPast(item);
+                          return (
+                            <div
+                              key={item.id_pengajuan}
+                              className={
+                                isPast
+                                  ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
+                                  : ""
+                              }
+                            >
+                              <ConsultationCard
+                                data={item}
+                                role="client"
+                                onHide={() => { }}
+                                onCancel={() => { }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              ) : (
+                /* Mode Filter Tertentu atau Sedang Melakukan Pencarian */
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
+                      {search
+                        ? `Hasil Pencarian "${search}"`
+                        : `Daftar ${activeFilterLabel}`}
+                    </h3>
+                    <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                      {allSorted.length} Sesi
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {allSorted.map((item) => {
+                      const isPast = isSessionPast(item);
+                      return (
+                        <div
+                          key={item.id_pengajuan}
+                          className={
+                            isPast
+                              ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
+                              : ""
+                          }
+                        >
+                          <ConsultationCard
+                            data={item}
+                            role="client"
+                            onHide={() => { }}
+                            onCancel={() => { }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
             </div>
           </div>

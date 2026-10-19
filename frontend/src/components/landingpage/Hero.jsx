@@ -28,8 +28,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
   return (
     <section
       id="hero"
-      // REFACTOR 1: Tambahkan min-h-screen dan justify-center agar membentang 1 layar penuh
-      className="relative w-full min-h-dvh overflow-hidden px-6 pt-32 pb-12 flex flex-col justify-center items-center text-center"
+      className="relative w-full h-screen min-h-[600px] overflow-hidden px-4 sm:px-6 pt-20 pb-8 flex flex-col justify-center items-center text-center"
     >
       <Image
         src="/images/background.jpg"
@@ -48,12 +47,12 @@ export default function Hero({ onGetStarted, onLearnMore }) {
       <div className="glow-bottom-right-secondary z-0 opacity-70" />
 
       <motion.div
-        className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center" // mt-[-5vh] untuk menaikkan konten sedikit ke tengah optis
+        className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center mt-6 md:mt-10"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <div className="space-y-10 max-w-4xl flex flex-col items-center">
+        <div className="space-y-6 md:space-y-8 max-w-4xl flex flex-col items-center">
           <motion.h1
             variants={itemVariants}
             className="text-4xl md:text-7xl font-headline font-extrabold text-white leading-[1.15] tracking-tight drop-shadow-lg"
@@ -77,7 +76,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
 
           <motion.p
             variants={itemVariants}
-            className="text-base md:text-base text-white max-w-3xl mx-auto leading-relaxed px-2 md:px-0 drop-shadow-[0_2px_7px_rgba(0,0,0,0.95)]"
+            className="text-base md:text-lg text-white max-w-3xl mx-auto leading-relaxed px-2 md:px-0 drop-shadow-[0_2px_7px_rgba(0,0,0,0.95)]"
           >
             Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.
             Ceritakan masalah Anda pada Asisten AI kami untuk mendapatkan
@@ -87,7 +86,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
 
           <motion.div
             variants={itemVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8 w-full max-w-sm sm:max-w-none mx-auto"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 md:pt-4 w-full max-w-sm sm:max-w-none mx-auto"
           >
             <Button
               onClick={onGetStarted}
