@@ -1,12 +1,11 @@
 import path from "node:path";
 import { FILES_DIR } from "../support/env.js";
 
-export const SETTINGS_MENU = ["Profil Saya", "Bahasa", "Tema Aplikasi", "Keamanan & Sandi", "Tentang LangkahLegal", "Keluar"];
+export const SETTINGS_MENU = ["Profil Saya", "Tema Aplikasi", "Keamanan & Sandi", "Tentang LangkahLegal", "Keluar"];
 
 /** Menu pengaturan dan halaman yang dibukanya. */
 export const SETTINGS_DESTINATIONS = [
   { menu: "Profil Saya", page: "pengaturan profil" },
-  { menu: "Bahasa", page: "pengaturan bahasa" },
   { menu: "Keamanan & Sandi", page: "pengaturan keamanan" },
   { menu: "Tentang LangkahLegal", page: "tentang aplikasi" },
 ];

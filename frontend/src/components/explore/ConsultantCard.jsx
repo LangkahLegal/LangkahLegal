@@ -32,80 +32,84 @@ export default function ConsultantCard({ consultant }) {
 
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "Konsultan",
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
+  )}&background=${activeColors.bg}&color=${activeColors.color}&size=256`;
   const avatarSrc = getSafeAvatarSrc(foto_profil, fallbackUrl);
 
   return (
-    <div className="bg-card/60 border border-surface p-5 rounded-3xl flex items-center justify-between group hover:border-primary-light/40 transition-all duration-300 shadow-lg" data-testid="consultant-card">
-      <div className="flex items-center gap-5">
-        {/* Avatar with Status Dot */}
-        <div className="relative shrink-0">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-surface bg-bg">
-            <img
-              key={`${foto_profil}-${theme}`} // Key ditambahkan agar refresh saat tema ganti
-              src={avatarSrc}
-              alt={name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => {
-                e.target.src = fallbackUrl;
-              }}
-            />
-          </div>
+    <div
+      className="bg-card/60 border border-surface rounded-2xl lg:rounded-3xl overflow-hidden flex flex-col h-full group hover:border-primary-light/40 transition-all duration-300 shadow-lg"
+      data-testid="consultant-card"
+    >
+      {/* Foto persegi seperti kartu produk marketplace */}
+      <div className="relative aspect-square lg:aspect-4/3 bg-bg overflow-hidden">
+        <img
+          key={`${foto_profil}-${theme}`} // Key ditambahkan agar refresh saat tema ganti
+          src={avatarSrc}
+          alt={name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            e.target.src = fallbackUrl;
+          }}
+        />
 
-          <div
-            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card transition-colors duration-500 ${
-              status === "online"
-                ? "bg-emerald-500 shadow-[0_0_8px_#10b981]"
-                : "bg-zinc-500"
-            }`}
-          />
-        </div>
+        <span
+          className={`absolute top-2.5 right-2.5 w-3.5 h-3.5 rounded-full border-2 border-card transition-colors duration-500 ${
+            status === "online"
+              ? "bg-emerald-500 shadow-[0_0_8px_#10b981]"
+              : "bg-zinc-500"
+          }`}
+        />
 
-        {/* Details */}
-        <div className="space-y-1">
-          <h3 className="font-headline font-bold text-main lg:text-lg leading-tight flex items-center gap-2">
-            {name}
-            {status_verifikasi === "terverifikasi" && (
-              <MaterialIcon name="verified" className="text-blue-500 text-lg" style={{ fontVariationSettings: "'FILL' 1" }} title="Verified" />
-            )}
-          </h3>
-          <p className="text-primary-light text-xs lg:text-sm font-medium">
+        {spec && (
+          <span className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate px-2.5 py-1 rounded-full bg-card/90 backdrop-blur-sm text-primary-light text-nav lg:text-xs font-bold">
             {spec}
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted">
-              <MaterialIcon
-                name="star"
-                className="text-amber-400 text-base"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              />
-              <span className="font-bold text-main">{rating}</span>
-              <span className="opacity-60">({reviews} Ulasan)</span>
-            </div>
-
-            {tarif_per_sesi > 0 && (
-              <div className="flex items-center gap-1 text-xs text-muted">
-                <MaterialIcon name="payments" className="text-emerald-500 text-base" />
-                <span className="font-bold text-main">
-                  Rp {tarif_per_sesi.toLocaleString("id-ID")}
-                </span>
-              </div>
-            )}
-            {tarif_per_sesi === 0 && (
-              <div className="flex items-center gap-1 text-xs text-emerald-500 font-bold">
-                Gratis
-              </div>
-            )}
-          </div>
-        </div>
+          </span>
+        )}
       </div>
 
-      <Link
-        href={detailHref}
-        className="btn-outline !px-6 !py-2.5 text-sm !rounded-xl !bg-surface border border-surface text-main hover:!bg-primary hover:!text-white transition-all active:scale-95"
-      >
-        Lihat
-      </Link>
+      {/* Details */}
+      <div className="flex flex-col flex-1 gap-1.5 p-3 lg:p-4">
+        <h3 className="font-headline font-bold text-main text-sm lg:text-base leading-snug line-clamp-2">
+          {name}
+          {status_verifikasi === "terverifikasi" && (
+            <MaterialIcon
+              name="verified"
+              className="text-blue-500 text-sm lg:text-base align-[-2px] ml-1"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+              title="Verified"
+            />
+          )}
+        </h3>
+
+        <div className="flex items-center gap-1 text-label lg:text-xs text-muted">
+          <MaterialIcon
+            name="star"
+            className="text-amber-400 text-sm"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          />
+          <span className="font-bold text-main">{rating}</span>
+          <span className="opacity-60 truncate">({reviews} Ulasan)</span>
+        </div>
+
+        {tarif_per_sesi > 0 && (
+          <p className="text-sm lg:text-base font-black text-main">
+            Rp {tarif_per_sesi.toLocaleString("id-ID")}
+            <span className="text-nav lg:text-xs font-medium text-muted"> /sesi</span>
+          </p>
+        )}
+        {tarif_per_sesi === 0 && (
+          <p className="text-sm lg:text-base font-black text-emerald-500">Gratis</p>
+        )}
+
+        <Link
+          href={detailHref}
+          className="mt-auto pt-2 block"
+        >
+          <span className="block w-full text-center py-2 text-xs lg:text-sm font-bold rounded-xl bg-surface border border-surface text-main group-hover:border-primary/40 hover:bg-primary! hover:text-white! transition-all active:scale-95">
+            Lihat
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }
