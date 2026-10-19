@@ -90,7 +90,7 @@ export default function TanyaAIPage() {
         "Belum perlu, terima kasih",
       ];
     } else if (textLower.includes("bukti") || textLower.includes("dokumen")) {
-      suggestedActions = ["Ya, saya punya buktinya", "Saya tidak punya bukti"];
+      // suggestedActions = ["Ya, saya punya buktinya", "Saya tidak punya bukti"];
     }
   }
 

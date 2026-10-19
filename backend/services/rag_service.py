@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
-LLM_MODEL = "gemini-2.5-flash"
+LLM_MODEL = "gemini-3.1-flash-lite"
 
 
 MAX_HISTORY_CHARS = 60_000
@@ -85,7 +85,7 @@ KONSULTASI_TOOL = types.Tool(
 )
 
 
-AGENT_MODELS = ("gemini-2.5-flash", "gemini-2.5-flash-lite")
+AGENT_MODELS = ("gemini-3.1-flash-lite", "gemini-3.5-flash-lite")
 AGENT_MAX_RETRIES = 2
 # NOT_FOUND: model sudah dipensiunkan Google, lanjut ke model berikutnya alih-alih gagal total.
 MODEL_UNAVAILABLE_MARKERS = ("429", "503", "UNAVAILABLE", "NOT_FOUND")

@@ -15,9 +15,9 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Flash-lite dulu: klasifikasi tugas ringan, dan kuota gratis gemini-2.5-flash sangat kecil
+# Flash-lite dulu: klasifikasi tugas ringan, dan kuota gratis gemini-3.1-flash-lite sangat kecil
 # sehingga lebih baik disisakan untuk menulis jawaban.
-CLASSIFIER_MODELS = ("gemini-2.5-flash-lite", "gemini-2.5-flash")
+CLASSIFIER_MODELS = ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
 CLASSIFIER_HISTORY_MESSAGES = 6
 
 # Hanya dipakai saat classifier gagal (lihat fallback_klasifikasi).
@@ -338,7 +338,7 @@ def _classifier_config(model_name: str) -> types.GenerateContentConfig:
         "response_mime_type": "application/json",
         "response_schema": Klasifikasi,
     }
-    if model_name.startswith("gemini-2.5"):
+    if model_name.startswith("gemini-3.8"):
         config["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
     return types.GenerateContentConfig(**config)
 

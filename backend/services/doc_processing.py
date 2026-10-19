@@ -201,7 +201,7 @@ def extract_metadata_with_ai(full_text: str) -> dict:
     preview = full_text[:2000]
     prompt = AI_METADATA_PROMPT + preview
 
-    models = ["gemini-2.5-flash", "gemini-2.0-flash", ""]
+    models = ["gemini-3.1-flash-lite", "gemini-2.0-flash", ""]
     response_text = None
 
     for model in models:
