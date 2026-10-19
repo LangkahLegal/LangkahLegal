@@ -75,13 +75,6 @@ const logoutMutation = useMutation({
       path: "/setting/profile",
     },
     {
-      id: "language",
-      icon: "language",
-      label: "Bahasa",
-      description: "Bahasa Indonesia",
-      path: "/setting/language",
-    },
-    {
       id: "theme",
       icon: "contrast",
       label: "Tema Aplikasi",

@@ -6,7 +6,7 @@ export class DaftarKlienPage extends BasePage {
   constructor(page) {
     super(page);
     this.cards = page.locator("div.group", { has: page.locator("h3") });
-    this.sortButton = page.getByRole("button", { name: "filter_list" });
+    this.sortDropdown = page.getByTestId("client-filter-urutkan");
     this.emptyState = page.getByText("Klien Kosong");
     this.loadFailedMessage = page.getByText("Gagal memuat data klien.");
   }
@@ -16,7 +16,7 @@ export class DaftarKlienPage extends BasePage {
   }
 
   async sortBy(label) {
-    await this.sortButton.click();
-    await this.page.getByRole("button", { name: new RegExp(label) }).click();
+    await this.sortDropdown.click();
+    await this.page.locator("div.cursor-pointer", { hasText: new RegExp(`^${label}$`) }).click();
   }
 }

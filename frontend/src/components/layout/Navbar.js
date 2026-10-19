@@ -79,11 +79,23 @@ export default function Navbar() {
     router.push("/auth/role");
   };
 
+  const handleLogoClick = (e) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setActiveSection("hero");
+    }
+  };
+
   return (
     <nav ref={navbarRef} className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-xl border-b border-surface transition-colors duration-500">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 max-w-7xl mx-auto w-full">
         <div className="flex-1 flex justify-start">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link
+            href="/"
+            onClick={handleLogoClick}
+            className="flex items-center gap-3 group cursor-pointer"
+          >
             <div className="relative w-12 h-12 md:w-14 md:h-14 transition-transform group-hover:scale-105">
               <Image
                 src="/images/icons.png"

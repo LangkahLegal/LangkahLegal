@@ -144,16 +144,36 @@ def list_by_schedule_and_statuses(db: Client, id_jadwal: int, statuses: list[str
     )
 
 
-def list_requests_for_konsultan(db: Client, id_konsultan: int, statuses: list[str]) -> list[dict]:
-    return (
-        db.table(TABLE)
-        .select(REQUEST_COLUMNS)
-        .eq("id_konsultan", id_konsultan)
-        .in_("status_pengajuan", statuses)
-        .order("created_at", desc=True)
-        .execute()
-        .data
-    )
+def list_requests_for_konsultan(
+    db: Client,
+    id_konsultan: int,
+    statuses: list[str],
+    search: str | None = None,
+    tanggal_dari: str | None = None,
+    tanggal_sebelum: str | None = None,
+    jam_dari: str | None = None,
+    jam_sebelum: str | None = None,
+    urutan: list[tuple[str, bool]] | None = None,
+) -> list[dict]:
+    """`search` mencocokkan nama klien; `urutan` berisi pasangan (kolom, menurun), bawaan pengajuan terbaru."""
+    # Join inner diperlukan agar filter nama klien menyaring pengajuannya, bukan hanya data klien yang ikut.
+    columns = REQUEST_COLUMNS.replace("users (", "users!inner (") if search else REQUEST_COLUMNS
+    query = db.table(TABLE).select(columns).eq("id_konsultan", id_konsultan).in_("status_pengajuan", statuses)
+
+    if search:
+        query = query.ilike("users.nama", f"%{search}%")
+    if tanggal_dari:
+        query = query.gte("tanggal_pengajuan", tanggal_dari)
+    if tanggal_sebelum:
+        query = query.lt("tanggal_pengajuan", tanggal_sebelum)
+    if jam_dari:
+        query = query.gte("jam_mulai", jam_dari)
+    if jam_sebelum:
+        query = query.lt("jam_mulai", jam_sebelum)
+
+    for column, descending in urutan or [("created_at", True)]:
+        query = query.order(column, desc=descending)
+    return query.execute().data
 
 
 def list_history_for_konsultan(db: Client, id_konsultan: int, excluded_status: str) -> list[dict]:

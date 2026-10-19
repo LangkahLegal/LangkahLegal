@@ -8,15 +8,19 @@ from core.constants import Role, StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
+from helpers.filters import date_range, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
 from helpers.schedule import ensure_valid_slot, generate_available_slots, is_past, now_wib
 from repositories import consultant_repository, consultation_repository, schedule_repository
 from schemas.consultants import (
+    ClientListFilters,
     ConsultantActiveToggle,
     ScheduleCreate,
     ScheduleToggle,
     ScheduleUpdate,
+    StatusKlien,
+    UrutanKlien,
 )
 
 logger = logging.getLogger(__name__)
@@ -242,14 +246,35 @@ def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
     return _with_past_flag(consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING]))
 
 
-def get_active_requests(db: Client, current_user: CurrentUser) -> list:
+ACTIVE_CLIENT_STATUSES = [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
+
+CLIENT_ORDER_COLUMNS = {
+    UrutanKlien.TERBARU: [("created_at", True)],
+    UrutanKlien.TERLAMA: [("created_at", False)],
+    UrutanKlien.JADWAL_TERDEKAT: [("tanggal_pengajuan", False), ("jam_mulai", False)],
+    UrutanKlien.JADWAL_TERJAUH: [("tanggal_pengajuan", True), ("jam_mulai", True)],
+}
+
+
+def get_active_requests(db: Client, current_user: CurrentUser, filters: ClientListFilters) -> list:
     require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
 
     id_kons = require_konsultan_id(db, current_user)
+    statuses = ACTIVE_CLIENT_STATUSES if filters.status == StatusKlien.SEMUA else [filters.status.value]
+    tanggal_dari, tanggal_sebelum = date_range(filters.jadwal)
+    jam_dari, jam_sebelum = time_range(filters.waktu)
 
     return _with_past_flag(
         consultation_repository.list_requests_for_konsultan(
-            db, id_kons, [StatusPengajuan.TERJADWAL, StatusPengajuan.MENUNGGU_PEMBAYARAN]
+            db,
+            id_kons,
+            statuses,
+            search=clean_search(filters.search) or None,
+            tanggal_dari=tanggal_dari,
+            tanggal_sebelum=tanggal_sebelum,
+            jam_dari=jam_dari,
+            jam_sebelum=jam_sebelum,
+            urutan=CLIENT_ORDER_COLUMNS[filters.urutkan],
         )
     )
 

@@ -7,10 +7,11 @@ export class KatalogKonsultanPage extends BasePage {
     super(page);
     this.cards = page.getByTestId("consultant-card");
     this.searchInput = page.getByTestId("explore-search-input");
-    this.filterDropdowns = page.getByRole("button", { name: /^Semua/ });
+    this.categoryDropdown = page.getByTestId("explore-filter-spesialisasi");
+    this.verificationDropdown = page.getByTestId("explore-filter-verified");
     this.minPriceInput = page.getByPlaceholder("Min");
     this.maxPriceInput = page.getByPlaceholder("Max");
-    this.resetButton = page.getByRole("button", { name: "Reset" });
+    this.resetButton = page.getByTestId("explore-reset-filter");
     this.emptyState = page.getByText("Tidak Ditemukan");
     this.loadErrorMessage = page.getByText(/gagal|error|coba lagi/i).first();
   }
@@ -27,14 +28,13 @@ export class KatalogKonsultanPage extends BasePage {
     await this.searchInput.fill(keyword);
   }
 
-  /** Dropdown yang belum diubah masih berlabel "Semua": kategori di depan, verifikasi di belakang. */
   async chooseCategory(label) {
-    await this.filterDropdowns.first().click();
+    await this.categoryDropdown.click();
     await this.option(label).click();
   }
 
   async chooseVerification(label) {
-    await this.filterDropdowns.last().click();
+    await this.verificationDropdown.click();
     await this.option(label).click();
   }
 

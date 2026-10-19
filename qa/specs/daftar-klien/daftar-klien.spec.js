@@ -36,11 +36,11 @@ Then("daftar klien tersusun dari pengajuan terlama", async ({ daftarKlienPage })
 });
 
 When("pengguna mengurutkan klien dari jadwal paling dekat", async ({ daftarKlienPage }) => {
-  await daftarKlienPage.sortBy("Paling Dekat");
+  await daftarKlienPage.sortBy("Jadwal Terdekat");
 });
 
 Then("daftar klien tersusun dari jadwal paling dekat", async ({ daftarKlienPage }) => {
-  await expectOrder(daftarKlienPage, CLIENT_ORDERS["Paling Dekat"]);
+  await expectOrder(daftarKlienPage, CLIENT_ORDERS["Jadwal Terdekat"]);
 });
 
 // ── CLT-002 · Konsultan tanpa klien aktif melihat daftar kosong
