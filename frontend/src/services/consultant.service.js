@@ -21,8 +21,12 @@ export const consultantService = {
     return response.data;
   },
 
-  getActiveRequests: async () => {
-    const response = await api.get("/consultants/me/requests/active");
+  // Filter, pencarian, dan urutan dikerjakan backend; nilai "semua" atau kosong tidak dikirim.
+  getActiveRequests: async (filters = {}) => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value && value !== "semua"),
+    );
+    const response = await api.get("/consultants/me/requests/active", { params });
     return response.data;
   },
 

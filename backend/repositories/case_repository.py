@@ -15,7 +15,7 @@ def list_by_status(
     kategori: str | None = None,
     search: str | None = None,
     tanggal_dari: str | None = None,
-    tanggal_sampai: str | None = None,
+    tanggal_sebelum: str | None = None,
     jam_dari: str | None = None,
     jam_sebelum: str | None = None,
     ada_dokumen: bool | None = None,
@@ -35,8 +35,8 @@ def list_by_status(
         query = query.ilike("deskripsi_kasus_awam", f"%{search}%")
     if tanggal_dari:
         query = query.gte("tanggal_konsultasi", tanggal_dari)
-    if tanggal_sampai:
-        query = query.lte("tanggal_konsultasi", tanggal_sampai)
+    if tanggal_sebelum:
+        query = query.lt("tanggal_konsultasi", tanggal_sebelum)
     if jam_dari:
         query = query.gte("jam_mulai", jam_dari)
     if jam_sebelum:

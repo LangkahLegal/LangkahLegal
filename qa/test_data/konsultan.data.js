@@ -31,7 +31,7 @@ export const ACTIVE_CLIENTS = [
 export const CLIENT_ORDERS = {
   Terbaru: ["10:00", "11:00", "09:00"],
   Terlama: ["09:00", "11:00", "10:00"],
-  "Paling Dekat": ["10:00", "11:00", "09:00"],
+  "Jadwal Terdekat": ["10:00", "11:00", "09:00"],
 };
 
 /** Slot jadwal bulan depan yang dipakai skenario halaman jadwal. */

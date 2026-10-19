@@ -27,7 +27,16 @@ GET_PENDING_REQUESTS = {
 
 GET_ACTIVE_REQUESTS = {
     "summary": "Daftar pengajuan aktif untuk konsultan",
-    "description": "Menampilkan daftar pengajuan konsultasi dengan status `terjadwal` untuk konsultan login.",
+    "description": """
+Menampilkan pengajuan konsultasi aktif (`terjadwal` dan `menunggu_pembayaran`) milik konsultan login.
+
+Filter opsional (dikerjakan di server dan bisa digabung):
+- `search`: kata kunci nama klien.
+- `status`: `terjadwal` atau `menunggu_pembayaran`.
+- `jadwal`: `akan_datang`, `hari_ini`, `besok`, `7_hari`, `30_hari`, `sudah_lewat` (tanggal konsultasi, WIB).
+- `waktu`: `pagi`, `siang`, `sore`, `malam` (jam mulai konsultasi).
+- `urutkan`: `terbaru` (bawaan), `terlama`, `jadwal_terdekat`, `jadwal_terjauh`.
+""",
 }
 
 GET_CONSULTANT_DETAIL = {

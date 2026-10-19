@@ -4,22 +4,7 @@ from typing import Optional
 
 from fastapi import File, Form, Query, UploadFile
 
-
-class JadwalBursa(str, Enum):
-    SEMUA = "semua"
-    AKAN_DATANG = "akan_datang"
-    HARI_INI = "hari_ini"
-    BESOK = "besok"
-    TUJUH_HARI = "7_hari"
-    TIGA_PULUH_HARI = "30_hari"
-
-
-class WaktuBursa(str, Enum):
-    SEMUA = "semua"
-    PAGI = "pagi"
-    SIANG = "siang"
-    SORE = "sore"
-    MALAM = "malam"
+from schemas.filters import RENTANG_JADWAL_DESC, WAKTU_SESI_DESC, RentangJadwal, WaktuSesi
 
 
 class DokumenBursa(str, Enum):
@@ -38,11 +23,8 @@ class UrutanBursa(str, Enum):
 class CaseListFilters:
     kategori: Optional[str] = Query(None, max_length=50, description="Kategori hukum; kosong atau `semua` untuk semua")
     search: Optional[str] = Query(None, max_length=100, description="Kata kunci pada deskripsi kasus")
-    jadwal: JadwalBursa = Query(JadwalBursa.SEMUA, description="Rentang tanggal konsultasi (WIB)")
-    waktu: WaktuBursa = Query(
-        WaktuBursa.SEMUA,
-        description="Jam mulai: pagi < 12.00, siang 12.00-15.00, sore 15.00-18.00, malam >= 18.00",
-    )
+    jadwal: RentangJadwal = Query(RentangJadwal.SEMUA, description=RENTANG_JADWAL_DESC)
+    waktu: WaktuSesi = Query(WaktuSesi.SEMUA, description=WAKTU_SESI_DESC)
     dokumen: DokumenBursa = Query(DokumenBursa.SEMUA, description="Ada tidaknya dokumen bukti")
     urutkan: UrutanBursa = Query(UrutanBursa.TERBARU, description="Urutan hasil")
 

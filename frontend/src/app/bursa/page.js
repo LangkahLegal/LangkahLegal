@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,14 +11,15 @@ import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { caseService } from "@/services/case.service";
 import SearchBar from "@/components/layout/SearchBar";
-import PillDropdown from "@/components/explore/PillDropdown";
+import FilterPanel from "@/components/layout/FilterPanel";
 import BursaCard from "@/components/bursa/BursaCard";
 import SuccessView from "@/components/layout/SuccessView";
 import ClaimConfirmModal from "@/components/bursa/ClaimConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { JADWAL_OPTIONS, WAKTU_OPTIONS, defaultFilterValues } from "@/lib/filterOptions";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 // Pilihan filter; id-nya dikirim apa adanya ke backend (GET /cases/).
-// `wide` membuat dropdown selebar dua kolom di mobile agar grid tetap genap.
 const FILTER_DROPDOWNS = [
   {
     key: "kategori",
@@ -30,29 +31,8 @@ const FILTER_DROPDOWNS = [
       { id: "perdata", label: "Perdata" },
     ],
   },
-  {
-    key: "jadwal",
-    icon: "event",
-    options: [
-      { id: "semua", label: "Semua", triggerLabel: "Jadwal" },
-      { id: "akan_datang", label: "Akan Datang" },
-      { id: "hari_ini", label: "Hari Ini" },
-      { id: "besok", label: "Besok" },
-      { id: "7_hari", label: "7 Hari ke Depan", triggerLabel: "7 Hari" },
-      { id: "30_hari", label: "30 Hari ke Depan", triggerLabel: "30 Hari" },
-    ],
-  },
-  {
-    key: "waktu",
-    icon: "schedule",
-    options: [
-      { id: "semua", label: "Semua", triggerLabel: "Waktu" },
-      { id: "pagi", label: "Pagi · < 12", triggerLabel: "Pagi" },
-      { id: "siang", label: "Siang · 12-15", triggerLabel: "Siang" },
-      { id: "sore", label: "Sore · 15-18", triggerLabel: "Sore" },
-      { id: "malam", label: "Malam · ≥ 18", triggerLabel: "Malam" },
-    ],
-  },
+  { key: "jadwal", icon: "event", options: JADWAL_OPTIONS },
+  { key: "waktu", icon: "schedule", options: WAKTU_OPTIONS },
   {
     key: "dokumen",
     icon: "attach_file",
@@ -74,9 +54,7 @@ const FILTER_DROPDOWNS = [
   },
 ];
 
-const DEFAULT_OPTIONS = Object.fromEntries(
-  FILTER_DROPDOWNS.map(({ key, options }) => [key, options[0].id]),
-);
+const DEFAULT_OPTIONS = defaultFilterValues(FILTER_DROPDOWNS);
 
 export default function BursaKasusPage() {
   const queryClient = useQueryClient();
@@ -86,14 +64,8 @@ export default function BursaKasusPage() {
   const [successData, setSuccessData] = useState(null);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [expandedDesc, setExpandedDesc] = useState({});
-
-  // Pencarian dikirim ke backend setelah jeda singkat agar tidak memanggil API tiap ketikan.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // --- Fetch kasus open: filter, pencarian, dan urutan dikerjakan backend ---
   const filters = { search: debouncedSearch, ...options };
@@ -214,39 +186,17 @@ export default function BursaKasusPage() {
               testId="bursa-search-input"
             />
 
-            {/* Filter */}
-            <section className="space-y-3 px-1 relative z-20">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted">
-                  Filter
-                </h3>
-                <button
-                  onClick={resetFilters}
-                  disabled={!hasActiveFilter}
-                  data-testid="bursa-reset-filter"
-                  className="flex items-center gap-1 text-xs font-bold text-danger disabled:text-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <MaterialIcon name="restart_alt" className="text-sm" />
-                  Reset Filter
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
-                {FILTER_DROPDOWNS.map(({ key, icon, wide, options: choices }) => (
-                  <div key={key} className={wide ? "col-span-2 lg:col-span-1" : ""}>
-                    <PillDropdown
-                      icon={icon}
-                      options={choices}
-                      value={options[key]}
-                      onChange={(value) =>
-                        setOptions((prev) => ({ ...prev, [key]: value }))
-                      }
-                      fullWidth
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
+            <FilterPanel
+              dropdowns={FILTER_DROPDOWNS}
+              values={options}
+              onChange={(key, value) =>
+                setOptions((prev) => ({ ...prev, [key]: value }))
+              }
+              onReset={resetFilters}
+              canReset={hasActiveFilter}
+              gridClassName="lg:grid-cols-5"
+              testIdPrefix="bursa"
+            />
 
             {/* LOADING STATE */}
             {isLoading && (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MaterialIcon } from "@/components/ui/Icons";
+import { MaterialIcon } from "./Icons";
 
 /**
  * PillDropdown — looks like a CategoryList pill-button,
@@ -15,6 +15,7 @@ export default function PillDropdown({
   value,
   onChange,
   fullWidth = false,
+  testId,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
@@ -35,6 +36,7 @@ export default function PillDropdown({
       {/* Trigger — pill shape identical to CategoryList */}
       <button
         onClick={() => setIsOpen((v) => !v)}
+        data-testid={testId}
         className={`
           inline-flex items-center gap-2 h-11 rounded-full text-xs font-bold border
           ${fullWidth ? "w-full justify-between px-4" : "justify-center px-5"}
@@ -77,7 +79,7 @@ export default function PillDropdown({
                     onChange(opt.id);
                     setIsOpen(false);
                   }}
-                  className={`${fullWidth ? "px-4 whitespace-nowrap" : "px-5"} py-2.5 text-xs flex items-center justify-between transition-all cursor-pointer ${
+                  className={`${fullWidth ? "px-4" : "px-5"} py-2.5 text-xs flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
                       ? "bg-primary text-white font-bold"
                       : "text-main hover:bg-surface font-medium"

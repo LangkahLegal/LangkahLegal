@@ -20,7 +20,7 @@ Khusus role konsultan. Mengambil kasus bursa dengan status `open`.
 Filter opsional (semuanya dikerjakan di server dan bisa digabung):
 - `kategori`: `pidana`, `perdata`, `umum`.
 - `search`: kata kunci pada deskripsi kasus.
-- `jadwal`: `akan_datang` (hari ini dan seterusnya), `hari_ini`, `besok`, `7_hari`, `30_hari` (tanggal konsultasi, WIB).
+- `jadwal`: `akan_datang` (hari ini dan seterusnya), `hari_ini`, `besok`, `7_hari`, `30_hari`, `sudah_lewat` (tanggal konsultasi, WIB).
 - `waktu`: `pagi`, `siang`, `sore`, `malam` (jam mulai konsultasi).
 - `dokumen`: `ada` atau `tidak` (dokumen bukti).
 - `urutkan`: `terbaru` (bawaan), `terlama`, `jadwal_terdekat`.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
@@ -8,26 +8,42 @@ import PageHeader from "@/components/layout/PageHeader";
 import SearchBar from "@/components/layout/SearchBar";
 import { useRouter } from "next/navigation";
 import ConsultantCard from "@/components/explore/ConsultantCard";
-import PillDropdown from "@/components/explore/PillDropdown";
+import FilterPanel from "@/components/layout/FilterPanel";
 import AIBanner from "@/components/explore/AIBanner";
-import { MaterialIcon } from "@/components/ui";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { defaultFilterValues } from "@/lib/filterOptions";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 // Import Service
 import { consultationService } from "@/services/consultation.service";
 
-const CATEGORY_OPTIONS = [
-  { id: "semua", label: "Semua" },
-  { id: "pidana", label: "Pidana" },
-  { id: "perdata", label: "Perdata" },
-  { id: "umum", label: "Umum" },
+// Pilihan filter; key dan id-nya sama dengan parameter katalog di backend.
+const FILTER_DROPDOWNS = [
+  {
+    key: "spesialisasi",
+    icon: "category",
+    options: [
+      { id: "semua", label: "Semua", triggerLabel: "Kategori" },
+      { id: "pidana", label: "Pidana" },
+      { id: "perdata", label: "Perdata" },
+      { id: "umum", label: "Umum" },
+    ],
+  },
+  {
+    key: "verified",
+    icon: "verified",
+    options: [
+      { id: "semua", label: "Semua", triggerLabel: "Verifikasi" },
+      { id: "terverifikasi", label: "Verified" },
+      { id: "non-verified", label: "Belum Verified" },
+    ],
+  },
 ];
 
-const VERIFIED_OPTIONS = [
-  { id: "semua", label: "Semua" },
-  { id: "terverifikasi", label: "Verified" },
-  { id: "non-verified", label: "Belum Verified" },
-];
+const DEFAULT_OPTIONS = defaultFilterValues(FILTER_DROPDOWNS);
+
+const PRICE_INPUT_CLASS =
+  "flex-1 min-w-0 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 const PAGE_SIZE = 12;
 
@@ -41,23 +57,15 @@ const toPrice = (value) => {
 export default function KonsultasiPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("semua");
-  const [filterVerified, setFilterVerified] = useState("semua");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
 
-  // Pencarian dikirim ke backend setelah jeda singkat agar tidak memanggil API tiap ketikan.
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
   // --- 1. Katalog: filter, pencarian, dan paginasi dikerjakan backend ---
   const filters = {
-    spesialisasi: activeCategory,
+    ...options,
     search: debouncedSearch,
-    verified: filterVerified,
     minPrice: toPrice(priceMin),
     maxPrice: toPrice(priceMax),
   };
@@ -92,14 +100,14 @@ export default function KonsultasiPage() {
 
   // --- Reset ---
   const hasActiveFilter =
-    activeCategory !== "semua" ||
-    filterVerified !== "semua" ||
+    search.trim() !== "" ||
     priceMin !== "" ||
-    priceMax !== "";
+    priceMax !== "" ||
+    FILTER_DROPDOWNS.some(({ key }) => options[key] !== DEFAULT_OPTIONS[key]);
 
   const resetFilters = () => {
-    setActiveCategory("semua");
-    setFilterVerified("semua");
+    setSearch("");
+    setOptions(DEFAULT_OPTIONS);
     setPriceMin("");
     setPriceMax("");
   };
@@ -111,68 +119,43 @@ export default function KonsultasiPage() {
       <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
         <PageHeader title="Cari Konsultan" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 space-y-10 pb-32 lg:pb-12 animate-fade-in">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 space-y-8 pb-32 lg:pb-12 animate-fade-in">
           <SearchBar value={search} onChange={setSearch} />
 
-          {/* ===== Filter Bar — compact horizontal row ===== */}
-          <section className="w-full space-y-6">
-            <h2 className="text-xl font-headline font-black text-main px-1 tracking-tight">
-              Filter
-            </h2>
-
-            <div className="flex items-center gap-3 px-1 flex-wrap relative z-20">
-              {/* Kategori Dropdown */}
-              <PillDropdown
-                options={CATEGORY_OPTIONS}
-                value={activeCategory}
-                onChange={setActiveCategory}
+          <FilterPanel
+            dropdowns={FILTER_DROPDOWNS}
+            values={options}
+            onChange={(key, value) =>
+              setOptions((prev) => ({ ...prev, [key]: value }))
+            }
+            onReset={resetFilters}
+            canReset={hasActiveFilter}
+            testIdPrefix="explore"
+          >
+            {/* Rentang tarif per sesi */}
+            <div className="col-span-2 flex items-center gap-2 h-11 px-4 rounded-full border border-surface bg-input/50">
+              <span className="text-[10px] font-bold text-muted uppercase tracking-wide shrink-0">
+                Rp
+              </span>
+              <input
+                type="number"
+                min="0"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+                placeholder="Min"
+                className={PRICE_INPUT_CLASS}
               />
-
-              {/* Verifikasi Dropdown */}
-              <PillDropdown
-                options={VERIFIED_OPTIONS}
-                value={filterVerified}
-                onChange={setFilterVerified}
+              <span className="text-muted/50 text-[10px] shrink-0">—</span>
+              <input
+                type="number"
+                min="0"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+                placeholder="Max"
+                className={PRICE_INPUT_CLASS}
               />
-
-              <button
-                onClick={resetFilters}
-                disabled={!hasActiveFilter}
-                className={`flex flex-1 md:flex-none items-center justify-center gap-1.5 h-11 px-4 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all duration-300 whitespace-nowrap ${
-                  hasActiveFilter
-                    ? "border-danger/30 text-danger bg-danger/5 hover:bg-danger/10"
-                    : "border-muted/30 text-muted bg-surface/50 opacity-50 cursor-not-allowed"
-                }`}
-              >
-                Reset
-              </button>
-
-              {/* Harga Min-Max — Width ditambah dan dibuat penuh (w-full) di tampilan mobile */}
-              <div className="flex flex-1 md:flex-none items-center justify-between gap-2 h-11 px-4 rounded-full border border-surface bg-input/50 shrink-0 w-full md:w-auto">
-                <span className="text-[10px] font-bold text-muted uppercase tracking-wide shrink-0">
-                  Rp
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  value={priceMin}
-                  onChange={(e) => setPriceMin(e.target.value)}
-                  placeholder="Min"
-                  // Menggunakan flex-1 dan menyesuaikan min/max width agar fleksibel
-                  className="flex-1 min-w-[60px] md:w-24 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
-                />
-                <span className="text-muted/50 text-[10px] shrink-0">—</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={priceMax}
-                  onChange={(e) => setPriceMax(e.target.value)}
-                  placeholder="Max"
-                  className="flex-1 min-w-[60px] md:w-24 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
-                />
-              </div>
             </div>
-          </section>
+          </FilterPanel>
 
           {/* ===== Consultant Grid ===== */}
           <div className="relative min-h-[400px]">
