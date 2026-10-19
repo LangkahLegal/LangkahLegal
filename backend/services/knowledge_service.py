@@ -4,6 +4,7 @@ from typing import Optional
 from supabase import Client
 
 from core.exceptions import AppError, NotFoundError
+from helpers.peraturan_files import get_file_info
 from repositories import legal_document_repository
 
 DOC_COLS = "frbr_uri, nama_uu, nomor_uu, tahun_uu, kategori, status_hukum"
@@ -27,7 +28,7 @@ def _document_from_row(row: dict) -> dict:
         "tahun_uu": row.get("tahun_uu"),
         "kategori": row.get("kategori"),
         "status_hukum": row.get("status_hukum"),
-        "has_file": False,
+        **get_file_info(row["frbr_uri"]),
     }
 
 

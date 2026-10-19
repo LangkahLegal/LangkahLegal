@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
 
 export default function ChatHeader({
-  name = "Visi",
+  name = "Kia",
   status = "Online",
   onToggleSidebar,
   showSidebarToggle = false,

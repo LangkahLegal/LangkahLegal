@@ -14,7 +14,7 @@ import api from "@/lib/axios";
 const WELCOME_MESSAGE = {
   id: "welcome",
   role: "ai",
-  text: "Halo! Saya Visi, asisten hukum pintar Anda. Saat ini saya telah mempelajari ribuan dokumen hukum dan dapat membantu Anda dalam topik berikut:\n\n- **Hukum Pidana:** KUHP, KUHAP, UU Narkotika, UU Antikorupsi, UU Pencucian Uang (TPPU), dll.\n- **Hukum Perdata:** KUH Perdata, UU Perkawinan, Kompilasi Hukum Islam (KHI), UU Pokok Agraria, UU Perlindungan Konsumen, dll.\n- **Ketenagakerjaan:** UU Ketenagakerjaan, UU Cipta Kerja, Aturan BPJS, Panduan Pesangon & PHK, dll.\n- **Teknologi Informasi:** UU ITE, UU Perlindungan Data Pribadi (PDP), UU Pers.\n- **Hak Asasi Manusia:** UU TPKS (Kekerasan Seksual), UU PKDRT, UU Perlindungan Anak, dll.\n- **Hukum Umum:** UU Advokat, UU Bantuan Hukum, UU Kepolisian, Pelayanan Publik, dll.\n\nCeritakan masalah yang Anda hadapi secara detail, dan saya akan carikan pasal yang relevan serta menjelaskannya dengan bahasa yang mudah dipahami! 💡",
+  text: "Halo! Saya Kia, asisten hukum pintar Anda. Saat ini saya telah mempelajari ribuan dokumen hukum dan dapat membantu Anda dalam topik berikut:\n\n- **Hukum Pidana:** KUHP, KUHAP, UU Narkotika, UU Antikorupsi, UU Pencucian Uang (TPPU), dll.\n- **Hukum Perdata:** KUH Perdata, UU Perkawinan, Kompilasi Hukum Islam (KHI), UU Pokok Agraria, UU Perlindungan Konsumen, dll.\n- **Ketenagakerjaan:** UU Ketenagakerjaan, UU Cipta Kerja, Aturan BPJS, Panduan Pesangon & PHK, dll.\n- **Teknologi Informasi:** UU ITE, UU Perlindungan Data Pribadi (PDP), UU Pers.\n- **Hak Asasi Manusia:** UU TPKS (Kekerasan Seksual), UU PKDRT, UU Perlindungan Anak, dll.\n- **Hukum Umum:** UU Advokat, UU Bantuan Hukum, UU Kepolisian, Pelayanan Publik, dll.\n\nCeritakan masalah yang Anda hadapi secara detail, dan saya akan carikan pasal yang relevan serta menjelaskannya dengan bahasa yang mudah dipahami! 💡",
   time: "Baru saja",
 };
 
@@ -35,7 +35,7 @@ export default function TanyaAIPage() {
   } = useChatStore();
 
   const loadingTexts = [
-    "Visi sedang membaca kronologi Anda...",
+    "Kia sedang membaca kronologi Anda...",
     "Menganalisis konteks hukum yang relevan...",
     "Mencocokkan dengan pasal di database...",
     "Menyiapkan tanggapan hukum terbaik...",
@@ -149,7 +149,9 @@ export default function TanyaAIPage() {
         }),
         type: data.type || "text",
         consultants: data.consultants || [],
+        draft_konsultasi: data.draft_konsultasi || null,
         pasal_referensi: data.pasal_referensi || [],
+        sumber_dokumen: data.sumber_dokumen || [],
         disclaimer: data.disclaimer || "",
       };
       addLocalMessage(aiMsg);
@@ -179,7 +181,7 @@ export default function TanyaAIPage() {
         }
       } else if (error.request) {
         errorDesc =
-          "Koneksi terputus. Visi tidak bisa terhubung ke server. Pastikan internet Anda stabil ya!";
+          "Koneksi terputus. Kia tidak bisa terhubung ke server. Pastikan internet Anda stabil ya!";
       }
 
       const errorMsg = {
@@ -222,7 +224,7 @@ export default function TanyaAIPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
         <ChatHeader
-          name="Visi"
+          name="Kia"
           status="Online"
           onToggleSidebar={() => setShowSidebar((p) => !p)}
           showSidebarToggle

@@ -80,6 +80,9 @@ class SumberDokumen(BaseModel):
     kategori: Optional[str] = None
     status_hukum: Optional[str] = None
     has_file: bool = False
+    file_url: Optional[str] = None
+    sumber_url: Optional[str] = None
+    judul_resmi: Optional[str] = None
     pasal: list[SumberPasal] = []
 
 
@@ -96,11 +99,27 @@ class ConsultantInfo(BaseModel):
     total_reviews: Optional[int] = 0
 
 
+class DraftKonsultasi(BaseModel):
+    __doc__ = docs.DRAFT_KONSULTASI
+    kategori: str
+    ringkasan_kasus: str
+    bukti_dimiliki: list[str] = []
+    bukti_perlu_disiapkan: list[str] = []
+    deskripsi_kasus: str = Field(..., description="Teks siap pakai untuk mengisi deskripsi kasus di form pengajuan")
+
+
 class TriageResponse(BaseModel):
     session_id: str
-    type: str = Field("text", description="'text' untuk jawaban biasa, 'consultant_list' untuk daftar konsultan")
+    type: str = Field(
+        "text",
+        description=(
+            "'text' untuk jawaban biasa, 'consultant_list' untuk daftar konsultan, "
+            "'consultation_draft' untuk draft pengajuan konsultasi beserta daftar konsultan"
+        ),
+    )
     jawaban: str
     pasal_referensi: list[PasalReference] = []
     sumber_dokumen: list[SumberDokumen] = []
     consultants: Optional[list[ConsultantInfo]] = None
+    draft_konsultasi: Optional[DraftKonsultasi] = None
     disclaimer: str

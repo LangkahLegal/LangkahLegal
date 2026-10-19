@@ -14,6 +14,9 @@ class KnowledgeDocument(BaseModel):
     kategori: Optional[str] = None
     status_hukum: Optional[str] = None
     has_file: bool = False
+    file_url: Optional[str] = None
+    sumber_url: Optional[str] = None
+    judul_resmi: Optional[str] = None
 
 
 class KnowledgeDocumentDetail(KnowledgeDocument):

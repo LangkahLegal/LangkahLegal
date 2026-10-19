@@ -2,6 +2,8 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AIConsultantCard from "./AIConsultantCard";
+import AIConsultationDraftCard from "./AIConsultationDraftCard";
+import AISourceList from "./AISourceList";
 
 export default function ChatMessage({ message }) {
   const isAI = message.role === "ai";
@@ -50,6 +52,14 @@ export default function ChatMessage({ message }) {
                 {message.text}
               </ReactMarkdown>
 
+              {/* Draft pengajuan: AI mengarahkan ke konsultasi dan sudah merangkum kasusnya */}
+              {message.type === "consultation_draft" && message.draft_konsultasi && (
+                <AIConsultationDraftCard
+                  draft={message.draft_konsultasi}
+                  consultants={message.consultants || []}
+                />
+              )}
+
               {/* Agentic Output: Render Consultants if tool was called */}
               {message.type === "consultant_list" && message.consultants && message.consultants.length > 0 && (
                 <div className="mt-6 space-y-3 pt-4 border-t border-surface/50">
@@ -69,28 +79,8 @@ export default function ChatMessage({ message }) {
           )}
         </div>
 
-        {/* Pasal References — only shown for AI messages with citations */}
-        {isAI && message.pasal_referensi && message.pasal_referensi.length > 0 && (
-          <div className="px-4 pt-2 space-y-1">
-            <p className="text-[10px] lg:text-xs text-muted font-semibold uppercase tracking-wider">
-              📚 Referensi Pasal:
-            </p>
-            {message.pasal_referensi.map((ref, idx) => (
-              <div
-                key={idx}
-                className="text-[10px] lg:text-xs text-muted/80 bg-surface/50 px-3 py-1.5 rounded-lg border border-surface inline-block mr-1.5 mb-1"
-              >
-                <span className="font-medium">{ref.nama_uu}</span>
-                {ref.pasal_bagian && (
-                  <span> — {ref.pasal_bagian}</span>
-                )}
-                <span className="text-primary-light ml-1.5 font-mono">
-                  {Math.round(ref.similarity * 100)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Sumber: dokumen peraturan yang dipakai, bisa dibuka sampai naskah resminya */}
+        {isAI && <AISourceList sources={message.sumber_dokumen} />}
 
         {/* Disclaimer — shown for AI messages that have one */}
         {isAI && message.disclaimer && (

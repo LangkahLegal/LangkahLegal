@@ -4,3 +4,6 @@ __pycache__
 .env.local
 .pytest_cache
 AGENTS.md
+evals
+scripts
+tools

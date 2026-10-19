@@ -5,6 +5,7 @@ from supabase import Client
 
 from core.exceptions import InternalError, NotFoundError
 from core.user import CurrentUser
+from helpers.peraturan_files import get_file_info
 from repositories import chat_repository
 from schemas.chatbot import (
     CreateSessionRequest,
@@ -18,6 +19,8 @@ from schemas.chatbot import (
 from services.rag_service import triage
 
 logger = logging.getLogger(__name__)
+
+CONSULTANT_TYPES = ("consultant_list", "consultation_draft")
 
 
 def _get_chat_history_from_db(supabase: Client, session_id: str, limit: int = 30) -> list[dict]:
@@ -109,6 +112,14 @@ def delete_session(supabase: Client, current_user: CurrentUser, session_id: str)
     chat_repository.delete_session(supabase, session_id)
 
 
+def _with_fresh_file_info(metadata: dict | None) -> dict | None:
+    # Link naskah resmi disimpan saat pesan dibuat; ambil ulang dari manifest supaya pesan lama ikut punya PDF.
+    if not metadata or not metadata.get("sumber_dokumen"):
+        return metadata
+    sources = [{**s, **get_file_info(s["frbr_uri"])} for s in metadata["sumber_dokumen"] if s.get("frbr_uri")]
+    return {**metadata, "sumber_dokumen": sources}
+
+
 def get_session_messages(supabase: Client, current_user: CurrentUser, session_id: str) -> MessageListResponse:
     if not chat_repository.list_owned_session(supabase, session_id, current_user.id_user):
         raise NotFoundError("Sesi tidak ditemukan.")
@@ -121,7 +132,7 @@ def get_session_messages(supabase: Client, current_user: CurrentUser, session_id
             session_id=m["session_id"],
             role=m["role"],
             content=m["content"],
-            metadata=m.get("metadata"),
+            metadata=_with_fresh_file_info(m.get("metadata")),
             created_at=m["created_at"],
         )
         for m in (rows or [])
@@ -150,8 +161,10 @@ def _ai_metadata(result: dict, response_type: str) -> dict:
         "sumber_dokumen": result.get("sumber_dokumen", []),
         "disclaimer": result.get("disclaimer", ""),
     }
-    if response_type == "consultant_list":
+    if response_type in CONSULTANT_TYPES:
         metadata["consultants"] = result.get("consultants", [])
+    if result.get("draft_konsultasi"):
+        metadata["draft_konsultasi"] = result["draft_konsultasi"]
     return metadata
 
 
@@ -162,7 +175,8 @@ def _to_triage_response(session_id: str, result: dict, response_type: str) -> Tr
         jawaban=result["jawaban"],
         pasal_referensi=result.get("pasal_referensi", []),
         sumber_dokumen=result.get("sumber_dokumen", []),
-        consultants=result.get("consultants") if response_type == "consultant_list" else None,
+        consultants=result.get("consultants") if response_type in CONSULTANT_TYPES else None,
+        draft_konsultasi=result.get("draft_konsultasi"),
         disclaimer=result.get("disclaimer", ""),
     )
 
@@ -192,7 +206,7 @@ def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageReque
         current_step = "save_user_msg"
         response_type = result.get("type", "text")
 
-        _save_message(supabase, session_id, "user", payload.query)
+        _save_message(supabase, session_id, "user", payload.query, metadata={"klasifikasi": result.get("klasifikasi")})
 
         current_step = "save_ai_msg"
         _save_message(

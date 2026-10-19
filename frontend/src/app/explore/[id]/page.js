@@ -24,6 +24,8 @@ import SchedulePicker from "@/components/explore/pengajuan/SchedulePicker";
 import ConsultationForm from "@/components/explore/pengajuan/ConsultationForm";
 import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { clearConsultationDraft, readIncomingConsultationDraft } from "@/lib/consultationDraft";
+import { useClientValue } from "@/lib/useClientValue";
 
 export default function ConsultantDetailPage() {
   const { id } = useParams();
@@ -34,7 +36,10 @@ export default function ConsultantDetailPage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [description, setDescription] = useState("");
+  // null = belum diketik user, sehingga ringkasan dari Tanya AI (kalau ada) yang ditampilkan.
+  const [typedDescription, setDescription] = useState(null);
+  const aiDraftDescription = useClientValue(readIncomingConsultationDraft, null);
+  const description = typedDescription ?? aiDraftDescription ?? "";
   const [files, setFiles] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { theme } = useTheme();
@@ -88,6 +93,7 @@ export default function ConsultantDetailPage() {
       consultationService.createConsultation(payload, files),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consultations"] });
+      clearConsultationDraft();
       setIsSubmitted(true);
     },
     onError: (error) => {
