@@ -12,4 +12,8 @@ JOB_STATUS_RESPONSE = "Response untuk status background job (upload/replace PDF)
 
 SUMBER_DOKUMEN = "1 dokumen peraturan (group by frbr_uri) yang ditampilkan di bawah jawaban AI."
 
+DRAFT_KONSULTASI = (
+    "Ringkasan kasus dari percakapan dengan AI, dipakai untuk mengisi otomatis form pengajuan konsultasi."
+)
+
 KNOWLEDGE_DOCUMENT = "Metadata 1 dokumen peraturan (tanpa embedding / field admin)."

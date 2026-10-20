@@ -6,10 +6,11 @@ from core.constants import Role, StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import require_konsultan_id, require_role
-from helpers.listing import page_window, with_pagination
+from helpers.filters import date_range, time_range
+from helpers.listing import clean_search, page_window, with_pagination
 from helpers.schedule import ensure_not_past, find_conflict
 from repositories import case_repository, consultation_repository
-from schemas.cases import CaseForm
+from schemas.cases import CaseForm, CaseListFilters, DokumenBursa, UrutanBursa
 from services import notification_service
 from services.storage_service import select_valid_files, upload_supporting_documents
 
@@ -20,6 +21,14 @@ ACTIVE_STATUSES = [
     StatusPengajuan.MENUNGGU_PEMBAYARAN,
     StatusPengajuan.TERJADWAL,
 ]
+
+DOKUMEN_ADA = {DokumenBursa.ADA: True, DokumenBursa.TIDAK: False}
+
+URUTAN_KOLOM = {
+    UrutanBursa.TERBARU: [("id_bursa", True)],
+    UrutanBursa.TERLAMA: [("id_bursa", False)],
+    UrutanBursa.JADWAL_TERDEKAT: [("tanggal_konsultasi", False), ("jam_mulai", False), ("id_bursa", True)],
+}
 
 
 async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> dict:
@@ -67,18 +76,27 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
 def list_open_cases(
     db: Client,
     current_user: CurrentUser,
-    kategori: str | None = None,
+    filters: CaseListFilters,
     page: int | None = None,
     page_size: int = 20,
 ) -> dict:
     require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa melihat bursa")
 
-    kategori = (kategori or "").strip().lower()
+    kategori = (filters.kategori or "").strip().lower()
+    tanggal_dari, tanggal_sebelum = date_range(filters.jadwal)
+    jam_dari, jam_sebelum = time_range(filters.waktu)
     offset, limit = page_window(page, page_size)
     rows, total = case_repository.list_by_status(
         db,
         StatusBursa.OPEN,
         kategori=kategori if kategori and kategori != "semua" else None,
+        search=clean_search(filters.search) or None,
+        tanggal_dari=tanggal_dari,
+        tanggal_sebelum=tanggal_sebelum,
+        jam_dari=jam_dari,
+        jam_sebelum=jam_sebelum,
+        ada_dokumen=DOKUMEN_ADA.get(filters.dokumen),
+        urutan=URUTAN_KOLOM[filters.urutkan],
         offset=offset,
         limit=limit,
     )

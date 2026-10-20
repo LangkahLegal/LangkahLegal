@@ -73,9 +73,9 @@ export default function BursaCard({
       data-testid="bursa-card"
       data-case-id={kasus.id_bursa}
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ delay: idx * 0.05, duration: 0.3 }}
+      // Jeda bertahap hanya saat muncul (maks. 10 kartu) agar kartu yang tersaring langsung hilang.
+      animate={{ opacity: 1, y: 0, transition: { delay: Math.min(idx, 10) * 0.05, duration: 0.3 } }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
       className="group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 bg-primary/5 border-primary/20 shadow-soft flex flex-col hover:border-primary/40"
     >
       {/* BAGIAN ATAS: Avatar (Ikon Kategori), Info, & Status */}

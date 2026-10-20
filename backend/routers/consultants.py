@@ -8,6 +8,7 @@ from core.dependencies import get_current_user
 from core.user import CurrentUser
 from docs import consultants as docs
 from schemas.consultants import (
+    ClientListFilters,
     ConsultantActiveToggle,
     ConsultantDashboardStats,
     ScheduleCreate,
@@ -74,10 +75,11 @@ def get_pending_requests(
 
 @router.get("/me/requests/active", **docs.GET_ACTIVE_REQUESTS)
 def get_active_requests(
+    filters: ClientListFilters = Depends(),
     current_user: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_supabase_client),
 ):
-    return consultant_service.get_active_requests(db, current_user)
+    return consultant_service.get_active_requests(db, current_user, filters)
 
 
 @router.get("/{id_konsultan}/available-slots", status_code=status.HTTP_200_OK, **docs.GET_AVAILABLE_SLOTS)

@@ -29,6 +29,7 @@ export const ENDPOINTS = {
 
   "tanya AI": { method: "POST", path: "/chatbot/triage" },
   "hapus sesi AI": { method: "DELETE", path: /^\/chatbot\/sessions\/[^/]+$/ },
+  "isi pasal": { method: "GET", path: /^\/knowledge\/pasal\/\d+$/ },
 
   "statistik admin": { method: "GET", path: "/admin/stats" },
   "daftar pengajuan verifikasi": { method: "GET", path: "/admin/consultants" },

@@ -1,0 +1,7 @@
+{
+  "status": "GAGAL",
+  "exit_code": 1,
+  "command": "python -m evals.chatbot_policy_eval ",
+  "started_at": "2026-10-20T00:07:14.495830+07:00",
+  "finished_at": "2026-10-20T00:14:45.917317+07:00"
+}

@@ -29,5 +29,15 @@ mencari pasal-pasal yang relevan, dan menghasilkan jawaban AI.
 - Backend mengambil riwayat chat dari database berdasarkan `session_id`
 - Setelah AI menjawab, pesan user + AI otomatis tersimpan ke database
 - Jika `session_id` kosong, backend membuat sesi baru secara otomatis
+
+**Mode jawaban:** setiap pesan diklasifikasikan dulu, lalu AI menjawab dalam salah satu mode:
+- *Informasi* — menjelaskan aturan yang relevan (pasal muncul di `pasal_referensi`)
+- *Mengarahkan ke konsultasi* — pengguna meminta nasihat hukum; AI tidak memilihkan jalur,
+  tetapi menyiapkan draft pengajuan (`type: consultation_draft`)
+- *Rekomendasi konsultan* — pengguna meminta dicarikan advokat (`type: consultant_list`,
+  atau `consultation_draft` bila kasusnya sudah diceritakan)
+- *Penutup*, *di luar topik*, dan *krisis* — tanpa pencarian pasal
+
+`draft_konsultasi.deskripsi_kasus` siap dipakai untuk mengisi deskripsi kasus di form pengajuan.
 """,
 }

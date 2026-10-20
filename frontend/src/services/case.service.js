@@ -19,11 +19,14 @@ export const caseService = {
     return data;
   },
 
-  // Konsultan: melihat semua kasus open di bursa
-  listOpenCases: async (kategori = null) => {
-    const params = kategori && kategori !== "semua" ? { kategori } : {};
+  // Konsultan: melihat kasus open di bursa. Filter, pencarian, dan urutan dikerjakan backend;
+  // nilai "semua" atau kosong tidak dikirim.
+  listOpenCases: async (filters = {}) => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value && value !== "semua"),
+    );
     const response = await api.get("/cases/", { params });
-    return response.data.data;
+    return { data: response.data.data, total: response.data.total };
   },
 
   // Konsultan: klaim langsung sebuah kasus

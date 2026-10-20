@@ -2,8 +2,9 @@
 
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
+import { saveConsultationDraft } from "@/lib/consultationDraft";
 
-export default function AIConsultantCard({ consultant }) {
+export default function AIConsultantCard({ consultant, draft = null }) {
   const {
     id_konsultan,
     nama_lengkap,
@@ -67,7 +68,11 @@ export default function AIConsultantCard({ consultant }) {
         <Button
           variant="primary"
           className="w-full sm:w-auto !py-1.5 !px-4 text-[10px] sm:text-xs font-semibold shrink-0"
-          onClick={() => window.open(`/explore/${id_konsultan}`, "_blank")}
+          onClick={() => {
+            // Draft dari Tanya AI dipakai untuk mengisi deskripsi kasus di form pengajuan.
+            if (draft) saveConsultationDraft(draft);
+            window.open(`/explore/${id_konsultan}${draft ? "?dari=ai" : ""}`, "_blank");
+          }}
         >
           Jadwalkan
         </Button>

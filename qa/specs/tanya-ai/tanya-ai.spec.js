@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { Given, Then, When } from "../../hooks/bdd.js";
+import { ProfilKonsultanPage } from "../../pages/profil-konsultan/profil-konsultan.page.js";
 import { defineCases } from "../../support/parameter-types.js";
 import { chatSessionsOfKlien, resetChatData, seedChatSession } from "../../support/seed.js";
 import { identity } from "../../support/state.js";
@@ -7,10 +8,13 @@ import { CATALOG_CONSULTANT } from "../../test_data/katalog-konsultan.data.js";
 import {
   AI_FAILURES,
   AI_REPLIES,
+  CONSULTATION_DRAFT,
   QUESTIONS,
   QUICK_REPLIES,
   RECOMMENDATION,
   SAVED_SESSIONS,
+  SOURCE_DOCUMENT,
+  SOURCE_PASAL,
   STUB_SESSION_ID,
   WELCOME_TEXT,
 } from "../../test_data/tanya-ai.data.js";
@@ -153,6 +157,20 @@ Then("profil konsultan uji terbuka di tab baru", async ({ world }) => {
   expect(world.popup.url()).toMatch(new RegExp(`/explore/${identity("konsultan").idKonsultan}$`));
 });
 
+// ── AI-014 · Ringkasan kasus dari AI terisi otomatis di form pengajuan konsultan
+
+Then("AI menampilkan ringkasan kasus sebagai draft pengajuan", async ({ tanyaAiPage }) => {
+  await expect(tanyaAiPage.consultationDraft).toBeVisible();
+  await expect(tanyaAiPage.consultationDraft).toContainText(CONSULTATION_DRAFT.ringkasan_kasus);
+  await expect(tanyaAiPage.consultationDraft).toContainText(CONSULTATION_DRAFT.bukti_perlu_disiapkan[0]);
+});
+
+Then("form pengajuan di tab baru sudah berisi ringkasan kasus dari AI", async ({ world }) => {
+  expect(world.popup.url()).toMatch(new RegExp(`/explore/${identity("konsultan").idKonsultan}\\?dari=ai$`));
+  const profil = new ProfilKonsultanPage(world.popup);
+  await expect(profil.descriptionInput).toHaveValue(CONSULTATION_DRAFT.deskripsi_kasus);
+});
+
 // ── AI-009 · Jawaban cepat dapat dipilih saat AI menanyakan bukti
 
 When("pengguna memilih jawaban cepat bahwa ia punya bukti", async ({ tanyaAiPage }) => {
@@ -233,4 +251,33 @@ When("pengguna membuka riwayat percakapan", async ({ tanyaAiPage }) => {
 
 Then("judul sesi lama tetap terbaca", async ({ page }) => {
   await expect(page.getByText(SAVED_SESSIONS.opened.title)).toBeVisible({ timeout: 3_000 });
+});
+
+// ── AI-015 · Dokumen sumber jawaban AI dapat dibuka sampai naskah resminya
+
+Then("AI menampilkan dokumen sumber di bawah jawaban", async ({ tanyaAiPage }) => {
+  await expect(tanyaAiPage.sources).toHaveCount(1);
+  await expect(tanyaAiPage.sources).toContainText(SOURCE_DOCUMENT.nama_uu);
+  await expect(tanyaAiPage.sources).toContainText(SOURCE_DOCUMENT.pasal[0].pasal_bagian);
+});
+
+When("pengguna membuka dokumen sumber itu", async ({ tanyaAiPage, network }) => {
+  await network.reply("isi pasal", { json: SOURCE_PASAL });
+  await tanyaAiPage.sources.click();
+});
+
+Then("isi pasal yang dirujuk tampil beserta tautan naskah resminya", async ({ tanyaAiPage, network }) => {
+  await expect(tanyaAiPage.sourceModal).toContainText(SOURCE_PASAL.isi_teks);
+  expect(network.calls("isi pasal")[0].path).toBe(`/knowledge/pasal/${SOURCE_PASAL.id_dokumen}`);
+  await expect(tanyaAiPage.openPdfLink).toHaveAttribute("href", SOURCE_DOCUMENT.file_url);
+  await expect(tanyaAiPage.bpkLink).toHaveAttribute("href", SOURCE_DOCUMENT.sumber_url);
+});
+
+When("pengguna beralih ke naskah resmi", async ({ tanyaAiPage, page }) => {
+  await page.route(/res\.cloudinary\.com/, (route) => route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" }));
+  await tanyaAiPage.officialTextTab.click();
+});
+
+Then("naskah resmi peraturan ditampilkan di dalam pratinjau", async ({ tanyaAiPage }) => {
+  await expect(tanyaAiPage.sourceModal.locator("iframe")).toHaveAttribute("src", SOURCE_DOCUMENT.file_url);
 });

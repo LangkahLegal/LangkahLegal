@@ -9,18 +9,21 @@ from supabase import Client
 
 from core.config import get_settings
 from helpers.embedding import get_voyage_client
+from helpers.peraturan_files import get_file_info
 from repositories import consultant_repository, legal_document_repository
+from services import chat_policy
+from services.chat_policy import Gaya, Mode, ToolMode
 
 logger = logging.getLogger(__name__)
 
 
 EMBEDDING_MODEL = "voyage-law-2"
 EMBEDDING_DIM = 1024
-LLM_MODEL = "gemini-2.5-flash"
+LLM_MODEL = "gemini-3.1-flash-lite"
 
 
 MAX_HISTORY_CHARS = 60_000
-MAX_TOOL_LOOP = 3
+TEMPERATURE = 0.3
 
 SOURCE_MIN_SIMILARITY = 0.6
 SOURCE_MAX_DOCUMENTS = 3
@@ -28,96 +31,51 @@ SOURCE_MAX_DOCUMENTS = 3
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
 
-QUERY_REWRITER_PROMPT = """Kamu ahli hukum Indonesia. Tugasmu: ubah pertanyaan awam jadi query pencarian hukum yang presisi.
+TOOL_NAME = "siapkan_konsultasi"
+KATEGORI_KONSULTAN = ["Pidana", "Perdata", "Ketenagakerjaan", "Teknologi Informasi", "HAM", "Umum"]
 
-Aturan:
-1. Ubah bahasa emosional/sehari-hari → istilah hukum (misal "dipecat" → "PHK sepihak ketenagakerjaan").
-2. Gabungkan konteks dari riwayat percakapan jika ada.
-3. Output HANYA query pencarian (1-2 kalimat), tanpa penjelasan lain.
-4. Sertakan istilah hukum Indonesia yang relevan.
-
-Contoh:
-- "tapi saya takut melapor..." (konteks: kekerasan seksual)
-  → "perlindungan korban kekerasan seksual hak pelapor jaminan kerahasiaan identitas UU TPKS"
-- "bos saya tidak bayar gaji 3 bulan"
-  → "pelanggaran pembayaran upah ketenagakerjaan hak pekerja PHK sepihak"
-"""
-
-SYSTEM_PROMPT = """Kamu adalah "Kia", paralegal virtual di LangkahLegal.
-
-KEPRIBADIAN:
-- Hangat, empatik, suportif — bukan robot pembaca pasal.
-- Validasi perasaan user terlebih dahulu, terutama kalau topiknya sensitif.
-- Pakai bahasa sehari-hari, jelaskan istilah hukum kalau muncul.
-- Jangan perkenalkan diri di setiap jawaban.
-
-SOP WAWANCARA (WAJIB URUT — jangan loncat tahap):
-
-STEP 1 — GALI KRONOLOGI
-Saat klien menceritakan masalah, JANGAN langsung kasih kesimpulan hukum.
-- Validasi perasaan mereka.
-- Tanyakan detail: kapan kejadian, siapa pihak terlibat, di mana, sudah lakukan apa.
-
-STEP 2 — ANALISIS HUKUM
-Setelah info cukup:
-- Jelaskan pelanggaran hukum apa yang MUNGKIN terjadi.
-- Gunakan konteks pasal yang diberikan, tapi JANGAN baca mentah — jelaskan maknanya.
-- Sebutkan dasar hukum (UU + pasal) sebagai referensi.
-
-STEP 3 — VALIDASI BUKTI
-Sebelum tawarkan konsultan, WAJIB tanyakan apakah klien punya bukti:
-- Kontrak/Surat Perjanjian, Foto/Video/Rekaman, Laporan Polisi
-- Kwitansi/Bukti Transfer, Saksi
-Ingatkan bahwa bukti SANGAT PENTING untuk kelanjutan kasus.
-
-STEP 4 — TAWARKAN KONSULTAN (TOOL CALL)
-Panggil search_consultants HANYA jika:
-a) Step 1-3 sudah dilalui DAN klien siap berkonsultasi lebih lanjut, ATAU
-b) Klien EKSPLISIT minta: "carikan pengacara", "saya butuh advokat", dll.
-
-Tentukan parameter `kategori` berdasarkan analisis kasus.
-
-ATURAN JAWAB:
-- Bahasa Indonesia sederhana.
-- Pakai poin bernomor untuk langkah konkret.
-- Jangan kasih nasihat ilegal.
-- Akhiri dengan pertanyaan lanjutan ATAU saran langkah berikutnya.
-
-LARANGAN:
-- Jangan sebut "Sumber 1", "Sumber 2" — itu internal.
-- Jangan bilang "berdasarkan konteks pasal yang diberikan" — kedengeran robot.
-- Jangan panggil search_consultants sebelum minimal Step 1 & Step 2, kecuali user eksplisit minta.
-"""
-
-
-CONSULTANT_TOOL = types.Tool(
+KONSULTASI_TOOL = types.Tool(
     function_declarations=[
         types.FunctionDeclaration(
-            name="search_consultants",
+            name=TOOL_NAME,
             description=(
-                "Cari konsultan hukum/advokat di LangkahLegal berdasarkan spesialisasi dan budget. "
-                "HANYA panggil setelah tahap wawancara selesai ATAU klien eksplisit minta."
+                "Siapkan pengajuan konsultasi untuk klien: mencari advokat/konsultan yang sesuai dan "
+                "merangkum kasus klien supaya klien tidak perlu menulis ulang ceritanya."
             ),
             parameters_json_schema={
                 "type": "object",
                 "properties": {
                     "kategori": {
                         "type": "string",
-                        "description": "Spesialisasi hukum konsultan. Pilih SALAH SATU dari enum.",
-                        "enum": [
-                            "Pidana",
-                            "Perdata",
-                            "Ketenagakerjaan",
-                            "Teknologi Informasi",
-                            "HAM",
-                            "Umum",
-                        ],
+                        "description": "Spesialisasi hukum yang paling sesuai dengan kasus klien.",
+                        "enum": KATEGORI_KONSULTAN,
+                    },
+                    "kota": {
+                        "type": "string",
+                        "description": "Kota yang diminta klien. Jangan diisi kalau klien tidak menyebut kota.",
                     },
                     "max_budget": {
                         "type": "integer",
+                        "description": "Budget maksimal per sesi (Rupiah). Jangan diisi kalau klien tidak menyebut budget.",
+                    },
+                    "ringkasan_kasus": {
+                        "type": "string",
                         "description": (
-                            "Budget maksimal per sesi (Rupiah). Jangan sertakan kalau klien tidak menyebut budget."
+                            "Ringkasan kasus dalam 2-4 kalimat, ditulis sebagai orang pertama dari sudut "
+                            'pandang klien ("Saya ..."), dengan bahasa baku. HANYA fakta dari percakapan, '
+                            "tanpa kesimpulan hukum dan tanpa saran. Kosongkan kalau klien belum "
+                            "menceritakan kasusnya."
                         ),
+                    },
+                    "bukti_dimiliki": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Bukti yang klien sebut sudah dimiliki.",
+                    },
+                    "bukti_perlu_disiapkan": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Dokumen atau bukti yang sebaiknya disiapkan klien untuk konsultasi.",
                     },
                 },
                 "required": ["kategori"],
@@ -127,10 +85,10 @@ CONSULTANT_TOOL = types.Tool(
 )
 
 
-AGENT_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite")
+AGENT_MODELS = ("gemini-3.1-flash-lite", "gemini-3.5-flash-lite")
 AGENT_MAX_RETRIES = 2
-REWRITE_BELOW_WORDS = 5
-MODEL_UNAVAILABLE_MARKERS = ("429", "503", "UNAVAILABLE")
+# NOT_FOUND: model sudah dipensiunkan Google, lanjut ke model berikutnya alih-alih gagal total.
+MODEL_UNAVAILABLE_MARKERS = ("429", "503", "UNAVAILABLE", "NOT_FOUND")
 
 
 def _get_voyage_client() -> voyageai.Client:
@@ -140,42 +98,6 @@ def _get_voyage_client() -> voyageai.Client:
 def _get_gemini_client() -> genai.Client:
     settings = get_settings()
     return genai.Client(api_key=settings.google_api_key)
-
-
-def rewrite_query(raw_query: str, chat_history: list[dict] = None) -> str:
-    client = _get_gemini_client()
-
-    history_snippet = ""
-    if chat_history:
-        lines = []
-        for msg in chat_history[-6:]:
-            role = "User" if msg.get("role") == "user" else "Kia"
-            content = msg.get("content", msg.get("text", ""))
-            lines.append(f"{role}: {content[:300]}")
-        history_snippet = "\n".join(lines)
-
-    prompt = (
-        f"RIWAYAT PERCAKAPAN:\n{history_snippet or '(Tidak ada)'}\n\n"
-        f"PESAN TERBARU USER:\n{raw_query}\n\n"
-        f"Tuliskan query pencarian hukum yang optimal:"
-    )
-
-    try:
-        resp = client.models.generate_content(
-            model=LLM_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=QUERY_REWRITER_PROMPT,
-                temperature=0.1,
-                max_output_tokens=150,
-            ),
-        )
-        rewritten = resp.text.strip().strip('"').strip("'")
-        logger.info(f"[REWRITE] '{raw_query[:50]}' → '{rewritten[:80]}'")
-        return rewritten
-    except Exception as e:
-        logger.warning(f"[REWRITE] Gagal, pakai query asli: {e}")
-        return raw_query
 
 
 def embed_query(query: str) -> list[float]:
@@ -259,7 +181,7 @@ def _build_source_documents(
                 "tahun_uu": p.get("tahun_uu"),
                 "kategori": p.get("kategori"),
                 "status_hukum": p.get("status_hukum"),
-                "has_file": False,
+                **get_file_info(frbr_uri),
                 "pasal": [],
             },
         )
@@ -294,26 +216,90 @@ def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]
     return sources
 
 
+def _clean_list(values) -> list[str]:
+    return [str(v).strip() for v in (values or []) if str(v).strip()]
+
+
+def _build_draft(kategori: str, fn_args: dict) -> dict | None:
+    ringkasan = (fn_args.get("ringkasan_kasus") or "").strip()
+    if not ringkasan:
+        return None
+
+    dimiliki = _clean_list(fn_args.get("bukti_dimiliki"))
+    sudah_ada = {b.lower() for b in dimiliki}
+    perlu = [b for b in _clean_list(fn_args.get("bukti_perlu_disiapkan")) if b.lower() not in sudah_ada]
+
+    deskripsi = ringkasan
+    if dimiliki:
+        deskripsi += "\n\nBukti yang sudah saya miliki: " + ", ".join(dimiliki) + "."
+
+    return {
+        "kategori": kategori,
+        "ringkasan_kasus": ringkasan,
+        "bukti_dimiliki": dimiliki,
+        "bukti_perlu_disiapkan": perlu,
+        "deskripsi_kasus": deskripsi,
+    }
+
+
+def _filter_by_kota(consultants: list[dict], kota: str) -> tuple[list[dict], bool]:
+    """Saring konsultan berdasarkan kota. Kalau tidak ada yang cocok, kembalikan semua dan tandai."""
+    if not kota:
+        return consultants, False
+    di_kota = [c for c in consultants if kota.lower() in (c.get("kota_praktik") or "").lower()]
+    if di_kota:
+        return di_kota, False
+    return consultants, bool(consultants)
+
+
 def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
-    if fn_name != "search_consultants":
-        return {"error": f"Unknown tool: {fn_name}"}
+    if fn_name != TOOL_NAME:
+        return {"error": f"Unknown tool: {fn_name}", "consultants": [], "draft": None}
 
-    kategori = fn_args.get("kategori", "Umum")
-    max_budget = fn_args.get("max_budget")
+    kategori = fn_args.get("kategori") or "Umum"
+    params = {"p_spesialisasi": kategori}
+    if fn_args.get("max_budget") is not None:
+        params["p_max_budget"] = fn_args["max_budget"]
 
-    params = {}
-    if kategori:
-        params["p_spesialisasi"] = kategori
-    if max_budget is not None:
-        params["p_max_budget"] = max_budget
-
+    draft = _build_draft(kategori, fn_args)
     try:
         consultants = consultant_repository.search_by_category(supabase, params)
-        logger.info(f"[TOOL] search_consultants → {len(consultants)} hasil (kategori={kategori})")
-        return {"consultants": consultants, "count": len(consultants)}
     except Exception as e:
-        logger.error(f"[TOOL] search_consultants gagal: {e}")
-        return {"error": str(e), "consultants": []}
+        logger.error(f"[TOOL] {TOOL_NAME} gagal mencari konsultan: {e}")
+        return {"error": str(e), "consultants": [], "draft": draft}
+
+    kota = (fn_args.get("kota") or "").strip()
+    consultants, kota_tidak_ditemukan = _filter_by_kota(consultants, kota)
+    logger.info(
+        f"[TOOL] {TOOL_NAME} -> {len(consultants)} konsultan (kategori={kategori}, kota={kota or '-'}, "
+        f"draft={'ya' if draft else 'tidak'})"
+    )
+    return {
+        "consultants": consultants,
+        "draft": draft,
+        "kota": kota,
+        "kota_tidak_ditemukan": kota_tidak_ditemukan,
+    }
+
+
+def _tool_result_for_model(result: dict) -> dict:
+    """Versi ringkas hasil tool untuk dikirim balik ke model, tanpa bio dan foto konsultan."""
+    if result.get("error"):
+        return {"error": result["error"], "jumlah_konsultan": 0, "draft_dibuat": bool(result.get("draft"))}
+    return {
+        "jumlah_konsultan": len(result["consultants"]),
+        "konsultan": [
+            {
+                "nama": c.get("nama_lengkap"),
+                "kota": c.get("kota_praktik"),
+                "tarif_per_sesi": c.get("tarif_per_sesi"),
+            }
+            for c in result["consultants"][:5]
+        ],
+        "kota_diminta": result.get("kota") or None,
+        "tidak_ada_konsultan_di_kota_diminta": result.get("kota_tidak_ditemukan", False),
+        "draft_dibuat": bool(result.get("draft")),
+    }
 
 
 def _summarize_consultants(consultants: list[dict]) -> str:
@@ -336,9 +322,11 @@ def _build_contents(
         text = msg.get("content", msg.get("text", ""))
 
         meta = msg.get("metadata") or {}
-        if role == "model" and meta.get("type") == "consultant_list":
-            consultant_data = meta.get("consultants", [])
-            summary = _summarize_consultants(consultant_data)
+        if role == "model" and meta.get("type") in ("consultant_list", "consultation_draft"):
+            summary = _summarize_consultants(meta.get("consultants", []))
+            draft = meta.get("draft_konsultasi")
+            if draft:
+                summary = f"Draft pengajuan konsultasi sudah dibuat ({draft.get('kategori')}). {summary}"
             text = f"{text}\n\n[Konteks internal: {summary}]"
 
         if text.strip():
@@ -407,75 +395,105 @@ def _tool_response_content(name: str, tool_result: dict) -> types.Content:
     )
 
 
+FALLBACK_JAWABAN = "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
+
+
 def _response_text(response) -> str:
     try:
-        return response.text or ""
+        text = response.text or ""
     except Exception as e:
         logger.warning(f"[AGENT] Teks jawaban tidak bisa dibaca: {e}")
-        return "Maaf, saya mengalami kesulitan memproses permintaan Anda. Silakan coba lagi."
+        return FALLBACK_JAWABAN
+    return text if text.strip() else FALLBACK_JAWABAN
+
+
+def _generate_config(system_instruction: str, tools: ToolMode, sudah_memanggil_tool: bool):
+    config = {
+        "system_instruction": system_instruction,
+        "temperature": TEMPERATURE,
+        "max_output_tokens": 2048,
+    }
+    if tools == ToolMode.TIDAK_ADA:
+        return types.GenerateContentConfig(**config)
+
+    # Mode ANY memaksa model memanggil fungsi di SETIAP giliran. Setelah tool dijalankan, mode harus
+    # diganti NONE, kalau tidak model tidak akan pernah menulis jawaban teks.
+    if sudah_memanggil_tool:
+        calling = types.FunctionCallingConfig(mode="NONE")
+    elif tools == ToolMode.PAKSA:
+        calling = types.FunctionCallingConfig(mode="ANY", allowed_function_names=[TOOL_NAME])
+    else:
+        calling = types.FunctionCallingConfig(mode="AUTO")
+
+    config["tools"] = [KONSULTASI_TOOL]
+    config["tool_config"] = types.ToolConfig(function_calling_config=calling)
+    return types.GenerateContentConfig(**config)
 
 
 def agentic_generate(
     query: str,
     context: str,
-    chat_history: list[dict] = None,
-    supabase: Client = None,
+    chat_history: list[dict],
+    supabase: Client,
+    system_instruction: str,
+    tools: ToolMode,
 ) -> dict:
     client = _get_gemini_client()
-    contents = _smart_truncate(_build_contents(chat_history or [], query, context))
-    config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
-        temperature=0.4,
-        max_output_tokens=2048,
-        tools=[CONSULTANT_TOOL],
-    )
+    contents = _smart_truncate(_build_contents(chat_history, query, context))
 
-    consultants_found = []
-
-    for iteration in range(MAX_TOOL_LOOP):
-        logger.info(f"[AGENT] Generate iteration {iteration + 1}/{MAX_TOOL_LOOP}")
-
+    tool_result = None
+    response = None
+    # Paling banyak satu tool call, lalu satu giliran lagi untuk menulis jawaban.
+    for _ in range(2):
+        config = _generate_config(system_instruction, tools, tool_result is not None)
         response = _generate_with_retry(client, contents, config)
 
-        if not response.function_calls:
+        if tool_result is not None or not response.function_calls:
             break
 
         fc = response.function_calls[0]
         logger.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
-
-        if not supabase:
-            logger.error("[AGENT] Tool call tapi supabase client None, skip")
-            break
-
         tool_result = _execute_tool(supabase, fc.name, fc.args or {})
-
-        if fc.name == "search_consultants":
-            consultants_found = tool_result.get("consultants", [])
-
         contents.append(response.candidates[0].content)
-        contents.append(_tool_response_content(fc.name, tool_result))
-    else:
-        logger.warning(f"[AGENT] Tool loop habis setelah {MAX_TOOL_LOOP} iterasi")
+        contents.append(_tool_response_content(fc.name, _tool_result_for_model(tool_result)))
 
     jawaban = _response_text(response)
+    if tool_result is None:
+        return {"type": "text", "jawaban": jawaban}
 
-    if consultants_found:
-        return {
-            "type": "consultant_list",
-            "jawaban": jawaban,
-            "consultants": consultants_found,
-        }
+    consultants = tool_result.get("consultants", [])
+    draft = tool_result.get("draft")
+    if draft:
+        response_type = "consultation_draft"
+    elif consultants:
+        response_type = "consultant_list"
+    else:
+        response_type = "text"
+    return {"type": response_type, "jawaban": jawaban, "consultants": consultants, "draft_konsultasi": draft}
 
-    return {"type": "text", "jawaban": jawaban}
+
+def _klasifikasi_metadata(klasifikasi: chat_policy.Klasifikasi, gaya: Gaya, mode: Mode, fallback: bool) -> dict:
+    return {
+        "intent": klasifikasi.intent.value,
+        "tekanan": klasifikasi.tekanan.value,
+        "gaya": gaya.value,
+        "mode": mode.value,
+        "fallback": fallback,
+    }
 
 
-def _search_query(query: str, chat_history: list[dict] | None) -> str:
-    if len(query.split()) >= REWRITE_BELOW_WORDS:
-        logger.info("[TRIAGE] Query panjang, skip rewrite untuk hemat kuota.")
-        return query
-
-    logger.info("[TRIAGE] Query singkat, melakukan rewrite...")
-    return rewrite_query(query, chat_history)
+def _retrieve(supabase: Client, search_query: str, kategori: Optional[str]) -> list[dict]:
+    query_embedding = embed_query(search_query)
+    logger.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
+    pasals = retrieve_pasals(
+        supabase=supabase,
+        query_embedding=query_embedding,
+        match_count=5,
+        match_threshold=0.5,
+        filter_kategori=kategori,
+    )
+    logger.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
+    return pasals
 
 
 def triage(
@@ -485,25 +503,38 @@ def triage(
     chat_history: list[dict] = None,
 ) -> dict:
     logger.info(f"[TRIAGE] Query masuk: {query[:100]}")
+    history = chat_history or []
     current_step = "init"
 
     try:
-        current_step = "rewrite"
-        search_query = _search_query(query, chat_history)
+        current_step = "classify"
+        klasifikasi = chat_policy.classify(_get_gemini_client(), query, history)
+        fallback = klasifikasi is None
+        if fallback:
+            logger.warning("[TRIAGE] Classifier gagal, memakai klasifikasi cadangan.")
+            klasifikasi = chat_policy.fallback_klasifikasi(query, history)
 
-        current_step = "embed"
-        query_embedding = embed_query(search_query)
-        logger.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
+        gaya = chat_policy.gaya_sesi(klasifikasi.gaya, history)
+        mode = chat_policy.resolve_mode(klasifikasi)
+        meta = _klasifikasi_metadata(klasifikasi, gaya, mode, fallback)
+        logger.info(f"[TRIAGE] Mode: {mode.value} (gaya sesi={gaya.value})")
 
-        current_step = "retrieve"
-        pasals = retrieve_pasals(
-            supabase=supabase,
-            query_embedding=query_embedding,
-            match_count=5,
-            match_threshold=0.5,
-            filter_kategori=kategori,
-        )
-        logger.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
+        if mode == Mode.KRISIS:
+            return {
+                "type": "text",
+                "jawaban": chat_policy.krisis_response(gaya),
+                "consultants": [],
+                "draft_konsultasi": None,
+                "pasal_referensi": [],
+                "sumber_dokumen": [],
+                "disclaimer": "",
+                "klasifikasi": meta,
+            }
+
+        pasals = []
+        if chat_policy.needs_retrieval(mode):
+            current_step = "retrieve"
+            pasals = _retrieve(supabase, klasifikasi.query_pencarian or query, kategori)
 
         current_step = "build_context"
         context = _build_context(pasals)
@@ -511,21 +542,27 @@ def triage(
         sources = _attach_document_status(supabase, _build_source_documents(pasals))
 
         current_step = "agentic_generate"
+        tools = chat_policy.tool_mode(mode, klasifikasi.tekanan)
         result = agentic_generate(
             query=query,
             context=context,
-            chat_history=chat_history,
+            chat_history=history,
             supabase=supabase,
+            system_instruction=chat_policy.build_system_instruction(mode, klasifikasi, gaya, tools),
+            tools=tools,
         )
         logger.info(f"[TRIAGE] Result type: {result['type']}")
 
+        memuat_hukum = mode in (Mode.INFORMASI, Mode.ARAHKAN_KONSULTASI, Mode.REKOMENDASI_KONSULTAN)
         return {
             "type": result["type"],
             "jawaban": result["jawaban"],
             "consultants": result.get("consultants", []),
+            "draft_konsultasi": result.get("draft_konsultasi"),
             "pasal_referensi": references,
             "sumber_dokumen": sources,
-            "disclaimer": DISCLAIMER,
+            "disclaimer": DISCLAIMER if memuat_hukum else "",
+            "klasifikasi": meta,
         }
     except Exception as e:
         logger.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)

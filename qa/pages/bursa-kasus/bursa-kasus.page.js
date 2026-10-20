@@ -26,8 +26,9 @@ export class BursaKasusPage extends BasePage {
     return this.card(idBursa).getByTestId("bursa-card-description");
   }
 
-  categoryButton(name) {
-    return this.page.getByRole("button", { name, exact: true });
+  async chooseCategory(label) {
+    await this.page.getByTestId("bursa-filter-kategori").click();
+    await this.page.locator("div.cursor-pointer", { hasText: new RegExp(`^${label}$`) }).click();
   }
 
   async startClaim(idBursa) {

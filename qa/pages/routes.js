@@ -47,7 +47,6 @@ export const ROUTES = {
   pengaturan: "/setting",
   "pengaturan profil": "/setting/profile",
   "pengaturan keamanan": "/setting/security",
-  "pengaturan bahasa": "/setting/language",
   "tentang aplikasi": "/setting/about",
 
   "verifikasi konsultan": "/verification",

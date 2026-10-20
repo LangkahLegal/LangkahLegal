@@ -69,6 +69,26 @@ Feature: Tanya AI
     When pengguna memilih menjadwalkan konsultan yang direkomendasikan
     Then profil konsultan uji terbuka di tab baru
 
+  @AI-014 @stub
+  Scenario: Ringkasan kasus dari AI terisi otomatis di form pengajuan konsultan
+    Given AI akan membalas dengan draft pengajuan konsultasi
+    And pengguna berada di halaman tanya AI
+    When pengguna mengirim pertanyaan hukum ke AI
+    Then AI menampilkan ringkasan kasus sebagai draft pengajuan
+    When pengguna memilih menjadwalkan konsultan yang direkomendasikan
+    Then form pengajuan di tab baru sudah berisi ringkasan kasus dari AI
+
+  @AI-015 @stub
+  Scenario: Dokumen sumber jawaban AI dapat dibuka sampai naskah resminya
+    Given AI akan membalas dengan jawaban bersumber
+    And pengguna berada di halaman tanya AI
+    When pengguna mengirim pertanyaan hukum ke AI
+    Then AI menampilkan dokumen sumber di bawah jawaban
+    When pengguna membuka dokumen sumber itu
+    Then isi pasal yang dirujuk tampil beserta tautan naskah resminya
+    When pengguna beralih ke naskah resmi
+    Then naskah resmi peraturan ditampilkan di dalam pratinjau
+
   @AI-009 @stub
   Scenario: Jawaban cepat dapat dipilih saat AI menanyakan bukti
     Given AI akan membalas dengan pertanyaan tentang bukti

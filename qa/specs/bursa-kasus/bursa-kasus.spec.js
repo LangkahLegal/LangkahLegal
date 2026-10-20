@@ -44,7 +44,7 @@ Then("kasus klien uji tampil anonim di bursa beserta tautan dokumennya", async (
 // ── BUR-002 · Bursa dapat disaring berdasarkan kategori
 
 When("pengguna menyaring bursa berdasarkan kategori pidana", async ({ bursaKasusPage }) => {
-  await bursaKasusPage.categoryButton("Pidana").click();
+  await bursaKasusPage.chooseCategory("Pidana");
 });
 
 Then("hanya kasus pidana milik klien uji yang tampil", async ({ bursaKasusPage, world }) => {
@@ -56,7 +56,7 @@ Then("hanya kasus pidana milik klien uji yang tampil", async ({ bursaKasusPage, 
 // ── BUR-002 · Bursa dapat disaring ke kategori umum
 
 When("pengguna menyaring bursa berdasarkan kategori umum", async ({ bursaKasusPage }) => {
-  await bursaKasusPage.categoryButton("Umum").click();
+  await bursaKasusPage.chooseCategory("Umum");
 });
 
 Then("hanya kasus umum milik klien uji yang tampil", async ({ bursaKasusPage, world }) => {
