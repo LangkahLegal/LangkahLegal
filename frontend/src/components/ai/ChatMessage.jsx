@@ -22,7 +22,7 @@ export default function ChatMessage({ message }) {
         </div>
       )}
 
-      <div className={`max-w-[85%] lg:max-w-[70%] space-y-1`}>
+      <div className={`max-w-[92%] sm:max-w-[85%] space-y-1`}>
         <div
           className={`px-6 py-4 rounded-[2rem] text-sm lg:text-base leading-relaxed shadow-soft transition-all ${
             !isAI
