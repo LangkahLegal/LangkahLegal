@@ -47,4 +47,5 @@ async def update_profile(
         payload=payload,
         explicit_portofolio_field=explicit_portofolio_field,
         portofolio_file=form.portofolio_file,
+        foto_profil_file=form.foto_profil_file,
     )

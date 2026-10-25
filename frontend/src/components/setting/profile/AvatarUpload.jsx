@@ -14,7 +14,6 @@ export default function AvatarUpload({
   isUploading,
 }) {
   const inputRef = useRef(null);
-  const IMGBB_API_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
   const { theme } = useTheme();
   const currentTheme = theme || "dark-tech";
@@ -37,23 +36,15 @@ export default function AvatarUpload({
     }
 
     if (onUploadStart) onUploadStart();
-    const formData = new FormData();
-    formData.append("image", file);
 
     try {
-      const res = await fetch(
-        `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
-        { method: "POST", body: formData },
-      );
-      const { success, data } = await res.json();
-      if (!success) throw new Error();
-
-      await userService.updateProfile({ foto_profil: data.url });
+      // Upload foto ke backend (disimpan ke Supabase Storage), lalu ambil URL terbaru.
+      await userService.updateProfile({ foto_profil_file: file });
       const freshData = await userService.getFullProfile();
 
-      onChange(freshData.foto_profil || data.url);
+      onChange(freshData.foto_profil);
     } catch (err) {
-      alert("Gagal sinkronisasi foto.");
+      alert("Gagal mengunggah foto.");
       onChange(foto_profil);
     }
   };
