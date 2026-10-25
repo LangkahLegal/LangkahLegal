@@ -9,6 +9,7 @@ from core.exceptions import BadRequestError, ConflictError, ForbiddenError, Inte
 from core.user import CurrentUser
 from helpers.access import owns_consultation
 from helpers.schedule import count_sessions, ensure_not_past, ensure_within_schedule, find_conflict
+from helpers.urls import ensure_https_url, is_https_url
 from repositories import (
     case_repository,
     consultation_repository,
@@ -184,7 +185,7 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
             urls = bursa["dokumen_bukti"].split(",")
             for idx, url in enumerate(urls):
                 url = url.strip()
-                if url:
+                if is_https_url(url):
                     ext = url.rsplit(".", 1)[-1].lower() if "." in url else ""
                     berkas.append(
                         {
@@ -242,7 +243,7 @@ def _enrich_detail(db: Client, data: dict) -> dict:
 
     data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
 
-    data["link_zoom"] = data.get("link_zoom")
+    data["link_zoom"] = data.get("link_zoom") if is_https_url(data.get("link_zoom")) else None
 
     berkas = [
         {
@@ -325,6 +326,7 @@ def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, re
 
 
 def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, link_zoom: str) -> dict:
+    link_zoom = ensure_https_url(link_zoom, "Link Zoom harus berupa tautan https")
     id_kons = current_user.id_konsultan
 
     pengajuan = consultation_repository.get_for_konsultan(db, id_pengajuan, id_kons)
@@ -339,7 +341,7 @@ def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, l
     ]:
         raise BadRequestError("Link Zoom hanya bisa diatur untuk sesi yang relevan")
 
-    updated = consultation_repository.update(db, id_pengajuan, {"link_zoom": link_zoom.strip()})
+    updated = consultation_repository.update(db, id_pengajuan, {"link_zoom": link_zoom})
 
     if not updated:
         raise InternalError("Gagal menyimpan link Zoom")
@@ -348,7 +350,7 @@ def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, l
 
     return {
         "message": "Link Zoom berhasil disimpan",
-        "data": {"link_zoom": link_zoom.strip()},
+        "data": {"link_zoom": link_zoom},
     }
 
 

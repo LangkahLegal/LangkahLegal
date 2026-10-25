@@ -8,6 +8,7 @@ from core.user import CurrentUser
 from helpers.filters import date_range, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.schedule import ensure_not_past, find_conflict
+from helpers.urls import ensure_https_url, is_https_url
 from repositories import case_repository, consultation_repository
 from schemas.cases import CaseForm, CaseListFilters, DokumenBursa, UrutanBursa
 from services import notification_service
@@ -32,6 +33,9 @@ URUTAN_KOLOM = {
 
 async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> dict:
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
+    dokumen_bukti = (
+        ensure_https_url(form.dokumen_bukti, "Dokumen bukti harus berupa tautan https") if form.dokumen_bukti else None
+    )
     ensure_not_past(form.tanggal_konsultasi, form.jam_mulai)
     _ensure_client_is_free(db, current_user.id_user, form)
 
@@ -41,7 +45,7 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
             "id_user": current_user.id_user,
             "kategori_hukum": form.kategori_hukum.lower().strip(),
             "deskripsi_kasus_awam": form.deskripsi_kasus_awam,
-            "dokumen_bukti": form.dokumen_bukti,
+            "dokumen_bukti": dokumen_bukti,
             "tanggal_konsultasi": form.tanggal_konsultasi,
             "jam_mulai": form.jam_mulai,
             "jam_selesai": form.jam_selesai,
@@ -59,7 +63,7 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
 
     if uploaded:
         file_urls = [doc["file_url"] for doc in uploaded]
-        combined = ",".join(([form.dokumen_bukti] if form.dokumen_bukti else []) + file_urls)
+        combined = ",".join(([dokumen_bukti] if dokumen_bukti else []) + file_urls)
         case_repository.update(db, id_bursa, {"dokumen_bukti": combined})
 
     return {
@@ -68,6 +72,11 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
         "dokumen_terupload": [doc["nama_dokumen"] for doc in uploaded],
         "dokumen_gagal": failed_docs,
     }
+
+
+def _https_only(dokumen_bukti: str | None) -> str | None:
+    urls = [url.strip() for url in (dokumen_bukti or "").split(",") if is_https_url(url.strip())]
+    return ",".join(urls) or None
 
 
 def list_open_cases(
@@ -95,6 +104,9 @@ def list_open_cases(
         offset=offset,
         limit=limit,
     )
+
+    for row in rows:
+        row["dokumen_bukti"] = _https_only(row.get("dokumen_bukti"))
 
     payload = {"message": "Berhasil mengambil data bursa kasus", "data": rows}
     return with_pagination(payload, total if total is not None else len(rows), page, page_size)
