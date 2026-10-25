@@ -1,4 +1,9 @@
 /node_modules
 
+# keluaran playwright-bdd dan Playwright
+/.features-gen/
+/.sit-state/
+/reports/
+/test-results/
 
 .env.sit
