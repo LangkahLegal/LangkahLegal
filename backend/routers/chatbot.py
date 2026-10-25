@@ -65,7 +65,7 @@ async def get_session_messages(
 @router.post(
     "/triage",
     response_model=TriageResponse,
-    dependencies=[Depends(throttle("3/minute", per_user=True))],
+    dependencies=[Depends(throttle("3/minute", by="user"))],
     **docs.CHATBOT_TRIAGE,
 )
 async def chatbot_triage(

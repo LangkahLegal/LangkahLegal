@@ -36,12 +36,12 @@ async def sign_up(payload: SignUpPayload, response: Response):
     return {"data": data}
 
 
-@router.post("/login-otp", dependencies=[Depends(throttle("3/minute"))], **docs.SEND_OTP_LOGIN)
+@router.post("/login-otp", dependencies=[Depends(throttle("3/minute", by="email"))], **docs.SEND_OTP_LOGIN)
 async def send_otp_login(payload: OtpLoginPayload):
     return {"data": await auth_service.send_otp_login(payload)}
 
 
-@router.post("/resend-signup-otp", dependencies=[Depends(throttle("3/minute"))], **docs.RESEND_SIGNUP_OTP)
+@router.post("/resend-signup-otp", dependencies=[Depends(throttle("3/minute", by="email"))], **docs.RESEND_SIGNUP_OTP)
 async def resend_signup_otp(payload: ResendOtpPayload):
     return {"data": await auth_service.resend_signup_otp(payload)}
 
@@ -125,7 +125,7 @@ async def logout(response: Response, token: str = Depends(get_token_from_request
     return {"data": {"logout": True}}
 
 
-@router.post("/forgot-password", dependencies=[Depends(throttle("3/minute"))], **docs.FORGOT_PASSWORD)
+@router.post("/forgot-password", dependencies=[Depends(throttle("3/minute", by="email"))], **docs.FORGOT_PASSWORD)
 async def forgot_password(payload: ForgotPasswordPayload):
     return {"data": await auth_service.forgot_password(payload)}
 

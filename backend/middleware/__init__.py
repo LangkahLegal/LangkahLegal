@@ -5,11 +5,10 @@ from middleware.authorization import (
     require_client_or_konsultan,
     require_konsultan,
 )
-from middleware.rate_limit import GlobalThrottleMiddleware, throttle
+from middleware.rate_limit import throttle
 from middleware.session import get_current_user, get_token_from_request
 
 __all__ = [
-    "GlobalThrottleMiddleware",
     "RoleRequired",
     "get_current_user",
     "get_token_from_request",

@@ -17,7 +17,7 @@ from services import knowledge_service
 router = APIRouter()
 
 RATE_LIMIT = "30/minute"
-THROTTLED = [Depends(throttle(RATE_LIMIT, per_user=True))]
+THROTTLED = [Depends(throttle(RATE_LIMIT, by="user"))]
 
 
 @router.get("/pasal/{id_dokumen}", response_model=PasalDetailResponse, dependencies=THROTTLED, **docs.GET_PASAL)

@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import Settings, get_settings
 from core.database import check_db_connection
 from docs import main as docs
-from middleware import GlobalThrottleMiddleware
 from routers import admin, admin_docs, auth, cases, chatbot, consultants, consultations, knowledge, payments, users
 
 logging.basicConfig(
@@ -23,8 +22,6 @@ async def force_https_scheme(request: Request, call_next) -> Response:
         request.scope["scheme"] = "https"
     return await call_next(request)
 
-
-app.add_middleware(GlobalThrottleMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
