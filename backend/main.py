@@ -2,13 +2,11 @@ import logging
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
 
 from core.config import Settings, get_settings
 from core.database import check_db_connection
-from core.limiter import limiter
 from docs import main as docs
+from middleware import GlobalThrottleMiddleware
 from routers import admin, admin_docs, auth, cases, chatbot, consultants, consultations, knowledge, payments, users
 
 logging.basicConfig(
@@ -18,8 +16,6 @@ logging.basicConfig(
 
 app = FastAPI(title="LangkahLegal API", description=docs.API_DESCRIPTION, version="1.0.0")
 
-app.state.limiter = limiter
-
 
 @app.middleware("http")
 async def force_https_scheme(request: Request, call_next) -> Response:
@@ -28,6 +24,9 @@ async def force_https_scheme(request: Request, call_next) -> Response:
     return await call_next(request)
 
 
+# Dipasang sebelum CORS agar respons 429 pun membawa header CORS.
+app.add_middleware(GlobalThrottleMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.langkahlegal\.com|http://localhost:3000|http://127.0.0.1:3000",
@@ -35,14 +34,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.exception_handler(RateLimitExceeded)
-async def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
-    return JSONResponse(
-        status_code=429,
-        content={"type": "error", "jawaban": "Mohon tunggu sebentar, Anda mengirim pesan terlalu cepat."},
-    )
 
 
 @app.get("/health", tags=["System"], **docs.HEALTH_CHECK)

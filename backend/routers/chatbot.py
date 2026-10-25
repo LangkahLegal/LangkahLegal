@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from fastapi import APIRouter, Depends, status
 
 from core.database import get_supabase_client
-from core.dependencies import get_current_user
 from core.user import CurrentUser
 from docs import chatbot as docs
+from middleware import get_current_user, throttle
 from schemas.chatbot import (
     CreateSessionRequest,
     MessageListResponse,
@@ -16,7 +14,6 @@ from schemas.chatbot import (
 )
 from services import chat_service
 
-limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 
@@ -65,10 +62,13 @@ async def get_session_messages(
     return chat_service.get_session_messages(get_supabase_client(), current_user, session_id)
 
 
-@router.post("/triage", response_model=TriageResponse, **docs.CHATBOT_TRIAGE)
-@limiter.limit("3/minute")
+@router.post(
+    "/triage",
+    response_model=TriageResponse,
+    dependencies=[Depends(throttle("3/minute", per_user=True))],
+    **docs.CHATBOT_TRIAGE,
+)
 async def chatbot_triage(
-    request: Request,
     payload: TriageRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ):

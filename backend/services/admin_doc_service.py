@@ -6,11 +6,9 @@ from typing import Optional
 from fastapi import UploadFile
 from supabase import Client
 
-from core.constants import Role
 from core.database import get_supabase_client
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import require_role
 from helpers.embedding import get_voyage_client
 from repositories import legal_document_repository
 from schemas.admin_docs import (
@@ -37,10 +35,6 @@ MIN_PDF_BYTES = 100
 MAX_PDF_BYTES = 50 * 1024 * 1024
 
 _jobs: dict[str, dict] = {}
-
-
-def _require_admin(user: CurrentUser) -> None:
-    require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin.")
 
 
 def _embed_single(text: str) -> list[float]:
@@ -165,7 +159,6 @@ async def _read_pdf_bytes(file: UploadFile, max_bytes: int | None = None) -> byt
 
 
 async def create_upload_job(user: CurrentUser, form: DocumentUploadForm) -> tuple[dict, bytes, dict]:
-    _require_admin(user)
     _require_pdf_filename(form.file)
 
     pdf_bytes = await _read_pdf_bytes(form.file, max_bytes=MAX_PDF_BYTES)
@@ -180,7 +173,6 @@ async def create_upload_job(user: CurrentUser, form: DocumentUploadForm) -> tupl
 
 
 async def create_replace_job(db: Client, user: CurrentUser, form: DocumentReplaceForm) -> tuple[dict, bytes, dict]:
-    _require_admin(user)
     _require_pdf_filename(form.file)
 
     frbr_uri = form.frbr_uri
@@ -200,8 +192,6 @@ async def create_replace_job(db: Client, user: CurrentUser, form: DocumentReplac
 
 
 def get_job_status(user: CurrentUser, job_id: str) -> dict:
-    _require_admin(user)
-
     job = _jobs.get(job_id)
     if not job:
         raise NotFoundError("Job tidak ditemukan.")
@@ -216,8 +206,6 @@ def list_documents(
     kategori: Optional[str],
     search: Optional[str],
 ) -> PaginatedResponse:
-    _require_admin(user)
-
     offset = (page - 1) * page_size
     rows, total = legal_document_repository.list_summaries(db, offset, page_size, kategori=kategori, search=search)
 
@@ -232,8 +220,6 @@ def list_chunks(
     page_size: int,
     search: Optional[str],
 ) -> PaginatedResponse:
-    _require_admin(user)
-
     total = legal_document_repository.count_by_uri(db, frbr_uri, search)
 
     offset = (page - 1) * page_size
@@ -243,8 +229,6 @@ def list_chunks(
 
 
 def get_chunk(db: Client, user: CurrentUser, id_dokumen: int) -> dict:
-    _require_admin(user)
-
     chunk = legal_document_repository.get_by_id(db, id_dokumen, SELECT_COLS)
 
     if chunk is None:
@@ -253,8 +237,6 @@ def get_chunk(db: Client, user: CurrentUser, id_dokumen: int) -> dict:
 
 
 def update_chunk(db: Client, user: CurrentUser, id_dokumen: int, payload: UpdateChunkRequest) -> dict:
-    _require_admin(user)
-
     if not legal_document_repository.exists(db, id_dokumen):
         raise NotFoundError("Chunk tidak ditemukan.")
 
@@ -281,8 +263,6 @@ def update_chunk(db: Client, user: CurrentUser, id_dokumen: int, payload: Update
 
 
 def delete_document(db: Client, user: CurrentUser, frbr_uri: str) -> None:
-    _require_admin(user)
-
     total = legal_document_repository.count_by_uri(db, frbr_uri)
     if not total:
         raise NotFoundError("Dokumen dengan URI tersebut tidak ditemukan.")

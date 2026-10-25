@@ -4,10 +4,9 @@ from typing import Optional
 
 from supabase import Client
 
-from core.constants import Role, StatusPembayaran, StatusPengajuan
-from core.exceptions import BadRequestError, InternalError, NotFoundError
+from core.constants import StatusPembayaran, StatusPengajuan
+from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import require_konsultan_id, require_role
 from helpers.filters import date_range, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
@@ -179,7 +178,7 @@ def get_available_slots(
 
 
 def get_my_schedules(db: Client, current_user: CurrentUser) -> list:
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
 
     formatted = []
     for item in schedule_repository.list_with_clients(db, id_kons):
@@ -193,9 +192,7 @@ BOOKING_STATUSES = [StatusPengajuan.PENDING, StatusPengajuan.MENUNGGU_PEMBAYARAN
 
 
 def get_dashboard_stats(db: Client, current_user: CurrentUser) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
-
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
 
     pengajuan_with_tx = consultation_repository.list_income_rows(db, id_kons)
 
@@ -239,9 +236,7 @@ def _with_past_flag(rows: list[dict]) -> list[dict]:
 
 
 def get_pending_requests(db: Client, current_user: CurrentUser) -> list:
-    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
-
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
 
     return _with_past_flag(consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.PENDING]))
 
@@ -257,9 +252,7 @@ CLIENT_ORDER_COLUMNS = {
 
 
 def get_active_requests(db: Client, current_user: CurrentUser, filters: ClientListFilters) -> list:
-    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
-
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
     statuses = ACTIVE_CLIENT_STATUSES if filters.status == StatusKlien.SEMUA else [filters.status.value]
     tanggal_dari, tanggal_sebelum = date_range(filters.jadwal)
     jam_dari, jam_sebelum = time_range(filters.waktu)
@@ -334,9 +327,7 @@ def _format_history_item(req: dict) -> dict:
 
 
 def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
-
-    id_kons = require_konsultan_id(db, current_user, "Profil tidak ditemukan")
+    id_kons = current_user.id_konsultan
 
     rows = consultation_repository.list_with_client_and_date(db, id_kons, [StatusPengajuan.TERJADWAL])
 
@@ -348,9 +339,7 @@ def get_scheduled_clients(db: Client, current_user: CurrentUser) -> dict:
 
 def get_next_session(db: Client, current_user: CurrentUser) -> dict:
     """Sesi terjadwal terdekat yang belum lewat (waktu WIB), atau None."""
-    require_role(current_user, Role.KONSULTAN, "Hanya untuk konsultan")
-
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
     rows = consultation_repository.list_requests_for_konsultan(db, id_kons, [StatusPengajuan.TERJADWAL])
 
     now = now_wib()
@@ -367,9 +356,7 @@ def get_next_session(db: Client, current_user: CurrentUser) -> dict:
 
 
 def get_history(db: Client, current_user: CurrentUser) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
-
-    id_kons = require_konsultan_id(db, current_user, "Profil tidak ditemukan")
+    id_kons = current_user.id_konsultan
 
     rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
 
@@ -382,9 +369,7 @@ def get_history(db: Client, current_user: CurrentUser) -> dict:
 
 
 def create_schedule(db: Client, current_user: CurrentUser, request: ScheduleCreate) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
-
-    id_kons = require_konsultan_id(db, current_user)
+    id_kons = current_user.id_konsultan
     ensure_valid_slot(request.tanggal, request.jam_mulai, request.jam_selesai)
 
     created = schedule_repository.insert(
@@ -401,12 +386,17 @@ def create_schedule(db: Client, current_user: CurrentUser, request: ScheduleCrea
     return {"message": "Jadwal berhasil ditambahkan", "data": created[0]}
 
 
-def delete_schedule(db: Client, current_user: CurrentUser, id_jadwal: int) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
-
+def _get_owned_schedule(db: Client, id_jadwal: int, id_konsultan: int) -> dict:
     jadwal = schedule_repository.get_by_id(db, id_jadwal)
     if jadwal is None:
         raise NotFoundError("Jadwal tidak ditemukan")
+    if jadwal["id_konsultan"] != id_konsultan:
+        raise ForbiddenError("Jadwal ini bukan milik Anda")
+    return jadwal
+
+
+def delete_schedule(db: Client, current_user: CurrentUser, id_jadwal: int) -> dict:
+    _get_owned_schedule(db, id_jadwal, current_user.id_konsultan)
 
     if consultation_repository.list_by_schedule_and_statuses(db, id_jadwal, BOOKING_STATUSES):
         raise BadRequestError("Jadwal tidak bisa dihapus karena sudah dipesan klien")
@@ -416,11 +406,7 @@ def delete_schedule(db: Client, current_user: CurrentUser, id_jadwal: int) -> di
 
 
 def update_schedule(db: Client, current_user: CurrentUser, id_jadwal: int, request: ScheduleUpdate) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Akses ditolak")
-
-    jadwal = schedule_repository.get_by_id(db, id_jadwal)
-    if jadwal is None:
-        raise NotFoundError("Jadwal tidak ditemukan")
+    jadwal = _get_owned_schedule(db, id_jadwal, current_user.id_konsultan)
     if consultation_repository.list_by_schedule_and_statuses(db, id_jadwal, BOOKING_STATUSES):
         raise BadRequestError("Jadwal sudah dipesan klien dan tidak dapat diubah")
 
@@ -432,7 +418,8 @@ def update_schedule(db: Client, current_user: CurrentUser, id_jadwal: int, reque
     return {"message": "Jadwal berhasil diperbarui", "data": updated[0]}
 
 
-def toggle_schedule_slot(db: Client, id_jadwal: int, payload: ScheduleToggle) -> dict:
+def toggle_schedule_slot(db: Client, current_user: CurrentUser, id_jadwal: int, payload: ScheduleToggle) -> dict:
+    _get_owned_schedule(db, id_jadwal, current_user.id_konsultan)
     updated = schedule_repository.set_available(db, id_jadwal, payload.status_tersedia)
     return {"data": updated, "count": None}
 

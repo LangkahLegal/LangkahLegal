@@ -3,9 +3,9 @@ from pydantic import ValidationError
 from supabase import Client
 
 from core.database import get_supabase_client
-from core.dependencies import get_current_user
 from core.user import CurrentUser
 from docs import users as docs
+from middleware import get_current_user
 from schemas.users import ProfileForm, ProfileUpdatePayload
 from services import user_service
 

@@ -1,7 +1,10 @@
+"""Autentikasi: memastikan request membawa sesi yang valid dan memuat profil pengguna."""
+
 from fastapi import Cookie, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
+from core.constants import Role
 from core.database import get_supabase_client
 from core.user import CurrentUser
 from helpers.profile import find_profile
@@ -9,6 +12,7 @@ from helpers.profile import find_profile
 security = HTTPBearer(auto_error=False)
 
 PROFILE_COLUMNS = "id_user, role, nama, konsultan(id_konsultan)"
+APP_ROLES = (Role.CLIENT, Role.KONSULTAN, Role.ADMIN)
 
 
 def _konsultan_id(profile: dict) -> int | None:
@@ -28,6 +32,7 @@ def get_token_from_request(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     ll_token: str | None = Cookie(default=None),
 ) -> str:
+    """Token mentah tanpa memuat profil; untuk endpoint auth yang dipakai sebelum peran dipilih."""
     token = _extract_token(credentials, ll_token)
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak valid atau tidak ditemukan")
@@ -39,6 +44,7 @@ def get_current_user(
     ll_token: str | None = Cookie(default=None),
     db: Client = Depends(get_supabase_client),
 ) -> CurrentUser:
+    """Sesi valid, profil ada, dan peran sudah dipilih. Untuk endpoint yang terbuka bagi semua peran."""
     token = _extract_token(credentials, ll_token)
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak ditemukan di cookie maupun header.")
@@ -54,6 +60,9 @@ def get_current_user(
                 status_code=401,
                 detail="Profil user belum sinkron dengan database lokal.",
             )
+
+        if profile.get("role") not in APP_ROLES:
+            raise HTTPException(status_code=403, detail="Peran akun belum dipilih.")
 
         return CurrentUser(
             id_user=profile["id_user"],

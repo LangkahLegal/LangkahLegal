@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends, Request, Response
 from supabase import Client
 
 from core.database import get_supabase_client
-from core.dependencies import get_token_from_request
-from core.limiter import limiter
 from docs import auth as docs
 from helpers.cookies import (
     clear_auth_cookies,
@@ -12,6 +10,7 @@ from helpers.cookies import (
     set_oauth_verifier_cookie,
     set_role_cookie,
 )
+from middleware import get_token_from_request, throttle
 from schemas.auth import (
     ExchangeCodePayload,
     ForgotPasswordPayload,
@@ -37,15 +36,13 @@ async def sign_up(payload: SignUpPayload, response: Response):
     return {"data": data}
 
 
-@router.post("/login-otp", **docs.SEND_OTP_LOGIN)
-@limiter.limit("3/minute")
-async def send_otp_login(request: Request, payload: OtpLoginPayload):
+@router.post("/login-otp", dependencies=[Depends(throttle("3/minute"))], **docs.SEND_OTP_LOGIN)
+async def send_otp_login(payload: OtpLoginPayload):
     return {"data": await auth_service.send_otp_login(payload)}
 
 
-@router.post("/resend-signup-otp", **docs.RESEND_SIGNUP_OTP)
-@limiter.limit("3/minute")
-async def resend_signup_otp(request: Request, payload: ResendOtpPayload):
+@router.post("/resend-signup-otp", dependencies=[Depends(throttle("3/minute"))], **docs.RESEND_SIGNUP_OTP)
+async def resend_signup_otp(payload: ResendOtpPayload):
     return {"data": await auth_service.resend_signup_otp(payload)}
 
 
@@ -128,9 +125,8 @@ async def logout(response: Response, token: str = Depends(get_token_from_request
     return {"data": {"logout": True}}
 
 
-@router.post("/forgot-password", **docs.FORGOT_PASSWORD)
-@limiter.limit("3/minute")
-async def forgot_password(request: Request, payload: ForgotPasswordPayload, response: Response):
+@router.post("/forgot-password", dependencies=[Depends(throttle("3/minute"))], **docs.FORGOT_PASSWORD)
+async def forgot_password(payload: ForgotPasswordPayload):
     return {"data": await auth_service.forgot_password(payload)}
 
 

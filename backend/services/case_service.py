@@ -2,10 +2,9 @@ import logging
 
 from supabase import Client
 
-from core.constants import Role, StatusBursa, StatusPengajuan
+from core.constants import StatusBursa, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import require_konsultan_id, require_role
 from helpers.filters import date_range, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.schedule import ensure_not_past, find_conflict
@@ -32,8 +31,6 @@ URUTAN_KOLOM = {
 
 
 async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memposting kasus")
-
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
     ensure_not_past(form.tanggal_konsultasi, form.jam_mulai)
     _ensure_client_is_free(db, current_user.id_user, form)
@@ -80,8 +77,6 @@ def list_open_cases(
     page: int | None = None,
     page_size: int = 20,
 ) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa melihat bursa")
-
     kategori = (filters.kategori or "").strip().lower()
     tanggal_dari, tanggal_sebelum = date_range(filters.jadwal)
     jam_dari, jam_sebelum = time_range(filters.waktu)
@@ -130,13 +125,7 @@ def _ensure_client_is_free(db: Client, id_user: int, form: CaseForm) -> None:
 
 
 def claim_case(db: Client, current_user: CurrentUser, id_bursa: int) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengklaim kasus")
-
-    real_id_konsultan = require_konsultan_id(
-        db,
-        current_user,
-        "Profil konsultan tidak ditemukan. Pastikan Anda sudah terdaftar sebagai konsultan.",
-    )
+    real_id_konsultan = current_user.id_konsultan
 
     kasus_data = case_repository.get_by_id(db, id_bursa)
 

@@ -6,10 +6,10 @@ import midtransclient
 from supabase import Client
 
 from core.config import Settings
-from core.constants import Role, StatusPembayaran, StatusPengajuan
+from core.constants import StatusPembayaran, StatusPengajuan
 from core.exceptions import AppError, BadRequestError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import get_konsultan_id, require_role
+from helpers.access import owns_consultation
 from helpers.schedule import count_sessions
 from repositories import consultation_repository, payment_repository
 from schemas.payments import CreateTransactionRequest
@@ -174,8 +174,6 @@ def create_transaction(
     settings: Settings,
     payload: CreateTransactionRequest,
 ) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa melakukan pembayaran")
-
     try:
         pengajuan = consultation_repository.get_for_payment(db, payload.id_pengajuan, current_user.id_user)
     except Exception as e:
@@ -275,15 +273,8 @@ def get_payment_status(db: Client, current_user: CurrentUser, id_pengajuan: int)
     if pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
-    user_role = current_user.role
-    user_id = current_user.id_user
-
-    if user_role == Role.CLIENT and pengajuan["id_user"] != user_id:
+    if not owns_consultation(current_user, pengajuan):
         raise ForbiddenError("Akses ditolak")
-    elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user)
-        if id_kons is None or id_kons != pengajuan["id_konsultan"]:
-            raise ForbiddenError("Akses ditolak")
 
     tx = payment_repository.get_latest_by_pengajuan(db, id_pengajuan)
 
@@ -294,7 +285,11 @@ def get_payment_status(db: Client, current_user: CurrentUser, id_pengajuan: int)
 
 
 def sync_payment_status(db: Client, current_user: CurrentUser, settings: Settings, id_pengajuan: int) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa sinkronisasi pembayaran")
+    pengajuan = consultation_repository.get_summary(db, id_pengajuan)
+    if pengajuan is None:
+        raise NotFoundError("Pengajuan tidak ditemukan")
+    if pengajuan["id_user"] != current_user.id_user:
+        raise ForbiddenError("Akses ditolak")
 
     tx = payment_repository.get_latest_by_pengajuan(db, id_pengajuan)
 

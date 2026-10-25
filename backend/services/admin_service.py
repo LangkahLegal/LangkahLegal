@@ -6,7 +6,6 @@ from supabase import Client
 from core.constants import Role, StatusPembayaran, StatusPengajuan, StatusVerifikasi
 from core.exceptions import BadRequestError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import require_role
 from helpers.listing import clean_search
 from helpers.rating import summarize_ratings
 from repositories import (
@@ -18,10 +17,6 @@ from repositories import (
 from schemas.admin import VerifyConsultantPayload
 
 logger = logging.getLogger(__name__)
-
-
-def require_admin(user: CurrentUser) -> None:
-    require_role(user, Role.ADMIN, "Akses ditolak. Hanya admin yang bisa mengakses fitur ini.")
 
 
 def _transaction_totals(db: Client) -> tuple[int, float, float]:
@@ -46,8 +41,6 @@ def _transaction_totals(db: Client) -> tuple[int, float, float]:
 
 
 def get_admin_stats(db: Client, user: CurrentUser) -> dict:
-    require_admin(user)
-
     total_users = user_repository.count(db)
     total_clients = user_repository.count(db, role=Role.CLIENT)
     total_konsultan = consultant_repository.count(db)
@@ -73,8 +66,6 @@ def list_consultants(
     spesialisasi: str | None = None,
     search: str | None = None,
 ) -> dict:
-    require_admin(user)
-
     valid_statuses = (
         StatusVerifikasi.PENDING,
         StatusVerifikasi.TERVERIFIKASI,
@@ -98,8 +89,6 @@ def list_consultants(
 
 
 def get_consultant_detail(db: Client, user: CurrentUser, id_konsultan: int) -> dict:
-    require_admin(user)
-
     konsultan = consultant_repository.get_admin_detail(db, id_konsultan)
 
     if konsultan is None:
@@ -117,8 +106,6 @@ def get_consultant_detail(db: Client, user: CurrentUser, id_konsultan: int) -> d
 
 
 def verify_consultant(db: Client, user: CurrentUser, id_konsultan: int, payload: VerifyConsultantPayload) -> dict:
-    require_admin(user)
-
     valid_actions = (StatusVerifikasi.TERVERIFIKASI, StatusVerifikasi.DITOLAK)
     if payload.action not in valid_actions:
         raise BadRequestError(f"Action harus salah satu dari: {', '.join(valid_actions)}")
