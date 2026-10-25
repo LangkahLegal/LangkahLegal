@@ -47,10 +47,17 @@ export const setStoredOAuthVerifier = (verifier) => {
   }
 };
 
+const notifyAuthChange = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-storage-change"));
+  }
+};
+
 export const setStoredRole = (role) => {
   if (typeof window === "undefined" || !role) return;
 
   ROLE_KEYS.forEach((key) => window.localStorage.setItem(key, role));
+  notifyAuthChange();
 };
 
 export const setAuthSession = (session) => {
@@ -75,8 +82,10 @@ export const setAuthSession = (session) => {
   }
 
   if (role) {
-    setStoredRole(role);
+    ROLE_KEYS.forEach((key) => window.localStorage.setItem(key, role));
   }
+
+  notifyAuthChange();
 };
 
 export const clearAuthSession = () => {
@@ -90,4 +99,6 @@ export const clearAuthSession = () => {
   window.sessionStorage.removeItem("pending_auth");
   window.sessionStorage.removeItem("pending_role");
   window.localStorage.removeItem("ll_cached_profile");
+
+  notifyAuthChange();
 };

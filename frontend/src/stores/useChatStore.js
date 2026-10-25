@@ -13,10 +13,13 @@ import api from "@/lib/axios";
 const useChatStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────
   activeSessionId: null,
+  activeSourceDocument: null,
   sessions: [],
   messages: [],
   isLoadingSessions: false,
   isLoadingMessages: false,
+
+  setActiveSourceDocument: (source) => set({ activeSourceDocument: source }),
 
   // ── Session Actions ────────────────────────────────────
 
@@ -85,7 +88,12 @@ const useChatStore = create((set, get) => ({
   setActiveSession: async (sessionId) => {
     if (sessionId === get().activeSessionId) return;
 
-    set({ activeSessionId: sessionId, messages: [], isLoadingMessages: true });
+    set({
+      activeSessionId: sessionId,
+      activeSourceDocument: null,
+      messages: [],
+      isLoadingMessages: true,
+    });
 
     if (!sessionId) {
       set({ isLoadingMessages: false });
@@ -119,7 +127,7 @@ const useChatStore = create((set, get) => ({
 
   /** Start a new blank conversation (no session created yet — lazy) */
   startNewChat: () => {
-    set({ activeSessionId: null, messages: [] });
+    set({ activeSessionId: null, messages: [], activeSourceDocument: null });
   },
 
   // ── Message Actions ────────────────────────────────────

@@ -2,8 +2,23 @@
 const nextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ["lightningcss", "@tailwindcss/oxide"],
-  hostname: "lh3.googleusercontent.com",
-  protocol: "https",
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+    ],
+  },
+  async redirects() {
+    return [
+      {
+        source: "/role",
+        destination: "/auth/role",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

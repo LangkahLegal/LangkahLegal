@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import PageHeader from "@/components/layout/PageHeader";
 import RoleCard from "@/components/role/RoleCard";
+import { authService } from "@/services/auth.service";
+import {
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  getStoredRole,
+} from "@/lib/authStorage";
 
 const ROLES_DATA = [
   {
@@ -24,16 +30,38 @@ const ROLES_DATA = [
 ];
 
 export default function RolePage() {
-  const [selectedRole, setSelectedRole] = useState("client");
+  const storedRole = getStoredRole();
+  const [selectedRole, setSelectedRole] = useState(
+    storedRole === "konsultan" ? "konsultan" : "client",
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  const hasAuth = Boolean(getStoredAccessToken() || getStoredRefreshToken());
+  const backHref = hasAuth
+    ? storedRole === "konsultan"
+      ? "/dashboard/consultant"
+      : storedRole === "client"
+        ? "/dashboard/client"
+        : "/"
+    : "/auth/login";
 
   const handleContinue = async () => {
     setIsLoading(true);
     setError("");
 
     try {
+      if (hasAuth) {
+        await authService.updateRole(selectedRole);
+        const target =
+          selectedRole === "konsultan"
+            ? "/dashboard/consultant"
+            : "/dashboard/client";
+        router.replace(target);
+        return;
+      }
+
       sessionStorage.setItem("pending_role", selectedRole);
       router.push("/auth/signup");
     } catch (err) {
@@ -50,7 +78,7 @@ export default function RolePage() {
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary/10 blur-[120px] rounded-full" />
       </div>
 
-      <PageHeader title="Select Role" backHref="/auth/login" />
+      <PageHeader title="Select Role" backHref={backHref} />
 
       <main className="relative z-10 flex-grow flex flex-col px-6 pt-8 pb-20 max-w-md mx-auto w-full">
         <div className="mb-10">
