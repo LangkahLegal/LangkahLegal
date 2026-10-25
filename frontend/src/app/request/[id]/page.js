@@ -43,6 +43,7 @@ export default function RequestDetailPage() {
     enabled: !!id,
     select: (data) => ({
       clientName: data.nama_klien,
+      status: data.status_pengajuan,
       fotoProfil: data.foto_profil,
       rawDate: data.created_at,
       consultationDate: data.tanggal_konsultasi,
@@ -386,7 +387,14 @@ export default function RequestDetailPage() {
             />
 
             {/* Tombol Aksi */}
-            {requestData.isBursaClaim ? (
+            {requestData.status !== "pending" ? (
+              <div
+                className="bg-surface/60 border border-surface rounded-2xl p-4 text-center text-sm text-muted"
+                data-testid="request-already-processed"
+              >
+                Permintaan ini sudah diproses (status: {requestData.status?.replace("_", " ")}).
+              </div>
+            ) : requestData.isBursaClaim ? (
               <div className="flex gap-4 pt-4">
                 <Button
                   variant="danger"

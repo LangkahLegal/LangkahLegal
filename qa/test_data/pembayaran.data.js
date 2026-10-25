@@ -11,7 +11,6 @@ export const PAYMENT_MESSAGES = {
   success: "Pembayaran Berhasil!",
   pending: "Pembayaran tertunda",
   failed: "Pembayaran gagal. Silakan coba lagi.",
-  notPayable: "Pengajuan tidak dalam status yang memerlukan pembayaran",
   loadFailed: "Gagal Memuat Pembayaran",
 };
 
