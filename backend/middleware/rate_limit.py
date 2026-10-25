@@ -1,12 +1,3 @@
-"""Pembatas laju (rate limiter) sisi server.
-
-Dua lapis:
-- `throttle(limit)`: dependency per endpoint, dipasang lewat `dependencies=[Depends(throttle("3/minute"))]`.
-  Kunci bawaannya alamat IP; `per_user=True` memakai id pengguna login sehingga tidak terpengaruh
-  proxy yang membuat semua pengguna tampak dari satu IP.
-- `GlobalThrottleMiddleware`: batas kasar per IP untuk seluruh API sebagai pengaman.
-"""
-
 import time
 from functools import lru_cache
 
@@ -21,16 +12,11 @@ from core.exceptions import TooManyRequestsError
 from core.user import CurrentUser
 from middleware.session import get_current_user
 
-# Hitungan disimpan per proses. Bila backend berjalan lebih dari satu instance, ganti ke "redis://..."
-# agar hitungannya dibagi (butuh paket `redis`).
 STORAGE_URI = "memory://"
-
-# Batas global per IP untuk semua request; None berarti nonaktif.
 GLOBAL_LIMIT: str | None = "1000/minute"
-
-RETRY_MESSAGE = "Terlalu banyak permintaan. Mohon tunggu sebentar lalu coba lagi."
 GLOBAL_SCOPE = "global"
 UNLIMITED_PATHS = {"/health"}
+RETRY_MESSAGE = "Terlalu banyak permintaan. Mohon tunggu sebentar lalu coba lagi."
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +30,6 @@ def _item(limit: str) -> RateLimitItem:
 
 
 def client_ip(request: Request) -> str:
-    """IP klien. Di balik proxy (Vercel/Railway) dipakai entri terakhir X-Forwarded-For, yang ditambahkan proxy."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.rsplit(",", 1)[-1].strip()
@@ -67,11 +52,6 @@ def _route_scope(request: Request) -> str:
 
 
 def throttle(limit: str, *, per_user: bool = False, scope: str | None = None):
-    """Dependency pembatas laju untuk satu endpoint.
-
-    `limit` memakai format `limits`, mis. "3/minute" atau "100/hour". Tiap endpoint punya hitungan
-    sendiri; beri `scope` yang sama bila beberapa endpoint harus berbagi hitungan.
-    """
     item = _item(limit)
 
     def bucket(request: Request) -> str:
@@ -91,8 +71,6 @@ def throttle(limit: str, *, per_user: bool = False, scope: str | None = None):
 
 
 class GlobalThrottleMiddleware(BaseHTTPMiddleware):
-    """Batas kasar per IP untuk semua request, sesuai `GLOBAL_LIMIT`."""
-
     async def dispatch(self, request: Request, call_next):
         if not GLOBAL_LIMIT or request.method == "OPTIONS" or request.url.path in UNLIMITED_PATHS:
             return await call_next(request)

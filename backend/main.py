@@ -24,7 +24,6 @@ async def force_https_scheme(request: Request, call_next) -> Response:
     return await call_next(request)
 
 
-# Dipasang sebelum CORS agar respons 429 pun membawa header CORS.
 app.add_middleware(GlobalThrottleMiddleware)
 
 app.add_middleware(

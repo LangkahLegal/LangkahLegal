@@ -155,7 +155,6 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
 
 
 def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = False) -> dict:
-    # Tanpa filter pemilik, query mengembalikan semua pengajuan; router sudah membatasi ke klien/konsultan.
     is_client = current_user.role == Role.CLIENT
     rows = consultation_repository.list_with_relations(
         db,
@@ -202,7 +201,6 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
 
 
 def _detail_scope(current_user: CurrentUser) -> tuple[int | None, int | None]:
-    """Filter pemilik untuk query detail: klien lewat id_user, konsultan lewat id_konsultan."""
     if current_user.role == Role.CLIENT:
         return current_user.id_user, None
     return None, current_user.id_konsultan

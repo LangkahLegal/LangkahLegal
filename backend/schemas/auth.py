@@ -2,7 +2,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-# Peran yang boleh dipilih pengguna sendiri; admin hanya ditetapkan lewat database.
 AppRole = Literal["client", "konsultan"]
 
 

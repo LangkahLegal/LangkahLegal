@@ -1,5 +1,3 @@
-"""Otorisasi: gerbang peran per endpoint. Pemeriksaan kepemilikan data tetap di service."""
-
 from fastapi import Depends
 
 from core.constants import Role
@@ -9,13 +7,6 @@ from middleware.session import get_current_user
 
 
 class RoleRequired:
-    """Pengguna harus login dan berperan salah satu dari `roles`.
-
-    Dipasang di router, mis. `current_user: CurrentUser = Depends(require_konsultan)`, sehingga
-    service tidak perlu memeriksa peran lagi. Konsultan juga harus punya profil konsultan,
-    jadi `current_user.id_konsultan` dijamin terisi saat sampai di service.
-    """
-
     def __init__(self, *roles: str) -> None:
         self.roles = roles
 

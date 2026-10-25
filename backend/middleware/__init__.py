@@ -1,18 +1,3 @@
-"""Lapisan middleware yang dipanggil controller lewat `Depends`.
-
-- `session`: autentikasi, mengubah token (header `Authorization` atau cookie `ll_token`) menjadi `CurrentUser`.
-- `authorization`: gerbang peran per endpoint (`require_client`, `require_konsultan`, `require_admin`, ...).
-- `rate_limit`: pembatas laju per endpoint (`throttle("3/minute")`) dan batas global per IP.
-
-Contoh di router:
-
-    @router.get("/me/schedules")
-    def get_my_schedules(current_user: CurrentUser = Depends(require_konsultan), ...): ...
-
-    @router.post("/login-otp", dependencies=[Depends(throttle("3/minute"))])
-    async def send_otp_login(payload: OtpLoginPayload): ...
-"""
-
 from middleware.authorization import (
     RoleRequired,
     require_admin,

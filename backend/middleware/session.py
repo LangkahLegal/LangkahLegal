@@ -1,5 +1,3 @@
-"""Autentikasi: memastikan request membawa sesi yang valid dan memuat profil pengguna."""
-
 from fastapi import Cookie, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
@@ -32,7 +30,6 @@ def get_token_from_request(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     ll_token: str | None = Cookie(default=None),
 ) -> str:
-    """Token mentah tanpa memuat profil; untuk endpoint auth yang dipakai sebelum peran dipilih."""
     token = _extract_token(credentials, ll_token)
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak valid atau tidak ditemukan")
@@ -44,7 +41,6 @@ def get_current_user(
     ll_token: str | None = Cookie(default=None),
     db: Client = Depends(get_supabase_client),
 ) -> CurrentUser:
-    """Sesi valid, profil ada, dan peran sudah dipilih. Untuk endpoint yang terbuka bagi semua peran."""
     token = _extract_token(credentials, ll_token)
     if not token:
         raise HTTPException(status_code=401, detail="Token tidak ditemukan di cookie maupun header.")
