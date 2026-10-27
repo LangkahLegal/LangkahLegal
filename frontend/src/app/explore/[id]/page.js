@@ -26,6 +26,11 @@ import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { clearConsultationDraft, readIncomingConsultationDraft } from "@/lib/consultationDraft";
 import { useClientValue } from "@/lib/useClientValue";
+import { getStoredAccessToken, getStoredRole } from "@/lib/authStorage";
+
+const readIsReady = () => true;
+const readHasSession = () => Boolean(getStoredAccessToken());
+const readViewerRole = () => getStoredRole()?.toLowerCase() || null;
 
 export default function ConsultantDetailPage() {
   const { id } = useParams();
@@ -42,6 +47,10 @@ export default function ConsultantDetailPage() {
   const description = typedDescription ?? aiDraftDescription ?? "";
   const [files, setFiles] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const isReady = useClientValue(readIsReady, false);
+  const hasSession = useClientValue(readHasSession, false);
+  const viewerRole = useClientValue(readViewerRole, null);
+  const canBook = hasSession && viewerRole === "client";
   const { theme } = useTheme();
   const currentTheme = theme || "dark-tech";
 
@@ -210,49 +219,69 @@ export default function ConsultantDetailPage() {
               tags={consultant?.spesialisasi?.split(",") || []}
             />
 
-            <SchedulePicker
-              consultantId={parseInt(id)}
-              selectedDate={selectedDate}
-              onDateSelect={setSelectedDate}
-              startTime={startTime}
-              onStartTimeChange={setStartTime}
-              endTime={endTime}
-              onEndTimeChange={setEndTime}
-              rawSchedules={consultant?.jadwal_ketersediaan || []}
-              bookedSlots={bookedSlots}
-            />
-
-            <ConsultationForm
-              description={description}
-              onDescriptionChange={setDescription}
-            />
-
-            <div className="space-y-4">
-              <AttachedDocuments
-                title="Dokumen Pendukung"
-                documents={displayFiles}
-                showCount={true}
-                allowDelete={true}
-                onDelete={handleRemoveFile}
-                useStyledTitle={true}
+            {!isReady ? null : canBook ? (
+              <>
+              <SchedulePicker
+                consultantId={parseInt(id)}
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+                startTime={startTime}
+                onStartTimeChange={setStartTime}
+                endTime={endTime}
+                onEndTimeChange={setEndTime}
+                rawSchedules={consultant?.jadwal_ketersediaan || []}
+                bookedSlots={bookedSlots}
               />
-              <FileUpload
-                onChange={handleFileChange}
-                accept=".pdf,.jpg,.jpeg,.png"
-                maxSizeMB={10}
-              />
-            </div>
 
-            <div className="pt-2">
-              <Button
-                fullWidth
-                isLoading={bookingMutation.isPending}
-                onClick={handleBooking}
-                className="py-5 rounded-xl shadow-lg shadow-primary/20"
+              <ConsultationForm
+                description={description}
+                onDescriptionChange={setDescription}
+              />
+
+              <div className="space-y-4">
+                <AttachedDocuments
+                  title="Dokumen Pendukung"
+                  documents={displayFiles}
+                  showCount={true}
+                  allowDelete={true}
+                  onDelete={handleRemoveFile}
+                  useStyledTitle={true}
+                />
+                <FileUpload
+                  onChange={handleFileChange}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  maxSizeMB={10}
+                />
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  fullWidth
+                  isLoading={bookingMutation.isPending}
+                  onClick={handleBooking}
+                  className="py-5 rounded-xl shadow-lg shadow-primary/20"
+                >
+                  Booking Konsultasi
+                </Button>
+              </div>
+              </>
+            ) : (
+              <div
+                className="bg-surface/60 border border-surface rounded-2xl p-6 text-center space-y-4"
+                data-testid="booking-unavailable"
               >
-                Booking Konsultasi
-              </Button>
-            </div>
+                <p className="text-sm text-muted">
+                  {hasSession
+                    ? "Hanya akun klien yang dapat mengajukan konsultasi."
+                    : "Masuk sebagai klien untuk memilih jadwal dan mengajukan konsultasi."}
+                </p>
+                {!hasSession && (
+                  <Button fullWidth onClick={() => router.push("/auth/login")} className="py-4 rounded-xl">
+                    Masuk untuk Mengajukan
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </main>
 

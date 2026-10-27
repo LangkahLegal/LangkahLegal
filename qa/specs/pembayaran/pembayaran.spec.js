@@ -97,3 +97,10 @@ Then("halaman pembayaran menampilkan gagal memuat dengan pilihan coba lagi", asy
 When("pengguna membayar konsultasi lalu menekan tombol bayar sekali lagi", async ({ pembayaranPage }) => {
   await pembayaranPage.payTwice();
 });
+
+// ── PAY-005 · Konsultasi yang belum disetujui tidak dapat dibayar
+
+Then("halaman pembayaran memberitahu konsultasi belum bisa dibayar", async ({ pembayaranPage }) => {
+  await expect(pembayaranPage.notPayableNotice).toBeVisible();
+  await expect(pembayaranPage.payButton).toHaveCount(0);
+});
