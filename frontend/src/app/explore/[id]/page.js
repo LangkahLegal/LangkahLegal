@@ -24,7 +24,7 @@ import SchedulePicker from "@/components/explore/pengajuan/SchedulePicker";
 import ConsultationForm from "@/components/explore/pengajuan/ConsultationForm";
 import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { clearConsultationDraft, readIncomingConsultationDraft } from "@/lib/consultationDraft";
+import { clearConsultationDraft, readIncomingConsultationDraft, readIncomingSlot } from "@/lib/consultationDraft";
 import { useClientValue } from "@/lib/useClientValue";
 import { getStoredAccessToken, getStoredRole } from "@/lib/authStorage";
 
@@ -38,9 +38,14 @@ export default function ConsultantDetailPage() {
   const queryClient = useQueryClient();
 
   // --- STATE ---
-  const [selectedDate, setSelectedDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  // null = belum dipilih user, sehingga slot yang dipilih di kartu Tanya AI (kalau ada) yang terpilih.
+  const incomingSlot = useClientValue(readIncomingSlot, null);
+  const [pickedDate, setSelectedDate] = useState(null);
+  const [pickedStart, setStartTime] = useState(null);
+  const [pickedEnd, setEndTime] = useState(null);
+  const selectedDate = pickedDate ?? incomingSlot?.tanggal ?? "";
+  const startTime = pickedStart ?? (pickedDate === null ? incomingSlot?.mulai : null) ?? "";
+  const endTime = pickedEnd ?? (pickedDate === null ? incomingSlot?.selesai : null) ?? "";
   // null = belum diketik user, sehingga ringkasan dari Tanya AI (kalau ada) yang ditampilkan.
   const [typedDescription, setDescription] = useState(null);
   const aiDraftDescription = useClientValue(readIncomingConsultationDraft, null);
@@ -127,8 +132,12 @@ export default function ConsultantDetailPage() {
       return alert("Mohon lengkapi semua data pengajuan.");
     }
 
+    // Satu tanggal bisa punya beberapa blok jadwal (misalnya pagi dan siang); pilih blok yang memuat jam ini.
     const currentSchedule = consultant?.jadwal_ketersediaan?.find(
-      (s) => s.tanggal === selectedDate,
+      (s) =>
+        s.tanggal === selectedDate &&
+        s.jam_mulai?.substring(0, 5) <= startTime &&
+        endTime <= s.jam_selesai?.substring(0, 5),
     );
 
     if (!currentSchedule) return alert("Jadwal tidak tersedia.");

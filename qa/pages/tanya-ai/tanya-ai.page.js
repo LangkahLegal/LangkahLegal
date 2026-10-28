@@ -22,6 +22,13 @@ export class TanyaAiPage extends BasePage {
     this.officialTextTab = page.getByRole("button", { name: "Naskah resmi" });
     this.openPdfLink = page.getByRole("link", { name: /Buka PDF/ });
     this.bpkLink = page.getByRole("link", { name: /Lihat di JDIH BPK/ });
+    this.preferenceForm = page.getByTestId("ai-preference-form");
+    this.budgetMin = page.getByTestId("preferensi-budget-min");
+    this.budgetMax = page.getByTestId("preferensi-budget-max");
+    this.searchConsultantButton = page.getByRole("button", { name: "Cari konsultan" });
+    this.skipPreferenceButton = page.getByRole("button", { name: /Lewati, tampilkan semua/ });
+    this.consultantSlots = page.getByTestId("ai-consultant-slot");
+    this.consultantSchedule = page.getByTestId("ai-consultant-schedule");
   }
 
   get lastAiMessage() {
@@ -31,6 +38,17 @@ export class TanyaAiPage extends BasePage {
   async ask(question) {
     await this.input.fill(question);
     await this.input.press("Enter");
+  }
+
+  preferenceChip(label) {
+    return this.preferenceForm.getByRole("button", { name: label, exact: true });
+  }
+
+  async fillPreference({ budgetMin, budgetMax, hari, waktu }) {
+    await this.budgetMin.fill(budgetMin);
+    await this.budgetMax.fill(budgetMax);
+    if (hari) await this.preferenceChip(hari).click();
+    if (waktu) await this.preferenceChip(waktu).click();
   }
 
   quickReply(label) {

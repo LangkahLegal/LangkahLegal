@@ -44,6 +44,49 @@ export const CONSULTATION_DRAFT = {
     "Saya karyawan kontrak dan upah saya tidak dibayar selama tiga bulan.\n\nBukti yang sudah saya miliki: Slip gaji.",
 };
 
+/** Form budget dan jadwal yang ditanyakan AI sebelum merekomendasikan konsultan, beserta isian klien uji. */
+export const PREFERENCE = {
+  question:
+    "Dari cerita Anda, persoalan ini termasuk ketenagakerjaan (bisa Anda ubah di bawah). Supaya rekomendasinya pas, silakan isi kisaran budget per sesi dan waktu konsultasi yang Anda inginkan.",
+  form: {
+    kategori: "Ketenagakerjaan",
+    pilihan_kategori: [
+      { nilai: "Pidana", label: "Hukum pidana" },
+      { nilai: "Perdata", label: "Hukum perdata" },
+      { nilai: "Ketenagakerjaan", label: "Ketenagakerjaan" },
+      { nilai: "Teknologi Informasi", label: "Teknologi informasi" },
+      { nilai: "HAM", label: "Hak asasi manusia" },
+      { nilai: "Umum", label: "Hukum umum" },
+    ],
+    pilihan_hari: [
+      { nilai: "besok", label: "Besok" },
+      { nilai: "akhir_pekan", label: "Akhir pekan" },
+      { nilai: "sabtu", label: "Sabtu" },
+      { nilai: "bebas", label: "Kapan saja" },
+    ],
+    pilihan_waktu: [
+      { nilai: "pagi", label: "Pagi (06.00-12.00)" },
+      { nilai: "malam", label: "Malam (18.00-22.00)" },
+      { nilai: "bebas", label: "Kapan saja" },
+    ],
+    nilai_awal: {},
+  },
+  input: { budgetMin: "100000", budgetMax: "300000", hari: "Sabtu", waktu: "Pagi (06.00-12.00)" },
+  invalidBudget: { budgetMin: "500000", budgetMax: "100000" },
+  expected: {
+    kategori: "Ketenagakerjaan",
+    budget_min: 100000,
+    budget_max: 300000,
+    hari: "sabtu",
+    waktu: "pagi",
+    dilewati: false,
+  },
+  summary: "Cari konsultan ketenagakerjaan, budget Rp100.000-Rp300.000, sabtu, pagi",
+  skipText: "Lewati, tampilkan semua konsultan",
+  budgetError: /Budget minimal tidak boleh lebih besar/,
+  slot: { tanggal: "2026-11-07", mulai: "09:00", selesai: "10:00", label: "Sab, 7 Nov · 09.00" },
+};
+
 /** Dokumen peraturan yang dipakai AI sebagai dasar jawaban, lengkap dengan naskah resminya. */
 export const SOURCE_DOCUMENT = {
   frbr_uri: "/akn/id/act/t1-008",
@@ -85,6 +128,19 @@ export const AI_REPLIES = {
       draft_konsultasi: CONSULTATION_DRAFT,
     }),
   "jawaban bersumber": () => reply({ sumber_dokumen: [SOURCE_DOCUMENT] }),
+  "pertanyaan budget dan jadwal": () =>
+    reply({
+      type: "tanya_preferensi",
+      jawaban: PREFERENCE.question,
+      form_preferensi: PREFERENCE.form,
+      disclaimer: "",
+    }),
+  "konsultan dengan slot jadwal": () =>
+    reply({
+      type: "consultant_list",
+      jawaban: "Slot sabtu pagi yang masih kosong sudah saya tandai di setiap kartu.",
+      consultants: [{ ...konsultanUji(), jadwal_status: "cocok", slot_cocok: [PREFERENCE.slot] }],
+    }),
   "pertanyaan tentang bukti": () => reply({ jawaban: "Apakah Anda memiliki bukti tangkapan layar?" }),
   "konten berbahaya": () =>
     reply({ jawaban: "<img src=x onerror=alert(1)> [klik](javascript:alert(2)) <script>alert(3)</script>" }),

@@ -292,11 +292,12 @@
     "slug": "uu-no-40-tahun-2004",
     "bpk_url": "https://peraturan.bpk.go.id/Details/40787/uu-no-40-tahun-2004",
     "download_url": "https://peraturan.bpk.go.id/Download/30525/UU%20Nomor%2040%20Tahun%202004.pdf",
-    "file_url": null,
+    "file_url": "https://res.cloudinary.com/tuldqb0y/raw/upload/v1793119573/langkahlegal/peraturan/uu-no-40-tahun-2004.pdf",
     "halaman": 45,
-    "verifikasi": "tidak_cocok",
-    "skor": 0.002,
-    "status": "isi_tidak_cocok"
+    "verifikasi": "cocok",
+    "skor": 0.936,
+    "bytes": 182462,
+    "status": "terupload"
   },
   "/akn/id/act/t2-019": {
     "judul": "UU No. 17 Tahun 2023 tentang Kesehatan",
@@ -327,11 +328,12 @@
     "slug": "uu-no-8-tahun-2016",
     "bpk_url": "https://peraturan.bpk.go.id/Details/37251/uu-no-8-tahun-2016",
     "download_url": "https://peraturan.bpk.go.id/Download/26352/UU%20Nomor%208%20Tahun%202016.pdf",
-    "file_url": null,
+    "file_url": "https://res.cloudinary.com/tuldqb0y/raw/upload/v1793119583/langkahlegal/peraturan/uu-no-8-tahun-2016.pdf",
     "halaman": 102,
-    "verifikasi": "tidak_cocok",
-    "skor": 0.0,
-    "status": "isi_tidak_cocok"
+    "verifikasi": "cocok",
+    "skor": 0.916,
+    "bytes": 603956,
+    "status": "terupload"
   },
   "/akn/id/act/t3-001": {
     "judul": "PP No. 35 Tahun 2021 tentang Perjanjian Kerja Waktu Tertentu, Alih Daya, Waktu Kerja dan Waktu Istirahat, dan Pemutusan Hubungan Kerja",

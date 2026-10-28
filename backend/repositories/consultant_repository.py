@@ -119,8 +119,23 @@ def update_by_user(db: Client, id_user: int, data: dict) -> list[dict]:
     return db.table(TABLE).update(data).eq("id_user", id_user).execute().data
 
 
-def search_by_category(db: Client, params: dict) -> list[dict]:
-    return db.rpc("search_consultants_by_category", params).execute().data or []
+def list_recommendable(db: Client) -> list[dict]:
+    """Konsultan yang boleh direkomendasikan chatbot: hanya yang terverifikasi dan sedang aktif.
+
+    Syaratnya sengaja ditulis di sini (bukan di RPC Supabase) supaya terlihat dan bisa dites.
+    """
+    return (
+        db.table(TABLE)
+        .select(
+            "id_konsultan, nama_lengkap, spesialisasi, tarif_per_sesi, kota_praktik, pengalaman_tahun, "
+            "bio_singkat, status_verifikasi, is_active, users (foto_profil), rating_ulasan (skor_rating)"
+        )
+        .eq("status_verifikasi", "terverifikasi")
+        .eq("is_active", True)
+        .execute()
+        .data
+        or []
+    )
 
 
 def is_active(db: Client, id_konsultan: int) -> bool:

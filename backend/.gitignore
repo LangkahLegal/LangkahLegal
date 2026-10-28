@@ -21,3 +21,6 @@ qa-fixtures
 postman
 AGENTS.md
 cek_midtrans.py
+
+# Cache embedding query eval retrieval
+evals/.cache/

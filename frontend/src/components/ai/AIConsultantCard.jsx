@@ -2,7 +2,13 @@
 
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
-import { saveConsultationDraft } from "@/lib/consultationDraft";
+import { consultantUrl, saveConsultationDraft } from "@/lib/consultationDraft";
+
+const JUDUL_JADWAL = {
+  cocok: "Jadwal yang cocok",
+  terdekat: "Jadwal terdekat",
+  tersedia: "Jadwal tersedia",
+};
 
 export default function AIConsultantCard({ consultant, draft = null }) {
   const {
@@ -14,7 +20,16 @@ export default function AIConsultantCard({ consultant, draft = null }) {
     foto_profil,
     avg_rating,
     total_reviews,
+    kota_praktik,
+    jadwal_status,
+    slot_cocok = [],
   } = consultant;
+
+  const buka = (slot = null) => {
+    // Draft dari Tanya AI dipakai untuk mengisi deskripsi kasus di form pengajuan.
+    if (draft) saveConsultationDraft(draft);
+    window.open(consultantUrl(id_konsultan, { draft, slot }), "_blank");
+  };
 
   // Format currency
   const formattedPrice = new Intl.NumberFormat("id-ID", {
@@ -46,10 +61,48 @@ export default function AIConsultantCard({ consultant, draft = null }) {
             {nama_lengkap}
           </h4>
           <p className="text-[10px] sm:text-xs text-primary-light font-medium truncate">
-            {spesialisasi} • {pengalaman_tahun} thn pengalaman
+            {[spesialisasi, pengalaman_tahun ? `${pengalaman_tahun} thn pengalaman` : null, kota_praktik]
+              .filter(Boolean)
+              .join(" • ")}
           </p>
         </div>
       </div>
+
+      {/* Jadwal: slot dari jadwal nyata konsultan, dicocokkan dengan preferensi klien */}
+      {jadwal_status && (
+        <div className="space-y-1.5" data-testid="ai-consultant-schedule">
+          {jadwal_status === "belum_ada" ? (
+            <p className="text-[10px] sm:text-xs text-muted flex items-center gap-1">
+              <MaterialIcon name="event_busy" className="text-[14px]" />
+              Belum ada jadwal
+            </p>
+          ) : (
+            <>
+              <p
+                className={`text-[10px] sm:text-xs font-semibold flex items-center gap-1 ${
+                  jadwal_status === "cocok" ? "text-emerald-500" : "text-muted"
+                }`}
+              >
+                <MaterialIcon name="event_available" className="text-[14px]" />
+                {JUDUL_JADWAL[jadwal_status] || "Jadwal"}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {slot_cocok.map((slot) => (
+                  <button
+                    key={`${slot.tanggal}-${slot.mulai}`}
+                    type="button"
+                    onClick={() => buka(slot)}
+                    className="px-2.5 py-1 rounded-lg border border-surface bg-input text-[10px] sm:text-xs text-main hover:border-primary/60 hover:text-primary-light transition-colors"
+                    data-testid="ai-consultant-slot"
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Bottom Section: Stats & CTA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-surface/50 pt-3">
@@ -68,11 +121,7 @@ export default function AIConsultantCard({ consultant, draft = null }) {
         <Button
           variant="primary"
           className="w-full sm:w-auto !py-1.5 !px-4 text-[10px] sm:text-xs font-semibold shrink-0"
-          onClick={() => {
-            // Draft dari Tanya AI dipakai untuk mengisi deskripsi kasus di form pengajuan.
-            if (draft) saveConsultationDraft(draft);
-            window.open(`/explore/${id_konsultan}${draft ? "?dari=ai" : ""}`, "_blank");
-          }}
+          onClick={() => buka()}
         >
           Jadwalkan
         </Button>

@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from supabase import Client
@@ -88,6 +89,19 @@ def update(db: Client, id_dokumen: int, data: dict) -> list[dict]:
 
 def delete_by_uri(db: Client, frbr_uri: str) -> None:
     db.table(TABLE).delete().eq("frbr_uri", frbr_uri).execute()
+
+
+def list_all(db: Client, columns: str, page_size: int = 1000, workers: int = 8) -> list[dict]:
+    """Seluruh chunk. PostgREST membatasi baris per request, jadi halaman-halamannya diambil paralel."""
+    total = db.table(TABLE).select("id_dokumen", count="exact").limit(1).execute().count or 0
+
+    def halaman(start: int) -> list[dict]:
+        query = db.table(TABLE).select(columns).order("id_dokumen").range(start, start + page_size - 1)
+        return query.execute().data or []
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        pages = pool.map(halaman, range(0, total, page_size))
+        return [row for page in pages for row in page]
 
 
 def match_by_embedding(db: Client, params: dict) -> list[dict]:

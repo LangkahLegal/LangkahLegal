@@ -1,5 +1,7 @@
 import logging
+import re
 import time
+from dataclasses import asdict
 from typing import Optional
 
 import voyageai
@@ -8,10 +10,11 @@ from google.genai import types
 from supabase import Client
 
 from core.config import get_settings
+from helpers import gemini_errors
 from helpers.embedding import get_voyage_client
 from helpers.peraturan_files import get_file_info
-from repositories import consultant_repository, legal_document_repository
-from services import chat_policy
+from repositories import legal_document_repository
+from services import chat_policy, konsultan_matching, retrieval_service
 from services.chat_policy import Gaya, Mode, ToolMode
 
 logger = logging.getLogger(__name__)
@@ -22,11 +25,19 @@ EMBEDDING_DIM = 1024
 LLM_MODEL = "gemini-3.1-flash-lite"
 
 
-MAX_HISTORY_CHARS = 60_000
+# Gemini tidak menyimpan percakapan, jadi riwayat dikirim ulang di setiap panggilan dan menjadi bagian token
+# terbesar. Fakta penting dari awal percakapan tetap terbawa lewat draft konsultasi.
+MAX_HISTORY_MESSAGES = 10
+MAX_HISTORY_CHARS = 12_000
 TEMPERATURE = 0.3
 
-SOURCE_MIN_SIMILARITY = 0.6
-SOURCE_MAX_DOCUMENTS = 3
+# Pasal hasil pencarian yang dikirim ke model. Ada pasal yang panjangnya lebih dari 7.000 huruf (±2.000 token);
+# user tetap bisa membaca pasal lengkapnya di panel sumber.
+MAX_PASAL_KONTEKS = 3
+MAX_CHARS_PER_PASAL = 2_000
+
+TANPA_PASAL = "(Tidak ditemukan pasal yang relevan di database LangkahLegal.)"
+_KUTIPAN_PASAL = re.compile(r"\bpasal\s+(\d+[a-z]?)\b", re.I)
 
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
@@ -106,26 +117,8 @@ def embed_query(query: str) -> list[float]:
     return result.embeddings[0]
 
 
-def retrieve_pasals(
-    supabase: Client,
-    query_embedding: list[float],
-    match_count: int = 5,
-    match_threshold: float = 0.5,
-    filter_kategori: Optional[str] = None,
-) -> list[dict]:
-    params = {
-        "query_embedding": query_embedding,
-        "match_threshold": match_threshold,
-        "match_count": match_count,
-    }
-    if filter_kategori:
-        params["filter_kategori"] = filter_kategori
-
-    rows = legal_document_repository.match_by_embedding(supabase, params)
-    for row in rows:
-        if "id_dokumen" not in row:
-            row["id_dokumen"] = row.get("id")
-    return rows
+def cari_pasal(supabase: Client, pertanyaan: str, query_pencarian: str, kategori: Optional[str] = None) -> list[dict]:
+    return retrieval_service.cari_pasal(supabase, pertanyaan, query_pencarian, kategori, jumlah=MAX_PASAL_KONTEKS)
 
 
 def _build_context(pasals: list[dict]) -> str:
@@ -134,14 +127,24 @@ def _build_context(pasals: list[dict]) -> str:
 
     parts = []
     for i, p in enumerate(pasals, 1):
-        sim = round(p.get("similarity", 0) * 100, 1)
         header = f"[Sumber {i}] {p.get('nama_uu', '')} — {p.get('pasal_bagian', '')}"
-        if p.get("judul_bab"):
+        if p.get("judul_bab") and not p.get("penjelasan"):
             header += f" ({p['judul_bab']})"
-        header += f" [Relevansi: {sim}%]"
-        parts.append(f"{header}\n{p.get('isi_teks', '')}")
+        if p.get("penjelasan"):
+            header += " [penjelasan resmi, bukan bunyi pasal]"
+        if not p.get("yakin", True):
+            header += " [kecocokan rendah]"
+        if p.get("catatan"):
+            header += f"\nCatatan: {p['catatan']}"
+        parts.append(f"{header}\n{_potong(p.get('isi_teks', ''), MAX_CHARS_PER_PASAL)}")
 
     return "\n\n---\n\n".join(parts)
+
+
+def _potong(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rsplit(" ", 1)[0] + " ... (dipotong)"
 
 
 def _build_references(pasals: list[dict]) -> list[dict]:
@@ -159,17 +162,14 @@ def _build_references(pasals: list[dict]) -> list[dict]:
     ]
 
 
-def _build_source_documents(
-    pasals: list[dict],
-    min_similarity: float = SOURCE_MIN_SIMILARITY,
-    max_documents: int = SOURCE_MAX_DOCUMENTS,
-) -> list[dict]:
+def _build_source_documents(pasals: list[dict]) -> list[dict]:
+    """Kelompokkan pasal yang dikirim ke model per dokumen, urut sesuai peringkat pencarian."""
     groups: dict[str, dict] = {}
     for p in pasals:
         frbr_uri = p.get("frbr_uri")
         id_dokumen = p.get("id_dokumen")
         similarity = round(p.get("similarity", 0), 4)
-        if not frbr_uri or id_dokumen is None or similarity < min_similarity:
+        if not frbr_uri or id_dokumen is None:
             continue
 
         doc = groups.setdefault(
@@ -193,11 +193,7 @@ def _build_source_documents(
             }
         )
 
-    for doc in groups.values():
-        doc["pasal"].sort(key=lambda x: x["similarity"], reverse=True)
-
-    docs = sorted(groups.values(), key=lambda d: d["pasal"][0]["similarity"], reverse=True)
-    return docs[:max_documents]
+    return list(groups.values())
 
 
 def _attach_document_status(supabase: Client, sources: list[dict]) -> list[dict]:
@@ -242,50 +238,43 @@ def _build_draft(kategori: str, fn_args: dict) -> dict | None:
     }
 
 
-def _filter_by_kota(consultants: list[dict], kota: str) -> tuple[list[dict], bool]:
-    """Saring konsultan berdasarkan kota. Kalau tidak ada yang cocok, kembalikan semua dan tandai."""
-    if not kota:
-        return consultants, False
-    di_kota = [c for c in consultants if kota.lower() in (c.get("kota_praktik") or "").lower()]
-    if di_kota:
-        return di_kota, False
-    return consultants, bool(consultants)
-
-
-def _execute_tool(supabase: Client, fn_name: str, fn_args: dict) -> dict:
+def _execute_tool(
+    supabase: Client, fn_name: str, fn_args: dict, pref: Optional[dict] = None, cari: bool = True
+) -> dict:
+    """Jalankan siapkan_konsultasi. `cari=False` dipakai saat Kia baru akan menanyakan budget dan jadwal: yang
+    diambil dari tool hanya kategori, kota, dan draft kasus; pencarian konsultan menunggu jawaban klien."""
     if fn_name != TOOL_NAME:
         return {"error": f"Unknown tool: {fn_name}", "consultants": [], "draft": None}
 
     kategori = fn_args.get("kategori") or "Umum"
-    params = {"p_spesialisasi": kategori}
-    if fn_args.get("max_budget") is not None:
-        params["p_max_budget"] = fn_args["max_budget"]
-
+    kota = (fn_args.get("kota") or "").strip()
+    pref = dict(pref or {})
+    if fn_args.get("max_budget") and not pref.get("budget_max"):
+        pref["budget_max"] = fn_args["max_budget"]
     draft = _build_draft(kategori, fn_args)
+    base = {"draft": draft, "kategori": kategori, "kota": kota, "consultants": [], "hasil": None}
+    if not cari:
+        return base
+
     try:
-        consultants = consultant_repository.search_by_category(supabase, params)
+        hasil = asdict(konsultan_matching.cari_konsultan(supabase, kategori, pref, kota))
     except Exception as e:
         logger.error(f"[TOOL] {TOOL_NAME} gagal mencari konsultan: {e}")
-        return {"error": str(e), "consultants": [], "draft": draft}
-
-    kota = (fn_args.get("kota") or "").strip()
-    consultants, kota_tidak_ditemukan = _filter_by_kota(consultants, kota)
+        return {**base, "error": str(e)}
     logger.info(
-        f"[TOOL] {TOOL_NAME} -> {len(consultants)} konsultan (kategori={kategori}, kota={kota or '-'}, "
-        f"draft={'ya' if draft else 'tidak'})"
+        f"[TOOL] {TOOL_NAME} -> {len(hasil['konsultan'])} konsultan (kategori={hasil['kategori']}, "
+        f"kota={kota or '-'}, draft={'ya' if draft else 'tidak'})"
     )
-    return {
-        "consultants": consultants,
-        "draft": draft,
-        "kota": kota,
-        "kota_tidak_ditemukan": kota_tidak_ditemukan,
-    }
+    return {**base, "consultants": hasil["konsultan"], "kategori": hasil["kategori"], "hasil": hasil}
 
 
 def _tool_result_for_model(result: dict) -> dict:
     """Versi ringkas hasil tool untuk dikirim balik ke model, tanpa bio dan foto konsultan."""
     if result.get("error"):
         return {"error": result["error"], "jumlah_konsultan": 0, "draft_dibuat": bool(result.get("draft"))}
+    hasil = result.get("hasil")
+    if hasil is None:
+        return {"draft_dibuat": bool(result.get("draft")), "menunggu_preferensi_budget_dan_jadwal": True}
     return {
         "jumlah_konsultan": len(result["consultants"]),
         "konsultan": [
@@ -293,11 +282,13 @@ def _tool_result_for_model(result: dict) -> dict:
                 "nama": c.get("nama_lengkap"),
                 "kota": c.get("kota_praktik"),
                 "tarif_per_sesi": c.get("tarif_per_sesi"),
+                "jadwal": c.get("jadwal_status"),
             }
-            for c in result["consultants"][:5]
+            for c in result["consultants"]
         ],
-        "kota_diminta": result.get("kota") or None,
-        "tidak_ada_konsultan_di_kota_diminta": result.get("kota_tidak_ditemukan", False),
+        "kategori_dipakai": hasil["kategori"],
+        "kategori_diganti_umum": hasil["kategori_cadangan"],
+        "budget_dilonggarkan": hasil["budget_dilonggarkan"],
         "draft_dibuat": bool(result.get("draft")),
     }
 
@@ -340,21 +331,26 @@ def _build_contents(
     return contents
 
 
+def _content_chars(content: types.Content) -> int:
+    return sum(len(p.text or "") for p in content.parts if hasattr(p, "text"))
+
+
 def _smart_truncate(contents: list[types.Content]) -> list[types.Content]:
+    """Sisakan pesan riwayat terbaru dalam batas jumlah pesan dan jumlah huruf. Pesan terakhir selalu utuh."""
     if not contents:
         return contents
 
     last_msg = contents[-1]
-    history = contents[:-1]
+    history = contents[:-1][-MAX_HISTORY_MESSAGES:]
+    total_chars = sum(_content_chars(c) for c in history)
 
-    total_chars = sum(sum(len(p.text or "") for p in c.parts if hasattr(p, "text")) for c in history)
+    while history and (total_chars > MAX_HISTORY_CHARS or history[0].role != "user"):
+        # Riwayat juga dibuang sampai diawali pesan klien, supaya urutan giliran tetap klien lalu Kia.
+        total_chars -= _content_chars(history.pop(0))
 
-    while total_chars > MAX_HISTORY_CHARS and history:
-        removed = history.pop(0)
-        removed_chars = sum(len(p.text or "") for p in removed.parts if hasattr(p, "text"))
-        total_chars -= removed_chars
-        logger.info(f"[TRUNCATE] Buang 1 pesan lama ({removed_chars} chars), sisa {total_chars}")
-
+    dibuang = len(contents) - 1 - len(history)
+    if dibuang:
+        logger.info(f"[TRUNCATE] {dibuang} pesan lama tidak dikirim, sisa {len(history)} pesan ({total_chars} chars)")
     return history + [last_msg]
 
 
@@ -363,23 +359,31 @@ def _is_model_unavailable(error: Exception) -> bool:
 
 
 def _generate_with_first_available_model(client: genai.Client, contents: list, config, retry: int):
+    """Coba model satu per satu. Mengembalikan (response, semua_gagal_karena_kuota)."""
+    semua_kuota = True
     for model_name in AGENT_MODELS:
         try:
             logger.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
-            return client.models.generate_content(model=model_name, contents=contents, config=config)
+            return client.models.generate_content(model=model_name, contents=contents, config=config), False
         except Exception as e:
             if not _is_model_unavailable(e):
                 raise
-            logger.warning(f"[AGENT] Model {model_name} tidak tersedia ({type(e).__name__}). Mencoba fallback...")
-    return None
+            semua_kuota = semua_kuota and gemini_errors.is_quota_error(e)
+            logger.warning(
+                f"[AGENT] Model {model_name} tidak tersedia ({gemini_errors.describe(e)}). Mencoba fallback..."
+            )
+    return None, semua_kuota
 
 
 def _generate_with_retry(client: genai.Client, contents: list, config):
     for retry in range(AGENT_MAX_RETRIES + 1):
-        response = _generate_with_first_available_model(client, contents, config, retry)
+        response, semua_kuota = _generate_with_first_available_model(client, contents, config, retry)
         if response is not None:
             return response
 
+        # Kuota habis tidak pulih dalam hitungan detik; retry hanya menghabiskan request dan membuat user menunggu.
+        if semua_kuota:
+            break
         if retry < AGENT_MAX_RETRIES:
             wait_time = 2 * (retry + 1)
             logger.warning(f"[AGENT] Semua model gagal, retry setelah {wait_time}s...")
@@ -389,8 +393,10 @@ def _generate_with_retry(client: genai.Client, contents: list, config):
 
 
 def _tool_response_content(name: str, tool_result: dict) -> types.Content:
+    # Role "user", sama seperti automatic function calling di SDK google-genai. Role "tool" kadang ditolak
+    # Gemini API dengan 400 "Role 'tool' is not supported".
     return types.Content(
-        role="tool",
+        role="user",
         parts=[types.Part.from_function_response(name=name, response=tool_result)],
     )
 
@@ -407,11 +413,11 @@ def _response_text(response) -> str:
     return text if text.strip() else FALLBACK_JAWABAN
 
 
-def _generate_config(system_instruction: str, tools: ToolMode, sudah_memanggil_tool: bool):
+def _generate_config(system_instruction: str, tools: ToolMode, sudah_memanggil_tool: bool, max_output_tokens: int):
     config = {
         "system_instruction": system_instruction,
         "temperature": TEMPERATURE,
-        "max_output_tokens": 2048,
+        "max_output_tokens": max_output_tokens,
     }
     if tools == ToolMode.TIDAK_ADA:
         return types.GenerateContentConfig(**config)
@@ -420,14 +426,21 @@ def _generate_config(system_instruction: str, tools: ToolMode, sudah_memanggil_t
     # diganti NONE, kalau tidak model tidak akan pernah menulis jawaban teks.
     if sudah_memanggil_tool:
         calling = types.FunctionCallingConfig(mode="NONE")
-    elif tools == ToolMode.PAKSA:
-        calling = types.FunctionCallingConfig(mode="ANY", allowed_function_names=[TOOL_NAME])
     else:
-        calling = types.FunctionCallingConfig(mode="AUTO")
+        calling = types.FunctionCallingConfig(mode="ANY", allowed_function_names=[TOOL_NAME])
 
     config["tools"] = [KONSULTASI_TOOL]
     config["tool_config"] = types.ToolConfig(function_calling_config=calling)
     return types.GenerateContentConfig(**config)
+
+
+def _log_jika_terpotong(response) -> None:
+    try:
+        alasan = response.candidates[0].finish_reason
+    except (AttributeError, IndexError, TypeError):
+        return
+    if alasan == types.FinishReason.MAX_TOKENS:
+        logger.warning("[AGENT] Jawaban terpotong karena batas max_output_tokens.")
 
 
 def agentic_generate(
@@ -436,40 +449,85 @@ def agentic_generate(
     chat_history: list[dict],
     supabase: Client,
     system_instruction: str,
-    tools: ToolMode,
+    mode: Mode,
+    gaya: Gaya,
+    pref: Optional[dict] = None,
+    tanya_preferensi: bool = False,
 ) -> dict:
     client = _get_gemini_client()
     contents = _smart_truncate(_build_contents(chat_history, query, context))
+    tools = chat_policy.tool_mode(mode)
+    max_output_tokens = chat_policy.MAX_OUTPUT_TOKENS[mode]
 
     tool_result = None
     response = None
+    jawaban = None
     # Paling banyak satu tool call, lalu satu giliran lagi untuk menulis jawaban.
     for _ in range(2):
-        config = _generate_config(system_instruction, tools, tool_result is not None)
+        config = _generate_config(system_instruction, tools, tool_result is not None, max_output_tokens)
         response = _generate_with_retry(client, contents, config)
+        _log_jika_terpotong(response)
 
         if tool_result is not None or not response.function_calls:
             break
 
         fc = response.function_calls[0]
         logger.info(f"[AGENT] Tool call: {fc.name}({fc.args})")
-        tool_result = _execute_tool(supabase, fc.name, fc.args or {})
+        tool_result = _execute_tool(supabase, fc.name, fc.args or {}, pref, cari=not tanya_preferensi)
+        if mode == Mode.REKOMENDASI_KONSULTAN:
+            # Jawabannya cukup ditentukan hasil pencarian (atau pertanyaan preferensi), jadi panggilan kedua
+            # yang mengirim ulang seluruh riwayat tidak diperlukan.
+            if tanya_preferensi:
+                jawaban = chat_policy.tanya_preferensi_response(gaya, tool_result["kategori"])
+            else:
+                jawaban = _jawaban_rekomendasi(gaya, tool_result)
+            break
         contents.append(response.candidates[0].content)
         contents.append(_tool_response_content(fc.name, _tool_result_for_model(tool_result)))
 
-    jawaban = _response_text(response)
+    if jawaban is None:
+        jawaban = _response_text(response)
+        if tanya_preferensi and tool_result is not None:
+            jawaban = f"{jawaban}\n\n{chat_policy.tanya_preferensi_response(gaya, tool_result['kategori'])}"
     if tool_result is None:
         return {"type": "text", "jawaban": jawaban}
 
-    consultants = tool_result.get("consultants", [])
     draft = tool_result.get("draft")
+    if tanya_preferensi:
+        return {
+            "type": "tanya_preferensi",
+            "jawaban": jawaban,
+            "consultants": [],
+            "draft_konsultasi": draft,
+            "form_preferensi": chat_policy.form_preferensi(tool_result["kategori"], pref),
+            "konteks_konsultasi": {
+                "mode_asal": mode.value,
+                "kategori": tool_result["kategori"],
+                "kota": tool_result.get("kota") or "",
+                "draft": draft,
+            },
+        }
+
+    consultants = tool_result.get("consultants", [])
+    return {
+        "type": _tipe_hasil_konsultan(draft, consultants),
+        "jawaban": jawaban,
+        "consultants": consultants,
+        "draft_konsultasi": draft,
+    }
+
+
+def _tipe_hasil_konsultan(draft: Optional[dict], consultants: list[dict]) -> str:
     if draft:
-        response_type = "consultation_draft"
-    elif consultants:
-        response_type = "consultant_list"
-    else:
-        response_type = "text"
-    return {"type": response_type, "jawaban": jawaban, "consultants": consultants, "draft_konsultasi": draft}
+        return "consultation_draft"
+    return "consultant_list" if consultants else "text"
+
+
+def _jawaban_rekomendasi(gaya: Gaya, tool_result: dict) -> str:
+    if tool_result.get("error"):
+        return chat_policy.rekomendasi_response(gaya, {"error": tool_result["error"]})
+    hasil = {**(tool_result.get("hasil") or {}), "kota": tool_result.get("kota")}
+    return chat_policy.rekomendasi_response(gaya, hasil, ada_draft=bool(tool_result.get("draft")))
 
 
 def _klasifikasi_metadata(klasifikasi: chat_policy.Klasifikasi, gaya: Gaya, mode: Mode, fallback: bool) -> dict:
@@ -482,18 +540,105 @@ def _klasifikasi_metadata(klasifikasi: chat_policy.Klasifikasi, gaya: Gaya, mode
     }
 
 
-def _retrieve(supabase: Client, search_query: str, kategori: Optional[str]) -> list[dict]:
-    query_embedding = embed_query(search_query)
-    logger.info(f"[TRIAGE] Embedded (dim={len(query_embedding)})")
-    pasals = retrieve_pasals(
-        supabase=supabase,
-        query_embedding=query_embedding,
-        match_count=5,
-        match_threshold=0.5,
-        filter_kategori=kategori,
-    )
-    logger.info(f"[TRIAGE] {len(pasals)} pasal ditemukan")
-    return pasals
+def _kutipan_tanpa_sumber(jawaban: str, context: str, query: str, chat_history: list[dict]) -> list[str]:
+    """Nomor pasal di jawaban yang tidak muncul di konteks pasal, pertanyaan, maupun riwayat terakhir.
+
+    Pasal seperti ini kemungkinan dikarang model atau berasal dari ingatannya, bukan dari database.
+    """
+    riwayat = [m.get("content") or "" for m in chat_history[-MAX_HISTORY_MESSAGES:]]
+    ada = {n.upper() for n in _KUTIPAN_PASAL.findall(" ".join([context, query, *riwayat]))}
+    return sorted({n.upper() for n in _KUTIPAN_PASAL.findall(jawaban)} - ada)
+
+
+def _disclaimer(mode: Mode, kutipan_tanpa_sumber: list[str]) -> str:
+    if mode not in (Mode.INFORMASI, Mode.ARAHKAN_KONSULTASI, Mode.REKOMENDASI_KONSULTAN):
+        return ""
+    if not kutipan_tanpa_sumber:
+        return DISCLAIMER
+    daftar = ", ".join(f"Pasal {n}" for n in kutipan_tanpa_sumber)
+    return f"{DISCLAIMER} {daftar} yang disebut di atas tidak berasal dari sumber yang ditampilkan, mohon dipastikan ulang."
+
+
+MODE_KONSULTASI = (Mode.ARAHKAN_KONSULTASI, Mode.REKOMENDASI_KONSULTAN)
+
+
+def _metadata_ai_terakhir(history: list[dict]) -> dict:
+    for msg in reversed(history):
+        if msg.get("role") != "user":
+            return msg.get("metadata") or {}
+    return {}
+
+
+def _preferensi_sesi(history: list[dict]) -> Optional[dict]:
+    """Preferensi budget/jadwal terakhir yang pernah diberikan klien di sesi ini (termasuk kalau dilewati)."""
+    for msg in reversed(history):
+        if msg.get("role") == "user":
+            pref = (msg.get("metadata") or {}).get("preferensi")
+            if pref:
+                return pref
+    return None
+
+
+# Preferensi yang diganti sebagai satu kesatuan: "yang bisa malam" setelah "sabtu pagi" berarti malam hari apa saja,
+# bukan sabtu malam.
+_KELOMPOK_PREFERENSI = (("budget_min", "budget_max"), ("hari", "waktu"))
+
+
+def _gabung_preferensi(lama: Optional[dict], baru: dict) -> Optional[dict]:
+    """Preferensi yang baru disebut menimpa yang lama. None berarti klien belum pernah memberi preferensi."""
+    if not lama and not baru:
+        return None
+    gabungan = {k: v for k, v in (lama or {}).items() if k != "dilewati"}
+    for kelompok in _KELOMPOK_PREFERENSI:
+        if any(k in baru for k in kelompok):
+            for k in kelompok:
+                gabungan.pop(k, None)
+    gabungan.update(baru)
+    if not baru and (lama or {}).get("dilewati"):
+        gabungan["dilewati"] = True
+    return gabungan
+
+
+def _gaya_terakhir(history: list[dict]) -> Gaya:
+    for msg in reversed(history):
+        gaya = ((msg.get("metadata") or {}).get("klasifikasi") or {}).get("gaya")
+        if msg.get("role") == "user" and gaya in (Gaya.FORMAL.value, Gaya.KASUAL.value):
+            return Gaya(gaya)
+    return Gaya.FORMAL
+
+
+def _lanjut_dari_form(supabase: Client, history: list[dict], konteks: dict, preferensi: dict) -> dict:
+    """Klien mengisi form budget/jadwal yang ditanyakan Kia: cari konsultan tanpa memanggil Gemini.
+
+    Kategori, kota, dan draft kasus sudah didapat saat Kia bertanya (lihat agentic_generate).
+    """
+    gaya = chat_policy.gaya_sesi(_gaya_terakhir(history), history)
+    pref = {k: v for k, v in preferensi.items() if v not in (None, "")}
+    kategori = pref.pop("kategori", None) or konteks.get("kategori") or "Umum"
+    draft = dict(konteks["draft"]) if konteks.get("draft") else None
+    if draft:
+        draft["kategori"] = kategori
+
+    tool_result = {"kategori": kategori, "kota": konteks.get("kota") or "", "draft": draft}
+    try:
+        hasil = asdict(konsultan_matching.cari_konsultan(supabase, kategori, pref, tool_result["kota"]))
+        tool_result.update({"hasil": hasil, "consultants": hasil["konsultan"]})
+    except Exception as e:
+        logger.error(f"[TRIAGE] Pencarian konsultan dari form gagal: {e}")
+        tool_result.update({"error": str(e), "consultants": []})
+
+    mode_asal = konteks.get("mode_asal") or Mode.REKOMENDASI_KONSULTAN.value
+    return {
+        "type": _tipe_hasil_konsultan(draft, tool_result["consultants"]),
+        "jawaban": _jawaban_rekomendasi(gaya, tool_result),
+        "consultants": tool_result["consultants"],
+        "draft_konsultasi": draft,
+        "pasal_referensi": [],
+        "sumber_dokumen": [],
+        "disclaimer": DISCLAIMER,
+        "preferensi": {**pref, "kategori": kategori},
+        "klasifikasi": {"intent": "minta_konsultan", "gaya": gaya.value, "mode": mode_asal, "dari_form": True},
+    }
 
 
 def triage(
@@ -501,12 +646,23 @@ def triage(
     supabase: Client,
     kategori: Optional[str] = None,
     chat_history: list[dict] = None,
+    preferensi: Optional[dict] = None,
 ) -> dict:
+    """Proses satu pesan klien.
+
+    `preferensi` diisi frontend saat klien mengirim form budget/jadwal yang ditanyakan Kia.
+    """
     logger.info(f"[TRIAGE] Query masuk: {query[:100]}")
     history = chat_history or []
     current_step = "init"
 
     try:
+        terakhir = _metadata_ai_terakhir(history)
+        if preferensi is not None and terakhir.get("type") == "tanya_preferensi":
+            current_step = "lanjut_dari_form"
+            return _lanjut_dari_form(supabase, history, terakhir.get("konteks_konsultasi") or {}, preferensi)
+
+        retrieval_service.panaskan_korpus(supabase)
         current_step = "classify"
         klasifikasi = chat_policy.classify(_get_gemini_client(), query, history)
         fallback = klasifikasi is None
@@ -534,26 +690,37 @@ def triage(
         pasals = []
         if chat_policy.needs_retrieval(mode):
             current_step = "retrieve"
-            pasals = _retrieve(supabase, klasifikasi.query_pencarian or query, kategori)
+            pasals = cari_pasal(supabase, query, klasifikasi.query_pencarian or query, kategori)
 
         current_step = "build_context"
-        context = _build_context(pasals)
+        context = _build_context(pasals) or (TANPA_PASAL if chat_policy.needs_retrieval(mode) else "")
         references = _build_references(pasals)
         sources = _attach_document_status(supabase, _build_source_documents(pasals))
 
+        # Budget/jadwal ditanyakan sekali per sesi, kecuali klien sudah menyebutnya sendiri.
+        pref = None
+        if mode in MODE_KONSULTASI:
+            pref = _gabung_preferensi(_preferensi_sesi(history), klasifikasi.preferensi())
+        tanya_preferensi = mode in MODE_KONSULTASI and pref is None
+
         current_step = "agentic_generate"
-        tools = chat_policy.tool_mode(mode, klasifikasi.tekanan)
         result = agentic_generate(
             query=query,
             context=context,
             chat_history=history,
             supabase=supabase,
-            system_instruction=chat_policy.build_system_instruction(mode, klasifikasi, gaya, tools),
-            tools=tools,
+            system_instruction=chat_policy.build_system_instruction(mode, klasifikasi, gaya),
+            mode=mode,
+            gaya=gaya,
+            pref=pref,
+            tanya_preferensi=tanya_preferensi,
         )
         logger.info(f"[TRIAGE] Result type: {result['type']}")
 
-        memuat_hukum = mode in (Mode.INFORMASI, Mode.ARAHKAN_KONSULTASI, Mode.REKOMENDASI_KONSULTAN)
+        kutipan_tanpa_sumber = _kutipan_tanpa_sumber(result["jawaban"], context, query, history)
+        if kutipan_tanpa_sumber:
+            logger.warning(f"[TRIAGE] Pasal disebut tanpa sumber: {kutipan_tanpa_sumber}")
+        meta["kutipan_tanpa_sumber"] = kutipan_tanpa_sumber
         return {
             "type": result["type"],
             "jawaban": result["jawaban"],
@@ -561,8 +728,11 @@ def triage(
             "draft_konsultasi": result.get("draft_konsultasi"),
             "pasal_referensi": references,
             "sumber_dokumen": sources,
-            "disclaimer": DISCLAIMER if memuat_hukum else "",
+            "disclaimer": _disclaimer(mode, kutipan_tanpa_sumber),
             "klasifikasi": meta,
+            "preferensi": pref,
+            "form_preferensi": result.get("form_preferensi"),
+            "konteks_konsultasi": result.get("konteks_konsultasi"),
         }
     except Exception as e:
         logger.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)

@@ -8,10 +8,14 @@ yang kebetulan dipakai saat fallback.
 import logging
 from collections import Counter
 from enum import Enum
+from typing import Optional
 
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+
+from helpers import gemini_errors
+from helpers import preferensi as pref_helper
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +67,44 @@ class Mode(str, Enum):
 
 class ToolMode(str, Enum):
     TIDAK_ADA = "tidak_ada"
-    OTOMATIS = "otomatis"
     PAKSA = "paksa"
+
+
+# Batas token jawaban per mode. Jawaban singkat juga membuat riwayat yang dikirim di pesan berikutnya lebih kecil.
+# Mode rekomendasi hanya dipakai untuk mengisi argumen tool (ringkasan kasus 2-4 kalimat).
+MAX_OUTPUT_TOKENS = {
+    Mode.INFORMASI: 1024,
+    Mode.ARAHKAN_KONSULTASI: 768,
+    Mode.REKOMENDASI_KONSULTAN: 512,
+    Mode.PENUTUP: 256,
+    Mode.DI_LUAR_TOPIK: 256,
+}
+
+
+class HariPreferensi(str, Enum):
+    HARI_INI = "hari_ini"
+    BESOK = "besok"
+    LUSA = "lusa"
+    MINGGU_INI = "minggu_ini"
+    MINGGU_DEPAN = "minggu_depan"
+    AKHIR_PEKAN = "akhir_pekan"
+    HARI_KERJA = "hari_kerja"
+    SENIN = "senin"
+    SELASA = "selasa"
+    RABU = "rabu"
+    KAMIS = "kamis"
+    JUMAT = "jumat"
+    SABTU = "sabtu"
+    MINGGU = "minggu"
+    BEBAS = "bebas"
+
+
+class WaktuPreferensi(str, Enum):
+    PAGI = "pagi"
+    SIANG = "siang"
+    SORE = "sore"
+    MALAM = "malam"
+    BEBAS = "bebas"
 
 
 class Klasifikasi(BaseModel):
@@ -74,49 +114,61 @@ class Klasifikasi(BaseModel):
     query_pencarian: str = Field(
         description="Query pencarian pasal hukum yang presisi (1-2 kalimat), memakai istilah hukum Indonesia."
     )
+    budget_min: Optional[int] = Field(None, description="Budget minimal per sesi dalam rupiah, hanya kalau disebut.")
+    budget_max: Optional[int] = Field(None, description="Budget maksimal per sesi dalam rupiah, hanya kalau disebut.")
+    hari: Optional[HariPreferensi] = Field(None, description="Hari konsultasi yang diinginkan, hanya kalau disebut.")
+    waktu: Optional[WaktuPreferensi] = Field(None, description="Waktu konsultasi yang diinginkan, hanya kalau disebut.")
+
+    def preferensi(self) -> dict:
+        """Preferensi konsultasi yang disebut di pesan ini (kosong kalau tidak ada)."""
+        data = {
+            "budget_min": self.budget_min,
+            "budget_max": self.budget_max,
+            "hari": self.hari.value if self.hari else None,
+            "waktu": self.waktu.value if self.waktu else None,
+        }
+        return {k: v for k, v in data.items() if v is not None}
 
 
-CLASSIFIER_PROMPT = """Kamu mengklasifikasikan pesan terbaru klien di layanan konsultasi hukum LangkahLegal.
-Isi keempat field berdasarkan PESAN TERBARU, dengan riwayat sebagai konteks.
+CLASSIFIER_PROMPT = """Klasifikasikan PESAN TERBARU klien layanan konsultasi hukum LangkahLegal; riwayat hanya konteks.
 
-INTENT — pilih satu:
-- tanya_aturan: bertanya bunyi/makna aturan secara umum. "Apa sanksi pengusaha yang tidak bayar upah?"
+INTENT (pilih satu):
+- tanya_aturan: tanya bunyi/makna aturan umum. "Apa sanksi pengusaha yang tidak bayar upah?"
 - cerita_masalah: menceritakan kejadian yang dialami, atau menjawab pertanyaan penggalian fakta.
-- minta_arahan: menanyakan persiapan yang aman, misalnya bukti atau dokumen apa yang perlu disimpan.
-  "Bukti apa yang harus saya simpan?" "Dokumen apa yang perlu dibawa?"
-- minta_nasihat_hukum: meminta dipilihkan jalur hukum atau kepastian hasil. "Saya harus resign atau
-  bertahan?" "Mending lapor polisi atau damai?" "Saya harus ngapain sekarang?" "Saya bakal menang nggak?"
-- minta_konsultan: meminta dicarikan advokat/pengacara/konsultan, atau menyetujui tawaran itu.
-- menolak_konsultasi: menolak konsultasi berbayar atau menyatakan tidak mampu membayar.
+- minta_arahan: tanya persiapan aman, misal bukti/dokumen yang perlu disimpan atau dibawa.
+- minta_nasihat_hukum: minta dipilihkan jalur hukum atau kepastian hasil. "Resign atau bertahan?"
+  "Lapor polisi atau damai?" "Saya harus ngapain sekarang?" "Saya bakal menang nggak?"
+- minta_konsultan: minta dicarikan advokat/pengacara/konsultan, atau menyetujui tawaran itu. Kalau Kia baru
+  saja menanyakan budget dan jadwal konsultasi, jawaban klien soal budget/hari/jam (atau "terserah") juga
+  minta_konsultan.
+- menolak_konsultasi: menolak konsultasi berbayar atau tidak mampu membayar.
 - selesai: berterima kasih, merasa cukup, atau menutup percakapan.
-- di_luar_topik: bukan soal hukum, atau hanya sapaan tanpa masalah.
+- di_luar_topik: bukan soal hukum, atau sapaan tanpa masalah.
 
-ATURAN TOPIK SENSITIF (paling penting, mengalahkan aturan lain):
-Kalau pesan menyebut sentuhan fisik yang tidak diinginkan, pelecehan, kekerasan seksual, KDRT,
-pemukulan, ancaman, atau masalah yang menimpa anak, maka:
-- intent TIDAK PERNAH di_luar_topik (pakai cerita_masalah atau tanya_aturan), dan
-- tekanan MINIMAL tinggi,
-WALAUPUN ditulis sambil bercanda, memakai "wkwk"/emoji, atau ditanyakan seolah hal biasa. Orang sering
-menutupi pengalaman seperti ini dengan humor.
+TOPIK SENSITIF (mengalahkan aturan lain): sentuhan fisik tidak diinginkan, pelecehan, kekerasan
+seksual, KDRT, pemukulan, ancaman, atau masalah anak -> intent TIDAK PERNAH di_luar_topik dan tekanan
+MINIMAL tinggi, WALAUPUN ditulis bercanda/"wkwk"/emoji atau seolah hal biasa.
 Contoh: "wkwk atasanku suka pegang2 pinggang, biasa aja kan?" -> cerita_masalah, tinggi.
 
-TEKANAN — kondisi emosi klien:
-- rendah: tenang, bertanya secara informatif.
-- sedang: bingung, kesal, atau khawatir.
-- tinggi: takut, panik, putus asa, ATAU topik sensitif (lihat aturan di atas).
-- krisis: HANYA jika ada bahaya yang SEDANG atau AKAN SEGERA terjadi pada keselamatan seseorang.
-  Kejadian yang sudah lewat bukan krisis.
+TEKANAN:
+- rendah: tenang, informatif. sedang: bingung, kesal, khawatir.
+- tinggi: takut, panik, putus asa, atau topik sensitif.
+- krisis: HANYA bahaya keselamatan yang SEDANG atau AKAN SEGERA terjadi. Kejadian lampau bukan krisis.
 
-GAYA — nilai dari PESAN TERBARU saja, jangan dari riwayat:
-- kasual: HANYA kalau ada penanda santai, yaitu kata "aku", "kamu", "gue", "lu"; singkatan seperti
-  "ga", "gak", "udah", "bgt", "aja"; partikel seperti "sih", "dong", "deh", "nih", "kok"; atau
-  sapaan "kak".
-- formal: semua pesan lain, termasuk kalimat biasa yang memakai "saya" tanpa penanda santai.
-  "Apa bedanya PHK dan mengundurkan diri?" -> formal. "Bukti apa yang sebaiknya saya simpan?" -> formal.
+GAYA (dari pesan terbaru saja):
+- kasual: HANYA jika ada "aku", "kamu", "gue", "lu", singkatan ("ga", "gak", "udah", "bgt", "aja"),
+  partikel ("sih", "dong", "deh", "nih", "kok"), atau sapaan "kak".
+- formal: selain itu, termasuk kalimat biasa dengan "saya". "Bukti apa yang sebaiknya saya simpan?" -> formal.
 
-QUERY_PENCARIAN — ubah masalah klien jadi query pencarian pasal hukum (1-2 kalimat) dengan istilah
-hukum Indonesia, gabungkan konteks riwayat. Contoh: "bos saya tidak bayar gaji 3 bulan" ->
-"pelanggaran kewajiban pembayaran upah pekerja ketenagakerjaan hak pekerja".
+QUERY_PENCARIAN: 1-2 kalimat query pasal dengan istilah hukum Indonesia, gabungkan konteks riwayat.
+Contoh: "bos saya tidak bayar gaji 3 bulan" -> "pelanggaran kewajiban pembayaran upah pekerja ketenagakerjaan".
+
+PREFERENSI KONSULTASI: isi HANYA kalau disebut di pesan terbaru, selain itu null.
+- budget_min/budget_max dalam rupiah per sesi. "di bawah 300rb" -> max 300000; "200-500 ribu" -> 200000 dan
+  500000; "minimal 100rb" -> min 100000; "1 juta" -> max 1000000. Jumlah uang dalam cerita kasus (gaji, utang)
+  BUKAN budget.
+- hari: hari_ini, besok, lusa, minggu_ini, minggu_depan, akhir_pekan, hari_kerja, senin...minggu, atau bebas.
+- waktu: pagi, siang, sore, malam, atau bebas ("terserah", "kapan aja").
 """
 
 BASE_PROMPT = """Kamu adalah "Kia", asisten hukum virtual di LangkahLegal.
@@ -156,6 +208,10 @@ MODE_PROMPTS = {
 - Kalau fakta dari klien belum cukup, gali dulu: kapan, siapa yang terlibat, sudah melakukan apa,
   dan status hubungan hukumnya (misalnya karyawan tetap atau kontrak). Jangan langsung menyimpulkan.
 - Kalau fakta sudah cukup, jelaskan aturan yang relevan dari konteks pasal beserta maknanya.
+- Kalau ada pasal versi lama dan versi terbaru, pakai versi terbaru. Bagian berlabel penjelasan adalah
+  penjelasan resmi, bukan bunyi pasal.
+- Kalau konteks pasal kosong atau hanya berkecocokan rendah, katakan terus terang bahwa aturan yang pas
+  belum ditemukan di database LangkahLegal, lalu jelaskan secara umum tanpa menyebut nomor pasal.
 - Boleh memberi arahan persiapan, misalnya bukti apa yang sebaiknya disimpan.
 - Boleh diakhiri dengan pertanyaan untuk menggali fakta atau menanyakan bukti.""",
     Mode.ARAHKAN_KONSULTASI: """MODE TURN INI: MENGARAHKAN KE KONSULTASI
@@ -168,16 +224,11 @@ Klien meminta nasihat hukum. JANGAN menjawab pilihannya dan JANGAN meramal hasil
    - menyebut bahwa ringkasan kasusnya sudah disiapkan, jadi klien tidak perlu menulis ulang.
 - Arahan persiapan (bukti yang perlu disimpan) tetap boleh.
 - Jangan menulis ulang isi ringkasan; ringkasan tampil sebagai kartu terpisah.""",
+    # Jawaban teks mode ini dibuat dari template (rekomendasi_response), jadi model cukup mengisi tool.
     Mode.REKOMENDASI_KONSULTAN: """MODE TURN INI: REKOMENDASI KONSULTAN
-Klien meminta dicarikan advokat atau konsultan.
-1. Panggil siapkan_konsultasi dengan kategori yang paling sesuai, serta kota dan budget kalau klien
-   menyebutnya. Isi ringkasan_kasus HANYA kalau klien sudah menceritakan kasusnya.
-2. Setelah itu tulis jawaban singkat (1-3 kalimat). Daftar konsultan tampil sebagai kartu, jangan
-   ditulis ulang.
-- Kalau tidak ada konsultan di kota yang diminta, katakan terus terang bahwa yang ditampilkan dari
-  kota lain.
-- Kalau tidak ada konsultan yang sesuai, katakan terus terang dan sebutkan bahwa ada layanan bantuan
-  hukum gratis seperti Lembaga Bantuan Hukum (LBH) atau Pos Bantuan Hukum (Posbakum) di pengadilan.""",
+Klien meminta dicarikan advokat atau konsultan. Panggil siapkan_konsultasi dengan kategori yang paling
+sesuai, serta kota dan budget kalau klien menyebutnya. Isi ringkasan_kasus HANYA kalau klien sudah
+menceritakan kasusnya.""",
     Mode.PENUTUP: """MODE TURN INI: PENUTUP
 Klien menutup percakapan atau berterima kasih.
 - Jawab singkat dan hangat (1-3 kalimat).
@@ -197,10 +248,6 @@ Klien tidak ingin lanjut ke konsultasi berbayar atau menyatakan tidak mampu memb
 - Sebutkan bahwa ada layanan bantuan hukum gratis, misalnya Lembaga Bantuan Hukum (LBH) setempat atau
   Pos Bantuan Hukum (Posbakum) di pengadilan.
 - Jawab singkat dan JANGAN akhiri dengan pertanyaan."""
-
-TOOL_OTOMATIS_PROMPT = (
-    "- Kalau ternyata klien meminta nasihat hukum atau minta dicarikan advokat, panggil siapkan_konsultasi."
-)
 
 GAYA_PROMPTS = {
     Gaya.FORMAL: """GAYA BAHASA: FORMAL
@@ -269,12 +316,12 @@ def resolve_mode(klasifikasi: Klasifikasi) -> Mode:
     return INTENT_KE_MODE[klasifikasi.intent]
 
 
-def tool_mode(mode: Mode, tekanan: Tekanan) -> ToolMode:
+def tool_mode(mode: Mode) -> ToolMode:
+    # Permintaan nasihat dan advokat sudah ditangkap classifier, jadi mode lain tidak perlu menerima deklarasi
+    # tool (±350 token per panggilan). Efek sampingnya sejalan dengan guardrail: Kia tidak menyodorkan layanan
+    # berbayar kalau klien tidak memintanya.
     if mode in (Mode.ARAHKAN_KONSULTASI, Mode.REKOMENDASI_KONSULTAN):
         return ToolMode.PAKSA
-    # Klien yang sangat tertekan tidak disodori layanan berbayar kecuali ia sendiri memintanya.
-    if mode == Mode.INFORMASI and tekanan != Tekanan.TINGGI:
-        return ToolMode.OTOMATIS
     return ToolMode.TIDAK_ADA
 
 
@@ -301,19 +348,152 @@ def gaya_sesi(gaya_sekarang: Gaya, chat_history: list[dict]) -> Gaya:
     return next(g for g in window if counts[g] == top)
 
 
-def build_system_instruction(mode: Mode, klasifikasi: Klasifikasi, gaya: Gaya, tools: ToolMode) -> str:
+def build_system_instruction(mode: Mode, klasifikasi: Klasifikasi, gaya: Gaya) -> str:
     if klasifikasi.intent == Intent.MENOLAK_KONSULTASI:
         mode_prompt = MENOLAK_KONSULTASI_PROMPT
     else:
         mode_prompt = MODE_PROMPTS[mode]
-    if tools == ToolMode.OTOMATIS:
-        mode_prompt = f"{mode_prompt}\n{TOOL_OTOMATIS_PROMPT}"
 
     return "\n\n".join([BASE_PROMPT, mode_prompt, GAYA_PROMPTS[gaya], TEKANAN_PROMPTS[klasifikasi.tekanan]])
 
 
 def krisis_response(gaya: Gaya) -> str:
     return KRISIS_TEMPLATES[gaya]
+
+
+KATEGORI_TAMPIL = {
+    "Pidana": "hukum pidana",
+    "Perdata": "hukum perdata",
+    "Ketenagakerjaan": "ketenagakerjaan",
+    "Teknologi Informasi": "teknologi informasi",
+    "HAM": "hak asasi manusia",
+    "Umum": "hukum umum",
+}
+
+REKOMENDASI_TEMPLATES = {
+    Gaya.FORMAL: {
+        "error": "Mohon maaf, pencarian konsultan sedang mengalami kendala. Silakan coba lagi beberapa saat lagi.",
+        "kosong": (
+            "Mohon maaf, saat ini belum ada konsultan {kategori} yang tersedia di LangkahLegal. Anda dapat "
+            "mencari bantuan hukum gratis melalui Lembaga Bantuan Hukum (LBH) setempat atau Pos Bantuan Hukum "
+            "(Posbakum) di pengadilan negeri terdekat."
+        ),
+        "cadangan": (
+            "Belum ada konsultan {kategori} yang terverifikasi di LangkahLegal, jadi saya tampilkan konsultan "
+            "hukum umum yang dapat membantu."
+        ),
+        "budget": "Belum ada yang tarifnya sesuai budget {budget}, jadi saya tampilkan tarif yang paling mendekati.",
+        "kota": "Belum ada yang berpraktik di {kota}, tetapi konsultasi di LangkahLegal dilakukan lewat video call.",
+        "jadwal_cocok": "Slot {waktu} yang masih kosong sudah saya tandai di setiap kartu.",
+        "jadwal_sebagian": (
+            "Slot {waktu} yang masih kosong sudah saya tandai; untuk yang tidak punya slot itu, saya tampilkan "
+            "jadwal terdekatnya."
+        ),
+        "jadwal_tidak": "Belum ada yang kosong {waktu}, jadi saya tampilkan jadwal terdekat mereka.",
+        "ada": "Berikut konsultan {kategori} yang dapat Anda pilih. Klik salah satu slot untuk langsung memesan.",
+        "ada_tanpa_slot": 'Berikut konsultan {kategori} yang dapat Anda pilih. Pilih "Jadwalkan" untuk melihat profilnya.',
+        "draft": "Ringkasan kasus Anda juga sudah saya siapkan, jadi Anda tidak perlu menulis ulang cerita Anda.",
+    },
+    Gaya.KASUAL: {
+        "error": "Maaf, pencarian konsultan lagi ada kendala. Coba lagi sebentar lagi ya.",
+        "kosong": (
+            "Maaf, saat ini belum ada konsultan {kategori} yang tersedia di LangkahLegal. Kamu bisa cari bantuan "
+            "hukum gratis lewat Lembaga Bantuan Hukum (LBH) setempat atau Pos Bantuan Hukum (Posbakum) di "
+            "pengadilan negeri terdekat."
+        ),
+        "cadangan": (
+            "Belum ada konsultan {kategori} yang terverifikasi di LangkahLegal, jadi aku tampilkan konsultan hukum "
+            "umum yang bisa bantu."
+        ),
+        "budget": "Belum ada yang tarifnya masuk budget {budget}, jadi aku tampilkan yang paling mendekati.",
+        "kota": "Belum ada yang praktik di {kota}, tapi konsultasi di LangkahLegal lewat video call kok.",
+        "jadwal_cocok": "Slot {waktu} yang masih kosong sudah aku tandai di tiap kartu.",
+        "jadwal_sebagian": (
+            "Slot {waktu} yang masih kosong sudah aku tandai; yang nggak punya slot itu aku tampilkan jadwal "
+            "terdekatnya."
+        ),
+        "jadwal_tidak": "Belum ada yang kosong {waktu}, jadi aku tampilkan jadwal terdekat mereka.",
+        "ada": "Ini konsultan {kategori} yang bisa kamu pilih. Klik salah satu slot buat langsung pesan.",
+        "ada_tanpa_slot": 'Ini konsultan {kategori} yang bisa kamu pilih. Pilih "Jadwalkan" buat lihat profilnya.',
+        "draft": "Ringkasan kasusmu juga sudah aku siapkan, jadi kamu nggak perlu cerita ulang.",
+    },
+}
+
+
+def rekomendasi_response(gaya: Gaya, hasil: dict, ada_draft: bool = False) -> str:
+    """Jawaban rekomendasi konsultan tanpa memanggil Gemini. Setiap pelonggaran pencarian disampaikan terus terang.
+
+    `hasil` adalah HasilPencarian (lihat services/konsultan_matching) dalam bentuk dict, ditambah "kota" dan
+    "error" kalau ada.
+    """
+    t = REKOMENDASI_TEMPLATES[gaya]
+    if hasil.get("error"):
+        return t["error"]
+
+    diminta = KATEGORI_TAMPIL.get(hasil.get("kategori_diminta") or hasil.get("kategori"), "hukum")
+    konsultan = hasil.get("konsultan") or []
+    if not konsultan:
+        return t["kosong"].format(kategori=diminta)
+
+    pref = hasil.get("preferensi") or {}
+    kalimat = []
+    if hasil.get("kategori_cadangan"):
+        kalimat.append(t["cadangan"].format(kategori=diminta))
+    if hasil.get("budget_dilonggarkan"):
+        kalimat.append(
+            t["budget"].format(budget=pref_helper.deskripsi_budget(pref.get("budget_min"), pref.get("budget_max")))
+        )
+    kota = (hasil.get("kota") or "").strip()
+    if kota and not any(kota.lower() in (c.get("kota_praktik") or "").lower() for c in konsultan):
+        kalimat.append(t["kota"].format(kota=kota))
+    waktu = pref_helper.deskripsi_waktu(pref.get("hari"), pref.get("waktu"))
+    if hasil.get("jadwal_cocok") is True:
+        semua_cocok = all(c.get("jadwal_status") == "cocok" for c in konsultan)
+        kalimat.append(t["jadwal_cocok" if semua_cocok else "jadwal_sebagian"].format(waktu=waktu))
+    elif hasil.get("jadwal_cocok") is False:
+        kalimat.append(t["jadwal_tidak"].format(waktu=waktu))
+
+    ada_slot = any(c.get("slot_cocok") for c in konsultan)
+    kategori = KATEGORI_TAMPIL.get(hasil.get("kategori"), "hukum")
+    kalimat.append(t["ada" if ada_slot else "ada_tanpa_slot"].format(kategori=kategori))
+    if ada_draft:
+        kalimat.append(t["draft"])
+    return " ".join(kalimat)
+
+
+TANYA_PREFERENSI_TEMPLATES = {
+    Gaya.FORMAL: {
+        "kategori": "Dari cerita Anda, persoalan ini termasuk {kategori} (bisa Anda ubah di bawah). ",
+        "tanya": (
+            "Supaya rekomendasinya pas, silakan isi kisaran budget per sesi dan waktu konsultasi yang Anda "
+            'inginkan. Kalau ingin melihat semua konsultan dulu, pilih "Lewati".'
+        ),
+    },
+    Gaya.KASUAL: {
+        "kategori": "Dari ceritamu, ini termasuk {kategori} (bisa kamu ubah di bawah). ",
+        "tanya": (
+            "Supaya rekomendasinya pas, isi kisaran budget per sesi dan waktu yang kamu bisa ya. Kalau mau lihat "
+            'semua konsultan dulu, pilih "Lewati".'
+        ),
+    },
+}
+
+
+def tanya_preferensi_response(gaya: Gaya, kategori: Optional[str]) -> str:
+    t = TANYA_PREFERENSI_TEMPLATES[gaya]
+    awal = t["kategori"].format(kategori=KATEGORI_TAMPIL[kategori]) if kategori in KATEGORI_TAMPIL else ""
+    return awal + t["tanya"]
+
+
+def form_preferensi(kategori: Optional[str], nilai_awal: Optional[dict] = None) -> dict:
+    """Isi form preferensi yang ditampilkan frontend di bawah pertanyaan Kia."""
+    return {
+        "kategori": kategori if kategori in KATEGORI_TAMPIL else "Umum",
+        "pilihan_kategori": [{"nilai": k, "label": v.capitalize()} for k, v in KATEGORI_TAMPIL.items()],
+        "pilihan_hari": [{"nilai": k, "label": v} for k, v in pref_helper.PILIHAN_HARI.items()],
+        "pilihan_waktu": [{"nilai": k, "label": v[0]} for k, v in pref_helper.PILIHAN_WAKTU.items()],
+        "nilai_awal": nilai_awal or {},
+    }
 
 
 def _history_text(chat_history: list[dict]) -> str:
@@ -326,6 +506,8 @@ def _history_text(chat_history: list[dict]) -> str:
             content += " [draft pengajuan konsultasi sudah dibuat]"
         elif meta_type == "consultant_list":
             content += " [daftar konsultan sudah ditampilkan]"
+        elif meta_type == "tanya_preferensi":
+            content += " [Kia menanyakan budget dan jadwal konsultasi]"
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 
@@ -360,7 +542,7 @@ def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klas
                 return klasifikasi
             logger.warning(f"[CLASSIFY] {model_name} tidak mengembalikan klasifikasi yang valid")
         except Exception as e:
-            logger.warning(f"[CLASSIFY] {model_name} gagal: {type(e).__name__}: {str(e)[:150]}")
+            logger.warning(f"[CLASSIFY] {model_name} gagal: {gemini_errors.describe(e)}")
     return None
 
 

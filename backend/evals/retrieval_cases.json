@@ -1,0 +1,581 @@
+{
+  "keterangan": "Test set pencarian pasal. 'relevan' = pasal yang dianggap benar (format '<akhiran frbr>:<pasal_bagian>'). 'memuat' (opsional) = regex yang harus ada di teks, untuk membedakan pasal bernomor sama di UU omnibus. 'terbaru' = versi aturan terbaru yang seharusnya ikut terambil. 'query' diisi otomatis dari classifier (python -m evals.retrieval_eval --siapkan-query). Daftar relevan beberapa kasus diperluas pada 27 Okt 2026 setelah dicek manual (hak korban TPKS Pasal 69-70, pencurian dengan kekerasan Pasal 479, penganiayaan ringan Pasal 471, kewajiban pengendali data Pasal 36 dan 47).",
+  "kasus": [
+    {
+      "id": "naker-pkwt",
+      "pertanyaan": "Kontrak kerja saya diperpanjang terus, sebenarnya PKWT itu paling lama berapa tahun?",
+      "relevan": [
+        {
+          "ref": "t3-001:Pasal 8"
+        },
+        {
+          "ref": "t2-005:Pasal 59",
+          "memuat": "waktu tertentu"
+        },
+        {
+          "ref": "t2-004:Pasal 59"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t3-001:Pasal 8"
+        },
+        {
+          "ref": "t2-005:Pasal 59",
+          "memuat": "waktu tertentu"
+        }
+      ],
+      "query": "jangka waktu maksimal perjanjian kerja waktu tertentu PKWT ketenagakerjaan"
+    },
+    {
+      "id": "naker-lembur",
+      "pertanyaan": "Berapa jam maksimal lembur dalam sehari menurut aturan?",
+      "relevan": [
+        {
+          "ref": "t2-005:Pasal 78"
+        },
+        {
+          "ref": "t2-004:Pasal 78"
+        },
+        {
+          "ref": "t3-001:Pasal 26"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t2-005:Pasal 78"
+        },
+        {
+          "ref": "t3-001:Pasal 26"
+        }
+      ],
+      "query": "ketentuan waktu kerja lembur maksimal sehari dalam undang-undang ketenagakerjaan"
+    },
+    {
+      "id": "naker-cuti",
+      "pertanyaan": "Pekerja berhak cuti tahunan berapa hari?",
+      "relevan": [
+        {
+          "ref": "t2-005:Pasal 79"
+        },
+        {
+          "ref": "t2-004:Pasal 79"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t2-005:Pasal 79"
+        }
+      ],
+      "query": "hak cuti tahunan pekerja ketenagakerjaan"
+    },
+    {
+      "id": "naker-pesangon",
+      "pertanyaan": "Saya kena PHK, apa saja hak pesangon yang wajib dibayar perusahaan?",
+      "relevan": [
+        {
+          "ref": "t3-001:Pasal 40"
+        },
+        {
+          "ref": "t2-005:Pasal 156",
+          "memuat": "pesangon"
+        },
+        {
+          "ref": "t2-004:Pasal 156"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t3-001:Pasal 40"
+        },
+        {
+          "ref": "t2-005:Pasal 156",
+          "memuat": "pesangon"
+        }
+      ],
+      "query": "hak pekerja atas uang pesangon penghargaan masa kerja dan penggantian hak karena pemutusan hubungan kerja ketenagakerjaan"
+    },
+    {
+      "id": "naker-umr",
+      "pertanyaan": "Gaji saya dibayar di bawah UMR, apakah perusahaan boleh begitu?",
+      "relevan": [
+        {
+          "ref": "t2-004:Pasal 90"
+        },
+        {
+          "ref": "t2-004:Pasal 89"
+        },
+        {
+          "ref": "t2-005:Pasal 88",
+          "memuat": "upah"
+        }
+      ],
+      "query": "ketentuan pembayaran upah minimum pekerja oleh pengusaha berdasarkan hukum ketenagakerjaan"
+    },
+    {
+      "id": "naker-bipartit",
+      "pertanyaan": "Kalau ada perselisihan dengan perusahaan, harus diselesaikan bagaimana dulu sebelum ke pengadilan?",
+      "relevan": [
+        {
+          "ref": "t2-012:Pasal 3"
+        },
+        {
+          "ref": "t2-012:Pasal 4"
+        }
+      ],
+      "query": "prosedur penyelesaian perselisihan hubungan industrial bipartit mediasi"
+    },
+    {
+      "id": "naker-bpjs",
+      "pertanyaan": "Apakah perusahaan wajib mendaftarkan karyawannya ke BPJS?",
+      "relevan": [
+        {
+          "ref": "t2-011:Pasal 15"
+        },
+        {
+          "ref": "t2-011:Pasal 14"
+        }
+      ],
+      "query": "kewajiban perusahaan mendaftarkan pekerja ke BPJS ketenagakerjaan dan kesehatan"
+    },
+    {
+      "id": "pidana-hina-lisan",
+      "pertanyaan": "Tetangga menuduh saya mencuri di depan banyak orang, padahal tidak benar. Apakah itu pencemaran nama baik?",
+      "relevan": [
+        {
+          "ref": "t1-001:Pasal 433"
+        },
+        {
+          "ref": "t1-001:Pasal 434"
+        }
+      ],
+      "query": "tindak pidana pencemaran nama baik dan fitnah di muka umum KUHP"
+    },
+    {
+      "id": "pidana-hina-online",
+      "pertanyaan": "Saya difitnah di media sosial, apa aturan pencemaran nama baik secara online?",
+      "relevan": [
+        {
+          "ref": "uu-1-2024:Pasal 27",
+          "memuat": "kehormatan|nama baik|menuduh"
+        },
+        {
+          "ref": "uu-1-2024:Pasal 2TA"
+        },
+        {
+          "ref": "uu-1-2024:Pasal 45",
+          "memuat": "kehormatan|nama baik|menuduh"
+        },
+        {
+          "ref": "t1-001:Pasal 441"
+        },
+        {
+          "ref": "t1-001:Pasal 433"
+        }
+      ],
+      "query": "tindak pidana pencemaran nama baik di media sosial UU ITE"
+    },
+    {
+      "id": "pidana-penipuan",
+      "pertanyaan": "Saya ditipu orang yang mengaku penjual online, uangnya sudah ditransfer tapi barang tidak dikirim. Itu pidana apa?",
+      "relevan": [
+        {
+          "ref": "t1-001:Pasal 492"
+        },
+        {
+          "ref": "uu-1-2024:Pasal 28",
+          "memuat": "bohong|menyesatkan"
+        },
+        {
+          "ref": "uu-1-2024:Pasal 45A",
+          "memuat": "bohong|menyesatkan|kerugian"
+        }
+      ],
+      "query": "tindak pidana penipuan jual beli online dan penggelapan hukum pidana"
+    },
+    {
+      "id": "pidana-pencurian",
+      "pertanyaan": "Apa ancaman hukuman untuk orang yang mencuri barang milik orang lain?",
+      "relevan": [
+        {
+          "ref": "t1-001:Pasal 476"
+        },
+        {
+          "ref": "t1-001:Pasal 477"
+        },
+        {
+          "ref": "t1-001:Pasal 479"
+        }
+      ],
+      "query": "tindak pidana pencurian ancaman hukuman Kitab Undang-Undang Hukum Pidana"
+    },
+    {
+      "id": "pidana-penganiayaan",
+      "pertanyaan": "Saya dipukul orang sampai memar, apa pasal penganiayaannya?",
+      "relevan": [
+        {
+          "ref": "t1-001:Pasal 466"
+        },
+        {
+          "ref": "t1-001:Pasal 467"
+        },
+        {
+          "ref": "t1-001:Pasal 471"
+        }
+      ],
+      "query": "tindak pidana penganiayaan pasal KUHP"
+    },
+    {
+      "id": "kdrt-fisik",
+      "pertanyaan": "Suami saya sering memukul saya di rumah, apakah itu termasuk KDRT dan apa hukumannya?",
+      "relevan": [
+        {
+          "ref": "t1-005:Pasal 44"
+        },
+        {
+          "ref": "t1-005:Pasal 6"
+        },
+        {
+          "ref": "t1-005:Pasal 5"
+        }
+      ],
+      "query": "tindak pidana kekerasan dalam rumah tangga dan sanksi hukum penghapusan kekerasan dalam rumah tangga"
+    },
+    {
+      "id": "tpks-fisik",
+      "pertanyaan": "Atasan saya suka meraba tubuh saya tanpa izin, apakah itu pelecehan seksual?",
+      "relevan": [
+        {
+          "ref": "t1-006:Pasal 6"
+        },
+        {
+          "ref": "t1-006:Pasal 4"
+        }
+      ],
+      "query": "tindak pidana pelecehan seksual di tempat kerja hukum pidana"
+    },
+    {
+      "id": "tpks-nonfisik",
+      "pertanyaan": "Saya sering disiul dan dikomentari soal tubuh saya di jalan, apakah itu bisa dilaporkan?",
+      "relevan": [
+        {
+          "ref": "t1-006:Pasal 5"
+        },
+        {
+          "ref": "t1-006:Pasal 4"
+        },
+        {
+          "ref": "t1-006:Pasal 7"
+        }
+      ],
+      "query": "tindak pidana kekerasan seksual pelecehan verbal di ruang publik"
+    },
+    {
+      "id": "tpks-hak-korban",
+      "pertanyaan": "Apa saja hak korban kekerasan seksual?",
+      "relevan": [
+        {
+          "ref": "t1-006:Pasal 66"
+        },
+        {
+          "ref": "t1-006:Pasal 67"
+        },
+        {
+          "ref": "t1-006:Pasal 68"
+        },
+        {
+          "ref": "t3-005:Pasal 2"
+        },
+        {
+          "ref": "t1-006:Pasal 69"
+        },
+        {
+          "ref": "t1-006:Pasal 70"
+        }
+      ],
+      "query": "hak korban tindak pidana kekerasan seksual perlindungan saksi dan korban"
+    },
+    {
+      "id": "kawin-usia",
+      "pertanyaan": "Berapa usia minimal untuk menikah di Indonesia?",
+      "relevan": [
+        {
+          "ref": "t2-003:Pasal 7"
+        },
+        {
+          "ref": "t2-003:Pasal I"
+        },
+        {
+          "ref": "t2-002:Pasal 7",
+          "memuat": "umur"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t2-003:Pasal 7"
+        },
+        {
+          "ref": "t2-003:Pasal I"
+        }
+      ],
+      "query": "batas usia minimal perkawinan menurut undang-undang perkawinan"
+    },
+    {
+      "id": "kawin-harta",
+      "pertanyaan": "Kalau cerai, harta yang didapat selama menikah dibagi bagaimana?",
+      "relevan": [
+        {
+          "ref": "t2-002:Pasal 35"
+        },
+        {
+          "ref": "t2-002:Pasal 37"
+        }
+      ],
+      "query": "pembagian harta bersama gono-gini dalam perkawinan perceraian hukum perdata"
+    },
+    {
+      "id": "kawin-cerai",
+      "pertanyaan": "Apa saja alasan yang bisa dipakai untuk mengajukan perceraian?",
+      "relevan": [
+        {
+          "ref": "t2-002:Pasal 39"
+        },
+        {
+          "ref": "t2-002:Penjelasan Pasal 39"
+        }
+      ],
+      "query": "alasan sah pengajuan perceraian hukum perkawinan"
+    },
+    {
+      "id": "konsumen-hak",
+      "pertanyaan": "Sebagai konsumen, hak saya apa saja?",
+      "relevan": [
+        {
+          "ref": "t2-006:Pasal 4"
+        }
+      ],
+      "query": "hak dan kewajiban konsumen perlindungan konsumen"
+    },
+    {
+      "id": "konsumen-ganti-rugi",
+      "pertanyaan": "Barang yang saya beli rusak dan penjual tidak mau tanggung jawab, bisa minta ganti rugi?",
+      "relevan": [
+        {
+          "ref": "t2-006:Pasal 19"
+        },
+        {
+          "ref": "t2-006:Pasal 7"
+        }
+      ],
+      "query": "perlindungan konsumen ganti rugi barang rusak tanggung jawab pelaku usaha"
+    },
+    {
+      "id": "pdp-bocor",
+      "pertanyaan": "Data pribadi saya bocor dari aplikasi, apa kewajiban perusahaannya?",
+      "relevan": [
+        {
+          "ref": "t1-013:Pasal 46"
+        },
+        {
+          "ref": "t4-001:Pasal 46"
+        },
+        {
+          "ref": "t1-013:Pasal 39"
+        },
+        {
+          "ref": "t4-001:Pasal 39"
+        },
+        {
+          "ref": "t1-013:Pasal 36"
+        },
+        {
+          "ref": "t1-013:Pasal 47"
+        }
+      ],
+      "query": "kewajiban pengendali data pribadi perlindungan data konsumen"
+    },
+    {
+      "id": "narkotika-pemakai",
+      "pertanyaan": "Anak saya ketahuan memakai narkoba untuk dirinya sendiri, apakah bisa direhabilitasi?",
+      "relevan": [
+        {
+          "ref": "t2-009:Pasal 127"
+        },
+        {
+          "ref": "t2-009:Pasal 54"
+        },
+        {
+          "ref": "t2-009:Pasal 103"
+        }
+      ],
+      "query": "hak rehabilitasi medis dan sosial pecandu narkotika dan korban penyalahgunaan narkotika"
+    },
+    {
+      "id": "bankum-gratis",
+      "pertanyaan": "Saya tidak mampu bayar pengacara, apakah ada bantuan hukum gratis?",
+      "relevan": [
+        {
+          "ref": "t4-006:Pasal 5"
+        },
+        {
+          "ref": "t4-006:Pasal 1"
+        },
+        {
+          "ref": "t4-011:Pasal 22"
+        }
+      ],
+      "query": "bantuan hukum gratis untuk orang miskin undang-undang"
+    },
+    {
+      "id": "anak-diversi",
+      "pertanyaan": "Anak di bawah umur melakukan tindak pidana ringan, apakah harus dipenjara?",
+      "relevan": [
+        {
+          "ref": "t4-005:Pasal 7"
+        },
+        {
+          "ref": "t4-005:Pasal 6"
+        },
+        {
+          "ref": "t4-005:Pasal 5"
+        }
+      ],
+      "query": "sanksi pidana dan diversi anak berkonflik dengan hukum sistem peradilan pidana anak"
+    },
+    {
+      "id": "lalin-kecelakaan",
+      "pertanyaan": "Saya menabrak orang karena lalai saat menyetir motor, apa ancaman hukumnya?",
+      "relevan": [
+        {
+          "ref": "t2-010:Pasal 310"
+        },
+        {
+          "ref": "t2-010:Pasal 229"
+        }
+      ],
+      "query": "ancaman pidana kelalaian dalam berkendara lalu lintas menyebabkan kecelakaan"
+    },
+    {
+      "id": "korupsi",
+      "pertanyaan": "Pejabat yang menyalahgunakan wewenang sampai merugikan keuangan negara dihukum apa?",
+      "relevan": [
+        {
+          "ref": "t2-007:Pasal 3"
+        },
+        {
+          "ref": "t2-007:Pasal 2"
+        }
+      ],
+      "query": "tindak pidana korupsi penyalahgunaan wewenang merugikan keuangan negara"
+    },
+    {
+      "id": "kip-hak",
+      "pertanyaan": "Apakah warga berhak meminta informasi publik ke instansi pemerintah?",
+      "relevan": [
+        {
+          "ref": "t4-008:Pasal 4"
+        }
+      ],
+      "query": "hak warga negara meminta informasi publik badan publik undang-undang keterbukaan informasi publik"
+    },
+    {
+      "id": "perdata-syarat-perjanjian",
+      "pertanyaan": "Apa syarat sahnya sebuah perjanjian?",
+      "relevan": [
+        {
+          "ref": "t2-001:Pasal 1320"
+        }
+      ],
+      "query": "syarat sah perjanjian perdata KUHPerdata"
+    },
+    {
+      "id": "perdata-pmh",
+      "pertanyaan": "Orang lain merusak pagar rumah saya, bisakah saya menuntut ganti rugi secara perdata?",
+      "relevan": [
+        {
+          "ref": "t2-001:Pasal 1365"
+        }
+      ],
+      "query": "ganti rugi perbuatan melawan hukum perusakan properti perdata"
+    },
+    {
+      "id": "tanah-sertifikat",
+      "pertanyaan": "Apakah sertifikat tanah merupakan bukti kepemilikan yang kuat?",
+      "relevan": [
+        {
+          "ref": "t3-017:Pasal 32"
+        },
+        {
+          "ref": "uu-5-1960:Pasal 19"
+        }
+      ],
+      "query": "kekuatan hukum sertifikat hak atas tanah sebagai alat bukti kepemilikan agraria"
+    },
+    {
+      "id": "medis-rahasia",
+      "pertanyaan": "Apakah rumah sakit boleh membocorkan isi rekam medis pasien?",
+      "relevan": [
+        {
+          "ref": "t3-024:Pasal 32"
+        },
+        {
+          "ref": "t3-024:Pasal 33"
+        }
+      ],
+      "query": "kerahasiaan rekam medis pasien pelanggaran hukum kesehatan"
+    },
+    {
+      "id": "langsung-1365",
+      "pertanyaan": "Apa bunyi Pasal 1365 KUHPerdata?",
+      "relevan": [
+        {
+          "ref": "t2-001:Pasal 1365"
+        }
+      ],
+      "query": "bunyi Pasal 1365 KUHPerdata perbuatan melawan hukum"
+    },
+    {
+      "id": "langsung-ite-27",
+      "pertanyaan": "Pasal 27 UU ITE isinya tentang apa?",
+      "relevan": [
+        {
+          "ref": "uu-1-2024:Pasal 27"
+        },
+        {
+          "ref": "uu-0-0:Pasal 27"
+        }
+      ],
+      "query": "ketentuan pasal 27 undang-undang informasi dan transaksi elektronik"
+    },
+    {
+      "id": "langsung-pkdrt-44",
+      "pertanyaan": "Tolong jelaskan Pasal 44 UU PKDRT",
+      "relevan": [
+        {
+          "ref": "t1-005:Pasal 44"
+        }
+      ],
+      "query": "ketentuan pidana sanksi tindak kekerasan dalam rumah tangga pasal 44 UU PKDRT"
+    },
+    {
+      "id": "langsung-naker-156",
+      "pertanyaan": "Jelaskan Pasal 156 UU Ketenagakerjaan",
+      "relevan": [
+        {
+          "ref": "t2-005:Pasal 156",
+          "memuat": "pesangon"
+        },
+        {
+          "ref": "t2-004:Pasal 156"
+        }
+      ],
+      "terbaru": [
+        {
+          "ref": "t2-005:Pasal 156",
+          "memuat": "pesangon"
+        }
+      ],
+      "query": "ketentuan perhitungan uang pesangon penghargaan masa kerja dan penggantian hak Pasal 156 UU Ketenagakerjaan"
+    }
+  ]
+}

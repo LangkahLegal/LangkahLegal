@@ -17,6 +17,7 @@ from schemas.admin_docs import (
     PaginatedResponse,
     UpdateChunkRequest,
 )
+from services import retrieval_service
 from services.doc_processing import (
     generate_embeddings,
     process_pdf_to_records,
@@ -129,6 +130,7 @@ def process_pdf_job(
         db = get_supabase_client()
         _clear_or_reject_existing(db, job, replace_uri)
         total_inserted = _insert_in_batches(db, job, rows)
+        retrieval_service.reset_korpus()
 
         job["status"] = "completed"
         job["total_chunks"] = total_inserted
@@ -258,6 +260,7 @@ def update_chunk(db: Client, user: CurrentUser, id_dokumen: int, payload: Update
     if not updated:
         raise InternalError("Gagal update chunk.")
 
+    retrieval_service.reset_korpus()
     logger.info(f"[ADMIN_DOCS] Updated chunk {id_dokumen}")
     return updated[0]
 
@@ -268,4 +271,5 @@ def delete_document(db: Client, user: CurrentUser, frbr_uri: str) -> None:
         raise NotFoundError("Dokumen dengan URI tersebut tidak ditemukan.")
 
     legal_document_repository.delete_by_uri(db, frbr_uri)
+    retrieval_service.reset_korpus()
     logger.info(f"[ADMIN_DOCS] Deleted all chunks for {frbr_uri} ({total} rows)")

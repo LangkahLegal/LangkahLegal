@@ -16,4 +16,11 @@ DRAFT_KONSULTASI = (
     "Ringkasan kasus dari percakapan dengan AI, dipakai untuk mengisi otomatis form pengajuan konsultasi."
 )
 
+PREFERENSI_KONSULTASI = "Jawaban klien atas pertanyaan AI soal kategori, budget per sesi, dan jadwal konsultasi."
+
+FORM_PREFERENSI = (
+    "Form yang ditampilkan di bawah pertanyaan AI saat type='tanya_preferensi'. Jawabannya dikirim lagi ke "
+    "/chatbot/triage lewat field preferensi."
+)
+
 KNOWLEDGE_DOCUMENT = "Metadata 1 dokumen peraturan (tanpa embedding / field admin)."

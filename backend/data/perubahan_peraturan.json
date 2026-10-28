@@ -1,0 +1,50 @@
+{
+  "keterangan": "Relasi peraturan lama -> peraturan yang mengubah/menggantinya, dipakai pencarian pasal untuk mengutamakan versi terbaru. 'diubah_sebagian': pasal bernomor sama di dokumen baru menggantikan pasal lama. 'diganti'/'dicabut': seluruh dokumen lama tidak berlaku lagi. 'perlu_konfirmasi': belum dicek tim; pasal lama tetap dipakai tetapi diberi catatan.",
+  "relasi": [
+    {
+      "lama": "/akn/id/act/t2-004",
+      "baru": "/akn/id/act/t2-005",
+      "jenis": "diubah_sebagian",
+      "catatan": "Sebagian pasal UU 13/2003 tentang Ketenagakerjaan diubah oleh UU 6/2023 (Cipta Kerja)."
+    },
+    {
+      "lama": "/akn/id/act/t2-002",
+      "baru": "/akn/id/act/t2-003",
+      "jenis": "diubah_sebagian",
+      "catatan": "Pasal 7 UU 1/1974 tentang Perkawinan diubah oleh UU 16/2019."
+    },
+    {
+      "lama": "/akn/id/act/t2-007",
+      "baru": "/akn/id/act/t2-008",
+      "jenis": "diubah_sebagian",
+      "catatan": "Sebagian pasal UU 31/1999 tentang Pemberantasan Tindak Pidana Korupsi diubah oleh UU 20/2001."
+    },
+    {
+      "lama": "/akn/id/act/t1-008",
+      "baru": "/akn/id/act/uu-1-2024",
+      "jenis": "diubah_sebagian",
+      "catatan": "Sebagian pasal UU ITE diubah lagi oleh UU 1/2024."
+    },
+    {
+      "lama": "/akn/id/act/uu-1-1946",
+      "baru": "/akn/id/act/t1-001",
+      "jenis": "diganti",
+      "perlu_konfirmasi": true,
+      "catatan": "KUHP 1946 diganti oleh UU 1/2023 (KUHP baru) yang berlaku mulai 2 Januari 2026."
+    },
+    {
+      "lama": "/akn/id/act/t1-003",
+      "baru": "/akn/id/act/t1-004",
+      "jenis": "diganti",
+      "perlu_konfirmasi": true,
+      "catatan": "KUHAP 1981 diganti oleh UU 20/2025 (KUHAP baru). Pastikan tanggal mulai berlakunya."
+    },
+    {
+      "lama": "/akn/id/act/t2-020",
+      "baru": "/akn/id/act/t2-019",
+      "jenis": "dicabut",
+      "perlu_konfirmasi": true,
+      "catatan": "UU 44/2009 tentang Rumah Sakit dicabut oleh UU 17/2023 tentang Kesehatan."
+    }
+  ]
+}

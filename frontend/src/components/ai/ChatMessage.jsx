@@ -3,9 +3,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AIConsultantCard from "./AIConsultantCard";
 import AIConsultationDraftCard from "./AIConsultationDraftCard";
+import AIPreferenceForm from "./AIPreferenceForm";
 import AISourceList from "./AISourceList";
 
-export default function ChatMessage({ message }) {
+export default function ChatMessage({ message, isLatest = false, onSubmitPreferensi }) {
   const isAI = message.role === "ai";
 
   return (
@@ -58,6 +59,22 @@ export default function ChatMessage({ message }) {
                   draft={message.draft_konsultasi}
                   consultants={message.consultants || []}
                 />
+              )}
+
+              {/* Kia menanyakan kategori, budget, dan jadwal sebelum merekomendasikan konsultan */}
+              {message.type === "tanya_preferensi" && (
+                <>
+                  {message.draft_konsultasi && (
+                    <AIConsultationDraftCard draft={message.draft_konsultasi} showActions={false} />
+                  )}
+                  {message.form_preferensi && (
+                    <AIPreferenceForm
+                      form={message.form_preferensi}
+                      active={isLatest}
+                      onSubmit={onSubmitPreferensi}
+                    />
+                  )}
+                </>
               )}
 
               {/* Agentic Output: Render Consultants if tool was called */}

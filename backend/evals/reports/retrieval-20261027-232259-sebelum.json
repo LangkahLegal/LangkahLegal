@@ -1,0 +1,368 @@
+{
+  "ringkasan": {
+    "kasus": 36,
+    "hit@1": 0.417,
+    "hit@3": 0.556,
+    "mrr": 0.486,
+    "terbaru@3": 0.5,
+    "porsi_penjelasan": 0.165,
+    "duplikat": 4,
+    "rata_huruf_per_pertanyaan": 3087
+  },
+  "detail": [
+    {
+      "id": "naker-pkwt",
+      "peringkat": 1,
+      "terbaru": true,
+      "hasil": [
+        "t3-001:Pasal 8",
+        "t3-001:Pasal 9",
+        "t2-005:Pasal 56"
+      ]
+    },
+    {
+      "id": "naker-lembur",
+      "peringkat": 1,
+      "terbaru": true,
+      "hasil": [
+        "t2-004:Pasal 78",
+        "t2-005:Pasal 78",
+        "t3-001:Pasal 26"
+      ]
+    },
+    {
+      "id": "naker-cuti",
+      "peringkat": null,
+      "terbaru": false,
+      "hasil": [
+        "t2-004:Pasal 1",
+        "t3-001:Pasal 1",
+        "t2-004:Pasal 2"
+      ]
+    },
+    {
+      "id": "naker-pesangon",
+      "peringkat": 2,
+      "terbaru": true,
+      "hasil": [
+        "t3-001:Pasal 41",
+        "t3-001:Pasal 40",
+        "t2-004:Pasal 156"
+      ]
+    },
+    {
+      "id": "naker-umr",
+      "peringkat": 2,
+      "terbaru": null,
+      "hasil": [
+        "t3-001:Pasal 1",
+        "t2-004:Pasal 90",
+        "t2-004:Pasal 1"
+      ]
+    },
+    {
+      "id": "naker-bipartit",
+      "peringkat": 2,
+      "terbaru": null,
+      "hasil": [
+        "t3-007:Preambule",
+        "t2-012:Pasal 3",
+        "proc-003:PROC-003-04"
+      ]
+    },
+    {
+      "id": "naker-bpjs",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "proc-005:PROC-005-04",
+        "proc-005:PROC-005-01",
+        "t2-011:Pasal 9"
+      ]
+    },
+    {
+      "id": "pidana-hina-lisan",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t1-001:Pasal 433",
+        "proc-002:PROC-002-01",
+        "proc-002:PROC-002-05"
+      ]
+    },
+    {
+      "id": "pidana-hina-online",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "proc-002:PROC-002-04",
+        "proc-002:PROC-002-07",
+        "proc-002:PROC-002-01"
+      ]
+    },
+    {
+      "id": "pidana-penipuan",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "uu-1-2024:Pasal 45A",
+        "uu-0-0:Pasal 45A",
+        "t1-001:Pasal 591"
+      ]
+    },
+    {
+      "id": "pidana-pencurian",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t4-013:Preambule",
+        "t1-001:Pasal 483",
+        "t1-001:Pasal 216"
+      ]
+    },
+    {
+      "id": "pidana-penganiayaan",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t1-001:Pasal 468",
+        "t3-010:Pasal 3",
+        "t2-019:Pasal 423"
+      ]
+    },
+    {
+      "id": "kdrt-fisik",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t1-005:Pasal 4",
+        "t1-005:Pasal 1",
+        "t3-011:Preambule"
+      ]
+    },
+    {
+      "id": "tpks-fisik",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t1-006:Pasal 4",
+        "t1-006:Pasal 1",
+        "t2-005:Pasal 185"
+      ]
+    },
+    {
+      "id": "tpks-nonfisik",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t1-006:Pasal 4",
+        "t1-001:Pasal 246",
+        "t1-006:Pasal 1"
+      ]
+    },
+    {
+      "id": "tpks-hak-korban",
+      "peringkat": 2,
+      "terbaru": null,
+      "hasil": [
+        "t2-014:Preambule",
+        "t1-006:Pasal 66",
+        "t1-006:Pasal 66"
+      ]
+    },
+    {
+      "id": "kawin-usia",
+      "peringkat": 1,
+      "terbaru": false,
+      "hasil": [
+        "t2-002:Pasal 7",
+        "t2-002:Pasal 7",
+        "t2-002:Pasal 6"
+      ]
+    },
+    {
+      "id": "kawin-harta",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t2-002:Pasal 37",
+        "t2-002:Pasal 35",
+        "t2-001:Pasal 232"
+      ]
+    },
+    {
+      "id": "kawin-cerai",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t2-002:Pasal 39",
+        "t2-002:Pasal 39",
+        "t2-002:Pasal 37"
+      ]
+    },
+    {
+      "id": "konsumen-hak",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t2-006:Pasal 5",
+        "t2-006:Pasal 3",
+        "t2-006:Pasal 1"
+      ]
+    },
+    {
+      "id": "konsumen-ganti-rugi",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t2-006:Pasal 19",
+        "t2-006:Pasal 1",
+        "t2-006:Pasal 25"
+      ]
+    },
+    {
+      "id": "pdp-bocor",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t4-001:Pasal 52",
+        "t1-013:Pasal 52",
+        "t4-001:Pasal 36"
+      ]
+    },
+    {
+      "id": "narkotika-pemakai",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t2-009:Pasal 54",
+        "t2-009:Pasal 58",
+        "t2-009:Pasal 58"
+      ]
+    },
+    {
+      "id": "bankum-gratis",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t4-006:Pasal 1",
+        "t4-006:Pasal 6",
+        "t4-006:Pasal 4"
+      ]
+    },
+    {
+      "id": "anak-diversi",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t4-005:Pasal 7",
+        "t3-014:Pasal 3",
+        "t3-014:Pasal 6"
+      ]
+    },
+    {
+      "id": "lalin-kecelakaan",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t1-001:Pasal 324",
+        "t4-019:Pasal 211",
+        "t1-001:Pasal 323"
+      ]
+    },
+    {
+      "id": "korupsi",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t2-007:Preambule",
+        "t2-008:Preambule",
+        "t4-013:Preambule"
+      ]
+    },
+    {
+      "id": "kip-hak",
+      "peringkat": 2,
+      "terbaru": null,
+      "hasil": [
+        "t3-003:Pasal 4",
+        "t4-008:Pasal 4",
+        "t4-008:Pasal 22"
+      ]
+    },
+    {
+      "id": "perdata-syarat-perjanjian",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t2-019:Pasal 348"
+      ]
+    },
+    {
+      "id": "perdata-pmh",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t2-005:Pasal 36",
+        "t1-001:Pasal 66",
+        "t1-004:Pasal 192"
+      ]
+    },
+    {
+      "id": "tanah-sertifikat",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t3-017:Pasal 32",
+        "t3-017:Pasal 31",
+        "t3-018:Pasal 31"
+      ]
+    },
+    {
+      "id": "medis-rahasia",
+      "peringkat": 1,
+      "terbaru": null,
+      "hasil": [
+        "t3-024:Pasal 32",
+        "t3-024:Pasal 38",
+        "t3-024:Preambule"
+      ]
+    },
+    {
+      "id": "langsung-1365",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "t2-004:Pasal 136",
+        "uu-1-2024:Pasal 36_2",
+        "uu-0-0:Pasal 36_2"
+      ]
+    },
+    {
+      "id": "langsung-ite-27",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "uu-1-2024:Pasal 17_2",
+        "uu-0-0:Pasal 17_2",
+        "uu-1-2024:Pasal 40"
+      ]
+    },
+    {
+      "id": "langsung-pkdrt-44",
+      "peringkat": null,
+      "terbaru": null,
+      "hasil": [
+        "proc-001:PROC-001-02",
+        "proc-001:PROC-001-01",
+        "t3-011:Preambule"
+      ]
+    },
+    {
+      "id": "langsung-naker-156",
+      "peringkat": null,
+      "terbaru": false,
+      "hasil": []
+    }
+  ]
+}
