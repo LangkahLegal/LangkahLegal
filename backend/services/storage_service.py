@@ -8,9 +8,11 @@ from core.exceptions import BadRequestError
 
 MAX_PORTFOLIO_SIZE_MB = 10
 MAX_SUPPORTING_DOC_SIZE_MB = 10
+MAX_AVATAR_SIZE_MB = 2
 MAX_FILES_PER_UPLOAD = 10
 
 SUPPORTING_DOC_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
+AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 PDF_CONTENT_TYPES = {"application/pdf", "application/x-pdf"}
 
 
@@ -82,6 +84,39 @@ async def upload_portfolio_pdf_to_supabase(
         content_type="application/pdf",
         upsert=True,
         error_prefix="Gagal upload portofolio ke Supabase Storage",
+    )
+
+
+async def upload_avatar_to_supabase(
+    file: UploadFile,
+    user_id: int,
+    db_client,
+    bucket_name: str,
+) -> str:
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="File foto profil tidak ditemukan")
+
+    lowered = file.filename.lower()
+    matched_ext = next((ext for ext in AVATAR_EXTENSIONS if lowered.endswith(ext)), None)
+    if not matched_ext:
+        raise HTTPException(status_code=400, detail="Foto profil harus berformat PNG, JPG, WEBP, atau GIF")
+
+    if file.content_type and not file.content_type.lower().startswith("image/"):
+        raise HTTPException(status_code=400, detail="Content-Type file harus image")
+
+    file_bytes = await _read_file_bytes(file, "foto profil", MAX_AVATAR_SIZE_MB, "foto profil")
+
+    storage_ext = matched_ext.lstrip(".")
+    content_type = file.content_type or f"image/{'jpeg' if storage_ext == 'jpg' else storage_ext}"
+
+    return _upload_to_bucket(
+        db_client,
+        bucket_name,
+        f"user_{user_id}/{uuid4().hex}.{storage_ext}",
+        file_bytes,
+        content_type=content_type,
+        upsert=True,
+        error_prefix="Gagal upload foto profil ke Supabase Storage",
     )
 
 

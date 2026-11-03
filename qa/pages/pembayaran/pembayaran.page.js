@@ -5,6 +5,7 @@ export class PembayaranPage extends BasePage {
     super(page);
     this.container = page.getByTestId("payment-page");
     this.payButton = page.getByTestId("payment-pay-btn");
+    this.notPayableNotice = page.getByTestId("payment-not-payable");
     this.costBreakdownTitle = page.getByText("Rincian Biaya");
     this.pricePerSessionLabel = page.getByText("Harga Per Sesi (30 Menit)");
     this.successTitle = page.getByText("Pembayaran Berhasil!");

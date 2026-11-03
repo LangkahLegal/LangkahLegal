@@ -1,13 +1,15 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
+
+AppRole = Literal["client", "konsultan"]
 
 
 class SignUpPayload(BaseModel):
     email: str
     password: str
     name: str
-    role: str
+    role: AppRole
     emailRedirectTo: Optional[str] = None
 
 
@@ -47,7 +49,7 @@ class OAuthPayload(BaseModel):
 
 
 class RolePayload(BaseModel):
-    role: str
+    role: AppRole
 
 
 class ForgotPasswordPayload(BaseModel):

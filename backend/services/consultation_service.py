@@ -7,8 +7,9 @@ from core.config import get_settings
 from core.constants import Role, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.access import get_konsultan_id, require_konsultan_id, require_role
+from helpers.access import owns_consultation
 from helpers.schedule import count_sessions, ensure_not_past, ensure_within_schedule, find_conflict
+from helpers.urls import ensure_https_url, is_https_url
 from repositories import (
     case_repository,
     consultation_repository,
@@ -61,8 +62,6 @@ def _ensure_slot_is_free(db: Client, data_jadwal: dict, form: ConsultationForm) 
 
 
 async def create_consultation(db: Client, current_user: CurrentUser, form: ConsultationForm) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat membuat pengajuan")
-
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
 
     data_jadwal = schedule_repository.get_by_id(db, form.id_jadwal)
@@ -132,24 +131,12 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
     if data_pengajuan is None:
         raise NotFoundError("Data pengajuan tidak ditemukan")
 
-    user_role = current_user.role
-    user_id = current_user.id_user
+    if current_user.role == Role.CLIENT and new_status != StatusPengajuan.DIBATALKAN:
+        raise ForbiddenError("Klien hanya diizinkan untuk membatalkan pengajuan")
+    if not owns_consultation(current_user, data_pengajuan):
+        raise ForbiddenError("Akses ditolak: Pengajuan ini bukan milik Anda")
 
-    if user_role == Role.CLIENT:
-        if new_status != StatusPengajuan.DIBATALKAN:
-            raise ForbiddenError("Klien hanya diizinkan untuk membatalkan pengajuan")
-        if data_pengajuan["id_user"] != user_id:
-            raise ForbiddenError("Anda tidak diizinkan mengubah pengajuan orang lain")
-
-    elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user)
-        if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
-            raise ForbiddenError("Akses ditolak: Pengajuan ini bukan milik Anda")
-
-    else:
-        raise ForbiddenError("Role tidak dikenali")
-
-    _ensure_transition_allowed(user_role, data_pengajuan.get("status_pengajuan"), new_status)
+    _ensure_transition_allowed(current_user.role, data_pengajuan.get("status_pengajuan"), new_status)
 
     if new_status in [StatusPengajuan.DITOLAK, StatusPengajuan.DIBATALKAN]:
         if data_pengajuan.get("id_jadwal"):
@@ -169,18 +156,11 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
 
 
 def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = False) -> dict:
-    id_user = None
-    id_kons = None
-
-    if current_user.role == Role.CLIENT:
-        id_user = current_user.id_user
-    elif current_user.role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user)
-
+    is_client = current_user.role == Role.CLIENT
     rows = consultation_repository.list_with_relations(
         db,
-        id_user=id_user,
-        id_konsultan=id_kons,
+        id_user=current_user.id_user if is_client else None,
+        id_konsultan=None if is_client else current_user.id_konsultan,
         statuses=DASHBOARD_STATUSES if aktif else None,
         newest_first=aktif,
     )
@@ -189,8 +169,6 @@ def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = F
 
 def get_client_history(db: Client, current_user: CurrentUser) -> dict:
     """Riwayat klien: sesi yang masih berjalan lebih dulu, lalu sisanya dari yang terbaru."""
-    require_role(current_user, Role.CLIENT, "Hanya untuk klien")
-
     rows = consultation_repository.list_with_relations(db, id_user=current_user.id_user) or []
     rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
     rows.sort(key=lambda row: HISTORY_PRIORITY.get(row.get("status_pengajuan"), len(HISTORY_PRIORITY)))
@@ -207,7 +185,7 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
             urls = bursa["dokumen_bukti"].split(",")
             for idx, url in enumerate(urls):
                 url = url.strip()
-                if url:
+                if is_https_url(url):
                     ext = url.rsplit(".", 1)[-1].lower() if "." in url else ""
                     berkas.append(
                         {
@@ -223,20 +201,14 @@ def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
     return berkas
 
 
-def _detail_scope(db: Client, current_user: CurrentUser) -> tuple[int | None, int | None]:
+def _detail_scope(current_user: CurrentUser) -> tuple[int | None, int | None]:
     if current_user.role == Role.CLIENT:
         return current_user.id_user, None
-
-    if current_user.role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user)
-        if id_kons is not None:
-            return None, id_kons
-
-    raise ForbiddenError("Akses ditolak")
+    return None, current_user.id_konsultan
 
 
 def get_consultation_detail(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
-    id_user, id_kons = _detail_scope(db, current_user)
+    id_user, id_kons = _detail_scope(current_user)
 
     data = consultation_repository.get_detail(db, id_pengajuan, id_user=id_user, id_konsultan=id_kons)
 
@@ -271,7 +243,7 @@ def _enrich_detail(db: Client, data: dict) -> dict:
 
     data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
 
-    data["link_zoom"] = data.get("link_zoom")
+    data["link_zoom"] = data.get("link_zoom") if is_https_url(data.get("link_zoom")) else None
 
     berkas = [
         {
@@ -321,9 +293,7 @@ def _get_available_schedule_of(db: Client, id_jadwal: int, id_konsultan: int) ->
 
 
 def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, request: AssignSchedule) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur jadwal")
-
-    real_id_konsultan = require_konsultan_id(db, current_user)
+    real_id_konsultan = current_user.id_konsultan
 
     data_pengajuan = _get_pending_consultation_of(db, id_pengajuan, real_id_konsultan)
     data_jadwal = _get_available_schedule_of(db, request.id_jadwal, real_id_konsultan)
@@ -356,9 +326,8 @@ def assign_schedule(db: Client, current_user: CurrentUser, id_pengajuan: int, re
 
 
 def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, link_zoom: str) -> dict:
-    require_role(current_user, Role.KONSULTAN, "Hanya konsultan yang bisa mengatur link Zoom")
-
-    id_kons = require_konsultan_id(db, current_user)
+    link_zoom = ensure_https_url(link_zoom, "Link Zoom harus berupa tautan https")
+    id_kons = current_user.id_konsultan
 
     pengajuan = consultation_repository.get_for_konsultan(db, id_pengajuan, id_kons)
 
@@ -372,7 +341,7 @@ def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, l
     ]:
         raise BadRequestError("Link Zoom hanya bisa diatur untuk sesi yang relevan")
 
-    updated = consultation_repository.update(db, id_pengajuan, {"link_zoom": link_zoom.strip()})
+    updated = consultation_repository.update(db, id_pengajuan, {"link_zoom": link_zoom})
 
     if not updated:
         raise InternalError("Gagal menyimpan link Zoom")
@@ -381,13 +350,11 @@ def update_zoom_link(db: Client, current_user: CurrentUser, id_pengajuan: int, l
 
     return {
         "message": "Link Zoom berhasil disimpan",
-        "data": {"link_zoom": link_zoom.strip()},
+        "data": {"link_zoom": link_zoom},
     }
 
 
 def mark_completed(db: Client, current_user: CurrentUser, id_pengajuan: int) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang bisa menandai konsultasi selesai")
-
     user_id = current_user.id_user
 
     pengajuan = consultation_repository.get_summary_strict(db, id_pengajuan)
@@ -421,18 +388,8 @@ def list_documents(db: Client, current_user: CurrentUser, id_pengajuan: int) -> 
     if data_pengajuan is None:
         raise NotFoundError("Pengajuan tidak ditemukan")
 
-    user_role = current_user.role
-    user_id = current_user.id_user
-
-    if user_role == Role.CLIENT:
-        if data_pengajuan["id_user"] != user_id:
-            raise ForbiddenError("Akses ditolak")
-    elif user_role == Role.KONSULTAN:
-        id_kons = get_konsultan_id(db, current_user)
-        if id_kons is None or data_pengajuan["id_konsultan"] != id_kons:
-            raise ForbiddenError("Akses ditolak")
-    else:
-        raise ForbiddenError("Role tidak dikenali")
+    if not owns_consultation(current_user, data_pengajuan):
+        raise ForbiddenError("Akses ditolak")
 
     docs = supporting_document_repository.list_by_pengajuan(db, id_pengajuan)
 
@@ -466,8 +423,6 @@ async def upload_documents(
     id_pengajuan: int,
     dokumen_pendukung_files: list[UploadFile],
 ) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat mengunggah dokumen")
-
     _require_owned_consultation(
         db,
         id_pengajuan,
@@ -499,8 +454,6 @@ async def upload_documents(
 
 
 def delete_document(db: Client, current_user: CurrentUser, id_pengajuan: int, id_dokumen: int) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat menghapus dokumen")
-
     _require_owned_consultation(
         db,
         id_pengajuan,
@@ -530,8 +483,6 @@ def delete_document(db: Client, current_user: CurrentUser, id_pengajuan: int, id
 
 
 def submit_rating(db: Client, current_user: CurrentUser, id_pengajuan: int, rating_data: RatingCreate) -> dict:
-    require_role(current_user, Role.CLIENT, "Hanya klien yang dapat memberikan rating")
-
     user_id = current_user.id_user
 
     data_pengajuan = consultation_repository.get_summary(db, id_pengajuan)

@@ -77,10 +77,15 @@ const refreshSession = async () => {
       }
 
       return session;
-    } catch {
-      clearAuthSession();
-      if (!window.location.pathname.startsWith("/auth/")) {
-        window.location.replace("/auth/login");
+    } catch (error) {
+      const status = error?.response?.status;
+      // Hanya bersihkan sesi jika server secara eksplisit menolak refresh token (400 atau 401).
+      // Jangan logout otomatis pada error jaringan atau error 5xx dari server.
+      if (status === 400 || status === 401) {
+        clearAuthSession();
+        if (!window.location.pathname.startsWith("/auth/")) {
+          window.location.replace("/auth/login");
+        }
       }
       return null;
     }
@@ -119,22 +124,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const originalRequest = error.config;
     if (
       error.response?.status === 401 &&
-      !error.config?._retry &&
-      !error.config?.url?.includes("/auth/refresh")
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/refresh") &&
+      !originalRequest.url?.includes("/auth/login-password")
     ) {
-      error.config._retry = true;
+      originalRequest._retry = true;
       const session = await refreshSession();
-      if (session) {
-        return api(error.config);
+      if (session?.access_token) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
+        if (typeof originalRequest.headers.set === "function") {
+          originalRequest.headers.set(
+            "Authorization",
+            `Bearer ${session.access_token}`,
+          );
+        }
+        return api(originalRequest);
       }
     }
 
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         console.warn("Sesi berakhir atau tidak valid.");
-        // Anda bisa tambahkan logic auto-redirect ke /auth/login di sini jika diperlukan
       }
     }
     return Promise.reject(error);

@@ -89,6 +89,34 @@ Feature: Tanya AI
     When pengguna beralih ke naskah resmi
     Then naskah resmi peraturan ditampilkan di dalam pratinjau
 
+  @AI-016 @stub
+  Scenario: AI menanyakan budget dan jadwal sebelum merekomendasikan konsultan
+    Given AI akan menanyakan budget dan jadwal lalu merekomendasikan konsultan
+    And pengguna berada di halaman tanya AI
+    When pengguna mengirim pertanyaan hukum ke AI
+    Then AI menampilkan form budget dan jadwal dengan kategori yang diasumsikan
+    When pengguna mengisi budget dan memilih jadwal lalu mencari konsultan
+    Then preferensi itu dikirim ke AI bersama ringkasannya
+    And AI menampilkan konsultan dengan slot jadwal yang cocok
+    When pengguna memilih slot jadwal konsultan
+    Then halaman konsultan terbuka dengan slot itu sudah terpilih
+
+  @AI-017 @stub
+  Scenario: Klien dapat melewati pertanyaan budget dan jadwal
+    Given AI akan menanyakan budget dan jadwal lalu merekomendasikan konsultan
+    And pengguna berada di halaman tanya AI
+    When pengguna mengirim pertanyaan hukum ke AI
+    And pengguna melewati pertanyaan budget dan jadwal
+    Then permintaan berikutnya menandai preferensi dilewati
+
+  @AI-018 @stub
+  Scenario: Budget minimal yang lebih besar dari maksimal ditolak
+    Given AI akan menanyakan budget dan jadwal lalu merekomendasikan konsultan
+    And pengguna berada di halaman tanya AI
+    When pengguna mengirim pertanyaan hukum ke AI
+    And pengguna mengisi budget minimal lebih besar dari maksimal
+    Then form menolak budget itu tanpa mengirim pertanyaan baru
+
   @AI-009 @stub
   Scenario: Jawaban cepat dapat dipilih saat AI menanyakan bukti
     Given AI akan membalas dengan pertanyaan tentang bukti

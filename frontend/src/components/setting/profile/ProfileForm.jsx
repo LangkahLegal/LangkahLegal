@@ -7,7 +7,8 @@ import FileItem from "@/components/ui/FileItem";
 export default function ProfileForm({ data, onChange, role, portofolioFile }) {
   const isConsultant = role === "konsultan";
 
-  const SPESIALISASI_OPTIONS = ["Umum", "Pidana", "Perdata"];
+  // Sama dengan kategori yang dipakai Tanya AI untuk merekomendasikan konsultan.
+  const SPESIALISASI_OPTIONS = ["Umum", "Pidana", "Perdata", "Ketenagakerjaan", "Teknologi Informasi", "HAM"];
 
   // Fungsi pembantu untuk memproses nama file dari URL
   const getFileNameFromUrl = (url) => {

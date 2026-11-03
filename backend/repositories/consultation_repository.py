@@ -133,6 +133,20 @@ def list_by_konsultan_and_statuses(db: Client, id_konsultan: int, statuses: list
     )
 
 
+def list_booked_slots_for_many(db: Client, konsultan_ids: list[int], statuses: list[str]) -> list[dict]:
+    if not konsultan_ids:
+        return []
+    return (
+        db.table(TABLE)
+        .select("id_konsultan, jam_mulai, jam_selesai, tanggal_pengajuan")
+        .in_("id_konsultan", konsultan_ids)
+        .in_("status_pengajuan", statuses)
+        .execute()
+        .data
+        or []
+    )
+
+
 def list_by_schedule_and_statuses(db: Client, id_jadwal: int, statuses: list[str]) -> list[dict]:
     return (
         db.table(TABLE)

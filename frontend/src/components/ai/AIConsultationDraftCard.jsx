@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import AIConsultantCard from "./AIConsultantCard";
 
 /** Draft pengajuan konsultasi yang dirangkum Kia, beserta konsultan yang bisa langsung dijadwalkan. */
-export default function AIConsultationDraftCard({ draft, consultants = [] }) {
+export default function AIConsultationDraftCard({ draft, consultants = [], showActions = true }) {
   const { kategori, ringkasan_kasus, bukti_dimiliki = [], bukti_perlu_disiapkan = [] } = draft;
 
   return (
@@ -65,7 +65,7 @@ export default function AIConsultationDraftCard({ draft, consultants = [] }) {
         </p>
       </div>
 
-      {consultants.length > 0 ? (
+      {!showActions ? null : consultants.length > 0 ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {consultants.map((c) => (
             <AIConsultantCard key={c.id_konsultan} consultant={c} draft={draft} />

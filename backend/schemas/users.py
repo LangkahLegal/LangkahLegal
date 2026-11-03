@@ -37,7 +37,9 @@ class ProfileForm:
     linkedin: str | None = Form(default=None)
     portofolio: str | None = Form(default=None)
     portofolio_file: UploadFile | None = File(default=None)
+    foto_profil_file: UploadFile | None = File(default=None)
 
     def to_payload(self) -> ProfileUpdatePayload:
-        values = {field.name: getattr(self, field.name) for field in fields(self) if field.name != "portofolio_file"}
+        excluded = {"portofolio_file", "foto_profil_file"}
+        values = {field.name: getattr(self, field.name) for field in fields(self) if field.name not in excluded}
         return ProfileUpdatePayload.model_construct(**values)

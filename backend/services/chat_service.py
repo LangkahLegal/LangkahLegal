@@ -165,6 +165,17 @@ def _ai_metadata(result: dict, response_type: str) -> dict:
         metadata["consultants"] = result.get("consultants", [])
     if result.get("draft_konsultasi"):
         metadata["draft_konsultasi"] = result["draft_konsultasi"]
+    if response_type == "tanya_preferensi":
+        # konteks_konsultasi dibaca lagi saat klien mengirim form, supaya tidak perlu memanggil Gemini ulang.
+        metadata["form_preferensi"] = result.get("form_preferensi")
+        metadata["konteks_konsultasi"] = result.get("konteks_konsultasi")
+    return metadata
+
+
+def _user_metadata(result: dict) -> dict:
+    metadata = {"klasifikasi": result.get("klasifikasi")}
+    if result.get("preferensi"):
+        metadata["preferensi"] = result["preferensi"]
     return metadata
 
 
@@ -177,6 +188,7 @@ def _to_triage_response(session_id: str, result: dict, response_type: str) -> Tr
         sumber_dokumen=result.get("sumber_dokumen", []),
         consultants=result.get("consultants") if response_type in CONSULTANT_TYPES else None,
         draft_konsultasi=result.get("draft_konsultasi"),
+        form_preferensi=result.get("form_preferensi"),
         disclaimer=result.get("disclaimer", ""),
     )
 
@@ -201,12 +213,13 @@ def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageReque
             supabase=supabase,
             kategori=payload.kategori,
             chat_history=chat_history,
+            preferensi=payload.preferensi.model_dump() if payload.preferensi else None,
         )
 
         current_step = "save_user_msg"
         response_type = result.get("type", "text")
 
-        _save_message(supabase, session_id, "user", payload.query, metadata={"klasifikasi": result.get("klasifikasi")})
+        _save_message(supabase, session_id, "user", payload.query, metadata=_user_metadata(result))
 
         current_step = "save_ai_msg"
         _save_message(

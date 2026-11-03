@@ -43,9 +43,8 @@ Feature: Pembayaran konsultasi
   @PAY-005
   Scenario: Konsultasi yang belum disetujui tidak dapat dibayar
     Given klien punya konsultasi berstatus pending
-    And pengguna berada di halaman pembayaran konsultasi itu
-    When pengguna membayar konsultasi
-    Then muncul pemberitahuan "Pengajuan tidak dalam status yang memerlukan pembayaran"
+    When pengguna berada di halaman pembayaran konsultasi itu
+    Then halaman pembayaran memberitahu konsultasi belum bisa dibayar
     And jendela pembayaran Midtrans tidak dibuka
 
   @PAY-006

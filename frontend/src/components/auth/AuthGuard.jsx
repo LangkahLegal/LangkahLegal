@@ -19,6 +19,9 @@ const ROLE_HOME = {
 // Halaman yang hanya boleh dibuka peran tertentu. Aturan paling spesifik ditulis lebih dulu.
 // `exact` berarti hanya alamat itu sendiri, bukan sub-halamannya.
 const ROUTE_ROLES = [
+  { path: "/dashboard/client", roles: ["client"] },
+  { path: "/dashboard/consultant", roles: ["konsultan"] },
+  { path: "/dashboard/admin", roles: ["admin"] },
   { path: "/bursa/post", roles: ["client"] },
   { path: "/bursa", roles: ["konsultan"] },
   { path: "/schedule", roles: ["konsultan"] },
@@ -71,6 +74,7 @@ export default function AuthGuard({
   const hasSession = useClientValue(readHasSession, false);
   const role = useClientValue(readRole, null);
 
+  const isRolePage = pathname === "/auth/role" || pathname === "/role";
   const allowedRoles = allowedRolesFor(pathname);
   const isWrongRole = Boolean(role && allowedRoles && !allowedRoles.includes(role));
   const isGuestOnly = Boolean(role && guestOnlyPaths.includes(pathname));
@@ -86,11 +90,14 @@ export default function AuthGuard({
     }
 
     if (mustLeave) {
-      router.replace(ROLE_HOME[role]);
+      const target = ROLE_HOME[role];
+      if (target && !pathname.startsWith(target)) {
+        router.replace(target);
+      }
       return;
     }
 
-    if (requireRole && !role && pathname !== "/auth/role") {
+    if (requireRole && !role && !isRolePage) {
       router.replace("/auth/role");
       return;
     }
@@ -111,11 +118,12 @@ export default function AuthGuard({
     redirectToRoleHome,
     role,
     router,
+    isRolePage,
   ]);
 
   const content = useMemo(() => {
     const isWaitingForLogin =
-      requireAuth && !hasSession && pathname !== "/auth/role";
+      requireAuth && !hasSession && !isRolePage;
 
     if (!isReady || isWaitingForLogin || mustLeave) {
       return (
@@ -131,7 +139,7 @@ export default function AuthGuard({
     }
 
     return children;
-  }, [children, hasSession, isReady, mustLeave, pathname, requireAuth]);
+  }, [children, hasSession, isReady, mustLeave, isRolePage, requireAuth]);
 
   return content;
 }

@@ -7,7 +7,7 @@ from core.exceptions import ForbiddenError
 from core.user import CurrentUser
 from repositories import consultant_repository, user_repository
 from schemas.users import ProfileUpdatePayload
-from services.storage_service import upload_portfolio_pdf_to_supabase
+from services.storage_service import upload_avatar_to_supabase, upload_portfolio_pdf_to_supabase
 
 
 def get_settings_info(db: Client, current_user: CurrentUser) -> dict:
@@ -51,6 +51,7 @@ async def update_profile(
     payload: ProfileUpdatePayload,
     explicit_portofolio_field: bool,
     portofolio_file: UploadFile | None,
+    foto_profil_file: UploadFile | None = None,
 ) -> dict:
     normalized_portofolio_value: str | None = None
     if explicit_portofolio_field:
@@ -60,7 +61,14 @@ async def update_profile(
     if payload.nama:
         u_data["nama"] = payload.nama
 
-    if payload.foto_profil:
+    if foto_profil_file is not None:
+        u_data["foto_profil"] = await upload_avatar_to_supabase(
+            file=foto_profil_file,
+            user_id=current_user.id_user,
+            db_client=db,
+            bucket_name=get_settings().supabase_avatar_bucket,
+        )
+    elif payload.foto_profil:
         u_data["foto_profil"] = payload.foto_profil
 
     if u_data:

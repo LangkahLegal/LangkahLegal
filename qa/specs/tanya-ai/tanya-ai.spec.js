@@ -10,6 +10,7 @@ import {
   AI_REPLIES,
   CONSULTATION_DRAFT,
   QUESTIONS,
+  PREFERENCE,
   QUICK_REPLIES,
   RECOMMENDATION,
   SAVED_SESSIONS,
@@ -280,4 +281,78 @@ When("pengguna beralih ke naskah resmi", async ({ tanyaAiPage, page }) => {
 
 Then("naskah resmi peraturan ditampilkan di dalam pratinjau", async ({ tanyaAiPage }) => {
   await expect(tanyaAiPage.sourceModal.locator("iframe")).toHaveAttribute("src", SOURCE_DOCUMENT.file_url);
+});
+
+// ── AI-016 · AI menanyakan budget dan jadwal sebelum merekomendasikan konsultan
+
+Given("AI akan menanyakan budget dan jadwal lalu merekomendasikan konsultan", async ({ network }) => {
+  // Route yang didaftarkan terakhir dipakai lebih dulu: pertanyaan untuk pesan pertama, lalu daftar konsultan.
+  await network.reply("tanya AI", { json: AI_REPLIES["konsultan dengan slot jadwal"]() });
+  await network.reply("tanya AI", { json: AI_REPLIES["pertanyaan budget dan jadwal"](), times: 1 });
+});
+
+Then("AI menampilkan form budget dan jadwal dengan kategori yang diasumsikan", async ({ tanyaAiPage }) => {
+  await expect(tanyaAiPage.lastAiMessage).toContainText("termasuk ketenagakerjaan");
+  await expect(tanyaAiPage.preferenceForm).toBeVisible();
+  await expect(tanyaAiPage.preferenceForm).toContainText(PREFERENCE.form.kategori);
+});
+
+When("pengguna mengisi budget dan memilih jadwal lalu mencari konsultan", async ({ tanyaAiPage }) => {
+  await tanyaAiPage.fillPreference(PREFERENCE.input);
+  await tanyaAiPage.searchConsultantButton.click();
+});
+
+Then("preferensi itu dikirim ke AI bersama ringkasannya", async ({ network }) => {
+  await expect.poll(() => network.calls("tanya AI").length).toBe(2);
+  const kedua = network.calls("tanya AI")[1].body;
+  expect(kedua.preferensi).toEqual(PREFERENCE.expected);
+  expect(kedua.query).toBe(PREFERENCE.summary);
+});
+
+Then("AI menampilkan konsultan dengan slot jadwal yang cocok", async ({ tanyaAiPage }) => {
+  await expect(tanyaAiPage.consultantSchedule).toContainText("Jadwal yang cocok");
+  await expect(tanyaAiPage.consultantSlots).toHaveText([PREFERENCE.slot.label]);
+  await expect(tanyaAiPage.page.getByTestId("ai-preference-form-done")).toBeVisible();
+});
+
+When("pengguna memilih slot jadwal konsultan", async ({ tanyaAiPage, context, world }) => {
+  const opened = context.waitForEvent("page");
+  await tanyaAiPage.consultantSlots.first().click();
+  world.popup = await opened;
+  await world.popup.waitForLoadState("domcontentloaded");
+});
+
+Then("halaman konsultan terbuka dengan slot itu sudah terpilih", async ({ world }) => {
+  const url = new URL(world.popup.url());
+  expect(url.pathname).toBe(`/explore/${identity("konsultan").idKonsultan}`);
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    tanggal: PREFERENCE.slot.tanggal,
+    mulai: PREFERENCE.slot.mulai,
+    selesai: PREFERENCE.slot.selesai,
+  });
+});
+
+// ── AI-017 · Klien dapat melewati pertanyaan budget dan jadwal
+
+When("pengguna melewati pertanyaan budget dan jadwal", async ({ tanyaAiPage }) => {
+  await tanyaAiPage.skipPreferenceButton.click();
+});
+
+Then("permintaan berikutnya menandai preferensi dilewati", async ({ network }) => {
+  await expect.poll(() => network.calls("tanya AI").length).toBe(2);
+  const kedua = network.calls("tanya AI")[1].body;
+  expect(kedua.preferensi).toEqual({ kategori: PREFERENCE.form.kategori, dilewati: true });
+  expect(kedua.query).toBe(PREFERENCE.skipText);
+});
+
+// ── AI-018 · Budget minimal yang lebih besar dari maksimal ditolak
+
+When("pengguna mengisi budget minimal lebih besar dari maksimal", async ({ tanyaAiPage }) => {
+  await tanyaAiPage.fillPreference(PREFERENCE.invalidBudget);
+  await tanyaAiPage.searchConsultantButton.click();
+});
+
+Then("form menolak budget itu tanpa mengirim pertanyaan baru", async ({ tanyaAiPage, network }) => {
+  await expect(tanyaAiPage.preferenceForm.getByRole("alert")).toHaveText(PREFERENCE.budgetError);
+  expect(network.calls("tanya AI")).toHaveLength(1);
 });

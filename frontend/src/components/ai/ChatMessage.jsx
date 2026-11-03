@@ -3,9 +3,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AIConsultantCard from "./AIConsultantCard";
 import AIConsultationDraftCard from "./AIConsultationDraftCard";
+import AIPreferenceForm from "./AIPreferenceForm";
 import AISourceList from "./AISourceList";
 
-export default function ChatMessage({ message }) {
+export default function ChatMessage({ message, isLatest = false, onSubmitPreferensi }) {
   const isAI = message.role === "ai";
 
   return (
@@ -22,7 +23,7 @@ export default function ChatMessage({ message }) {
         </div>
       )}
 
-      <div className={`max-w-[85%] lg:max-w-[70%] space-y-1`}>
+      <div className={`max-w-[92%] sm:max-w-[85%] space-y-1`}>
         <div
           className={`px-6 py-4 rounded-[2rem] text-sm lg:text-base leading-relaxed shadow-soft transition-all ${
             !isAI
@@ -58,6 +59,22 @@ export default function ChatMessage({ message }) {
                   draft={message.draft_konsultasi}
                   consultants={message.consultants || []}
                 />
+              )}
+
+              {/* Kia menanyakan kategori, budget, dan jadwal sebelum merekomendasikan konsultan */}
+              {message.type === "tanya_preferensi" && (
+                <>
+                  {message.draft_konsultasi && (
+                    <AIConsultationDraftCard draft={message.draft_konsultasi} showActions={false} />
+                  )}
+                  {message.form_preferensi && (
+                    <AIPreferenceForm
+                      form={message.form_preferensi}
+                      active={isLatest}
+                      onSubmit={onSubmitPreferensi}
+                    />
+                  )}
+                </>
               )}
 
               {/* Agentic Output: Render Consultants if tool was called */}

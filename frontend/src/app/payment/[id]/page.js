@@ -22,6 +22,18 @@ import InfoGrid from "@/components/request/InfoGrid";
 import { paymentService } from "@/services/payment.service";
 import { consultationService } from "@/services/consultation.service";
 
+const PAYABLE_STATUSES = ["menunggu_pembayaran", "pembayaran_gagal", "kedaluwarsa", "dibatalkan"];
+
+const unpayableMessage = (status) => {
+  if (status === "pending") {
+    return "Pengajuan masih menunggu konfirmasi konsultan. Tagihan akan muncul setelah jadwal dikonfirmasi.";
+  }
+  if (status === "terjadwal") {
+    return "Pengajuan ini sudah terjadwal dan tidak memiliki tagihan yang perlu dibayar.";
+  }
+  return `Pengajuan ini tidak memerlukan pembayaran (status: ${status?.replace("_", " ") || "-"}).`;
+};
+
 export default function PaymentPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -88,6 +100,7 @@ export default function PaymentPage() {
   const konsultanDirect = consultation?.konsultan || {};
   const konsultan = konsultanViaJadwal.nama_lengkap ? konsultanViaJadwal : konsultanDirect;
   const isSettled = paymentStatus?.status_pembayaran === "settlement";
+  const isPayable = PAYABLE_STATUSES.includes(consultation?.status_pengajuan);
 
   // --- 5. RENDER LOGIC ---
 
@@ -139,28 +152,46 @@ export default function PaymentPage() {
               sessionDuration={30}
             />
 
-            <div className="pt-4 space-y-4">
-              {/* IMPLEMENTASI KOMPONEN BUTTON BARU */}
-              <Button
-                variant="primary"
-                fullWidth
-                isLoading={transactionMutation.isPending}
-                onClick={() => transactionMutation.mutate()}
-                className="py-6 rounded-2xl"
-                data-testid="payment-pay-btn"
-              >
-                <div className="flex items-center gap-3">
-                  <MaterialIcon name="account_balance_wallet" />
-                  <span className="uppercase tracking-widest text-sm">
-                    Bayar Sekarang
-                  </span>
-                </div>
-              </Button>
+            {isPayable ? (
+              <div className="pt-4 space-y-4">
+                <Button
+                  variant="primary"
+                  fullWidth
+                  isLoading={transactionMutation.isPending}
+                  onClick={() => transactionMutation.mutate()}
+                  className="py-6 rounded-2xl"
+                  data-testid="payment-pay-btn"
+                >
+                  <div className="flex items-center gap-3">
+                    <MaterialIcon name="account_balance_wallet" />
+                    <span className="uppercase tracking-widest text-sm">
+                      Bayar Sekarang
+                    </span>
+                  </div>
+                </Button>
 
-              <p className="text-[10px] text-muted text-center italic">
-                * Anda akan diarahkan ke layanan pembayaran aman Midtrans.
-              </p>
-            </div>
+                <p className="text-[10px] text-muted text-center italic">
+                  * Anda akan diarahkan ke layanan pembayaran aman Midtrans.
+                </p>
+              </div>
+            ) : (
+              <div className="pt-4 space-y-4">
+                <div
+                  className="bg-surface/60 border border-surface rounded-2xl p-5 text-center text-sm text-muted"
+                  data-testid="payment-not-payable"
+                >
+                  {unpayableMessage(consultation?.status_pengajuan)}
+                </div>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => router.push("/dashboard/client")}
+                  className="py-4 rounded-2xl"
+                >
+                  Kembali ke Dashboard
+                </Button>
+              </div>
+            )}
           </div>
         </main>
 

@@ -74,7 +74,7 @@ EDIT_JADWAL_KONSULTAN = {
 
 TOGGLE_SCHEDULE_SLOT = {
     "summary": "Toggle status ketersediaan per slot",
-    "description": "Mengubah `status_tersedia` untuk satu slot jadwal tertentu.",
+    "description": "Khusus konsultan pemilik jadwal. Mengubah `status_tersedia` untuk satu slot jadwal tertentu.",
 }
 
 TOGGLE_GLOBAL_ACTIVE = {

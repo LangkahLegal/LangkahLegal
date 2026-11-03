@@ -3,6 +3,25 @@ from supabase import Client
 TABLE = "jadwal_ketersediaan"
 
 
+def list_available_between(db: Client, konsultan_ids: list[int], mulai: str, sampai: str) -> list[dict]:
+    """Jadwal terbuka beberapa konsultan sekaligus dalam rentang tanggal (YYYY-MM-DD, inklusif)."""
+    if not konsultan_ids:
+        return []
+    return (
+        db.table(TABLE)
+        .select("id_jadwal, id_konsultan, tanggal, jam_mulai, jam_selesai")
+        .in_("id_konsultan", konsultan_ids)
+        .eq("status_tersedia", True)
+        .gte("tanggal", mulai)
+        .lte("tanggal", sampai)
+        .order("tanggal")
+        .order("jam_mulai")
+        .execute()
+        .data
+        or []
+    )
+
+
 def get_by_id(db: Client, id_jadwal: int, columns: str = "*") -> dict | None:
     rows = db.table(TABLE).select(columns).eq("id_jadwal", id_jadwal).execute().data
     return rows[0] if rows else None
