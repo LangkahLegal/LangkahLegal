@@ -134,14 +134,15 @@ def get_available_slots(
     Returns:
         Dict dengan key `tanggal`, `durasi`, dan `slots` (list slot).
     """
-    # 1. Cari jadwal konsultan untuk tanggal tersebut
+    # 1. Cari jadwal konsultan untuk tanggal tersebut. Satu tanggal bisa punya beberapa blok (misalnya pagi dan
+    #    siang), jadi semua blok diambil.
     jadwal_rows = (
         db.table("jadwal_ketersediaan")
         .select("id_jadwal, tanggal, jam_mulai, jam_selesai, status_tersedia")
         .eq("id_konsultan", id_konsultan)
         .eq("tanggal", tanggal)
         .eq("status_tersedia", True)
-        .limit(1)
+        .order("jam_mulai")
         .execute()
         .data
     )
@@ -154,25 +155,27 @@ def get_available_slots(
             "slots": [],
         }
 
-    day_schedule = jadwal_rows[0]
-
     # 2. Ambil booking aktif konsultan untuk tanggal tersebut
     booked_sessions = consultation_repository.list_booked_slots(db, id_konsultan, ACTIVE_BOOKING_STATUSES)
     # Filter hanya tanggal yang relevan (list_booked_slots sudah filter by id_konsultan)
     booked_for_date = [b for b in booked_sessions if str(b.get("tanggal_pengajuan", "")).split("T")[0] == tanggal]
 
-    # 3. Generate slot pills
-    slots = generate_available_slots(
-        day_schedule=day_schedule,
-        booked_sessions=booked_for_date,
-        duration_minutes=durasi,
-    )
+    # 3. Generate slot pills untuk setiap blok jadwal
+    slots = [
+        slot
+        for day_schedule in jadwal_rows
+        for slot in generate_available_slots(
+            day_schedule=day_schedule,
+            booked_sessions=booked_for_date,
+            duration_minutes=durasi,
+        )
+    ]
 
     return {
         "message": "Slot tersedia berhasil dimuat",
         "tanggal": tanggal,
         "durasi": durasi,
-        "id_jadwal": day_schedule.get("id_jadwal"),
+        "id_jadwal": jadwal_rows[0].get("id_jadwal"),
         "slots": slots,
     }
 

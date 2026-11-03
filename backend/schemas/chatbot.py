@@ -37,6 +37,16 @@ class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
 
 
+class PreferensiKonsultasi(BaseModel):
+    __doc__ = docs.PREFERENSI_KONSULTASI
+    kategori: Optional[str] = Field(None, description="Kategori hukum pilihan klien, menimpa asumsi Kia")
+    budget_min: Optional[int] = Field(None, ge=0, description="Budget minimal per sesi (rupiah)")
+    budget_max: Optional[int] = Field(None, ge=0, description="Budget maksimal per sesi (rupiah)")
+    hari: Optional[str] = Field(None, description="Nilai dari form_preferensi.pilihan_hari")
+    waktu: Optional[str] = Field(None, description="Nilai dari form_preferensi.pilihan_waktu")
+    dilewati: bool = Field(False, description="Klien memilih 'Lewati' dan ingin melihat semua konsultan")
+
+
 class TriageRequest(BaseModel):
     query: str = Field(
         ...,
@@ -52,6 +62,10 @@ class TriageRequest(BaseModel):
     kategori: Optional[str] = Field(
         None,
         description="Filter kategori hukum (opsional)",
+    )
+    preferensi: Optional[PreferensiKonsultasi] = Field(
+        None,
+        description="Jawaban form budget dan jadwal, dikirim saat pesan AI terakhir bertipe 'tanya_preferensi'",
     )
 
 
@@ -86,6 +100,13 @@ class SumberDokumen(BaseModel):
     pasal: list[SumberPasal] = []
 
 
+class SlotKonsultan(BaseModel):
+    tanggal: str = Field(..., description="YYYY-MM-DD")
+    mulai: str = Field(..., description="HH:MM (WIB)")
+    selesai: str = Field(..., description="HH:MM (WIB)")
+    label: str = Field(..., description="Teks siap tampil, misalnya 'Sab, 31 Okt · 09.00'")
+
+
 class ConsultantInfo(BaseModel):
     id_konsultan: int
     nama_lengkap: Optional[str] = None
@@ -97,6 +118,28 @@ class ConsultantInfo(BaseModel):
     bio_singkat: Optional[str] = None
     avg_rating: Optional[float] = 0
     total_reviews: Optional[int] = 0
+    jadwal_status: Optional[str] = Field(
+        None,
+        description=(
+            "'cocok' (ada slot di waktu yang diminta), 'terdekat' (tidak ada, ditampilkan slot terdekat), "
+            "'tersedia' (klien tidak menyebut waktu), atau 'belum_ada' (konsultan belum membuka jadwal)"
+        ),
+    )
+    slot_cocok: list[SlotKonsultan] = []
+
+
+class PilihanForm(BaseModel):
+    nilai: str
+    label: str
+
+
+class FormPreferensi(BaseModel):
+    __doc__ = docs.FORM_PREFERENSI
+    kategori: str = Field(..., description="Kategori hukum yang diasumsikan Kia")
+    pilihan_kategori: list[PilihanForm]
+    pilihan_hari: list[PilihanForm]
+    pilihan_waktu: list[PilihanForm]
+    nilai_awal: dict = Field({}, description="Preferensi yang sudah disebut klien, untuk mengisi form di awal")
 
 
 class DraftKonsultasi(BaseModel):
@@ -114,7 +157,8 @@ class TriageResponse(BaseModel):
         "text",
         description=(
             "'text' untuk jawaban biasa, 'consultant_list' untuk daftar konsultan, "
-            "'consultation_draft' untuk draft pengajuan konsultasi beserta daftar konsultan"
+            "'consultation_draft' untuk draft pengajuan konsultasi beserta daftar konsultan, "
+            "'tanya_preferensi' saat Kia menanyakan budget dan jadwal (tampilkan form_preferensi)"
         ),
     )
     jawaban: str
@@ -122,4 +166,5 @@ class TriageResponse(BaseModel):
     sumber_dokumen: list[SumberDokumen] = []
     consultants: Optional[list[ConsultantInfo]] = None
     draft_konsultasi: Optional[DraftKonsultasi] = None
+    form_preferensi: Optional[FormPreferensi] = None
     disclaimer: str

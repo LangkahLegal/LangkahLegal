@@ -39,5 +39,11 @@ mencari pasal-pasal yang relevan, dan menghasilkan jawaban AI.
 - *Penutup*, *di luar topik*, dan *krisis* — tanpa pencarian pasal
 
 `draft_konsultasi.deskripsi_kasus` siap dipakai untuk mengisi deskripsi kasus di form pengajuan.
+
+**Budget dan jadwal:** sebelum menampilkan konsultan pertama kali di sebuah sesi, AI menanyakan kategori,
+budget, dan waktu (`type: tanya_preferensi` beserta `form_preferensi`). Jawaban form dikirim lagi ke endpoint
+ini lewat field `preferensi`, lalu AI menampilkan konsultan terverifikasi yang cocok. Setiap konsultan membawa
+`jadwal_status` dan `slot_cocok` dari jadwal nyata. Kalau klien sudah menyebut budget atau jadwal di pesannya,
+AI tidak bertanya lagi.
 """,
 }

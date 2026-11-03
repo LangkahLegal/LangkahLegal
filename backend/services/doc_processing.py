@@ -13,6 +13,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from helpers import penjelasan
 from helpers.embedding import get_voyage_client
 
 logger = logging.getLogger(__name__)
@@ -121,7 +122,35 @@ def clean_ocr_text(raw: str) -> str:
 
 
 def split_into_chunks(text: str) -> list[dict]:
-    pasal_re = re.compile(r"(?m)^Pasal\s+(\d+[a-z]?A?B?C?)\s*$", re.IGNORECASE)
+    chunks = _split_per_pasal(text)
+    return _pisahkan_penjelasan(chunks)
+
+
+def _pisahkan_penjelasan(chunks: list[dict]) -> list[dict]:
+    """Buang potongan "Cukup jelas" dan beri label "Penjelasan Pasal N" pada bagian Penjelasan.
+
+    Tanpa ini, penjelasan tersimpan dengan label "Pasal N" yang sama dengan bunyi pasalnya dan bisa dikutip
+    chatbot seolah-olah bunyi pasal.
+    """
+    awal = penjelasan.awal_penjelasan([(f"Pasal {c['nomor_pasal']}", c["teks"]) for c in chunks])
+    hasil = []
+    for i, chunk in enumerate(chunks):
+        if chunk["nomor_pasal"] not in ("PREAMBULE", "1_FULL_DOC") and penjelasan.hanya_cukup_jelas(chunk["teks"]):
+            continue
+        if awal is not None and i >= awal and chunk["nomor_pasal"] != "PREAMBULE":
+            chunk = {
+                **chunk,
+                "pasal_bagian": penjelasan.label_penjelasan(f"Pasal {chunk['nomor_pasal']}"),
+                "judul_bab": "Penjelasan",
+            }
+        hasil.append(chunk)
+    return hasil
+
+
+def _split_per_pasal(text: str) -> list[dict]:
+    # Titik di belakang nomor ("Pasal 1602a.") ikut diterima; tanpa itu pasal-pasal berhuruf di KUHPerdata
+    # tergabung ke pasal sebelumnya.
+    pasal_re = re.compile(r"(?m)^Pasal\s+(\d+[a-z]?A?B?C?)\.?\s*$", re.IGNORECASE)
     matches = list(pasal_re.finditer(text))
 
     if not matches:
@@ -261,7 +290,8 @@ def build_records(chunks: list[dict], metadata: dict) -> list[dict]:
                 "tahun_uu": tahun_uu,
                 "status_hukum": status_hukum,
                 "sumber_undang_undang": nomor_uu or nama_uu or "unknown",
-                "pasal_bagian": "Preambule" if pasal == "PREAMBULE" else f"Pasal {pasal}",
+                "pasal_bagian": chunk.get("pasal_bagian")
+                or ("Preambule" if pasal == "PREAMBULE" else f"Pasal {pasal}"),
                 "judul_bab": chunk.get("judul_bab"),
                 "isi_teks": chunk["teks"],
             }

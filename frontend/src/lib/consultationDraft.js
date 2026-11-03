@@ -30,6 +30,33 @@ export const readIncomingConsultationDraft = () => {
   }
 };
 
+/** URL halaman konsultan dari kartu Tanya AI, membawa penanda draft dan slot jadwal yang dipilih (kalau ada). */
+export const consultantUrl = (idKonsultan, { draft = null, slot = null } = {}) => {
+  const params = new URLSearchParams();
+  if (draft) params.set("dari", "ai");
+  if (slot) {
+    params.set("tanggal", slot.tanggal);
+    params.set("mulai", slot.mulai);
+    params.set("selesai", slot.selesai);
+  }
+  const query = params.toString();
+  return `/explore/${idKonsultan}${query ? `?${query}` : ""}`;
+};
+
+/** Slot jadwal yang dipilih klien di kartu Tanya AI, untuk langsung terpilih di halaman konsultan. */
+export const readIncomingSlot = () => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tanggal = params.get("tanggal");
+    const mulai = params.get("mulai");
+    const selesai = params.get("selesai");
+    const valid = /^\d{4}-\d{2}-\d{2}$/.test(tanggal || "") && /^\d{2}:\d{2}$/.test(mulai || "") && /^\d{2}:\d{2}$/.test(selesai || "");
+    return valid ? { tanggal, mulai, selesai } : null;
+  } catch {
+    return null;
+  }
+};
+
 export const clearConsultationDraft = () => {
   try {
     window.localStorage.removeItem(DRAFT_KEY);

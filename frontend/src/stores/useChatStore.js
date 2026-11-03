@@ -113,6 +113,7 @@ const useChatStore = create((set, get) => ({
         type: m.metadata?.type || "text",
         consultants: m.metadata?.consultants || [],
         draft_konsultasi: m.metadata?.draft_konsultasi || null,
+        form_preferensi: m.metadata?.form_preferensi || null,
         pasal_referensi: m.metadata?.pasal_referensi || [],
         sumber_dokumen: m.metadata?.sumber_dokumen || [],
         disclaimer: m.metadata?.disclaimer || "",

@@ -76,7 +76,8 @@ export default function TanyaAIPage() {
   // Quick Replies Logic
   const lastMessage = displayMessages[displayMessages.length - 1];
   let suggestedActions = [];
-  if (!isTyping && lastMessage && lastMessage.role === "ai") {
+  // Saat Kia menanyakan budget/jadwal, jawabannya lewat form; saran teks tidak ditampilkan.
+  if (!isTyping && lastMessage && lastMessage.role === "ai" && lastMessage.type !== "tanya_preferensi") {
     const textLower = lastMessage.text.toLowerCase();
     if (
       textLower.includes("mencarikan konsultan") ||
@@ -93,7 +94,8 @@ export default function TanyaAIPage() {
     }
   }
 
-  const handleSend = async (overrideText = null) => {
+  // `preferensi` diisi saat klien mengirim form budget/jadwal yang ditanyakan Kia.
+  const handleSend = async (overrideText = null, preferensi = null) => {
     const textToSend = typeof overrideText === "string" ? overrideText : input;
     if (!textToSend.trim() || isTyping) return;
 
@@ -121,6 +123,7 @@ export default function TanyaAIPage() {
         query: userQuery,
         session_id: activeSessionId || null,
         kategori: null,
+        ...(preferensi ? { preferensi } : {}),
       });
 
       const data = res.data;
@@ -149,6 +152,7 @@ export default function TanyaAIPage() {
         type: data.type || "text",
         consultants: data.consultants || [],
         draft_konsultasi: data.draft_konsultasi || null,
+        form_preferensi: data.form_preferensi || null,
         pasal_referensi: data.pasal_referensi || [],
         sumber_dokumen: data.sumber_dokumen || [],
         disclaimer: data.disclaimer || "",
@@ -246,8 +250,13 @@ export default function TanyaAIPage() {
                   </p>
                 </div>
               ) : (
-                displayMessages.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} />
+                displayMessages.map((msg, index) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isLatest={!isTyping && index === displayMessages.length - 1}
+                    onSubmitPreferensi={(preferensi, ringkasan) => handleSend(ringkasan, preferensi)}
+                  />
                 ))
               )}
 
