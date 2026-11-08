@@ -11,7 +11,7 @@ from helpers.access import owns_consultation
 from helpers.schedule import count_sessions, ensure_not_past, ensure_within_schedule, find_conflict
 from helpers.urls import ensure_https_url, is_https_url
 from repositories import (
-    case_repository,
+    bursa_document_repository,
     consultation_repository,
     rating_repository,
     schedule_repository,
@@ -20,8 +20,10 @@ from repositories import (
 from schemas.consultations import AssignSchedule, ConsultationForm, RatingCreate
 from services import notification_service
 from services.storage_service import (
+    path_from_ref,
     remove_file_from_supabase,
     select_valid_files,
+    sign_stored_ref,
     upload_supporting_documents,
 )
 
@@ -155,6 +157,14 @@ def update_status(db: Client, current_user: CurrentUser, id_pengajuan: int, new_
     return {"message": f"Status berhasil diubah menjadi {new_status}"}
 
 
+def _sign_documents_in_rows(db: Client, rows: list[dict] | None) -> None:
+    """Sign file_url dokumen_pendukung (kini berupa storage path privat) di setiap baris listing."""
+    bucket = get_settings().supabase_berkas_pendukung_bucket
+    for row in rows or []:
+        for doc in row.get("dokumen_pendukung") or []:
+            doc["file_url"] = sign_stored_ref(db, bucket, doc.get("file_url"))
+
+
 def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = False) -> dict:
     is_client = current_user.role == Role.CLIENT
     rows = consultation_repository.list_with_relations(
@@ -164,6 +174,7 @@ def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = F
         statuses=DASHBOARD_STATUSES if aktif else None,
         newest_first=aktif,
     )
+    _sign_documents_in_rows(db, rows)
     return {"data": rows}
 
 
@@ -172,6 +183,7 @@ def get_client_history(db: Client, current_user: CurrentUser) -> dict:
     rows = consultation_repository.list_with_relations(db, id_user=current_user.id_user) or []
     rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
     rows.sort(key=lambda row: HISTORY_PRIORITY.get(row.get("status_pengajuan"), len(HISTORY_PRIORITY)))
+    _sign_documents_in_rows(db, rows)
 
     total_selesai = sum(1 for row in rows if row.get("status_pengajuan") == StatusPengajuan.SELESAI)
     return {"total_sesi_selesai": total_selesai, "data": rows}
@@ -179,23 +191,19 @@ def get_client_history(db: Client, current_user: CurrentUser) -> dict:
 
 def _bursa_documents_fallback(db: Client, id_bursa: int) -> list[dict]:
     berkas = []
+    bucket = get_settings().supabase_berkas_pendukung_bucket
     try:
-        bursa = case_repository.get_by_id(db, id_bursa)
-        if bursa and bursa.get("dokumen_bukti"):
-            urls = bursa["dokumen_bukti"].split(",")
-            for idx, url in enumerate(urls):
-                url = url.strip()
-                if is_https_url(url):
-                    ext = url.rsplit(".", 1)[-1].lower() if "." in url else ""
-                    berkas.append(
-                        {
-                            "id_dokumen": idx + 1,
-                            "nama_dokumen": url.rsplit("/", 1)[-1] if "/" in url else f"dokumen_{idx + 1}",
-                            "file_url": url,
-                            "tipe_file": "application/pdf" if ext == "pdf" else f"image/{ext}" if ext else "unknown",
-                            "ukuran_kb": 0,
-                        }
-                    )
+        docs = bursa_document_repository.list_by_bursa(db, id_bursa)
+        for doc in docs:
+            berkas.append(
+                {
+                    "id_dokumen": doc.get("id_dokumen"),
+                    "nama_dokumen": doc.get("nama_dokumen"),
+                    "file_url": sign_stored_ref(db, bucket, doc.get("file_path")),
+                    "tipe_file": doc.get("tipe_file"),
+                    "ukuran_kb": doc.get("ukuran_kb") or 0,
+                }
+            )
     except Exception as e:
         logger.warning(f"Gagal memuat dokumen bursa {id_bursa}: {e}")
     return berkas
@@ -241,7 +249,10 @@ def _enrich_detail(db: Client, data: dict) -> dict:
     tarif_skrg = int(tarif_skrg) if tarif_skrg else 0
     data["total_harga"] = tarif_skrg * jumlah_sesi
 
-    data["link_dokumen"] = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
+    bucket = get_settings().supabase_berkas_pendukung_bucket
+
+    link_dokumen = data.get("link_dokumen") or (docs[0].get("file_url") if len(docs) > 0 else None)
+    data["link_dokumen"] = sign_stored_ref(db, bucket, link_dokumen)
 
     data["link_zoom"] = data.get("link_zoom") if is_https_url(data.get("link_zoom")) else None
 
@@ -249,7 +260,7 @@ def _enrich_detail(db: Client, data: dict) -> dict:
         {
             "id_dokumen": d.get("id_dokumen"),
             "nama_dokumen": d.get("nama_dokumen"),
-            "file_url": d.get("file_url"),
+            "file_url": sign_stored_ref(db, bucket, d.get("file_url")),
             "tipe_file": d.get("tipe_file"),
             "ukuran_kb": d.get("ukuran_kb"),
         }
@@ -392,6 +403,9 @@ def list_documents(db: Client, current_user: CurrentUser, id_pengajuan: int) -> 
         raise ForbiddenError("Akses ditolak")
 
     docs = supporting_document_repository.list_by_pengajuan(db, id_pengajuan)
+    bucket = get_settings().supabase_berkas_pendukung_bucket
+    for doc in docs:
+        doc["file_url"] = sign_stored_ref(db, bucket, doc.get("file_url"))
 
     return {"message": "Dokumen berhasil dimuat", "total": len(docs), "data": docs}
 
@@ -402,7 +416,8 @@ def _insert_document(db: Client, id_pengajuan: int, doc_meta: dict) -> list[dict
         {
             "id_pengajuan": id_pengajuan,
             "nama_dokumen": doc_meta["nama_dokumen"],
-            "file_url": doc_meta["file_url"],
+            # Kolom file_url kini menyimpan storage path (bucket privat), disign saat disajikan.
+            "file_url": doc_meta["file_path"],
             "tipe_file": doc_meta["tipe_file"],
             "ukuran_kb": doc_meta["ukuran_kb"],
         },
@@ -436,9 +451,17 @@ async def upload_documents(
         empty_detail="Tidak ada file valid yang dikirim",
     )
 
+    bucket = get_settings().supabase_berkas_pendukung_bucket
+
     def save_document(doc_meta: dict) -> dict:
         inserted = _insert_document(db, id_pengajuan, doc_meta)
-        return {"id_dokumen": inserted[0]["id_dokumen"] if inserted else None, **doc_meta}
+        return {
+            "id_dokumen": inserted[0]["id_dokumen"] if inserted else None,
+            "nama_dokumen": doc_meta["nama_dokumen"],
+            "file_url": sign_stored_ref(db, bucket, doc_meta["file_path"]),
+            "tipe_file": doc_meta["tipe_file"],
+            "ukuran_kb": doc_meta["ukuran_kb"],
+        }
 
     uploaded_docs, failed_docs = await upload_supporting_documents(
         db, valid_files, id_pengajuan, current_user.id_user, save_document, detail_only=True
@@ -465,14 +488,11 @@ def delete_document(db: Client, current_user: CurrentUser, id_pengajuan: int, id
     if doc_data is None:
         raise NotFoundError("Dokumen tidak ditemukan")
 
-    file_url = doc_data.get("file_url", "")
-
-    settings = get_settings()
-    bucket_name = settings.supabase_berkas_pendukung_bucket
+    bucket_name = get_settings().supabase_berkas_pendukung_bucket
+    storage_path = path_from_ref(bucket_name, doc_data.get("file_url", ""))
 
     try:
-        if f"/storage/v1/object/public/{bucket_name}/" in file_url:
-            storage_path = file_url.split(f"/storage/v1/object/public/{bucket_name}/")[1]
+        if storage_path:
             remove_file_from_supabase(db, bucket_name, storage_path)
     except Exception as e:
         logger.warning(f"Gagal hapus file dari storage: {e}")

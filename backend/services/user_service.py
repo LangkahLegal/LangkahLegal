@@ -20,7 +20,8 @@ def get_full_profile(db: Client, current_user: CurrentUser) -> dict:
 
     if user["role"] == Role.KONSULTAN:
         kons = consultant_repository.get_by_user_strict(db, current_user.id_user)
-        return {**user, "foto_profil": user["foto_profil"], "portofolio": kons["portofolio"], **kons}
+        # user terakhir di-spread supaya foto_profil (dan field user lain) menang atas kolom konsultan yang bisa basi.
+        return {**kons, **user, "portofolio": kons["portofolio"]}
     return user
 
 
@@ -61,15 +62,19 @@ async def update_profile(
     if payload.nama:
         u_data["nama"] = payload.nama
 
+    foto_value: str | None = None
     if foto_profil_file is not None:
-        u_data["foto_profil"] = await upload_avatar_to_supabase(
+        foto_value = await upload_avatar_to_supabase(
             file=foto_profil_file,
             user_id=current_user.id_user,
             db_client=db,
             bucket_name=get_settings().supabase_avatar_bucket,
         )
     elif payload.foto_profil:
-        u_data["foto_profil"] = payload.foto_profil
+        foto_value = payload.foto_profil
+
+    if foto_value is not None:
+        u_data["foto_profil"] = foto_value
 
     if u_data:
         user_repository.update(db, current_user.id_user, u_data)
@@ -79,6 +84,10 @@ async def update_profile(
 
     if current_user.role == Role.KONSULTAN:
         k_data = _professional_fields(payload)
+
+        # Mirror foto ke tabel konsultan supaya surface yang baca konsultan.foto_profil ikut fresh.
+        if foto_value is not None:
+            k_data["foto_profil"] = foto_value
 
         if explicit_portofolio_field:
             k_data["portofolio"] = normalized_portofolio_value
