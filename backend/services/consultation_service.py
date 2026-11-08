@@ -271,6 +271,8 @@ def _enrich_detail(db: Client, data: dict) -> dict:
         berkas = _bursa_documents_fallback(db, data["id_bursa"])
 
     data["berkas_pendukung"] = berkas
+    # Buang relasi mentah dari join: file_url-nya belum di-sign (URL publik). Frontend pakai berkas_pendukung.
+    data.pop("dokumen_pendukung", None)
 
     return data
 
