@@ -4,8 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import SuccessView from "@/components/layout/SuccessView";
 import { Button, FileUpload } from "@/components/ui";
@@ -112,18 +111,13 @@ export default function PostCasePage() {
 
   // --- NORMAL STATE ---
   return (
-    <div
-      className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500"
-      data-testid="bursa-post-page"
-    >
-      <Sidebar role="client" />
-      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
+    <AppShell role="client" testId="bursa-post-page" contentClassName="w-full">
         <PageHeader title="Pengajuan Anonim" backHref="/dashboard/client" />
 
         <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
           <div className="max-w-2xl mx-auto w-full space-y-10 animate-fade-in">
             {/* Header Form bergaya Hero */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-6 rounded-3xl border border-surface shadow-soft rounded-3xl p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card rounded-3xl border border-surface shadow-soft p-6 lg:p-8">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
                   <MaterialIcon
@@ -209,7 +203,7 @@ export default function PostCasePage() {
                 fullWidth
                 isLoading={postMutation.isPending}
                 onClick={handleSubmit}
-                className="py-5 rounded-xl shadow-lg shadow-primary/20"
+                className="py-5 rounded-xl shadow-lg shadow-secondary/25"
                 data-testid="bursa-post-submit-btn"
               >
                 Posting ke Ruang Publik
@@ -217,11 +211,6 @@ export default function PostCasePage() {
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

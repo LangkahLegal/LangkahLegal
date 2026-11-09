@@ -151,6 +151,7 @@ export default function Navbar() {
 
         <div className="flex-1 flex justify-end items-center">
           <Button
+            variant="secondary"
             onClick={handleCtaClick}
             className="!rounded-lg md:!rounded-xl !w-auto !py-2 !px-4 md:!py-2.5 md:!px-6 text-sm md:text-base font-bold whitespace-nowrap shadow-md hover:scale-105 transition-transform"
           >

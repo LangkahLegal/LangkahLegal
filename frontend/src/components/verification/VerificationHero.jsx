@@ -1,7 +1,7 @@
 "use client";
 
 import { MaterialIcon } from "@/components/ui/Icons";
-import { useTheme } from "@/providers/ThemeProvider";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function VerificationHero({
   name = "User",
@@ -13,20 +13,7 @@ export default function VerificationHero({
   isActive,
   bio,
 }) {
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
   const safeName = name || "User";
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    safeName,
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=256&bold=true`;
 
   const handleOpenLink = (url) => {
     if (!url) return;
@@ -46,22 +33,20 @@ export default function VerificationHero({
           <div className="relative animate-fade-in">
             <div className="w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border-[4px] sm:border-[6px] md:border-[8px] border-primary/10 p-1 sm:p-1.5 md:p-2 backdrop-blur-sm shadow-inner">
               <div className="w-full h-full rounded-full border-2 sm:border-[3px] border-primary p-0.5 sm:p-1 md:p-1.5 overflow-hidden">
-                <img
-                  src={avatar || fallbackUrl}
-                  className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
+                <UserAvatar
+                  src={avatar}
+                  name={safeName}
                   alt={safeName}
-                  onError={(e) => {
-                    if (e.currentTarget.src !== fallbackUrl) {
-                      e.currentTarget.src = fallbackUrl;
-                    }
-                  }}
+                  size="xl"
+                  textClassName="text-xl sm:text-3xl md:text-4xl"
+                  className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
                 />
               </div>
             </div>
 
             {/* Only show badge if verified */}
             {status === "terverifikasi" && (
-              <div className="absolute bottom-0 right-0 md:bottom-2 md:right-2 bg-primary text-white w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 md:border-[4px] border-bg flex items-center justify-center shadow-xl">
+              <div className="absolute bottom-0 right-0 md:bottom-2 md:right-2 bg-primary text-on-primary w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 md:border-[4px] border-bg flex items-center justify-center shadow-xl">
                 <MaterialIcon name="verified" className="text-[10px] sm:text-sm md:text-base" />
               </div>
             )}
@@ -69,7 +54,7 @@ export default function VerificationHero({
 
           <div className="flex flex-col gap-1.5 md:gap-2 w-full items-center">
             <div className="flex items-center gap-0.5 sm:gap-1 bg-surface/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full border border-surface w-fit">
-              <MaterialIcon name="star" className="text-amber-400 text-[10px] sm:text-sm" />
+              <MaterialIcon name="star" className="text-secondary text-[10px] sm:text-sm" />
               <span className="text-[9px] sm:text-xs font-bold text-main opacity-80">
                 {rating || "0.0"}
               </span>
@@ -91,10 +76,10 @@ export default function VerificationHero({
                   className={`inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[10px] md:text-xs font-bold rounded-full uppercase tracking-wider
                     ${
                       status === "terverifikasi"
-                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                        ? "bg-success-soft text-success border border-success/20"
                         : status === "pending"
-                          ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                          : "bg-danger/10 text-danger border border-danger/20"
+                          ? "bg-secondary-soft text-secondary-text border border-secondary/20"
+                          : "bg-danger-soft text-danger border border-danger/20"
                     }`}
                 >
                   Status: {status}

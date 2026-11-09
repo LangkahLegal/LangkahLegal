@@ -26,21 +26,21 @@ function timeAgo(dateString) {
 const KATEGORI_META = {
   pidana: {
     icon: "gavel",
-    color: "text-red-400",
-    bg: "bg-red-500/10",
-    border: "border-red-500/20",
+    color: "text-accent-text",
+    bg: "bg-accent-tint",
+    border: "border-accent/25",
   },
   perdata: {
     icon: "handshake",
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20",
+    color: "text-info-text",
+    bg: "bg-info-soft",
+    border: "border-info/25",
   },
   umum: {
     icon: "description",
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20",
+    color: "text-secondary-text",
+    bg: "bg-secondary-soft",
+    border: "border-secondary/25",
   },
 };
 
@@ -76,60 +76,62 @@ export default function BursaCard({
       // Jeda bertahap hanya saat muncul (maks. 10 kartu) agar kartu yang tersaring langsung hilang.
       animate={{ opacity: 1, y: 0, transition: { delay: Math.min(idx, 10) * 0.05, duration: 0.3 } }}
       exit={{ opacity: 0, transition: { duration: 0.15 } }}
-      className="group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 bg-primary/5 border-primary/20 shadow-soft flex flex-col hover:border-primary/40"
+      className="group p-4 rounded-2xl border transition-all duration-300 bg-card border-surface shadow-soft flex flex-col justify-between h-full hover:border-primary/30"
     >
-      {/* BAGIAN ATAS: Avatar (Ikon Kategori), Info, & Status */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-          <div className="relative shrink-0">
-            <div
-              className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl overflow-hidden border-2 border-surface flex items-center justify-center transition-colors group-hover:border-primary/30 ${meta.bg}`}
-            >
-              <MaterialIcon
-                name={meta.icon}
-                className={`text-2xl lg:text-3xl ${meta.color}`}
-              />
+      <div>
+        {/* BAGIAN ATAS: Avatar (Ikon Kategori), Info, & Status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="relative shrink-0">
+              <div
+                className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl overflow-hidden border-2 border-surface flex items-center justify-center transition-colors group-hover:border-primary/30 ${meta.bg}`}
+              >
+                <MaterialIcon
+                  name={meta.icon}
+                  className={`text-xl lg:text-2xl ${meta.color}`}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-col justify-center h-full pt-0.5">
+              <h3 className="font-bold text-sm lg:text-base text-main group-hover:text-primary-light transition-colors truncate">
+                Klien Anonim
+              </h3>
+              <p className="text-[10px] sm:text-xs truncate font-semibold uppercase tracking-wider text-muted mt-0.5">
+                {kasus.kategori_hukum || "Umum"} <span className="mx-1">•</span>{" "}
+                {timeAgo(kasus.created_at)}
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="flex-1 min-w-0 flex flex-col justify-center h-full pt-1">
-            <h3 className="font-bold text-sm sm:text-base lg:text-lg text-main group-hover:text-primary-light transition-colors truncate">
-              Klien Anonim
-            </h3>
-            <p className="text-[10px] sm:text-xs truncate font-semibold uppercase tracking-wider text-muted mt-1">
-              {kasus.kategori_hukum || "Umum"} <span className="mx-1">•</span>{" "}
-              {timeAgo(kasus.created_at)}
-            </p>
-          </div>
+        {/* BAGIAN TENGAH: Deskripsi Kasus */}
+        <div className="mt-3.5 px-0.5">
+          <p
+            data-testid="bursa-card-description"
+            className={`text-sm text-main leading-relaxed transition-all duration-300 ${!isExpanded && isLongText ? "line-clamp-3" : ""}`}
+          >
+            {rawDesc}
+          </p>
+
+          {/* Tombol Lihat Selengkapnya */}
+          {isLongText && (
+            <button
+              onClick={() => toggleDesc(kasus.id_bursa)}
+              className="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-light mt-1.5 transition-colors focus:outline-none"
+            >
+              {isExpanded ? "Sembunyikan" : "Lihat Selengkapnya"}
+              <MaterialIcon
+                name={isExpanded ? "expand_less" : "expand_more"}
+                className="text-[14px]"
+              />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* BAGIAN TENGAH: Deskripsi Kasus */}
-      <div className="mt-4 sm:mt-5 px-1">
-        <p
-          data-testid="bursa-card-description"
-          className={`text-sm text-main leading-relaxed transition-all duration-300 ${!isExpanded && isLongText ? "line-clamp-3" : ""}`}
-        >
-          {rawDesc}
-        </p>
-
-        {/* Tombol Lihat Selengkapnya */}
-        {isLongText && (
-          <button
-            onClick={() => toggleDesc(kasus.id_bursa)}
-            className="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-light mt-2 transition-colors focus:outline-none"
-          >
-            {isExpanded ? "Sembunyikan" : "Lihat Selengkapnya"}
-            <MaterialIcon
-              name={isExpanded ? "expand_less" : "expand_more"}
-              className="text-[14px]"
-            />
-          </button>
-        )}
-      </div>
-
       {/* BAGIAN BAWAH: Waktu, Dokumen & Action */}
-      <div className="mt-5 pt-4 border-t border-surface flex justify-between items-center gap-2">
+      <div className="mt-4 pt-3.5 border-t border-surface flex justify-between items-center gap-2">
         <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-5">
           {kasus.tanggal_konsultasi && (
             <div className="flex items-center gap-1.5 text-muted text-[10px] sm:text-xs font-medium">

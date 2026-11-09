@@ -101,7 +101,7 @@ export default function AttachedDocuments({
                         ? "image"
                         : "picture_as_pdf"
                     }
-                    className={`text-lg ${isImage(previewDoc.url, previewDoc.type) ? "text-amber-400" : "text-danger"}`}
+                    className={`text-lg ${isImage(previewDoc.url, previewDoc.type) ? "text-secondary" : "text-danger"}`}
                   />
                 </div>
                 <div className="min-w-0">
@@ -190,7 +190,7 @@ export default function AttachedDocuments({
             {/* Mobile Footer Action */}
             <div className="sm:hidden px-5 py-4 border-t border-surface bg-input flex justify-center">
               <Button
-                variant="primary"
+                variant="secondary"
                 fullWidth
                 onClick={() => window.open(previewDoc.url, "_blank")}
                 className="!py-3 shadow-soft"

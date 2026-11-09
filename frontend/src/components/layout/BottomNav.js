@@ -34,10 +34,9 @@ export default function BottomNav({ role = "client", className = "" }) {
 
   return (
     <footer
-      className={`fixed bottom-0 left-0 right-0 bg-dark/90 border-t border-muted/30 z-50 backdrop-blur-xl lg:hidden ${className}`}
+      className={`fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 lg:hidden transition-colors duration-500 ${className}`}
     >
-      {/* Mengubah py-4 menjadi py-2.5 agar height navbar lebih ramping */}
-      <div className="max-w-md mx-auto flex items-center justify-around w-full px-4 py-2.5">
+      <div className="max-w-md mx-auto flex items-stretch justify-around w-full px-3 py-1.5 gap-1">
         {navItems.map((item, idx) => {
           const isActive = pathname === item.path;
 
@@ -45,30 +44,27 @@ export default function BottomNav({ role = "client", className = "" }) {
             <Link
               key={idx}
               href={item.path}
-              className={`flex flex-col items-center gap-1 transition-all duration-300 group w-16 ${
-                isActive ? "text-main" : "text-muted hover:text-main"
+              className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 group flex-1 max-w-[84px] py-1.5 px-2 rounded-b-xl border-t-2 ${
+                isActive
+                  ? "bg-sidebar-active text-sidebar-active-text border-secondary"
+                  : "border-transparent text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text"
               }`}
             >
               <div className="relative">
                 <MaterialIcon
                   name={item.icon}
                   className={`text-2xl transition-transform duration-300 group-hover:scale-110 ${
-                    isActive ? "text-primary-light" : ""
+                    isActive
+                      ? "text-sidebar-active-text"
+                      : "text-sidebar-muted group-hover:text-sidebar-text"
                   }`}
                   style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
                 />
-
-                {/* Indikator Titik Aktif */}
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-primary-light rounded-full shadow-[0_0_8px_var(--color-primary-light)]" />
-                )}
               </div>
 
               <span
-                className={`text-[10px] uppercase tracking-widest transition-all ${
-                  isActive
-                    ? "font-bold opacity-100"
-                    : "font-medium opacity-70 group-hover:opacity-100"
+                className={`text-[10px] uppercase tracking-widest transition-all truncate max-w-full ${
+                  isActive ? "font-bold" : "font-medium"
                 }`}
               >
                 {item.label}

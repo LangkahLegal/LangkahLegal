@@ -13,13 +13,13 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
   if (isSuccess) {
     return (
       <div className="space-y-6 text-center md:text-left">
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-          <h3 className="text-emerald-500 font-semibold mb-2">Tautan Terkirim!</h3>
-          <p className="text-sm text-emerald-400/80">
+        <div className="p-4 bg-success-soft border border-success/25 rounded-xl">
+          <h3 className="text-success font-semibold mb-2">Tautan Terkirim!</h3>
+          <p className="text-sm text-success/90">
             Silakan periksa kotak masuk email Anda ({email}) untuk menemukan tautan reset password.
           </p>
         </div>
-        <Link href="/auth/login" className="block text-center w-full mt-4 text-sm font-medium text-brand hover:text-brand-light transition-colors">
+        <Link href="/auth/login" className="block text-center w-full mt-4 text-sm font-medium text-primary hover:text-primary-light transition-colors">
           Kembali ke halaman Login
         </Link>
       </div>
@@ -29,7 +29,7 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {errorMsg && (
-        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <div className="p-3 text-sm text-danger bg-danger-soft border border-danger/25 rounded-xl">
           {errorMsg}
         </div>
       )}

@@ -16,16 +16,16 @@ export default function RoleCard({ role, isActive, onSelect }) {
 
       <div
         className={`
-          flex flex-col gap-6 p-8 rounded-[2rem]  transition-all duration-300 backdrop-blur-md
+          flex flex-col gap-6 p-8 rounded-[2rem] border transition-all duration-300 backdrop-blur-md
           ${
             isActive
-              ? "bg-primary/10 border-primary shadow-[0_0_25px_rgba(109,87,252,0.2)]"
-              : "bg-[#1f1d35]/40 border-muted/10 hover:border-muted/30"
+              ? "bg-primary-soft border-primary shadow-soft"
+              : "bg-card border-surface shadow-soft hover:border-muted/30"
           }
         `}
       >
         <div className="flex items-start justify-between">
-          <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+          <div className="w-20 h-20 rounded-2xl bg-primary-soft flex items-center justify-center text-primary">
             <MaterialIcon
               name={role.icon}
               className="text-5xl"
@@ -43,7 +43,7 @@ export default function RoleCard({ role, isActive, onSelect }) {
               }
             `}
           >
-            {isActive && <div className="w-2 h-2 bg-white rounded-full" />}
+            {isActive && <div className="w-2 h-2 bg-on-primary rounded-full" />}
           </div>
         </div>
 

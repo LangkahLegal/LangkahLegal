@@ -36,7 +36,7 @@ export default function ClientCard({ name, createdAt, avatar }) {
   };
 
   return (
-    <section className="bg-card p-6 rounded-[2rem] border border-surface flex items-center gap-5 transition-all duration-500 hover:border-primary/30 group">
+    <section className="bg-card p-6 rounded-[2rem] border border-surface shadow-soft flex items-center gap-5 transition-all duration-500 hover:border-primary/30 group">
       {/* Profile Section */}
       <div className="w-20 h-20 shrink-0 rounded-2xl bg-bg flex items-center justify-center border border-surface shadow-inner overflow-hidden transition-colors duration-500">
         {avatar ? (

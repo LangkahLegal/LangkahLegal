@@ -7,8 +7,7 @@ import { userService } from "@/services/user.service";
 import { clearAuthSession } from "@/lib/authStorage";
 
 // Import Layout Components
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 
 // Import Local Components & Hooks
@@ -73,6 +72,7 @@ const logoutMutation = useMutation({
       label: "Profil Saya",
       description: "Kelola data pribadi Anda",
       path: "/setting/profile",
+      tone: "primary",
     },
     {
       id: "theme",
@@ -83,6 +83,7 @@ const logoutMutation = useMutation({
           ? "Mode Terang (Aktif)"
           : "Mode Gelap (Aktif)",
       onClick: toggleTheme,
+      tone: "secondary",
     },
     {
       id: "security",
@@ -90,6 +91,7 @@ const logoutMutation = useMutation({
       label: "Keamanan & Sandi",
       description: "Perbarui sandi anda",
       path: "/setting/security",
+      tone: "success",
     },
   ];
 
@@ -100,6 +102,7 @@ const logoutMutation = useMutation({
       label: "Tentang LangkahLegal",
       description: "Versi 2.4.0 (Stable)",
       path: "/setting/about",
+      tone: "accent",
     },
     {
       id: "logout",
@@ -116,21 +119,20 @@ const logoutMutation = useMutation({
   ];
 
   return (
-    <div
-      onClick={handleContainerClick}
-      className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500 cursor-default font-primary"
+    <AppShell
+      role={userRole}
+      onShellClick={handleContainerClick}
+      className="overflow-hidden cursor-default"
+      contentClassName="w-full"
+      pointerPassThrough
     >
-      <Sidebar role={userRole} />
-
-      <div className="flex-1 flex flex-col relative w-full lg:ml-64 transition-all duration-300 pointer-events-none">
-        <div className="pointer-events-auto flex flex-col h-full">
           <PageHeader
             title="Pengaturan"
             onSettingsClick={() => router.push("/setting")}
           />
 
-          <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
-            <div className="max-w-[1600px] mx-auto w-full space-y-8 animate-fade-in">
+          <main className="flex-1 overflow-y-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 scroll-smooth w-full">
+            <div className="max-w-3xl mx-auto w-full space-y-6 animate-fade-in">
               {/* --- Profile Section --- */}
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -164,12 +166,6 @@ const logoutMutation = useMutation({
               </div>
             </div>
           </main>
-
-          <div className="lg:hidden">
-            <BottomNav role={userRole} />
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

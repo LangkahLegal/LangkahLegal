@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { userService } from "@/services/user.service";
 
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import AboutHero from "@/components/setting/about/AboutHero";
 import VisiMisiCards from "@/components/setting/about/VisiMisiCards";
@@ -29,11 +28,7 @@ export default function AboutPage() {
   }, []);
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500 font-primary">
-      {/* Sidebar untuk Desktop */}
-      <Sidebar role={userRole} />
-
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
+    <AppShell role={userRole}>
         <PageHeader
           title="Tentang LangkahLegal"
           onSettingsClick={() => router.push("/setting")}
@@ -48,11 +43,6 @@ export default function AboutPage() {
             <BottomBanner />
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role={userRole} />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

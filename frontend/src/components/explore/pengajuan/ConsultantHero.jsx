@@ -1,18 +1,7 @@
 "use client";
 
 import { MaterialIcon } from "@/components/ui/Icons";
-import { useTheme } from "@/providers/ThemeProvider";
-
-const getSafeAvatarSrc = (url, fallbackUrl) => {
-  if (!url) return fallbackUrl;
-
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : fallbackUrl;
-  } catch {
-    return fallbackUrl;
-  }
-};
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function ConsultantHero({
   name = "User",
@@ -23,23 +12,7 @@ export default function ConsultantHero({
   linkedinUrl,
   status_verifikasi,
 }) {
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
-
-  // Mencegah undefined pada pencetakan nama di URL
   const safeName = name || "User";
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    safeName,
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=256&bold=true`;
-  const avatarSrc = getSafeAvatarSrc(avatar, fallbackUrl);
 
   // Memastikan URL diawali dengan protokol
   const handleOpenLink = (url) => {
@@ -57,20 +30,20 @@ export default function ConsultantHero({
       <div className="relative mb-8 sm:mb-10 animate-fade-in">
         <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full border-[8px] border-primary/10 p-2 backdrop-blur-sm shadow-inner">
           <div className="w-full h-full rounded-full border-[3px] border-primary p-1.5 overflow-hidden">
-            <img
-              src={avatarSrc}
-              className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
+            <UserAvatar
+              src={avatar}
+              name={safeName}
               alt={safeName}
-              onError={(e) => {
-                e.currentTarget.src = fallbackUrl;
-              }}
+              size="xl"
+              textClassName="text-3xl sm:text-5xl"
+              className="w-full h-full rounded-full object-cover shadow-2xl transition-transform duration-500 hover:scale-105"
             />
           </div>
         </div>
 
         {/* Badge Verified - REFACTOR: border-bg & bg-primary */}
         {status_verifikasi === "terverifikasi" && (
-          <div className="absolute bottom-2 right-2 bg-primary text-white w-8 h-8 sm:w-11 sm:h-11 rounded-full border-[4px] border-bg flex items-center justify-center shadow-xl">
+          <div className="absolute bottom-2 right-2 bg-primary text-on-primary w-8 h-8 sm:w-11 sm:h-11 rounded-full border-[4px] border-bg flex items-center justify-center shadow-xl">
             <MaterialIcon name="verified" className="text-xs sm:text-lg" title="Verified Consultant" />
           </div>
         )}
@@ -82,7 +55,7 @@ export default function ConsultantHero({
           {safeName}
         </h1>
         {status_verifikasi === "terverifikasi" ? (
-          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+          <span className="text-[10px] bg-success-soft text-success border border-success/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
             ✅ Verified
           </span>
         ) : (
@@ -94,7 +67,7 @@ export default function ConsultantHero({
 
       <div className="flex items-center justify-center gap-3 flex-wrap px-4 mb-3">
         <div className="flex items-center gap-1 whitespace-nowrap">
-          <MaterialIcon name="star" className="text-amber-400 text-base" />
+          <MaterialIcon name="star" className="text-secondary text-base" />
           <span className="text-[10px] sm:text-xs font-bold text-main opacity-80">
             {rating || "0.0"}
           </span>

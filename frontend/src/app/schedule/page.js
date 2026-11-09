@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import BottomNav from "@/components/layout/BottomNav";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import MonthlyCalendar from "@/components/schedule/MonthlyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
 import AddSlotModal from "@/components/schedule/AddSlotModal";
@@ -142,14 +141,25 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col relative min-w-0 w-full ml-0 lg:ml-64 transition-all duration-300">
+    <AppShell
+      role="konsultan"
+      contentClassName="w-full"
+      overlay={
+        <AddSlotModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSave}
+          initialStart={currentActiveSlot?.jam_mulai.substring(0, 5) || "00:00"}
+          initialEnd={currentActiveSlot?.jam_selesai.substring(0, 5) || "00:00"}
+          isNewData={!currentActiveSlot}
+          isBooked={!!currentActiveSlot?.nama_klien}
+        />
+      }
+    >
         <PageHeader title="Kelola Jadwal" backHref="/dashboard/consultant" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-6 animate-fade-in">
             {isLoadingSchedules || isLoadingStats ? (
               <div className="flex flex-col items-center justify-center py-20 gap-5">
                 <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -184,22 +194,6 @@ export default function SchedulePage() {
             )}
           </div>
         </main>
-
-        {/* MODAL HANDLE CREATE & UPDATE */}
-        <AddSlotModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSave}
-          initialStart={currentActiveSlot?.jam_mulai.substring(0, 5) || "00:00"}
-          initialEnd={currentActiveSlot?.jam_selesai.substring(0, 5) || "00:00"}
-          isNewData={!currentActiveSlot}
-          isBooked={!!currentActiveSlot?.nama_klien}
-        />
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

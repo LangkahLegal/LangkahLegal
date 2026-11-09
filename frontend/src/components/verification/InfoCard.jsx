@@ -33,7 +33,7 @@ export default function InformasiProfesional({
           </h2>
         </div>
 
-        <div className="bg-card/40 border border-surface rounded-2xl p-5 space-y-2">
+        <div className="bg-card border border-surface rounded-2xl p-5 space-y-2 shadow-soft">
           <InfoRow label="Gelar Akademik" value={gelar} icon="school" />
           <InfoRow label="Pendidikan Terakhir" value={pendidikan} icon="menu_book" />
           <InfoRow label="No. Izin Praktik" value={nomorIzin} icon="badge" />
@@ -54,7 +54,7 @@ export default function InformasiProfesional({
           </h2>
         </div>
 
-        <div className="bg-card/40 border border-surface rounded-2xl p-5 space-y-2">
+        <div className="bg-card border border-surface rounded-2xl p-5 space-y-2 shadow-soft">
           <InfoRow label="Kota Praktik" value={kota} icon="location_on" />
           <InfoRow label="Email" value={email} icon="mail" />
         </div>

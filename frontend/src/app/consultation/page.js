@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import SearchBar from "@/components/layout/SearchBar";
 import FilterPanel from "@/components/layout/FilterPanel";
@@ -84,20 +83,17 @@ export default function ConsultantClientsPage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-x-hidden font-primary w-full transition-colors duration-500">
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 w-full transition-all duration-300">
+    <AppShell role="konsultan" contentClassName="w-full">
         <PageHeader title="Daftar Klien" />
 
-        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
-          <div className="w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
+        <main className="flex-1 overflow-y-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 scroll-smooth w-full">
+          <div className="w-full max-w-6xl mx-auto space-y-6 animate-fade-in">
             {/* Stats Header */}
-            <div className="space-y-1 px-1">
+            <div className="space-y-0.5 px-1">
               <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">
                 Klien Aktif
               </p>
-              <h2 className="text-3xl font-black text-main tracking-tight">
+              <h2 className="text-2xl font-black text-main tracking-tight">
                 {isLoading ? "..." : clients.length}{" "}
                 <span className="text-primary-light">Klien</span>
               </h2>
@@ -122,14 +118,16 @@ export default function ConsultantClientsPage() {
             />
 
             <div
-              className={`grid grid-cols-1 gap-6 w-full transition-opacity duration-300 ${
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-4 w-full transition-opacity duration-300 ${
                 isFetching && !isLoading ? "opacity-60" : "opacity-100"
               }`}
             >
               {isLoading ? (
-                <LoadingState />
+                <div className="col-span-full">
+                  <LoadingState />
+                </div>
               ) : isError ? (
-                <div className="text-center py-20 text-danger text-sm font-bold">
+                <div className="col-span-full text-center py-20 text-danger text-sm font-bold">
                   Gagal memuat data klien.
                 </div>
               ) : clients.length > 0 ? (
@@ -144,29 +142,26 @@ export default function ConsultantClientsPage() {
                   </div>
                 ))
               ) : (
-                <EmptyState
-                  icon="group_off"
-                  title="Klien Kosong"
-                  description={
-                    hasActiveFilter
-                      ? "Tidak ada klien yang cocok dengan pencarian atau filter yang dipilih."
-                      : "Belum ada klien terjadwal."
-                  }
-                  actionLabel={hasActiveFilter ? "Reset Filter" : undefined}
-                  actionIcon="restart_alt"
-                  onAction={hasActiveFilter ? resetFilters : undefined}
-                  className="py-12"
-                />
+                <div className="col-span-full">
+                  <EmptyState
+                    icon="group_off"
+                    title="Klien Kosong"
+                    description={
+                      hasActiveFilter
+                        ? "Tidak ada klien yang cocok dengan pencarian atau filter yang dipilih."
+                        : "Belum ada klien terjadwal."
+                    }
+                    actionLabel={hasActiveFilter ? "Reset Filter" : undefined}
+                    actionIcon="restart_alt"
+                    onAction={hasActiveFilter ? resetFilters : undefined}
+                    className="py-12"
+                  />
+                </div>
               )}
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

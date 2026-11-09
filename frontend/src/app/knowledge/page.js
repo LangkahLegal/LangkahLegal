@@ -6,8 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import PageHeader from "@/components/layout/PageHeader";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import SearchBar from "@/components/layout/SearchBar";
 import CategoryList from "@/components/dashboard/CategoryList";
 import StatCard from "@/components/dashboard/StatCard";
@@ -149,23 +148,51 @@ export default function KnowledgeBasePage() {
   ];
 
   return (
-    <div className="bg-bg text-main font-primary min-h-screen flex overflow-hidden transition-colors duration-500 relative">
-      <Sidebar role="admin" />
+    <AppShell
+      role="admin"
+      className="relative"
+      contentClassName="w-full"
+      overlay={
+        <>
+          {toastMsg && (
+            <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
+              <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${toastMsg.type === 'error'
+                  ? 'bg-danger/10 border-danger/30 text-danger'
+                  : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
+                }`}>
+                <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
+                {toastMsg.text}
+              </div>
+            </div>
+          )}
 
-      {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
-          <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${toastMsg.type === 'error'
-              ? 'bg-danger/10 border-danger/30 text-danger'
-              : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
-            }`}>
-            <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
-            {toastMsg.text}
-          </div>
-        </div>
-      )}
+          <UploadDocumentModal
+            open={uploadModalOpen}
+            onClose={() => setUploadModalOpen(false)}
+            setActiveJobId={setActiveJobId}
+            showToast={showToast}
+          />
 
-      <div className="flex-1 flex flex-col relative min-w-0 w-full lg:ml-64 transition-all duration-300">
+          <ReplaceDocumentModal
+            open={replaceModalOpen}
+            onClose={() => setReplaceModalOpen(false)}
+            docToReplace={docToReplace}
+            setActiveJobId={setActiveJobId}
+            showToast={showToast}
+          />
+
+          <DeleteDocumentModal
+            open={confirmModalOpen}
+            onClose={() => {
+              setConfirmModalOpen(false);
+              setDocToDelete(null);
+            }}
+            docToDelete={docToDelete}
+            showToast={showToast}
+          />
+        </>
+      }
+    >
         <PageHeader title="Manajemen Dokumen" backHref="/dashboard/admin" />
 
         {activeJobId && (
@@ -175,13 +202,13 @@ export default function KnowledgeBasePage() {
           </div>
         )}
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 sm:space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-6 animate-fade-in">
             {/* Header Area */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-6 rounded-3xl border border-surface shadow-soft">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card p-5 rounded-2xl border border-surface shadow-soft">
               <div>
-                <h2 className="text-2xl font-bold text-main tracking-tight font-headline">Knowledge Base</h2>
-                <p className="text-muted text-sm mt-1">Kelola dokumen hukum dan data referensi untuk AI.</p>
+                <h2 className="text-lg lg:text-xl font-bold text-main tracking-tight font-headline">Knowledge Base</h2>
+                <p className="text-muted text-xs lg:text-sm mt-0.5">Kelola dokumen hukum dan data referensi untuk AI.</p>
               </div>
               <div className="flex gap-3">
                 <Button variant="primary" onClick={() => setUploadModalOpen(true)}>
@@ -209,7 +236,7 @@ export default function KnowledgeBasePage() {
                   }}
                 />
               </div>
-              <StatCard label="Total Dokumen" val={totalDocs} icon="library_books" variant="horizontal" />
+              <StatCard label="Total Dokumen" val={totalDocs} icon="library_books" variant="horizontal" tone="info" />
             </div>
 
             {/* Main Table */}
@@ -226,37 +253,7 @@ export default function KnowledgeBasePage() {
 
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="admin" />
-        </div>
-      </div>
-
-      <UploadDocumentModal
-        open={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        setActiveJobId={setActiveJobId}
-        showToast={showToast}
-      />
-
-      <ReplaceDocumentModal
-        open={replaceModalOpen}
-        onClose={() => setReplaceModalOpen(false)}
-        docToReplace={docToReplace}
-        setActiveJobId={setActiveJobId}
-        showToast={showToast}
-      />
-
-      <DeleteDocumentModal
-        open={confirmModalOpen}
-        onClose={() => {
-          setConfirmModalOpen(false);
-          setDocToDelete(null);
-        }}
-        docToDelete={docToDelete}
-        showToast={showToast}
-      />
-    </div>
+    </AppShell>
   );
 }
 

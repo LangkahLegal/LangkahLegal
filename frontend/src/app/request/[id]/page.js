@@ -5,8 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Layout & UI
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import SuccessView from "@/components/layout/SuccessView";
 
@@ -169,10 +168,7 @@ export default function RequestDetailPage() {
     );
 
   return (
-    <div className="bg-bg text-main min-h-screen flex transition-colors duration-500 font-primary">
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
+    <AppShell role="konsultan">
         <PageHeader title="Detail Permintaan" />
 
         <main className="flex-1 overflow-y-auto w-full">
@@ -186,13 +182,13 @@ export default function RequestDetailPage() {
 
             {/* Bursa Badge */}
             {requestData.isBursaClaim && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3">
+              <div className="bg-secondary-soft border border-secondary/25 rounded-2xl p-4 flex items-start gap-3">
                 <MaterialIcon
                   name="storefront"
-                  className="text-amber-400 text-xl mt-0.5 shrink-0"
+                  className="text-secondary-text text-xl mt-0.5 shrink-0"
                 />
                 <div>
-                  <p className="text-sm font-bold text-amber-400 mb-0.5">
+                  <p className="text-sm font-bold text-secondary-text mb-0.5">
                     Dari Bursa Kasus
                   </p>
                   <p className="text-xs text-muted leading-relaxed">
@@ -430,12 +426,7 @@ export default function RequestDetailPage() {
             )}
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

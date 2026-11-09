@@ -11,8 +11,7 @@ import Pagination from "@/components/knowledge/Pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import PageHeader from "@/components/layout/PageHeader";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import SearchBar from "@/components/layout/SearchBar";
 
 import { getDocumentChunks, updateChunk } from "@/services/admin.service";
@@ -85,24 +84,25 @@ function KnowledgeDetailContent() {
     };
 
     return (
-        <div className="bg-bg text-main font-primary min-h-screen flex overflow-hidden transition-colors duration-500 relative">
-            <Sidebar role="admin" />
-
-            {/* Toast Notification */}
-            {toastMsg && (
-                <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
-                    <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
-                        toastMsg.type === 'error' 
-                            ? 'bg-danger/10 border-danger/30 text-danger' 
-                            : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
-                    }`}>
-                        <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
-                        {toastMsg.text}
+        <AppShell
+            role="admin"
+            className="relative"
+            contentClassName="w-full"
+            overlay={
+                toastMsg && (
+                    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
+                        <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
+                            toastMsg.type === 'error' 
+                                ? 'bg-danger/10 border-danger/30 text-danger' 
+                                : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
+                        }`}>
+                            <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
+                            {toastMsg.text}
+                        </div>
                     </div>
-                </div>
-            )}
-
-            <div className="flex-1 flex flex-col relative min-w-0 w-full lg:ml-64 transition-all duration-300">
+                )
+            }
+        >
                 <PageHeader title="Detail Dokumen" backHref="/knowledge" />
 
                 <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-32 pt-8 scroll-smooth w-full">
@@ -196,13 +196,7 @@ function KnowledgeDetailContent() {
 
                     </div>
                 </main>
-
-                <div className="lg:hidden">
-                    <BottomNav role="admin" />
-                </div>
-            </div>
-
-        </div>
+        </AppShell>
     );
 }
 
