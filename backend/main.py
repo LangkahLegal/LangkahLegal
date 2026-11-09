@@ -6,14 +6,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import Settings, get_settings
 from core.database import check_db_connection
 from docs import main as docs
+from middleware.request_id import RequestIdFilter, pasang_request_id
 from routers import admin, admin_docs, auth, cases, chatbot, consultants, consultations, knowledge, payments, users
 
+_log_handler = logging.StreamHandler()
+_log_handler.addFilter(RequestIdFilter())
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    format="%(asctime)s %(levelname)s [%(name)s] [%(request_id)s] %(message)s",
+    handlers=[_log_handler],
 )
 
 app = FastAPI(title="LangkahLegal API", description=docs.API_DESCRIPTION, version="1.0.0")
+app.middleware("http")(pasang_request_id)
 
 
 @app.middleware("http")

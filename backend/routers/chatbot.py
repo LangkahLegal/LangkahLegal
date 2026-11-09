@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 
 from core.database import get_supabase_client
 from core.user import CurrentUser
@@ -70,6 +70,7 @@ async def get_session_messages(
 )
 async def chatbot_triage(
     payload: TriageRequest,
+    background_tasks: BackgroundTasks,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    return chat_service.run_triage(get_supabase_client(), current_user, payload)
+    return chat_service.run_triage(get_supabase_client(), current_user, payload, background_tasks)
