@@ -9,7 +9,7 @@ from helpers.filters import date_range, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.schedule import ensure_not_past, find_conflict
 from helpers.urls import ensure_https_url, is_https_url
-from repositories import case_repository, consultation_repository
+from repositories import bursa_document_repository, case_repository, consultation_repository
 from schemas.cases import CaseForm, CaseListFilters, DokumenBursa, UrutanBursa
 from services import notification_service
 from services.storage_service import select_valid_files, upload_supporting_documents
@@ -57,14 +57,23 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
 
     id_bursa = created[0]["id_bursa"]
 
-    uploaded, failed_docs = await upload_supporting_documents(
-        db, valid_files, id_bursa, current_user.id_user, lambda doc_meta: doc_meta
-    )
+    def save_bursa_document(doc_meta: dict) -> dict:
+        # File disimpan privat (storage path) di tabel terpisah; dokumen_bukti tetap berisi link user saja.
+        bursa_document_repository.insert(
+            db,
+            {
+                "id_bursa": id_bursa,
+                "nama_dokumen": doc_meta["nama_dokumen"],
+                "file_path": doc_meta["file_path"],
+                "tipe_file": doc_meta["tipe_file"],
+                "ukuran_kb": doc_meta["ukuran_kb"],
+            },
+        )
+        return doc_meta
 
-    if uploaded:
-        file_urls = [doc["file_url"] for doc in uploaded]
-        combined = ",".join(([dokumen_bukti] if dokumen_bukti else []) + file_urls)
-        case_repository.update(db, id_bursa, {"dokumen_bukti": combined})
+    uploaded, failed_docs = await upload_supporting_documents(
+        db, valid_files, id_bursa, current_user.id_user, save_bursa_document
+    )
 
     return {
         "message": "Kasus berhasil diposting secara anonim ke bursa",

@@ -1,3 +1,4 @@
+import logging
 from typing import Callable, Optional
 from uuid import uuid4
 
@@ -6,10 +7,15 @@ from fastapi import HTTPException, UploadFile
 from core.config import get_settings
 from core.exceptions import BadRequestError
 
+logger = logging.getLogger(__name__)
+
 MAX_PORTFOLIO_SIZE_MB = 10
 MAX_SUPPORTING_DOC_SIZE_MB = 10
 MAX_AVATAR_SIZE_MB = 2
 MAX_FILES_PER_UPLOAD = 10
+
+# Masa berlaku signed URL untuk file privat (dokumen kasus): 1 jam.
+SIGNED_URL_TTL_SECONDS = 3600
 
 SUPPORTING_DOC_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
 AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
@@ -30,6 +36,30 @@ async def _read_file_bytes(file: UploadFile, label: str, max_size_mb: int, size_
     return file_bytes
 
 
+def _put_object(
+    db_client,
+    bucket_name: str,
+    storage_path: str,
+    file_bytes: bytes,
+    content_type: str,
+    upsert: bool,
+    error_prefix: str,
+) -> None:
+    try:
+        db_client.storage.from_(bucket_name).upload(
+            storage_path,
+            file_bytes,
+            {
+                "content-type": content_type,
+                "upsert": "true" if upsert else "false",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"{error_prefix}: {str(exc)}")
+
+
 def _upload_to_bucket(
     db_client,
     bucket_name: str,
@@ -39,21 +69,66 @@ def _upload_to_bucket(
     upsert: bool,
     error_prefix: str,
 ) -> str:
+    """Upload lalu kembalikan URL publik. Hanya untuk bucket publik (avatar, portofolio)."""
+    _put_object(db_client, bucket_name, storage_path, file_bytes, content_type, upsert, error_prefix)
+    return db_client.storage.from_(bucket_name).get_public_url(storage_path)
+
+
+def _upload_to_bucket_private(
+    db_client,
+    bucket_name: str,
+    storage_path: str,
+    file_bytes: bytes,
+    content_type: str,
+    upsert: bool,
+    error_prefix: str,
+) -> str:
+    """Upload lalu kembalikan storage path (bukan URL). Untuk bucket privat (dokumen kasus)."""
+    _put_object(db_client, bucket_name, storage_path, file_bytes, content_type, upsert, error_prefix)
+    return storage_path
+
+
+def create_signed_url(
+    db_client, bucket_name: str, storage_path: str, expires_in: int = SIGNED_URL_TTL_SECONDS
+) -> str | None:
+    """Buat signed URL untuk satu storage path. None kalau gagal/kosong."""
+    if not storage_path:
+        return None
     try:
-        storage = db_client.storage.from_(bucket_name)
-        storage.upload(
-            storage_path,
-            file_bytes,
-            {
-                "content-type": content_type,
-                "upsert": "true" if upsert else "false",
-            },
-        )
-        return storage.get_public_url(storage_path)
-    except HTTPException:
-        raise
+        res = db_client.storage.from_(bucket_name).create_signed_url(storage_path, expires_in)
+        if isinstance(res, dict):
+            return res.get("signedURL") or res.get("signedUrl") or res.get("signed_url")
+        return res
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"{error_prefix}: {str(exc)}")
+        logger.warning(f"Gagal membuat signed URL untuk {bucket_name}/{storage_path}: {exc}")
+        return None
+
+
+def path_from_ref(bucket_name: str, value: str | None) -> str | None:
+    """Ambil storage path dari nilai tersimpan: URL publik lama -> path; path apa adanya; link eksternal -> None."""
+    if not value:
+        return None
+    public_marker = f"/storage/v1/object/public/{bucket_name}/"
+    sign_marker = f"/storage/v1/object/sign/{bucket_name}/"
+    for marker in (public_marker, sign_marker):
+        if marker in value:
+            return value.split(marker, 1)[1].split("?", 1)[0]
+    if value.startswith("http://") or value.startswith("https://"):
+        return None  # link eksternal milik user, bukan file kita
+    return value  # sudah berupa storage path
+
+
+def sign_stored_ref(
+    db_client, bucket_name: str, value: str | None, expires_in: int = SIGNED_URL_TTL_SECONDS
+) -> str | None:
+    """Ubah nilai tersimpan menjadi URL siap pakai: file kita -> signed URL; link eksternal -> apa adanya.
+
+    Toleran terhadap data lama (URL publik penuh) maupun data baru (storage path).
+    """
+    path = path_from_ref(bucket_name, value)
+    if path is None:
+        return value  # link eksternal atau kosong: biarkan
+    return create_signed_url(db_client, bucket_name, path, expires_in) or value
 
 
 async def upload_portfolio_pdf_to_supabase(
@@ -149,7 +224,7 @@ async def upload_supporting_document_to_supabase(
     else:
         content_type = file.content_type or f"image/{storage_ext if storage_ext != 'jpg' else 'jpeg'}"
 
-    public_url = _upload_to_bucket(
+    storage_path = _upload_to_bucket_private(
         db_client,
         bucket_name,
         f"pengajuan/{id_pengajuan}/user_{id_user}/{uuid4().hex}.{storage_ext}",
@@ -161,7 +236,7 @@ async def upload_supporting_document_to_supabase(
 
     return {
         "nama_dokumen": filename,
-        "file_url": public_url,
+        "file_path": storage_path,
         "tipe_file": "pdf" if is_pdf else "image",
         "ukuran_kb": max(1, len(file_bytes) // 1024),
     }
