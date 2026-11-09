@@ -88,7 +88,9 @@ def _upload_to_bucket_private(
     return storage_path
 
 
-def create_signed_url(db_client, bucket_name: str, storage_path: str, expires_in: int = SIGNED_URL_TTL_SECONDS) -> str | None:
+def create_signed_url(
+    db_client, bucket_name: str, storage_path: str, expires_in: int = SIGNED_URL_TTL_SECONDS
+) -> str | None:
     """Buat signed URL untuk satu storage path. None kalau gagal/kosong."""
     if not storage_path:
         return None
@@ -116,7 +118,9 @@ def path_from_ref(bucket_name: str, value: str | None) -> str | None:
     return value  # sudah berupa storage path
 
 
-def sign_stored_ref(db_client, bucket_name: str, value: str | None, expires_in: int = SIGNED_URL_TTL_SECONDS) -> str | None:
+def sign_stored_ref(
+    db_client, bucket_name: str, value: str | None, expires_in: int = SIGNED_URL_TTL_SECONDS
+) -> str | None:
     """Ubah nilai tersimpan menjadi URL siap pakai: file kita -> signed URL; link eksternal -> apa adanya.
 
     Toleran terhadap data lama (URL publik penuh) maupun data baru (storage path).
