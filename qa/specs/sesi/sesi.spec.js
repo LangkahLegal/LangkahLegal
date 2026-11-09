@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { Given, Then } from "../../hooks/bdd.js";
-import { readLocalStorage } from "../../support/browser.js";
+import { readLocalStorage, readSessionCookie } from "../../support/browser.js";
 import { account } from "../../test_data/accounts.js";
 import { INVALID_REFRESH_TOKEN, INVALID_TOKEN } from "../../test_data/auth.data.js";
 
@@ -19,12 +19,16 @@ Given("token akses {akun} sudah kedaluwarsa", async ({ auth }, akun) => {
 });
 
 Then("sesi {akun} tersimpan di browser", async ({ page }, akun) => {
-  expect(await readLocalStorage(page, "ll_token")).toBeTruthy();
+  const token = await readSessionCookie(page, "ll_token");
+  expect(token?.value).toBeTruthy();
+  expect(token.httpOnly).toBe(true);
+  expect(await readLocalStorage(page, "ll_token")).toBeNull();
   expect(await readLocalStorage(page, "ll_role")).toBe(account(akun).role);
 });
 
 Then("tidak ada sesi yang tersimpan di browser", async ({ page }) => {
-  await expect.poll(() => readLocalStorage(page, "ll_token")).toBeNull();
+  await expect.poll(() => readLocalStorage(page, "ll_session")).toBeNull();
+  await expect.poll(() => readSessionCookie(page, "ll_token")).toBeNull();
 });
 
 Then("dashboard menampilkan nama pengguna", async ({ page, world }) => {
@@ -34,9 +38,9 @@ Then("dashboard menampilkan nama pengguna", async ({ page, world }) => {
 // ── SES-001 · Token akses kedaluwarsa diperbarui otomatis
 
 Then("token akses di browser sudah diganti dengan yang baru", async ({ page }) => {
-  const token = await readLocalStorage(page, "ll_token");
-  expect(token).toBeTruthy();
-  expect(token).not.toBe(INVALID_TOKEN);
+  const token = await readSessionCookie(page, "ll_token");
+  expect(token?.value).toBeTruthy();
+  expect(token.value).not.toBe(INVALID_TOKEN);
 });
 
 // ── SES-004 · Setelah token diperbarui, setiap permintaan memakai token yang baru
@@ -44,9 +48,8 @@ Then("token akses di browser sudah diganti dengan yang baru", async ({ page }) =
 Then("semua permintaan ke backend membawa token akses pengguna", async ({ network, world }) => {
   expect(network.requests.length).toBeGreaterThan(0);
   for (const request of network.requests) {
-    expect(request.headers.authorization, `${request.method} ${request.path}`).toBe(
-      `Bearer ${world.session.access_token}`,
-    );
+    const { cookie = "" } = await request.allHeaders();
+    expect(cookie, `${request.method} ${request.path}`).toContain(`ll_token=${world.session.access_token}`);
   }
 });
 

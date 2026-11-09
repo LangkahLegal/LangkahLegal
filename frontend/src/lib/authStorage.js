@@ -1,6 +1,8 @@
-const ACCESS_TOKEN_KEYS = ["ll_token", "token"];
-const REFRESH_TOKEN_KEYS = ["ll_refresh", "refresh_token"];
+// Token sesi disimpan backend sebagai cookie httpOnly; browser hanya menyimpan penanda yang bukan rahasia.
+const SESSION_KEY = "ll_session";
+const LOGIN_METHOD_KEY = "ll_login_method";
 const ROLE_KEYS = ["ll_role", "role"];
+const LEGACY_TOKEN_KEYS = ["ll_token", "token", "ll_refresh", "refresh_token"];
 const OAUTH_VERIFIER_KEY = "pending_oauth_verifier";
 const APP_ROLES = ["client", "konsultan", "admin"];
 
@@ -15,20 +17,25 @@ const readFirst = (keys) => {
   return null;
 };
 
-export const getStoredAccessToken = () => readFirst(ACCESS_TOKEN_KEYS);
+export const clearLegacyTokens = () => {
+  if (typeof window === "undefined") return;
+  LEGACY_TOKEN_KEYS.forEach((key) => window.localStorage.removeItem(key));
+};
 
-export const getStoredRefreshToken = () => readFirst(REFRESH_TOKEN_KEYS);
+export const hasStoredSession = () => readFirst([SESSION_KEY]) === "1";
 
 export const getStoredRole = () => readFirst(ROLE_KEYS);
 
 /** Benar bila sesi sekarang didapat dari login email + password (bukan Google atau tautan reset). */
-export const isPasswordSession = () => {
+export const isPasswordSession = () => readFirst([LOGIN_METHOD_KEY]) === "password";
+
+const loginMethodOf = (accessToken) => {
   try {
-    const payload = getStoredAccessToken().split(".")[1];
+    const payload = accessToken.split(".")[1];
     const claims = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    return (claims.amr || []).some((entry) => entry?.method === "password");
+    return (claims.amr || []).some((entry) => entry?.method === "password") ? "password" : "other";
   } catch {
-    return false;
+    return null;
   }
 };
 
@@ -63,8 +70,6 @@ export const setStoredRole = (role) => {
 export const setAuthSession = (session) => {
   if (typeof window === "undefined" || !session) return;
 
-  const accessToken = session.access_token || null;
-  const refreshToken = session.refresh_token || null;
   // `session.user.role` milik Supabase selalu "authenticated"; itu bukan peran aplikasi.
   const role =
     [
@@ -72,18 +77,12 @@ export const setAuthSession = (session) => {
       session?.user_metadata?.role,
       session?.role,
     ].find((candidate) => APP_ROLES.includes(candidate)) || null;
+  const loginMethod = session.access_token ? loginMethodOf(session.access_token) : null;
 
-  if (accessToken) {
-    ACCESS_TOKEN_KEYS.forEach((key) => window.localStorage.setItem(key, accessToken));
-  }
-
-  if (refreshToken) {
-    REFRESH_TOKEN_KEYS.forEach((key) => window.localStorage.setItem(key, refreshToken));
-  }
-
-  if (role) {
-    ROLE_KEYS.forEach((key) => window.localStorage.setItem(key, role));
-  }
+  clearLegacyTokens();
+  window.localStorage.setItem(SESSION_KEY, "1");
+  if (loginMethod) window.localStorage.setItem(LOGIN_METHOD_KEY, loginMethod);
+  if (role) ROLE_KEYS.forEach((key) => window.localStorage.setItem(key, role));
 
   notifyAuthChange();
 };
@@ -91,7 +90,7 @@ export const setAuthSession = (session) => {
 export const clearAuthSession = () => {
   if (typeof window === "undefined") return;
 
-  [...ACCESS_TOKEN_KEYS, ...REFRESH_TOKEN_KEYS, ...ROLE_KEYS].forEach((key) => {
+  [SESSION_KEY, LOGIN_METHOD_KEY, ...ROLE_KEYS, ...LEGACY_TOKEN_KEYS].forEach((key) => {
     window.localStorage.removeItem(key);
   });
 
@@ -99,6 +98,7 @@ export const clearAuthSession = () => {
   window.sessionStorage.removeItem("pending_auth");
   window.sessionStorage.removeItem("pending_role");
   window.localStorage.removeItem("ll_cached_profile");
+  window.localStorage.removeItem("ll_consultation_draft");
 
   notifyAuthChange();
 };

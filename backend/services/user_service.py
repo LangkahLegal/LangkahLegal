@@ -5,9 +5,15 @@ from core.config import get_settings
 from core.constants import Role
 from core.exceptions import ForbiddenError
 from core.user import CurrentUser
+from helpers.urls import ensure_https_url
 from repositories import consultant_repository, user_repository
 from schemas.users import ProfileUpdatePayload
-from services.storage_service import upload_avatar_to_supabase, upload_portfolio_pdf_to_supabase
+from services.storage_service import (
+    path_from_ref,
+    sign_stored_ref,
+    upload_avatar_to_supabase,
+    upload_portfolio_pdf_to_supabase,
+)
 
 
 def get_settings_info(db: Client, current_user: CurrentUser) -> dict:
@@ -21,8 +27,28 @@ def get_full_profile(db: Client, current_user: CurrentUser) -> dict:
     if user["role"] == Role.KONSULTAN:
         kons = consultant_repository.get_by_user_strict(db, current_user.id_user)
         # user terakhir di-spread supaya foto_profil (dan field user lain) menang atas kolom konsultan yang bisa basi.
-        return {**kons, **user, "portofolio": kons["portofolio"]}
+        portofolio = sign_stored_ref(db, get_settings().supabase_portofolio_bucket, kons["portofolio"])
+        return {**kons, **user, "portofolio": portofolio}
     return user
+
+
+def _stored_portofolio(value: str | None) -> str | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    bucket = get_settings().supabase_portofolio_bucket
+    if path_from_ref(bucket, value) is not None:
+        return path_from_ref(bucket, value)
+    return ensure_https_url(value, "Tautan portofolio harus berupa tautan https")
+
+
+def _profile_url(value: str | None, label: str) -> str | None:
+    value = (value or "").strip()
+    if not value:
+        return value
+    if "://" not in value:
+        value = f"https://{value}"
+    return ensure_https_url(value, f"{label} harus berupa tautan https")
 
 
 PROFESSIONAL_FIELDS = (
@@ -43,6 +69,8 @@ def _professional_fields(payload: ProfileUpdatePayload) -> dict:
     k_data = {field: getattr(payload, field) for field in PROFESSIONAL_FIELDS if getattr(payload, field) is not None}
     if payload.nama:
         k_data["nama_lengkap"] = payload.nama
+    if "linkedin" in k_data:
+        k_data["linkedin"] = _profile_url(k_data["linkedin"], "Tautan LinkedIn")
     return k_data
 
 
@@ -56,7 +84,7 @@ async def update_profile(
 ) -> dict:
     normalized_portofolio_value: str | None = None
     if explicit_portofolio_field:
-        normalized_portofolio_value = (payload.portofolio or "").strip() or None
+        normalized_portofolio_value = _stored_portofolio(payload.portofolio)
 
     u_data = {}
     if payload.nama:
@@ -71,7 +99,7 @@ async def update_profile(
             bucket_name=get_settings().supabase_avatar_bucket,
         )
     elif payload.foto_profil:
-        foto_value = payload.foto_profil
+        foto_value = ensure_https_url(payload.foto_profil, "Foto profil harus berupa tautan https")
 
     if foto_value is not None:
         u_data["foto_profil"] = foto_value

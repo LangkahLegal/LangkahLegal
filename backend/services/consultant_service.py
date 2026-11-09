@@ -107,7 +107,8 @@ def get_available_schedules(db: Client, id_konsultan: int) -> dict:
             "data": schedule_repository.list_available(db, id_konsultan),
         }
     except Exception as e:
-        raise InternalError(f"Gagal mengambil jadwal: {str(e)}")
+        logger.error(f"Gagal mengambil jadwal konsultan {id_konsultan}: {e}")
+        raise InternalError("Gagal mengambil jadwal")
 
 
 ACTIVE_BOOKING_STATUSES = [

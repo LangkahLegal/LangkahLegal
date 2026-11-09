@@ -2,11 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  getStoredAccessToken,
-  getStoredRefreshToken,
-  getStoredRole,
-} from "@/lib/authStorage";
+import { getStoredRole, hasStoredSession } from "@/lib/authStorage";
 import { useClientValue } from "@/lib/useClientValue";
 
 const ROLE_HOME = {
@@ -53,8 +49,7 @@ const allowedRolesFor = (pathname) => {
   return rule ? rule.roles : null;
 };
 
-const readHasSession = () =>
-  Boolean(getStoredAccessToken() || getStoredRefreshToken());
+const readHasSession = () => hasStoredSession();
 
 const readRole = () => normalizeRole(getStoredRole());
 

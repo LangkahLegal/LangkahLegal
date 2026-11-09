@@ -3,21 +3,22 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from schemas.filters import RENTANG_JADWAL_DESC, WAKTU_SESI_DESC, RentangJadwal, WaktuSesi
+from schemas.validation import DATE_PATTERN, TIME_PATTERN
 
 
 class ScheduleCreate(BaseModel):
-    tanggal: str
-    jam_mulai: str
-    jam_selesai: str
+    tanggal: str = Field(..., pattern=DATE_PATTERN)
+    jam_mulai: str = Field(..., pattern=TIME_PATTERN)
+    jam_selesai: str = Field(..., pattern=TIME_PATTERN)
 
 
 class ScheduleUpdate(BaseModel):
-    tanggal: Optional[str] = None
-    jam_mulai: Optional[str] = None
-    jam_selesai: Optional[str] = None
+    tanggal: Optional[str] = Field(None, pattern=DATE_PATTERN)
+    jam_mulai: Optional[str] = Field(None, pattern=TIME_PATTERN)
+    jam_selesai: Optional[str] = Field(None, pattern=TIME_PATTERN)
     status_tersedia: Optional[bool] = None
 
 

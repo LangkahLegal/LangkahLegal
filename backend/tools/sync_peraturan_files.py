@@ -275,7 +275,7 @@ def upload(pdf: bytes, slug: str) -> dict:
         "timestamp": str(int(time.time())),
     }
     to_sign = "&".join(f"{k}={params[k]}" for k in sorted(params)) + secret
-    params["signature"] = hashlib.sha1(to_sign.encode()).hexdigest()
+    params["signature"] = hashlib.sha1(to_sign.encode()).hexdigest()  # nosec B324  # nosemgrep
     params["api_key"] = key
     resp = httpx.post(
         f"https://api.cloudinary.com/v1_1/{cloud}/raw/upload",

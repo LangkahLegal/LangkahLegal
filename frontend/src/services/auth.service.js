@@ -2,7 +2,6 @@ import api from "@/lib/axios";
 import {
   clearAuthSession,
   getStoredOAuthVerifier,
-  getStoredRefreshToken,
   setAuthSession,
   setStoredOAuthVerifier,
   setStoredRole,
@@ -156,10 +155,7 @@ export const authService = {
 
   refreshSession: async () => {
     try {
-      const refreshToken = getStoredRefreshToken();
-      const response = await api.post("/auth/refresh", {
-        refresh_token: refreshToken,
-      });
+      const response = await api.post("/auth/refresh", {});
       const session = response?.data?.data?.session || null;
       if (session) {
         setAuthSession(session);

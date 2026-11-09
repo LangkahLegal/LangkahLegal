@@ -14,7 +14,7 @@ export const THEMES = { light: /theme-white-modern/, dark: /dark-tech/, darkStor
 
 export const LOGOUT_CONFIRM = "Apakah Anda yakin ingin keluar?";
 
-export const SESSION_KEYS = ["ll_token", "token", "ll_refresh", "refresh_token", "ll_role", "role"];
+export const SESSION_KEYS = ["ll_session", "ll_login_method", "ll_role", "role", "ll_token", "ll_refresh"];
 
 export const PROFILE_EDIT = { newName: "SIT Klien Diperbarui" };
 

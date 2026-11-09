@@ -11,7 +11,7 @@ from services import consultation_service
 router = APIRouter()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, **docs.BUAT_PENGAJUAN_KONSULTASI)
+@router.post("", status_code=status.HTTP_201_CREATED, **docs.BUAT_PENGAJUAN_KONSULTASI)
 async def buat_pengajuan_konsultasi(
     form: ConsultationForm = Depends(),
     current_user: CurrentUser = Depends(require_client),
@@ -30,7 +30,7 @@ def update_consultation_status(
     return consultation_service.update_status(db, current_user, id_pengajuan, new_status)
 
 
-@router.get("/", status_code=status.HTTP_200_OK, **docs.GET_MY_CONSULTATIONS)
+@router.get("", status_code=status.HTTP_200_OK, **docs.GET_MY_CONSULTATIONS)
 def get_my_consultations(
     aktif: bool = False,
     current_user: CurrentUser = Depends(require_client_or_konsultan),

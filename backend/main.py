@@ -13,7 +13,23 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 
-app = FastAPI(title="LangkahLegal API", description=docs.API_DESCRIPTION, version="1.0.0")
+IS_PRODUCTION = get_settings().app_env.lower() == "production"
+
+ALLOWED_ORIGINS = [
+    "https://langkahlegal.vercel.app",
+    "https://staging-langkahlegal.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app = FastAPI(
+    title="LangkahLegal API",
+    description=docs.API_DESCRIPTION,
+    version="1.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
 
 
 @app.middleware("http")
@@ -25,7 +41,8 @@ async def force_https_scheme(request: Request, call_next) -> Response:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.langkahlegal\.com|http://localhost:3000|http://127.0.0.1:3000",
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://([a-z0-9-]+\.)?langkahlegal\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

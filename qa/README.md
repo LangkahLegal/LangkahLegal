@@ -5,6 +5,8 @@ Playwright lewat `playwright-bdd`, terhadap frontend, backend FastAPI, dan Supab
 
 **Regression** adalah skenario SIT bertag `@critical`.
 
+**Audit keamanan** (pemindaian statis dependensi, kode, dan riwayat git) ada di `security/`; lihat `security/README.md`.
+
 ## Menjalankan
 
 ```bash
@@ -19,6 +21,7 @@ npm run sit:headed                # semua skenario, browser terlihat
 npm run regression                # hanya @critical
 npm run regression:headed
 npm run report                    # buka laporan HTML terakhir
+npm run audit:security            # npm audit, pip-audit, bandit, semgrep, gitleaks
 ```
 
 Satu halaman atau satu skenario:
@@ -44,6 +47,7 @@ Isi `SIT_SLOWMO=300` di `.env.sit` untuk memperlambat aksi pada mode headed.
 | `test_data/` | Akun uji, isian formulir, berkas contoh |
 | `hooks/` | Fixture dan hook |
 | `support/` | Akses database, sesi, pengamat jaringan, data awal |
+| `security/` | Skrip audit keamanan, daftar kerentanan (`VULNERABILITIES.md`), allowlist gitleaks |
 
 File spec Playwright dibangkitkan otomatis ke `.features-gen/` oleh `bddgen`; jangan disunting.
 

@@ -250,6 +250,4 @@ def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageReque
             )
 
         logger.error(f"[CHATBOT] Error at step '{current_step}': {e}", exc_info=True)
-        raise InternalError(
-            f"Terjadi kesalahan saat memproses pertanyaan Anda (step: {current_step}). Error: {type(e).__name__}: {str(e)[:300]}"
-        )
+        raise InternalError("Terjadi kesalahan saat memproses pertanyaan Anda. Silakan coba lagi.")

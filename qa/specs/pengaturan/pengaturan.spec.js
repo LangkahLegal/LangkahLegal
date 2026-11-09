@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 import { Then, When } from "../../hooks/bdd.js";
 import { routeOf, urlOf } from "../../pages/routes.js";
-import { readLocalStorage } from "../../support/browser.js";
+import { SESSION_COOKIES, readLocalStorage } from "../../support/browser.js";
 import {
   LOGOUT_CONFIRM,
   SESSION_KEYS,
@@ -26,6 +26,7 @@ Then("aplikasi memakai tema gelap", async ({ pengaturanPage, page }) => {
 Then("seluruh data sesi terhapus dari browser", async ({ page }) => {
   const remaining = await page.evaluate((keys) => keys.filter((key) => localStorage.getItem(key) !== null), SESSION_KEYS);
   expect(remaining).toEqual([]);
+  await expect.poll(async () => (await page.context().cookies()).filter((c) => SESSION_COOKIES.includes(c.name))).toEqual([]);
 });
 
 // ── SET-001 · Halaman pengaturan menampilkan akun dan seluruh menu

@@ -8,14 +8,10 @@ OAUTH_VERIFIER_MAX_AGE = 3600
 
 
 def get_cookie_flags() -> dict:
-    settings = get_settings()
-    is_production = settings.app_env.lower() == "production"
-    cookie_domain = settings.cookie_domain.strip() or None
-
     return {
-        "samesite": "none" if is_production else "lax",
-        "secure": is_production,
-        "domain": cookie_domain,
+        "samesite": "lax",
+        "secure": get_settings().app_env.lower() == "production",
+        "domain": None,
     }
 
 

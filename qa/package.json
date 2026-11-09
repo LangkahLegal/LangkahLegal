@@ -10,7 +10,8 @@
     "sit:ui": "bddgen && playwright test --ui",
     "regression": "bddgen && playwright test --grep @critical",
     "regression:headed": "bddgen && playwright test --project=desktop --headed --grep @critical",
-    "report": "playwright show-report reports/html"
+    "report": "playwright show-report reports/html",
+    "audit:security": "node security/audit.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

@@ -163,7 +163,7 @@ def _create_snap_transaction(settings: Settings, order_id: str, gross_amount: in
         snap_response = snap.create_transaction(transaction_param)
     except Exception as e:
         logger.error(f"Midtrans Snap create_transaction failed: {e}")
-        raise AppError(f"Gagal membuat transaksi pembayaran: {str(e)}", status_code=502)
+        raise AppError("Gagal membuat transaksi pembayaran. Silakan coba lagi.", status_code=502)
 
     return snap_response.get("token", ""), snap_response.get("redirect_url", "")
 
@@ -222,7 +222,10 @@ def create_transaction(
 
 
 def handle_notification(db: Client, settings: Settings, notification_json: dict) -> dict:
-    logger.info(f"[MIDTRANS WEBHOOK] Received notification: {notification_json}")
+    logger.info(
+        f"[MIDTRANS WEBHOOK] order={notification_json.get('order_id')} "
+        f"status={notification_json.get('transaction_status')}"
+    )
 
     api_client = _get_core_api_client(settings)
 
@@ -312,7 +315,7 @@ def sync_payment_status(db: Client, current_user: CurrentUser, settings: Setting
         midtrans_status = api_client.transactions.status(order_id)
     except Exception as e:
         logger.error(f"[SYNC] Gagal query Midtrans status for {order_id}: {e}")
-        raise AppError(f"Gagal cek status ke Midtrans: {str(e)}", status_code=502)
+        raise AppError("Gagal memeriksa status pembayaran. Silakan coba lagi.", status_code=502)
 
     transaction_status = midtrans_status.get("transaction_status", "")
     fraud_status = midtrans_status.get("fraud_status", "")

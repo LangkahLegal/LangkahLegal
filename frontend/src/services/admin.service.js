@@ -58,7 +58,7 @@ export const getAdminDocuments = async (page = 1, search = "", kategori = "") =>
   if (search) params.search = search;
   if (kategori) params.kategori = kategori;
 
-  const response = await api.get("/admin/documents/", { params });
+  const response = await api.get("/admin/documents", { params });
   return response.data;
 };
 

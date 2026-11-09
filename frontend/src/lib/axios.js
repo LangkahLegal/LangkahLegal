@@ -1,82 +1,32 @@
 import axios from "axios";
-import {
-  clearAuthSession,
-  getStoredAccessToken,
-  getStoredRefreshToken,
-  setAuthSession,
-} from "@/lib/authStorage";
+import { clearAuthSession, clearLegacyTokens, hasStoredSession, setAuthSession } from "@/lib/authStorage";
+import { BACKEND_API_URL } from "@/lib/backendUrl";
 
-/**
- * Konfigurasi Dasar Axios
- * Mengambil base URL dari environment variable (.env.local)
- */
-const normalizeApiBaseUrl = (rawUrl) => {
-  if (!rawUrl) {
-    // Gunakan backend localhost jika berjalan di development environment
-    const isDevNode = process.env.NODE_ENV === "development";
-    const isDevBrowser = typeof window !== "undefined" && 
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-      
-    if (isDevNode || isDevBrowser) {
-      return "http://localhost:8000/api/v1";
-    }
-    return "https://langkahlegal-production.up.railway.app/api/v1";
-  }
-
-  try {
-    const parsed = new URL(rawUrl);
-    const isLocalhost =
-      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
-
-    if (!isLocalhost && parsed.protocol === "http:") {
-      parsed.protocol = "https:";
-    }
-
-    return parsed.toString().replace(/\/$/, "");
-  } catch {
-    if (typeof rawUrl === "string" && rawUrl.includes("up.railway.app")) {
-      return rawUrl.startsWith("http://")
-        ? rawUrl.replace(/^http:\/\//, "https://")
-        : rawUrl;
-    }
-
-    return rawUrl;
-  }
-};
-
-const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+// Di browser API dipanggil lewat domain frontend sendiri (rewrite di next.config.mjs),
+// sehingga cookie sesi httpOnly dari backend menjadi cookie first-party.
+const API_BASE_URL = typeof window === "undefined" ? BACKEND_API_URL : "/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false,
 });
+
+if (typeof window !== "undefined") {
+  clearLegacyTokens();
+}
 
 let refreshPromise = null;
 
 const refreshSession = async () => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return false;
   if (refreshPromise) return refreshPromise;
-
-  const refreshToken = getStoredRefreshToken();
-  if (!refreshToken) return null;
+  if (!hasStoredSession()) return false;
 
   refreshPromise = (async () => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
-        { refresh_token: refreshToken },
-        {
-          withCredentials: false,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {});
       const session = response?.data?.data?.session || null;
-      if (session) {
-        setAuthSession(session);
-      }
-
-      return session;
+      if (session) setAuthSession(session);
+      return true;
     } catch (error) {
       const status = error?.response?.status;
       // Hanya bersihkan sesi jika server secara eksplisit menolak refresh token (400 atau 401).
@@ -87,7 +37,7 @@ const refreshSession = async () => {
           window.location.replace("/auth/login");
         }
       }
-      return null;
+      return false;
     }
   })();
 
@@ -99,27 +49,8 @@ const refreshSession = async () => {
 };
 
 /**
- * Request Interceptor
- * Token disimpan di browser storage dan dikirim via Authorization header.
- */
-api.interceptors.request.use(
-  async (config) => {
-    if (typeof window !== "undefined") {
-      const accessToken = getStoredAccessToken();
-      if (accessToken) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${accessToken}`;
-      }
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
-
-/**
  * Response Interceptor
- * Menangani error secara terpusat, misalnya jika token kadaluwarsa (401)
+ * Bila token akses kedaluwarsa (401), perbarui sesi sekali lalu ulangi permintaannya.
  */
 api.interceptors.response.use(
   (response) => response,
@@ -133,16 +64,7 @@ api.interceptors.response.use(
       !originalRequest.url?.includes("/auth/login-password")
     ) {
       originalRequest._retry = true;
-      const session = await refreshSession();
-      if (session?.access_token) {
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
-        if (typeof originalRequest.headers.set === "function") {
-          originalRequest.headers.set(
-            "Authorization",
-            `Bearer ${session.access_token}`,
-          );
-        }
+      if (await refreshSession()) {
         return api(originalRequest);
       }
     }

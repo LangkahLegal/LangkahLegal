@@ -2,40 +2,42 @@ from dataclasses import dataclass, fields
 from typing import Optional
 
 from fastapi import File, Form, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from schemas.validation import MAX_BIO, MAX_LONG_TEXT, MAX_NAME, MAX_SHORT_TEXT, MAX_URL
 
 
 class ProfileUpdatePayload(BaseModel):
-    nama: Optional[str] = None
-    foto_profil: Optional[str] = None
-    bio_singkat: Optional[str] = None
-    deskripsi_lengkap: Optional[str] = None
-    nomor_izin_praktik: Optional[str] = None
-    gelar_akademik: Optional[str] = None
-    pendidikan_terakhir: Optional[str] = None
-    kota_praktik: Optional[str] = None
-    spesialisasi: Optional[str] = None
+    nama: Optional[str] = Field(None, max_length=MAX_NAME)
+    foto_profil: Optional[str] = Field(None, max_length=MAX_URL)
+    bio_singkat: Optional[str] = Field(None, max_length=MAX_BIO)
+    deskripsi_lengkap: Optional[str] = Field(None, max_length=MAX_LONG_TEXT)
+    nomor_izin_praktik: Optional[str] = Field(None, max_length=MAX_NAME)
+    gelar_akademik: Optional[str] = Field(None, max_length=MAX_NAME)
+    pendidikan_terakhir: Optional[str] = Field(None, max_length=MAX_SHORT_TEXT)
+    kota_praktik: Optional[str] = Field(None, max_length=MAX_NAME)
+    spesialisasi: Optional[str] = Field(None, max_length=MAX_SHORT_TEXT)
     pengalaman_tahun: Optional[int] = None
     tarif_per_sesi: Optional[float] = None
-    linkedin: Optional[str] = None
-    portofolio: Optional[str] = None
+    linkedin: Optional[str] = Field(None, max_length=MAX_URL)
+    portofolio: Optional[str] = Field(None, max_length=MAX_URL)
 
 
 @dataclass
 class ProfileForm:
-    nama: str | None = Form(default=None)
-    foto_profil: str | None = Form(default=None)
-    bio_singkat: str | None = Form(default=None)
-    deskripsi_lengkap: str | None = Form(default=None)
-    nomor_izin_praktik: str | None = Form(default=None)
-    gelar_akademik: str | None = Form(default=None)
-    pendidikan_terakhir: str | None = Form(default=None)
-    kota_praktik: str | None = Form(default=None)
-    spesialisasi: str | None = Form(default=None)
+    nama: str | None = Form(default=None, max_length=MAX_NAME)
+    foto_profil: str | None = Form(default=None, max_length=MAX_URL)
+    bio_singkat: str | None = Form(default=None, max_length=MAX_BIO)
+    deskripsi_lengkap: str | None = Form(default=None, max_length=MAX_LONG_TEXT)
+    nomor_izin_praktik: str | None = Form(default=None, max_length=MAX_NAME)
+    gelar_akademik: str | None = Form(default=None, max_length=MAX_NAME)
+    pendidikan_terakhir: str | None = Form(default=None, max_length=MAX_SHORT_TEXT)
+    kota_praktik: str | None = Form(default=None, max_length=MAX_NAME)
+    spesialisasi: str | None = Form(default=None, max_length=MAX_SHORT_TEXT)
     pengalaman_tahun: int | None = Form(default=None)
     tarif_per_sesi: float | None = Form(default=None)
-    linkedin: str | None = Form(default=None)
-    portofolio: str | None = Form(default=None)
+    linkedin: str | None = Form(default=None, max_length=MAX_URL)
+    portofolio: str | None = Form(default=None, max_length=MAX_URL)
     portofolio_file: UploadFile | None = File(default=None)
     foto_profil_file: UploadFile | None = File(default=None)
 
