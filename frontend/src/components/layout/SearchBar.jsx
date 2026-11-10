@@ -20,10 +20,10 @@ export default function SearchBar({
     <section className={`w-full transition-all duration-300 ${className}`}>
       <div className="relative group h-full">
         {/* Search Icon Overlay */}
-        <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           <MaterialIcon
             name="search"
-            className={`text-muted group-focus-within:text-primary group-hover:text-primary-light transition-colors duration-300 ${inputClassName ? '' : 'text-2xl'}`}
+            className={`text-muted group-focus-within:text-primary group-hover:text-primary-light transition-colors duration-300 ${inputClassName ? '' : 'text-xl'}`}
           />
         </div>
 
@@ -34,7 +34,7 @@ export default function SearchBar({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           data-testid={testId}
-          className={`w-full bg-input border border-muted/30 rounded-2xl py-4 pl-14 pr-16 text-main placeholder:text-muted/6 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-muted/5 transition-all duration-30 shadow-inner ${inputClassName}`}
+          className={`w-full bg-input border border-surface rounded-xl py-3 lg:py-2.5 pl-11 pr-12 text-sm text-main placeholder:text-muted/60 shadow-soft focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 hover:border-primary/40 transition-all duration-300 ${inputClassName}`}
         />
       </div>
     </section>

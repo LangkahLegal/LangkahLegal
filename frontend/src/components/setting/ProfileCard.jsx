@@ -1,36 +1,22 @@
 "use client";
 
 import React from "react";
-import { useTheme } from "@/providers/ThemeProvider";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function ProfileCard({ user }) {
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-  
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-  
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
-
   const { name, email, foto_profil, role, status_verifikasi } = user;
-
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || "User",
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
 
   // HELPER: Warna Status yang Theme-Aware
   const getStatusStyles = (status) => {
     switch (status) {
       case "terverifikasi":
-        return "text-primary-light"; // Menggunakan var primary
+        return "bg-success-soft text-success border-success/20";
       case "pending":
-        return "text-amber-500"; // Warna standar warning
+        return "bg-secondary-soft text-secondary-text border-secondary/20";
       case "ditolak":
-        return "text-danger"; // Menggunakan var danger
+        return "bg-danger-soft text-danger border-danger/20";
       default:
-        return "text-muted"; // Menggunakan var muted
+        return "bg-surface text-muted border-surface";
     }
   };
 
@@ -49,23 +35,21 @@ export default function ProfileCard({ user }) {
 
   return (
     <section>
-      <div className="bg-card border border-surface rounded-[2rem] p-6 shadow-soft relative overflow-hidden transition-colors duration-500">
-        {/* Dekorasi Glow: bg-[#ada3ff]/10 -> bg-primary/10 */}
-        <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-[50px] rounded-full" />
+      <div className="bg-card bg-gradient-hero border border-surface rounded-2xl p-4 sm:p-5 shadow-soft relative overflow-hidden transition-colors duration-500">
+        {/* Dekorasi Glow Bronze */}
+        <div className="pointer-events-none absolute -right-10 -top-10 w-36 h-36 bg-secondary-soft blur-[50px] rounded-full" />
 
-        <div className="flex items-center gap-5 relative z-10">
+        <div className="flex items-center gap-4 relative z-10">
           {/* Avatar Area */}
           <div className="relative flex-shrink-0">
             {/* bg-[#2c2945] -> bg-input | border manual -> border-surface */}
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-input border-2 border-surface shadow-inner">
-              <img
-                key={foto_profil}
-                src={foto_profil || fallbackUrl}
-                alt={name}
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-input border-2 border-surface shadow-inner">
+              <UserAvatar
+                src={foto_profil}
+                name={name || "User"}
+                alt={name || "User"}
+                size="lg"
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = fallbackUrl;
-                }}
               />
             </div>
           </div>
@@ -73,21 +57,20 @@ export default function ProfileCard({ user }) {
           {/* Info Area */}
           <div className="flex flex-col gap-0.5">
             {/* text-[#e8e2fc] -> text-main */}
-            <h2 className="font-headline font-bold text-lg text-main mt-1">
+            <h2 className="font-headline font-bold text-base sm:text-lg text-main">
               {name}
             </h2>
             {/* text-[#aca8c1] -> text-muted */}
-            <p className="text-muted text-sm font-medium">{email}</p>
+            <p className="text-muted text-xs sm:text-sm font-medium">{email}</p>
 
             {/* Role & Status Badge */}
             {role === "konsultan" && (
-              /* bg-white/5 -> bg-surface | border manual -> border-surface */
-              <div className="inline-flex w-fit items-center justify-center px-3 py-1 mt-1.5 rounded-full bg-surface border border-surface backdrop-blur-sm">
-                <span
-                  className={`text-[10px] lg:text-xs font-black tracking-widest uppercase leading-none pt-[2px] ${getStatusStyles(
-                    status_verifikasi,
-                  )}`}
-                >
+              <div
+                className={`inline-flex w-fit items-center justify-center px-3 py-1 mt-1.5 rounded-full border backdrop-blur-sm ${getStatusStyles(
+                  status_verifikasi,
+                )}`}
+              >
+                <span className="text-[10px] lg:text-xs font-black tracking-widest uppercase leading-none pt-[2px]">
                   {getStatusText(status_verifikasi)}
                 </span>
               </div>

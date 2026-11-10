@@ -12,7 +12,7 @@ export default function AboutSection({ bio, tags }) {
         </h2>
       </div>
 
-      <div className="bg-card/30 border border-surface rounded-[1.5rem] sm:rounded-[2rem] p-6 space-y-6 transition-colors duration-500">
+      <div className="bg-card border border-surface rounded-[1.5rem] sm:rounded-[2rem] p-6 space-y-6 shadow-soft transition-colors duration-500">
         <p className="text-sm leading-relaxed text-muted">{safeBio}</p>
 
         <div className="flex flex-wrap gap-2">

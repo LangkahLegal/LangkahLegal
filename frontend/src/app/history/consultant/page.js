@@ -3,32 +3,20 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { consultantService } from "@/services/consultant.service";
-import { useTheme } from "@/providers/ThemeProvider";
 import HistoryFilter, {
   CONSULTANT_HISTORY_FILTERS,
   processHistorySessions,
-  isSessionPast,
 } from "@/components/history/HistoryFilter";
 
 export default function ConsultantHistoryPage() {
   const router = useRouter();
-  const { theme } = useTheme();
   const [activeFilter, setActiveFilter] = useState("semua");
   const [search, setSearch] = useState("");
-
-  // Mapping warna untuk UI Avatars
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-  const activeColors = themeColors[theme] || themeColors["dark-tech"];
 
   // --- 1. Fetch Riwayat via TanStack Query ---
   const { data: historyData, isLoading } = useQuery({
@@ -58,15 +46,11 @@ export default function ConsultantHistoryPage() {
         jam_selesai: req.jam_selesai || null,
         konsultan: {
           nama_lengkap: req.nama_klien || "Klien Anonim",
-          foto_profil:
-            req.foto_profil ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              req.nama_klien || "K",
-            )}&background=${activeColors.bg}&color=${activeColors.color}`,
+          foto_profil: req.foto_profil || null,
         },
       },
     }));
-  }, [historyData, activeColors]);
+  }, [historyData]);
 
   const { upcoming, past, allSorted } = useMemo(() => {
     return processHistorySessions(
@@ -82,14 +66,11 @@ export default function ConsultantHistoryPage() {
     "Semua";
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 transition-all duration-300">
+    <AppShell role="konsultan">
         <PageHeader title="Riwayat Konsultasi" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-5 animate-fade-in">
             {/* Search Bar & Tombol Kategorisasi */}
             {!isLoading && (
               <HistoryFilter
@@ -134,20 +115,20 @@ export default function ConsultantHistoryPage() {
                 />
               ) : activeFilter === "semua" && !search ? (
                 /* Mode Kategori: Pisahkan Sesi Mendatang vs Seluruh Riwayat */
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* 1. Sesi Mendatang & Berjalan */}
                   {upcoming.length > 0 && (
-                    <section className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
+                    <section className="space-y-3.5">
+                      <div className="flex items-center justify-between px-1">
                         <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                           Sesi Mendatang & Aktif
                         </h3>
-                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                        <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                           {upcoming.length} Sesi
                         </span>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {upcoming.map((item) => (
                           <ConsultationCard
                             key={item.id_pengajuan}
@@ -163,87 +144,60 @@ export default function ConsultantHistoryPage() {
 
                   {/* 2. Seluruh Riwayat */}
                   {past.length > 0 && (
-                    <section className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
+                    <section className="space-y-3.5">
+                      <div className="flex items-center justify-between px-1">
                         <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                           Seluruh Riwayat
                         </h3>
-                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                        <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                           {past.length} Sesi
                         </span>
                       </div>
 
-                      <div className="space-y-4">
-                        {past.map((item) => {
-                          const isPast = isSessionPast(item);
-                          return (
-                            <div
-                              key={item.id_pengajuan}
-                              className={
-                                isPast
-                                  ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
-                                  : ""
-                              }
-                            >
-                              <ConsultationCard
-                                data={item}
-                                role="consultant"
-                                onHide={() => { }}
-                                onCancel={() => { }}
-                              />
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {past.map((item) => (
+                          <ConsultationCard
+                            key={item.id_pengajuan}
+                            data={item}
+                            role="consultant"
+                            onHide={() => { }}
+                            onCancel={() => { }}
+                          />
+                        ))}
                       </div>
                     </section>
                   )}
                 </div>
               ) : (
                 /* Mode Filter Tertentu atau Sedang Melakukan Pencarian */
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between px-2">
+                <section className="space-y-3.5">
+                  <div className="flex items-center justify-between px-1">
                     <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                       {search
                         ? `Hasil Pencarian "${search}"`
                         : `Daftar ${activeFilterLabel}`}
                     </h3>
-                    <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                       {allSorted.length} Sesi
                     </span>
                   </div>
 
-                  <div className="space-y-4">
-                    {allSorted.map((item) => {
-                      const isPast = isSessionPast(item);
-                      return (
-                        <div
-                          key={item.id_pengajuan}
-                          className={
-                            isPast
-                              ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
-                              : ""
-                          }
-                        >
-                          <ConsultationCard
-                            data={item}
-                            role="consultant"
-                            onHide={() => { }}
-                            onCancel={() => { }}
-                          />
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {allSorted.map((item) => (
+                      <ConsultationCard
+                        key={item.id_pengajuan}
+                        data={item}
+                        role="consultant"
+                        onHide={() => { }}
+                        onCancel={() => { }}
+                      />
+                    ))}
                   </div>
                 </section>
               )}
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

@@ -12,7 +12,7 @@ export default function PriceCard({ price, durationMinutes = 30 }) {
   const totalPriceFormatted = (numPrice * sessionCount).toLocaleString("id-ID");
 
   return (
-    <div className="w-full bg-card/60 border border-surface rounded-[2.5rem] p-6 sm:p-7 flex justify-between items-center backdrop-blur-xl shadow-2xl transition-colors duration-500">
+    <div className="w-full bg-card border border-surface rounded-[2.5rem] p-6 sm:p-7 flex justify-between items-center shadow-soft transition-colors duration-500">
       <div className="flex-1 min-w-0 ml-2">
         <p className="text-[11px] sm:text-sm font-medium text-muted mb-1 tracking-wide">
           Konsultasi Privat

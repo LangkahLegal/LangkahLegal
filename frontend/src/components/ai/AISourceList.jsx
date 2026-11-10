@@ -21,11 +21,10 @@ export default function AISourceList({ sources = [] }) {
               key={s.frbr_uri}
               type="button"
               onClick={() => setActiveSourceDocument(isSelected ? null : s)}
-              className={`group w-full text-left flex items-start gap-3 border rounded-xl px-3 py-2.5 transition-all ${
-                isSelected
-                  ? "bg-primary/10 border-primary/50 text-primary-light shadow-sm"
-                  : "bg-surface/50 hover:bg-surface border-surface"
-              }`}
+              className={`group w-full text-left flex items-start gap-3 border rounded-xl px-3 py-2.5 transition-all ${isSelected
+                ? "bg-primary/10 border-primary/50 text-primary-light shadow-sm"
+                : "bg-surface/50 hover:bg-surface border-surface"
+                }`}
               data-testid="ai-source-item"
             >
               <MaterialIcon

@@ -1,11 +1,13 @@
 import logging
+import time
 
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from supabase import Client
 
 from core.exceptions import InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.peraturan_files import get_file_info
+from helpers.pii import Penyamar
 from repositories import chat_repository
 from schemas.chatbot import (
     CreateSessionRequest,
@@ -16,6 +18,7 @@ from schemas.chatbot import (
     TriageRequest,
     TriageResponse,
 )
+from services import chat_log_service
 from services.rag_service import triage
 
 logger = logging.getLogger(__name__)
@@ -62,23 +65,27 @@ def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> 
 
     from services.rag_service import LLM_MODEL, _get_gemini_client
 
+    penyamar = Penyamar()
+    mulai = time.perf_counter()
     try:
         client = _get_gemini_client()
         response = client.models.generate_content(
             model=LLM_MODEL,
-            contents=f'Buat judul singkat maksimal 5 kata dalam Bahasa Indonesia untuk percakapan berikut. HANYA teks biasa, TANPA markdown, TANPA tanda bintang, TANPA tanda pagar.\n\nPesan: "{user_query}"\n\nJudul:',
+            contents=f'Buat judul singkat maksimal 5 kata dalam Bahasa Indonesia untuk percakapan berikut. HANYA teks biasa, TANPA markdown, TANPA tanda bintang, TANPA tanda pagar.\n\nPesan: "{penyamar.samarkan(user_query)}"\n\nJudul:',
             config=types.GenerateContentConfig(
                 temperature=0.2,
                 max_output_tokens=20,
             ),
         )
-        title = response.text.strip().strip('"').strip("'")
+        chat_log_service.catat_gemini("judul", LLM_MODEL, mulai, response=response)
+        title = penyamar.pulihkan(response.text.strip().strip('"').strip("'"))
         title = title.replace("*", "").replace("#", "").replace("`", "").replace("_", " ").strip()
         title = title[:100]
         if title:
             chat_repository.update_session_title(supabase, session_id, title)
             logger.info(f"[CHATBOT] Auto-generated title for {session_id}: {title}")
     except Exception as e:
+        chat_log_service.catat_gemini("judul", LLM_MODEL, mulai, error=e)
         logger.warning(f"[CHATBOT] Failed to auto-generate title: {e}")
 
 
@@ -197,12 +204,28 @@ def _is_overload_error(error: Exception) -> bool:
     return any(marker in str(error) for marker in ("429", "503", "UNAVAILABLE", "RESOURCE_EXHAUSTED"))
 
 
-def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageRequest) -> TriageResponse:
+def run_triage(
+    supabase: Client, current_user: CurrentUser, payload: TriageRequest, background_tasks: BackgroundTasks
+) -> TriageResponse:
+    """Log request (tersamar, plus metadata Gemini) diunggah ke storage lewat BackgroundTask setelah respons
+    terkirim, termasuk saat request gagal."""
+    preferensi = payload.preferensi.model_dump() if payload.preferensi else None
+    chat_log_service.mulai(current_user.id_user, payload.session_id, payload.kategori, preferensi)
+    try:
+        return _run_triage(supabase, current_user, payload, preferensi)
+    finally:
+        background_tasks.add_task(chat_log_service.simpan, chat_log_service.selesai())
+
+
+def _run_triage(
+    supabase: Client, current_user: CurrentUser, payload: TriageRequest, preferensi: dict | None
+) -> TriageResponse:
     session_id = payload.session_id
     current_step = "init"
     try:
         current_step = "session_resolve"
         session_id, is_new_session = _resolve_session(supabase, current_user, session_id)
+        chat_log_service.catat(session_id=session_id, sesi_baru=is_new_session)
 
         current_step = "load_history"
         chat_history = _get_chat_history_from_db(supabase, session_id, limit=30)
@@ -213,7 +236,7 @@ def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageReque
             supabase=supabase,
             kategori=payload.kategori,
             chat_history=chat_history,
-            preferensi=payload.preferensi.model_dump() if payload.preferensi else None,
+            preferensi=preferensi,
         )
 
         current_step = "save_user_msg"
@@ -237,10 +260,16 @@ def run_triage(supabase: Client, current_user: CurrentUser, payload: TriageReque
         current_step = "build_response"
         return _to_triage_response(session_id, result, response_type)
 
-    except HTTPException:
+    except HTTPException as e:
+        chat_log_service.catat(status="ditolak", error={"langkah": current_step, "pesan": str(e.detail)[:300]})
         raise
     except Exception as e:
-        if _is_overload_error(e):
+        overload = _is_overload_error(e)
+        chat_log_service.catat(
+            status="overload" if overload else "error",
+            error={"langkah": current_step, "pesan": f"{type(e).__name__}: {str(e)[:300]}"},
+        )
+        if overload:
             return TriageResponse(
                 session_id=session_id if session_id else "",
                 type="error",

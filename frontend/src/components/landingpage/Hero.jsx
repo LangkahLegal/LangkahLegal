@@ -43,7 +43,6 @@ export default function Hero({ onGetStarted, onLearnMore }) {
           Ini menjamin tombol di bawah akan SELALU terbaca kontras. */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/40 z-0" />
 
-      <div className="glow-top-left-purple z-0 opacity-70" />
       <div className="glow-bottom-right-secondary z-0 opacity-70" />
 
       <motion.div
@@ -90,7 +89,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
           >
             <Button
               onClick={onGetStarted}
-              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold shadow-xl shadow-primary/40 hover:scale-105 transition-transform"
+              className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold shadow-xl shadow-secondary/25 hover:scale-105 transition-transform"
             >
               Mulai Sekarang
             </Button>

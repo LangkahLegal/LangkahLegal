@@ -11,3 +11,4 @@ export * from "./Skeleton";
 export * from "./EmptyState";
 export * from "./Spinner";
 export * from "./Calendar";
+export * from "./UserAvatar";

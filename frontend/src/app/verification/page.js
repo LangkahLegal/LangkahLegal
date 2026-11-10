@@ -5,8 +5,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import PageHeader from "@/components/layout/PageHeader";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import SearchBar from "@/components/layout/SearchBar";
 import { MaterialIcon } from "@/components/ui/Icons";
 import ConsultantCard from "@/components/verification/VerificationCard";
@@ -15,7 +14,6 @@ import ConfirmActionModal from "@/components/verification/ConfirmActionModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import { getConsultants, verifyConsultant } from "@/services/admin.service";
-import { useTheme } from "@/providers/ThemeProvider"; 
 
 export default function VerificationListPage() {
   const [search, setSearch] = useState("");
@@ -27,16 +25,8 @@ export default function VerificationListPage() {
 
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { theme } = useTheme(); // Gunakan state tema saat ini
 
-  // --- 1. Mapping Warna Avatar (Sinkron dengan History) ---
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-  const activeColors = themeColors[theme] || themeColors["dark-tech"];
-
-  // --- 2. Fetch Data ---
+  // --- 1. Fetch Data ---
   // Pencarian dikirim ke backend setelah jeda singkat agar tidak memanggil API tiap ketikan.
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -84,8 +74,7 @@ export default function VerificationListPage() {
         tarif_per_sesi: item.tarif_per_sesi,
         status: item.status_verifikasi,
         waktu_submit: { date: formatTanggal(dateObj), time: formatWaktu(dateObj) },
-        foto_profil: item.foto_profil || item.users?.foto_profil ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(item.nama_lengkap)}&background=${activeColors.bg}&color=${activeColors.color}`,
+        foto_profil: item.foto_profil || item.users?.foto_profil || null,
       };
     });
 
@@ -100,17 +89,35 @@ export default function VerificationListPage() {
     ];
 
     return { filteredConsultants: filtered, statusCategories: categories };
-  }, [categoryData, activeColors]);
+  }, [categoryData]);
 
   return (
-    <div className="bg-bg text-main font-primary min-h-screen flex overflow-hidden transition-colors duration-500">
-      <Sidebar role="admin" />
-
-      <div className="flex-1 flex flex-col relative min-w-0 w-full lg:ml-64 transition-all duration-300">
+    <AppShell
+      role="admin"
+      contentClassName="w-full"
+      overlay={
+        <ConfirmActionModal
+          open={showConfirm}
+          actionType={actionType}
+          selectedItem={selectedItem}
+          reason={reason}
+          setReason={setReason}
+          isLoading={mutation.isPending}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={() => {
+            if (actionType === "ditolak" && !reason.trim()) {
+              alert("Alasan wajib diisi!");
+              return;
+            }
+            mutation.mutate({ id: selectedItem.id, action: actionType, reason });
+          }}
+        />
+      }
+    >
         <PageHeader title="Ajuan Verifikasi" backHref="/dashboard/admin" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 sm:space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-6 animate-fade-in">
             <div className="space-y-4">
               <SearchBar value={search} onChange={setSearch} />
 
@@ -136,7 +143,7 @@ export default function VerificationListPage() {
                   className="py-12"
                 />
               ) : (
-                <div className="mt-10 grid sm:grid-cols-2 gap-4 lg:gap-6">
+                <div className="mt-6 grid sm:grid-cols-2 gap-4">
                   {filteredConsultants.map((item) => (
                     <ConsultantCard
                       key={item.id}
@@ -159,28 +166,6 @@ export default function VerificationListPage() {
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="admin" />
-        </div>
-
-        <ConfirmActionModal
-          open={showConfirm}
-          actionType={actionType}
-          selectedItem={selectedItem}
-          reason={reason}
-          setReason={setReason}
-          isLoading={mutation.isPending}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={() => {
-            if (actionType === "ditolak" && !reason.trim()) {
-              alert("Alasan wajib diisi!");
-              return;
-            }
-            mutation.mutate({ id: selectedItem.id, action: actionType, reason });
-          }}
-        />
-      </div>
-    </div>
+    </AppShell>
   );
 }

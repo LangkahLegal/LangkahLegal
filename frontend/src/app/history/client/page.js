@@ -3,8 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
@@ -14,7 +13,6 @@ import { consultationService } from "@/services/consultation.service";
 import HistoryFilter, {
   CLIENT_HISTORY_FILTERS,
   processHistorySessions,
-  isSessionPast,
 } from "@/components/history/HistoryFilter";
 
 export default function HistoryPage() {
@@ -40,14 +38,11 @@ export default function HistoryPage() {
     "Semua";
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
-      <Sidebar role="client" />
-
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 min-w-0 transition-all duration-300">
+    <AppShell role="client">
         <PageHeader title="Riwayat Konsultasi" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-6 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-5 animate-fade-in">
             {/* Search Bar & Tombol Kategorisasi (Komponen Reusable HistoryFilter) */}
             {!isLoading && (
               <HistoryFilter
@@ -93,20 +88,20 @@ export default function HistoryPage() {
                 />
               ) : activeFilter === "semua" && !search ? (
                 /* Mode Kategori: Pisahkan Sesi Mendatang vs Riwayat Lampau */
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* 1. Sesi Mendatang & Berjalan (Waktu terdekat now() di atas) */}
                   {upcoming.length > 0 && (
-                    <section className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
+                    <section className="space-y-3.5">
+                      <div className="flex items-center justify-between px-1">
                         <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                           Sesi Mendatang & Aktif
                         </h3>
-                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                        <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                           {upcoming.length} Sesi
                         </span>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {upcoming.map((item) => (
                           <ConsultationCard
                             key={item.id_pengajuan}
@@ -122,87 +117,60 @@ export default function HistoryPage() {
 
                   {/* 2. Seluruh Riwayat */}
                   {past.length > 0 && (
-                    <section className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
+                    <section className="space-y-3.5">
+                      <div className="flex items-center justify-between px-1">
                         <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                           Seluruh Riwayat
                         </h3>
-                        <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                        <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                           {past.length} Sesi
                         </span>
                       </div>
 
-                      <div className="space-y-4">
-                        {past.map((item) => {
-                          const isPast = isSessionPast(item);
-                          return (
-                            <div
-                              key={item.id_pengajuan}
-                              className={
-                                isPast
-                                  ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
-                                  : ""
-                              }
-                            >
-                              <ConsultationCard
-                                data={item}
-                                role="client"
-                                onHide={() => { }}
-                                onCancel={() => { }}
-                              />
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {past.map((item) => (
+                          <ConsultationCard
+                            key={item.id_pengajuan}
+                            data={item}
+                            role="client"
+                            onHide={() => { }}
+                            onCancel={() => { }}
+                          />
+                        ))}
                       </div>
                     </section>
                   )}
                 </div>
               ) : (
                 /* Mode Filter Tertentu atau Sedang Melakukan Pencarian */
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between px-2">
+                <section className="space-y-3.5">
+                  <div className="flex items-center justify-between px-1">
                     <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
                       {search
                         ? `Hasil Pencarian "${search}"`
                         : `Daftar ${activeFilterLabel}`}
                     </h3>
-                    <span className="text-[11px] font-bold text-primary-light bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
                       {allSorted.length} Sesi
                     </span>
                   </div>
 
-                  <div className="space-y-4">
-                    {allSorted.map((item) => {
-                      const isPast = isSessionPast(item);
-                      return (
-                        <div
-                          key={item.id_pengajuan}
-                          className={
-                            isPast
-                              ? "opacity-70 hover:opacity-100 transition-opacity duration-300"
-                              : ""
-                          }
-                        >
-                          <ConsultationCard
-                            data={item}
-                            role="client"
-                            onHide={() => { }}
-                            onCancel={() => { }}
-                          />
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {allSorted.map((item) => (
+                      <ConsultationCard
+                        key={item.id_pengajuan}
+                        data={item}
+                        role="client"
+                        onHide={() => { }}
+                        onCancel={() => { }}
+                      />
+                    ))}
                   </div>
                 </section>
               )}
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

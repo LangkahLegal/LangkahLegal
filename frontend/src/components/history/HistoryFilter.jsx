@@ -170,6 +170,15 @@ export function processHistorySessions(
   };
 }
 
+const ACTIVE_FILTER_PILLS = {
+  semua: "bg-primary-soft text-primary-text border-primary/40 shadow-soft",
+  terjadwal: "bg-info-soft text-info-text border-info/40 shadow-soft",
+  menunggu_pembayaran:
+    "bg-secondary-soft text-secondary-text border-secondary/40 shadow-soft",
+  selesai: "bg-success-soft text-success border-success/40 shadow-soft",
+  batal: "bg-danger-soft text-danger border-danger/40 shadow-soft",
+};
+
 /**
  * Komponen Reusable Search & Filter Bar untuk Riwayat Konsultasi (DRY).
  * Search bar di atas, diikuti tombol-tombol kategorisasi pill di bawahnya (seperti di Manajemen Dokumen/Knowledge).
@@ -196,17 +205,19 @@ export default function HistoryFilter({
       <div className="flex items-center gap-2.5 overflow-x-auto pb-2 -mb-2 no-scrollbar scroll-smooth px-1">
         {filterOptions.map((filter) => {
           const isActive = filter.id === activeFilter;
+          const activeClass =
+            ACTIVE_FILTER_PILLS[filter.id] || ACTIVE_FILTER_PILLS.semua;
           return (
             <button
               key={filter.id}
               type="button"
               onClick={() => onFilterChange?.(filter.id)}
               className={`
-                px-5 py-2.5 rounded-full text-xs font-bold border whitespace-nowrap transition-all duration-300 cursor-pointer select-none
+                px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap transition-all duration-300 cursor-pointer select-none
                 ${
                   isActive
-                    ? "bg-primary/10 text-primary border-primary/40 shadow-soft"
-                    : "bg-input/50 text-muted border-surface hover:border-primary/30"
+                    ? activeClass
+                    : "bg-input text-muted border-surface hover:border-primary/30"
                 }
               `}
             >

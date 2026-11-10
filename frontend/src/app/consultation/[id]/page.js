@@ -5,8 +5,7 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Layout & UI
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import ClientCard from "@/components/request/ClientCard";
 import InfoGrid from "@/components/request/InfoGrid";
@@ -110,10 +109,7 @@ export default function ConsultationDetail() {
   }
 
   return (
-    <div className="bg-bg text-main min-h-screen flex transition-colors duration-500 font-primary">
-      <Sidebar role={derivedRole} />
-
-      <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
+    <AppShell role={derivedRole}>
         <PageHeader title="Detail Konsultasi" />
 
         <main className="flex-1 overflow-y-auto w-full">
@@ -130,11 +126,11 @@ export default function ConsultationDetail() {
                 {/* Status Badge */}
             <div className="flex justify-start">
               <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
-                requestData.status === "selesai" ? "bg-primary/10 text-primary-light" :
-                requestData.status === "terjadwal" ? "bg-emerald-500/10 text-emerald-500" :
-                requestData.status === "menunggu_pembayaran" ? "bg-amber-500/10 text-amber-400" :
-                requestData.status === "ditolak" || requestData.status === "dibatalkan" ? "bg-danger/10 text-danger" :
-                "bg-cyan-500/10 text-cyan-400"
+                requestData.status === "selesai" ? "bg-success-soft text-success" :
+                requestData.status === "terjadwal" ? "bg-info-soft text-info-text" :
+                requestData.status === "menunggu_pembayaran" ? "bg-secondary-soft text-secondary-text" :
+                requestData.status === "ditolak" || requestData.status === "dibatalkan" ? "bg-danger-soft text-danger" :
+                "bg-primary-soft text-primary-text"
               }`}>
                 {requestData.status?.replace("_", " ")}
               </div>
@@ -173,7 +169,7 @@ export default function ConsultationDetail() {
               <div className="pt-4 animate-fade-in-up flex flex-col items-center">
                 <button
                   onClick={() => setIsRatingModalOpen(true)}
-                  className="w-full px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                  className="w-full px-8 py-3 bg-primary hover:bg-primary-hover text-on-primary font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                 >
                   Beri Ulasan & Selesaikan
                 </button>
@@ -192,11 +188,6 @@ export default function ConsultationDetail() {
             submitRatingMutation.mutate({ skor_rating, ulasan_teks });
           }}
         />
-
-        <div className="lg:hidden">
-          <BottomNav role={derivedRole} />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

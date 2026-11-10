@@ -47,7 +47,7 @@ export default function RoleSelector({ selectedRole, onSelect }) {
                   flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-300 border text-center
                   ${
                     isActive
-                      ? "bg-primary/10 border-primary shadow-[0_0_15px_rgba(109,87,252,0.15)]"
+                      ? "bg-primary-soft border-primary shadow-soft"
                       : "bg-input border-surface hover:border-muted/30"
                   }
                 `}
@@ -86,7 +86,7 @@ export default function RoleSelector({ selectedRole, onSelect }) {
                   `}
                 >
                   {isActive && (
-                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                    <div className="w-1.5 h-1.5 bg-on-primary rounded-full" />
                   )}
                 </div>
               </div>

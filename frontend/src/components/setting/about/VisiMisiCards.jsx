@@ -6,8 +6,8 @@ import { MaterialIcon } from "@/components/ui/Icons";
 export default function VisiMisiCards() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 mb-10">
-      {/* Card Visi - REFACTOR: bg-card & border-surface */}
-      <div className="relative overflow-hidden bg-card border border-surface p-6 lg:p-8 rounded-[2rem] group transition-all duration-500 hover:border-primary/30 shadow-sm">
+      {/* Card Visi */}
+      <div className="relative overflow-hidden bg-card border border-surface p-6 lg:p-8 rounded-[2rem] group transition-all duration-500 hover:border-primary/30 shadow-soft">
         <MaterialIcon
           name="visibility"
           className="absolute top-4 right-4 text-[6rem] text-main/[0.05] -rotate-12 pointer-events-none group-hover:scale-110 group-hover:rotate-0 transition-transform duration-500"
@@ -21,8 +21,8 @@ export default function VisiMisiCards() {
         </p>
       </div>
 
-      {/* Card Misi - REFACTOR: bg-primary/5 & border-surface */}
-      <div className="relative overflow-hidden bg-primary/5 border border-surface p-6 lg:p-8 rounded-[2rem] group transition-all duration-300 hover:border-primary/30 shadow-sm">
+      {/* Card Misi */}
+      <div className="relative overflow-hidden bg-card border border-surface p-6 lg:p-8 rounded-[2rem] group transition-all duration-300 hover:border-primary/30 shadow-soft">
         <MaterialIcon
           name="rocket_launch"
           className="absolute top-4 right-4 text-[6rem] text-main/[0.05] rotate-12 pointer-events-none group-hover:scale-110 group-hover:rotate-0 transition-transform duration-500"

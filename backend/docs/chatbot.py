@@ -45,5 +45,10 @@ budget, dan waktu (`type: tanya_preferensi` beserta `form_preferensi`). Jawaban 
 ini lewat field `preferensi`, lalu AI menampilkan konsultan terverifikasi yang cocok. Setiap konsultan membawa
 `jadwal_status` dan `slot_cocok` dari jadwal nyata. Kalau klien sudah menyebut budget atau jadwal di pesannya,
 AI tidak bertanya lagi.
+
+**Data pribadi dan log:** NIK, nomor HP, email, rekening, kartu, plat nomor, alamat, dan nama yang disebut
+dengan penanda ("nama saya ...", "Pak ...") disamarkan sebelum dikirim ke AI, lalu dikembalikan di respons,
+jadi klien tetap melihat data aslinya. Setiap request dicatat (versi tersamar, model, token, latency) di bucket
+log privat. Header respons `X-Request-ID` adalah ID log tersebut.
 """,
 }

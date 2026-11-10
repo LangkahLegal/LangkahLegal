@@ -44,7 +44,7 @@ export default function PillDropdown({
           ${
             !isDefault
               ? "bg-primary/10 text-primary border-primary/40 shadow-soft"
-              : "bg-input/50 text-muted border-surface hover:border-primary/30"
+              : "bg-input text-muted border-surface hover:border-primary/30"
           }
         `}
       >
@@ -81,7 +81,7 @@ export default function PillDropdown({
                   }}
                   className={`${fullWidth ? "px-4" : "px-5"} py-2.5 text-xs flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-primary text-white font-bold"
+                      ? "bg-primary text-on-primary font-bold"
                       : "text-main hover:bg-surface font-medium"
                   }`}
                 >

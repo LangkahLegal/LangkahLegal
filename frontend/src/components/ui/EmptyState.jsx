@@ -14,7 +14,7 @@ export function EmptyState({
 }) {
   const baseClasses = "flex flex-col items-center justify-center text-center w-full animate-fade-in";
   const variantClasses = variant === "card" 
-    ? "bg-card border border-surface rounded-[2rem] shadow-soft" 
+    ? "bg-card border border-surface rounded-2xl shadow-soft" 
     : "";
 
   return (
