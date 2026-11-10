@@ -7,10 +7,10 @@ export default function TwoFactorCard() {
   const [twoFA, setTwoFA] = useState(true);
 
   return (
-    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 flex justify-between items-center">
+    <div className="bg-card p-6 rounded-2xl border border-surface flex justify-between items-center shadow-soft">
       <div>
-        <p className="font-semibold text-[#e8e2fc]">Autentikasi 2 Faktor</p>
-        <p className="text-sm text-[#aca8c1]">
+        <p className="font-semibold text-main">Autentikasi 2 Faktor</p>
+        <p className="text-sm text-muted">
           Tambahkan lapisan keamanan ekstra pada akun Anda.
         </p>
       </div>

@@ -3,9 +3,9 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
-import { useTheme } from "@/providers/ThemeProvider";
 
 import { Skeleton } from "@/components/ui/Skeleton";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function DashboardHeader({
   userName = "Pengguna",
@@ -14,64 +14,46 @@ export default function DashboardHeader({
   isLoading = false,
 }) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-
-  // Mapping warna hex untuk API ui-avatars
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
-  };
-
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
 
   // --- 2. LOGIC HANDLERS ---
   const handleSettingsClick =
     onSettingsClick || (() => router.push("/setting"));
 
   const safeName = userName || "User";
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    safeName,
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128&bold=true`;
 
   return (
-    <header className="sticky top-0 z-50 flex justify-between items-center w-full transition-all duration-300 px-6 py-3 lg:px-10 lg:py-4 border-b border-surface bg-bg/80 backdrop-blur-md shadow-soft">
+    <header className="sticky top-0 z-50 flex justify-between items-center w-full min-h-16 transition-all duration-300 px-6 py-3 lg:px-8 lg:py-3 bg-header text-on-header shadow-soft">
       {/* Group Kiri: Avatar & Identitas */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5">
         {/* User Avatar Container */}
         <div className="relative group/avatar">
           {isLoading ? (
-            <Skeleton className="w-9 h-9 lg:w-10 lg:h-10 rounded-full" />
+            <Skeleton className="w-9 h-9 rounded-full !bg-header-hover" />
           ) : (
             <>
-              {/* Mengubah w-10 h-10 lg:w-14 lg:h-14 menjadi w-9 h-9 lg:w-10 lg:h-10 */}
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden bg-input border-2 border-surface shadow-soft transition-all group-hover/avatar:border-primary/50">
-                <img
-                  key={foto_profil || currentTheme} // Re-render img jika tema berubah agar fallback update
-                  src={foto_profil || fallbackUrl}
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-input border-2 border-sidebar-border shadow-soft transition-all group-hover/avatar:border-on-header/60">
+                <UserAvatar
+                  src={foto_profil}
+                  name={safeName}
                   alt={safeName}
+                  size="sm"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover/avatar:scale-110"
-                  onError={(e) => {
-                    e.currentTarget.src = fallbackUrl;
-                  }}
                 />
               </div>
-              {/* Mengubah ukuran indikator status agar proporsional dengan avatar baru */}
-              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 lg:w-3 lg:h-3 bg-emerald-500 border-2 border-bg rounded-full shadow-sm" />
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success border-2 border-sidebar rounded-full shadow-sm" />
             </>
           )}
         </div>
 
         {/* Sapaan Teks */}
-        <div className="flex flex-col gap-1">
-          <span className="text-muted text-xs lg:text-sm font-medium opacity-80 uppercase tracking-wider">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-header-muted text-xs font-medium uppercase tracking-wider leading-none">
             Halo,
           </span>
           {isLoading ? (
-            <Skeleton className="h-6 w-32 lg:w-48" />
+            <Skeleton className="h-5 w-32 lg:w-40 !bg-header-hover" />
           ) : (
-            <h2 className="text-lg lg:text-2xl font-headline font-black text-main tracking-tight transition-colors duration-500">
+            <h2 className="text-base lg:text-lg font-headline font-bold text-on-header tracking-tight leading-tight transition-colors duration-500">
               {safeName}
             </h2>
           )}
@@ -83,12 +65,12 @@ export default function DashboardHeader({
         <Button
           variant="icon"
           onClick={handleSettingsClick}
-          className="group hover:bg-primary/10 transition-all"
+          className="group text-on-header hover:bg-header-hover! transition-all"
           aria-label="Settings"
         >
           <MaterialIcon
             name="settings"
-            className="text-muted group-hover:text-primary group-hover:rotate-45 transition-all duration-500 text-xl lg:text-2xl"
+            className="text-on-header group-hover:rotate-45 transition-all duration-500 text-xl"
           />
         </Button>
       </div>

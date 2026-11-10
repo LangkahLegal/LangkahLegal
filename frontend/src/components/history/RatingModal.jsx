@@ -37,7 +37,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
                 name={star <= (hoverRating || rating) ? "star" : "star_border"}
                 className={`text-4xl ${
                   star <= (hoverRating || rating)
-                    ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+                    ? "text-secondary drop-shadow-[0_0_8px_rgba(224,159,62,0.4)]"
                     : "text-muted/30"
                 } transition-colors`}
               />
@@ -74,11 +74,11 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
           <button
             onClick={() => onSubmit(rating, ulasan)}
             disabled={rating === 0 || isSubmitting}
-            className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+            className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
           >
             {isSubmitting ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
                 <span>Menyimpan...</span>
               </>
             ) : (

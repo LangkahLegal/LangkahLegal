@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AvatarUpload from "@/components/setting/profile/AvatarUpload";
 import ProfileForm from "@/components/setting/profile/ProfileForm";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
@@ -118,10 +117,7 @@ function EditProfileContent({ profile, initialFormData }) {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full transition-colors duration-500">
-      <Sidebar role={userRole} />
-
-      <div className="flex-1 flex flex-col min-w-0 relative lg:ml-64 transition-all duration-300">
+    <AppShell role={userRole}>
         <PageHeader title="Edit Profil" />
 
         <main className="flex-1 overflow-y-auto scroll-smooth w-full">
@@ -186,12 +182,7 @@ function EditProfileContent({ profile, initialFormData }) {
             </div>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role={userRole} />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

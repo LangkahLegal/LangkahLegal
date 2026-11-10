@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
-import { useTheme } from "@/providers/ThemeProvider";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function AvatarUpload({
   foto_profil,
@@ -14,20 +14,6 @@ export default function AvatarUpload({
   isUploading,
 }) {
   const inputRef = useRef(null);
-
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-  
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-  
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
-
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || "User",
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128`;
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -60,12 +46,13 @@ export default function AvatarUpload({
             ${isUploading ? "opacity-50 scale-95" : "hover:shadow-primary/10"}
           `}
         >
-          <img
-            key={foto_profil}
-            src={foto_profil || fallbackUrl}
+          <UserAvatar
+            src={foto_profil}
+            name={name || "User"}
             alt="Profile"
+            size="xl"
+            textClassName="text-4xl"
             className="w-full h-full object-cover"
-            onError={(e) => (e.target.src = fallbackUrl)}
           />
 
           {/* Loading Overlay */}
@@ -79,7 +66,7 @@ export default function AvatarUpload({
         {/* Tombol Edit: Menggunakan komponen Button UI */}
         <div className="absolute bottom-1 right-1">
           <Button
-            variant="primary"
+            variant="secondary"
             type="button"
             onClick={() => !isUploading && inputRef.current.click()}
             className="!p-2.5 !rounded-full border-2 border-bg shadow-xl"

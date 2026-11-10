@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { caseService } from "@/services/case.service";
@@ -119,12 +118,12 @@ export default function BursaKasusPage() {
   // --- SUCCESS VIEW ---
   if (successData) {
     return (
-      <div
-        className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500"
-        data-testid="bursa-page"
+      <AppShell
+        role="konsultan"
+        testId="bursa-page"
+        hideBottomNav
+        contentClassName="min-h-screen"
       >
-        <Sidebar role="konsultan" />
-        <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
           <PageHeader title="Bursa Kasus" backHref="/dashboard/consultant" />
           <SuccessView
             title="Kasus Berhasil Diklaim!"
@@ -140,38 +139,45 @@ export default function BursaKasusPage() {
             onSecondaryAction={() => setSuccessData(null)}
             secondaryActionLabel="Kembali ke Bursa"
           />
-        </div>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div
-      className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500"
-      data-testid="bursa-page"
+    <AppShell
+      role="konsultan"
+      testId="bursa-page"
+      contentClassName="min-h-screen"
+      overlay={
+        <AnimatePresence>
+          <ClaimConfirmModal
+            isOpen={!!claimingId && !claimMutation.isPending}
+            onClose={() => setClaimingId(null)}
+            onConfirm={confirmClaim}
+            isLoading={claimMutation.isPending}
+          />
+        </AnimatePresence>
+      }
     >
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64">
         <PageHeader title="Bursa Kasus" backHref="/dashboard/consultant" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh] scroll-smooth">
-          <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+          <div className="w-full space-y-6 animate-fade-in">
             {/* Header Info */}
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center justify-between px-1">
                 {/* Kiri: Judul & Sub-judul Refresh */}
                 <div>
-                  <h2 className="text-lg sm:text-xl font-bold font-headline text-main">
+                  <h2 className="text-base sm:text-lg font-bold font-headline text-main">
                     Bursa Kasus Tersedia
                   </h2>
-                  <p className="text-muted/60 text-[10px] font-medium mt-1">
+                  <p className="text-muted/60 text-[10px] font-medium mt-0.5">
                     Diperbarui otomatis tiap 15 detik
                   </p>
                 </div>
 
                 {/* Kanan: Badge "X KASUS" */}
-                <div className="px-3 py-1.5 bg-surface/60 border border-surface rounded-full flex items-center gap-2">
+                <div className="px-3 py-1 bg-surface/60 border border-surface rounded-full flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-main">
                     {total} Kasus
                   </span>
@@ -241,7 +247,7 @@ export default function BursaKasusPage() {
             {/* CASE CARDS */}
             {!isLoading && !isError && cases.length > 0 && (
               <div
-                className={`grid gap-5 transition-opacity duration-300 ${isFetching ? "opacity-60" : "opacity-100"}`}
+                className={`grid grid-cols-1 lg:grid-cols-2 gap-4 transition-opacity duration-300 ${isFetching ? "opacity-60" : "opacity-100"}`}
               >
                 <AnimatePresence>
                   {cases.map((kasus, idx) => {
@@ -267,21 +273,6 @@ export default function BursaKasusPage() {
             )}
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-
-      {/* --- CONFIRM DIALOG --- */}
-      <AnimatePresence>
-        <ClaimConfirmModal
-          isOpen={!!claimingId && !claimMutation.isPending}
-          onClose={() => setClaimingId(null)}
-          onConfirm={confirmClaim}
-          isLoading={claimMutation.isPending}
-        />
-      </AnimatePresence>
-    </div>
+    </AppShell>
   );
 }

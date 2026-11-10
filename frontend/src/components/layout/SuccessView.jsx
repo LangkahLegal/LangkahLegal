@@ -124,9 +124,10 @@ export default function SuccessView({
         {/* 3. TOMBOL AKSI */}
         <motion.div variants={itemVariants} className="w-full sm:w-[280px] flex flex-col gap-3">
           <Button
+            variant="secondary"
             onClick={onAction}
             fullWidth
-            className="py-5 !rounded-full bg-primary/10 hover:bg-primary/20 border border-surface text-main font-bold transition-all shadow-lg"
+            className="py-5 !rounded-full font-bold transition-all shadow-lg"
           >
             {actionLabel}
           </Button>

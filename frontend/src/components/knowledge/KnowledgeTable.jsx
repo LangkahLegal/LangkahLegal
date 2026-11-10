@@ -6,10 +6,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 export function Badge({ children, variant = "default" }) {
   const variants = {
     default: "bg-surface text-muted",
-    success: "bg-emerald-500/10 text-emerald-600",
-    danger: "bg-danger/10 text-danger",
-    primary: "bg-primary/10 text-primary-light",
-    warning: "bg-amber-500/10 text-amber-600",
+    success: "bg-success-soft text-success",
+    danger: "bg-danger-soft text-danger",
+    primary: "bg-primary-soft text-primary-text",
+    warning: "bg-secondary-soft text-secondary-text",
   };
   return (
     <span className={`px-2.5 py-1 rounded-md text-[8px] font-bold uppercase tracking-widest whitespace-nowrap ${variants[variant] || variants.default}`}>

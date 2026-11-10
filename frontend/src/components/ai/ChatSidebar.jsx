@@ -126,8 +126,8 @@ export default function ChatSidebar() {
                   onClick={(e) => handleDelete(e, session.id)}
                   className={`shrink-0 p-1 rounded-md transition-all duration-200 ${
                     isDeleting
-                      ? "bg-red-500/20 text-red-400"
-                      : "opacity-0 group-hover:opacity-100 text-muted/40 hover:text-red-400 hover:bg-red-500/10"
+                      ? "bg-danger-soft text-danger"
+                      : "opacity-0 group-hover:opacity-100 text-muted/40 hover:text-danger hover:bg-danger-soft"
                   }`}
                   title={isDeleting ? "Klik lagi untuk hapus" : "Hapus sesi"}
                 >

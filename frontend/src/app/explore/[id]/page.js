@@ -5,12 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Layout & UI
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import SuccessView from "@/components/layout/SuccessView";
 import { Button, FileUpload } from "@/components/ui";
-import { useTheme } from "@/providers/ThemeProvider";
 
 // Services
 import { consultantService } from "@/services/consultant.service";
@@ -56,14 +54,6 @@ export default function ConsultantDetailPage() {
   const hasSession = useClientValue(readHasSession, false);
   const viewerRole = useClientValue(readViewerRole, null);
   const canBook = hasSession && viewerRole === "client";
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-cyber-slate": { bg: "17203a", color: "29d1ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
 
   // --- 1. FETCH DATA ---
   const {
@@ -153,11 +143,8 @@ export default function ConsultantDetailPage() {
     bookingMutation.mutate({ payload, files });
   };
 
-  // --- GENERATE FALLBACK URL ---
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
   const displayName =
     consultant?.nama_lengkap || consultant?.users?.nama || "Konsultan";
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${activeColors.bg}&color=${activeColors.color}&size=128&bold=true`;
 
   // --- LOADING STATE (THEME AWARE) ---
   if (isLoadingConsultant)
@@ -199,9 +186,7 @@ export default function ConsultantDetailPage() {
 
   // --- NORMAL STATE ---
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500">
-      <Sidebar role="client" />
-      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
+    <AppShell role="client" contentClassName="w-full">
         <PageHeader title="Profil Konsultan" />
 
         <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
@@ -213,7 +198,7 @@ export default function ConsultantDetailPage() {
               avatar={
                 consultant?.foto_profil ||
                 consultant?.users?.foto_profil ||
-                fallbackUrl
+                null
               }
               rating={`${consultant?.rating || "0.0"} (${consultant?.reviews || 0}+)`}
             />
@@ -268,7 +253,7 @@ export default function ConsultantDetailPage() {
                   fullWidth
                   isLoading={bookingMutation.isPending}
                   onClick={handleBooking}
-                  className="py-5 rounded-xl shadow-lg shadow-primary/20"
+                  className="py-5 rounded-xl shadow-lg shadow-secondary/25"
                 >
                   Booking Konsultasi
                 </Button>
@@ -293,11 +278,6 @@ export default function ConsultantDetailPage() {
             )}
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

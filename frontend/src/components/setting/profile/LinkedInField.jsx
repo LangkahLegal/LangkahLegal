@@ -19,7 +19,7 @@ export default function LinkedInField({ value, onChange, className = "" }) {
           value={value}
           onChange={onChange}
           placeholder="https://linkedin.com/in/username"
-          className="w-full font-headline text-sm bg-dark/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-main transition-all duration-200 outline-none focus:border-primary-light focus:bg-[#1f1d35] focus:ring-1 focus:ring-primary-light/20 placeholder:text-muted/30"
+          className="w-full font-headline text-sm bg-input border border-surface rounded-xl py-4 pl-12 pr-4 text-main transition-all duration-200 outline-none focus:border-primary-light focus:bg-input focus:ring-1 focus:ring-primary-light/20 placeholder:text-muted/30"
         />
       </div>
     </div>

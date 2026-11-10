@@ -45,7 +45,7 @@ export default function FilterChipGroup({
               ${
                 isActive
                   ? "!bg-primary/10 !text-primary !border-primary/40 shadow-soft"
-                  : "!bg-input/50 !text-muted !border-surface hover:!border-primary/30"
+                  : "!bg-input !text-muted !border-surface hover:!border-primary/30"
               }
             `}
           >
