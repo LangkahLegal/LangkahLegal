@@ -7,10 +7,10 @@ export default function CallbackLoading() {
       </div>
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-[#e8e2fc] tracking-tight">
+        <h1 className="text-2xl font-bold text-main tracking-tight">
           Memproses login...
         </h1>
-        <p className="text-[#aca8c1] text-sm leading-relaxed">
+        <p className="text-muted text-sm leading-relaxed">
           Mohon tunggu sebentar, kami sedang menyiapkan dashboard Anda.
         </p>
       </div>

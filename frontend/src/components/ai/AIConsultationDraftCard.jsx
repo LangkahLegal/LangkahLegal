@@ -35,7 +35,7 @@ export default function AIConsultationDraftCard({ draft, consultants = [], showA
             <ul className="space-y-1">
               {bukti_dimiliki.map((bukti) => (
                 <li key={bukti} className="flex items-center gap-2 text-xs sm:text-sm text-main">
-                  <MaterialIcon name="check_circle" className="text-emerald-500 text-[16px]" />
+                  <MaterialIcon name="check_circle" className="text-success text-[16px]" />
                   {bukti}
                 </li>
               ))}

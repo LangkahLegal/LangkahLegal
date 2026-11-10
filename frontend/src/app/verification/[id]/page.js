@@ -7,8 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
 import VerificationHero from "@/components/verification/VerificationHero";
 import PriceCard from "@/components/explore/pengajuan/PriceCard";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import AboutSection from "@/components/explore/pengajuan/AboutSection";
 import InfoCard from "@/components/verification/InfoCard";
 import ActionButtons from "@/components/request/ActionButtons";
@@ -76,9 +75,7 @@ export default function VerificationDetailPage() {
     pengalaman: consultant.pengalaman_tahun,
     tarif: consultant.tarif_per_sesi,
     status: consultant.status_verifikasi,
-    foto:
-      consultant.users?.foto_profil ||
-      `https://ui-avatars.com/api/?name=${consultant.nama_lengkap}`,
+    foto: consultant.users?.foto_profil || null,
     pendidikan: consultant.pendidikan_terakhir,
     gelar: consultant.gelar_akademik,
     izin: consultant.nomor_izin_praktik,
@@ -95,10 +92,32 @@ export default function VerificationDetailPage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden transition-colors duration-500">
-      <Sidebar role="admin"/>
+    <AppShell
+      role="admin"
+      overlay={
+        <ConfirmActionModal
+          open={showConfirm}
+          actionType={actionType}
+          selectedItem={mapped}
+          reason={reason}
+          setReason={setReason}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={() => {
+            if (actionType === "ditolak" && !reason.trim()) {
+              alert("Alasan wajib diisi!");
+              return;
+            }
 
-      <div className="flex-1 flex flex-col lg:ml-64">
+            mutation.mutate({
+              id: mapped.id,
+              action: actionType,
+              reason,
+            });
+          }}
+          isLoading={mutation.isPending}
+        />
+      }
+    >
         <PageHeader title="Detail Verifikasi" backHref="/verification" />
 
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
@@ -147,32 +166,6 @@ export default function VerificationDetailPage() {
               )}
           </div>
         </main>
-
-        <BottomNav role="admin"/>
-      </div>
-
-      {/* MODAL */}
-      <ConfirmActionModal
-        open={showConfirm}
-        actionType={actionType}
-        selectedItem={mapped}
-        reason={reason}
-        setReason={setReason}
-        onClose={() => setShowConfirm(false)}
-        onConfirm={() => {
-          if (actionType === "ditolak" && !reason.trim()) {
-            alert("Alasan wajib diisi!");
-            return;
-          }
-
-          mutation.mutate({
-            id: mapped.id,
-            action: actionType,
-            reason,
-          });
-        }}
-        isLoading={mutation.isPending}
-      />
-    </div>
+    </AppShell>
   );
 }

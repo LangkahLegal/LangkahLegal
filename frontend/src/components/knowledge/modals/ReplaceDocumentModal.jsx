@@ -140,7 +140,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
             className="!py-5 !px-4 h-full"
           />
           <div className="text-[11px] text-muted flex flex-col justify-center h-full pl-2">
-            <p className="font-bold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5 text-xs">
+            <p className="font-bold text-secondary-text mb-2 flex items-center gap-1.5 text-xs">
               <MaterialIcon name="warning" className="text-[16px]" />
               Peringatan Ganti File
             </p>

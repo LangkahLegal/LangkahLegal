@@ -19,11 +19,10 @@ function Chip({ active, onClick, children, disabled }) {
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-colors disabled:opacity-50 ${
-        active
-          ? "bg-primary text-white border-primary"
-          : "bg-bg border-surface text-muted hover:text-main hover:border-muted/40"
-      }`}
+      className={`px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-colors disabled:opacity-50 ${active
+        ? "bg-primary text-on-primary border-primary"
+        : "bg-bg border-surface text-muted hover:text-main hover:border-muted/40"
+        }`}
     >
       {children}
     </button>

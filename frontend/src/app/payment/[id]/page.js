@@ -6,8 +6,7 @@ import Script from "next/script";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 // Layout & UI
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button"; // Menggunakan komponen Button baru
@@ -118,16 +117,18 @@ export default function PaymentPage() {
   if (isError || !consultation) return <ErrorState />;
 
   return (
-    <div className="bg-bg text-main min-h-screen flex w-full overflow-x-hidden font-primary transition-colors duration-500" data-testid="payment-page">
-      <Script
-        src={midtransScriptUrl}
-        data-client-key={midtransClientKey}
-        strategy="afterInteractive"
-      />
-
-      <Sidebar role="client" />
-
-      <div className="flex-1 flex flex-col min-w-0 w-full relative lg:ml-64 transition-all duration-300">
+    <AppShell
+      role="client"
+      testId="payment-page"
+      contentClassName="w-full"
+      overlay={
+        <Script
+          src={midtransScriptUrl}
+          data-client-key={midtransClientKey}
+          strategy="afterInteractive"
+        />
+      }
+    >
         <PageHeader title="Selesaikan Pembayaran" />
 
         <main className="flex-1 overflow-y-auto px-5 pb-40 pt-6 scroll-smooth w-full">
@@ -194,12 +195,7 @@ export default function PaymentPage() {
             )}
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

@@ -24,33 +24,33 @@ export function Calendar({
 }) {
   return (
     <section
-      className="w-full bg-card/70 border border-surface rounded-[2.5rem] p-6 sm:p-8 backdrop-blur-xl shadow-soft transition-colors duration-500"
+      className="w-full bg-card border border-surface rounded-2xl p-5 sm:p-6 shadow-soft transition-colors duration-500"
       data-testid={testId}
     >
       {/* 1. Header Kalender: Navigasi Bulan & Tahun */}
-      <div className="flex items-center justify-between mb-8 sm:mb-10">
+      <div className="flex items-center justify-between mb-6">
         <button
           type="button"
           disabled={isPrevDisabled}
           onClick={onPrev}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="w-9 h-9 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Sebelumnya"
           aria-label="Bulan Sebelumnya"
         >
           <MaterialIcon
             name="chevron_left"
-            className="text-xl sm:text-2xl text-main pointer-events-none"
+            className="text-xl text-main pointer-events-none"
           />
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="text-primary bg-primary/10 p-2 sm:p-2.5 rounded-xl flex items-center justify-center">
+        <div className="flex items-center gap-2.5">
+          <div className="text-primary bg-primary/10 p-2 rounded-xl flex items-center justify-center">
             <MaterialIcon
               name="calendar_month"
-              className="text-xl sm:text-2xl"
+              className="text-lg sm:text-xl"
             />
           </div>
-          <h2 className="text-lg sm:text-2xl font-black text-main tracking-tight font-headline uppercase">
+          <h2 className="text-base sm:text-lg font-bold text-main tracking-tight font-headline uppercase">
             {monthLabel}
           </h2>
         </div>
@@ -59,13 +59,13 @@ export function Calendar({
           type="button"
           disabled={isNextDisabled}
           onClick={onNext}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="w-9 h-9 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Berikutnya"
           aria-label="Bulan Berikutnya"
         >
           <MaterialIcon
             name="chevron_right"
-            className="text-xl sm:text-2xl text-main pointer-events-none"
+            className="text-xl text-main pointer-events-none"
           />
         </button>
       </div>
@@ -120,7 +120,7 @@ export function Calendar({
                   relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex flex-col items-center justify-center transition-all duration-300 mx-auto
                   ${
                     isSelected
-                      ? "bg-primary text-white border-2 border-primary shadow-lg shadow-primary/30 scale-110 z-10 font-bold"
+                      ? "bg-primary text-on-primary border-2 border-primary shadow-lg shadow-primary/30 scale-110 z-10 font-bold"
                       : isAvailable && !isDisabled
                         ? "bg-input/60 border border-surface/70 text-main hover:border-primary/50 hover:bg-surface cursor-pointer font-semibold"
                         : "opacity-20 bg-transparent border border-dashed border-surface/40 text-muted cursor-not-allowed"
@@ -129,7 +129,7 @@ export function Calendar({
               >
                 <span
                   className={`text-xs sm:text-sm font-bold ${
-                    isSelected ? "text-white" : "text-main"
+                    isSelected ? "text-on-primary" : "text-main"
                   }`}
                 >
                   {dayNumber}
@@ -145,7 +145,7 @@ export function Calendar({
 
                 {hasDot && isSelected && (
                   <span
-                    className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse"
+                    className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-on-primary/80 animate-pulse"
                     title="Jadwal dipilih"
                   />
                 )}

@@ -3,6 +3,7 @@
 import React from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button"; // Menggunakan komponen Button kamu
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function HistoryCard({ item, role = "client" }) {
   const isActive = item.status === "Berlangsung";
@@ -12,28 +13,28 @@ export default function HistoryCard({ item, role = "client" }) {
   // Pemetaan Status menggunakan variabel tema
   switch (item.status) {
     case "Berlangsung":
-      statusClasses = "bg-primary text-white shadow-soft";
+      statusClasses = "bg-primary text-on-primary shadow-soft";
       break;
     case "Selesai":
-      statusClasses = "bg-primary/10 text-primary-light";
+      statusClasses = "bg-success-soft text-success";
       break;
     case "Terjadwal":
-      statusClasses = "bg-emerald-500/10 text-emerald-500";
+      statusClasses = "bg-info-soft text-info-text";
       break;
     case "Pending":
-      statusClasses = "bg-cyan-500/10 text-cyan-400";
+      statusClasses = "bg-primary-soft text-primary-text";
       break;
     case "Menunggu Konsultan":
-      statusClasses = "bg-sky-500/10 text-sky-400";
+      statusClasses = "bg-sage-soft text-sage-text";
       break;
     case "Menunggu Pembayaran":
-      statusClasses = "bg-amber-500/10 text-amber-400";
+      statusClasses = "bg-secondary-soft text-secondary-text";
       break;
     case "Dibatalkan":
     case "Ditolak":
     case "Kedaluwarsa":
     case "Pembayaran Gagal":
-      statusClasses = "bg-danger/10 text-danger";
+      statusClasses = "bg-danger-soft text-danger";
       isDimmed = true;
       break;
     default:
@@ -49,34 +50,35 @@ export default function HistoryCard({ item, role = "client" }) {
 
   return (
     <div
-      className={`group p-4 sm:p-5 rounded-[2rem] border transition-all duration-300 ${isActive
-        ? "bg-primary/5 border-primary/20 shadow-soft"
-          : "bg-card border-surface hover:border-primary/20"
-        } ${isDimmed ? "opacity-60 grayscale-[30%]" : ""}`}
+      className={`group p-4 rounded-2xl border border-surface bg-card shadow-soft hover:border-primary/20 transition-all duration-300 flex flex-col justify-between h-full ${
+        isDimmed ? "opacity-60 grayscale-[30%]" : ""
+      }`}
     >
       {/* BAGIAN ATAS: Avatar, Info, & Status */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
           {/* Avatar Section */}
           <div className="relative shrink-0">
             <div
-              className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-2xl overflow-hidden border-2 bg-input transition-colors ${isActive ? "border-primary" : "border-surface"
+              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden border-2 bg-input transition-colors ${isActive ? "border-primary" : "border-surface"
                 }`}
             >
-              <img
+              <UserAvatar
                 src={item.avatar}
-                alt={item.name}
+                name={item.name || "User"}
+                alt={item.name || "User"}
+                size="md"
                 className="w-full h-full object-cover"
               />
             </div>
             {isActive && (
-              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-bg rounded-full animate-pulse" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary border-2 border-bg rounded-full animate-pulse" />
             )}
           </div>
 
           {/* Content Section */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center h-full pt-1">
-            <h3 className="font-bold text-sm sm:text-base lg:text-lg text-main group-hover:text-primary-light transition-colors truncate">
+          <div className="flex-1 min-w-0 flex flex-col justify-center h-full pt-0.5">
+            <h3 className="font-bold text-sm sm:text-[15px] text-main group-hover:text-primary-light transition-colors truncate">
               {item.name}
             </h3>
             <p
@@ -90,14 +92,14 @@ export default function HistoryCard({ item, role = "client" }) {
 
         {/* Badge Status */}
         <span
-          className={`shrink-0 text-[9px] sm:text-[10px] font-black px-3 py-1.5 rounded-xl tracking-widest uppercase transition-colors ${statusClasses}`}
+          className={`shrink-0 text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-lg tracking-wider uppercase transition-colors ${statusClasses}`}
         >
           {item.status}
         </span>
       </div>
 
       {/* BAGIAN BAWAH: Waktu & Action */}
-      <div className="mt-5 pt-4 border-t border-surface flex justify-between items-center gap-2">
+      <div className="mt-4 pt-3 border-t border-surface flex justify-between items-center gap-2">
         {/* Kiri: Tombol Gabung ATAU Info Waktu */}
         <div className="flex-1 min-w-0">
           {isActive ? (

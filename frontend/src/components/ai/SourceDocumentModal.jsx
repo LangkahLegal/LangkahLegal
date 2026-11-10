@@ -139,7 +139,7 @@ export default function SourceDocumentModal({ source, onClose }) {
             href={file_url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${linkClass} bg-primary text-white hover:bg-primary/90 shadow-sm`}
+            className={`${linkClass} bg-primary text-on-primary hover:bg-primary/90 shadow-sm`}
           >
             <MaterialIcon name="picture_as_pdf" className="text-[16px]" />
             Buka PDF

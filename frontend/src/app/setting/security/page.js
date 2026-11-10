@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import { authService } from "@/services/auth.service";
-import BottomNav from "@/components/layout/BottomNav";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui";
 import { PasswordField } from "@/components/ui/PasswordField";
@@ -60,10 +59,7 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex overflow-hidden font-primary transition-colors duration-500">
-      <Sidebar role="client" />
-
-      <div className="flex-1 flex flex-col relative ml-0 lg:ml-64 transition-all duration-300">
+    <AppShell role="client">
         <PageHeader title="Keamanan & Sandi" />
 
         <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
@@ -122,7 +118,7 @@ export default function ChangePasswordPage() {
                   fullWidth
                   type="submit"
                   isLoading={isLoading}
-                  className="py-6 rounded-2xl shadow-lg shadow-primary/20 font-bold"
+                  className="py-6 rounded-2xl shadow-lg shadow-secondary/25 font-bold"
                 >
                   Simpan Kata Sandi
                 </Button>
@@ -130,11 +126,6 @@ export default function ChangePasswordPage() {
             </form>
           </div>
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="client" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

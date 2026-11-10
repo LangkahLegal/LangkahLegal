@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
-import { useTheme } from "@/providers/ThemeProvider";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function ConsultationCard({
   data,
@@ -14,15 +14,6 @@ export default function ConsultationCard({
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const router = useRouter();
-  const { theme } = useTheme();
-  const currentTheme = theme || "dark-tech";
-
-  const themeColors = {
-    "dark-tech": { bg: "1f1d35", color: "ada3ff" },
-    "theme-white-modern": { bg: "f3f1eb", color: "2d1e17" },
-  };
-
-  const activeColors = themeColors[currentTheme] || themeColors["dark-tech"];
 
   // --- 2. HELPERS & CONFIG ---
   const formatDate = (dateString) => {
@@ -40,30 +31,49 @@ export default function ConsultationCard({
   };
 
   const statusConfig = {
-    pending: { label: "Pending", color: "bg-primary/10 text-primary-light" },
+    pending: {
+      label: "Pending",
+      color: "bg-primary-soft text-primary-text",
+    },
+    berlangsung: {
+      label: "Berlangsung",
+      color: "bg-primary-soft text-primary-text",
+    },
     menunggu_pembayaran: {
       label: "Menunggu Pembayaran",
-      color: "bg-amber-500/10 text-amber-500", // Disesuaikan sedikit agar lebih kontras di light mode
+      color: "bg-secondary-soft text-secondary-text",
     },
     terjadwal: {
       label: "Terjadwal",
-      color: "bg-emerald-500/10 text-emerald-600", // Disesuaikan sedikit agar lebih kontras di light mode
+      color: "bg-info-soft text-info-text",
     },
-    selesai: { label: "Selesai", color: "bg-muted/10 text-muted" },
-    dibatalkan: { label: "Batal", color: "bg-danger/10 text-danger" },
-    ditolak: { label: "Ditolak", color: "bg-danger/20 text-danger" },
+    selesai: {
+      label: "Selesai",
+      color: "bg-success-soft text-success",
+    },
+    dibatalkan: {
+      label: "Batal",
+      color: "bg-danger-soft text-danger",
+    },
+    ditolak: {
+      label: "Ditolak",
+      color: "bg-danger-soft text-danger border border-danger/20",
+    },
   };
 
   const currentStatus = statusConfig[data?.status_pengajuan] || {
     label: "Unknown",
-    color: "bg-muted/10 text-muted",
+    color: "bg-surface text-muted",
   };
 
   const isWaitingPayment =
     role === "client" && data?.status_pengajuan === "menunggu_pembayaran";
-  const isActive = ["pending", "terjadwal", "menunggu_pembayaran"].includes(
-    data?.status_pengajuan,
-  );
+  const isActive = [
+    "pending",
+    "berlangsung",
+    "terjadwal",
+    "menunggu_pembayaran",
+  ].includes(data?.status_pengajuan);
   const canCancel =
     role === "client" &&
     ["pending", "menunggu_pembayaran"].includes(data?.status_pengajuan);
@@ -78,10 +88,6 @@ export default function ConsultationCard({
   const isBursaClaim = !!data?.id_bursa;
   // Tanggal bisa dari jadwal_ketersediaan ATAU langsung dari tanggal_pengajuan
   const tanggalDisplay = jadwal?.tanggal || data?.tanggal_pengajuan;
-
-  const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    displayName,
-  )}&background=${activeColors.bg}&color=${activeColors.color}&size=128&bold=true`;
 
   const handleMainAction = () => {
     const status = data?.status_pengajuan;
@@ -99,44 +105,39 @@ export default function ConsultationCard({
 
   return (
     <div
-      className={`group p-4 sm:p-5 rounded-[2rem] border transition-all duration-500 relative overflow-visible ${
-        isActive
-          ? "bg-primary/5 border-primary/20 shadow-soft"
-          : "bg-card border-surface hover:border-primary/20"
-      }`}
+      className="group p-4 rounded-2xl border border-surface bg-card shadow-soft hover:border-primary/20 transition-all duration-500 relative overflow-visible flex flex-col justify-between h-full"
     >
-      <div className="flex items-start gap-3 sm:gap-4">
+      <div className="flex items-start gap-3">
         {/* Avatar Section */}
         <div className="relative shrink-0">
           <div
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border-2 transition-colors ${
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden border-2 transition-colors ${
               isActive ? "border-primary/30" : "border-surface"
             }`}
           >
-            <img
-              src={konsultan?.foto_profil || fallbackUrl}
+            <UserAvatar
+              src={konsultan?.foto_profil}
+              name={displayName}
               alt={displayName}
+              size="md"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              onError={(e) => {
-                e.currentTarget.src = fallbackUrl;
-              }}
             />
           </div>
           {isActive && data?.status_pengajuan === "terjadwal" && (
-            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-bg rounded-full animate-pulse" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-info border-2 border-bg rounded-full animate-pulse" />
           )}
         </div>
 
         {/* Info Section */}
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
-            <div className="flex flex-col gap-2 truncate">
-              <h3 className="font-headline font-bold text-sm sm:text-base text-main group-hover:text-primary-light transition-colors truncate">
+            <div className="flex flex-col gap-1.5 truncate">
+              <h3 className="font-headline font-bold text-sm sm:text-[15px] text-main group-hover:text-primary-light transition-colors truncate">
                 {displayName}
               </h3>
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-block text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest ${currentStatus.color}`}
+                  className={`inline-block text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${currentStatus.color}`}
                 >
                   {currentStatus.label}
                 </span>
@@ -194,8 +195,8 @@ export default function ConsultationCard({
       </div>
 
       {/* Footer Section */}
-      <div className="mt-1 pt-2 border-t border-surface flex justify-between items-center gap-4">
-        <div className="flex items-center gap-2 text-muted text-[10px] sm:text-xs font-semibold">
+      <div className="mt-3 pt-2.5 border-t border-surface flex justify-between items-center gap-3">
+        <div className="flex items-center gap-2 text-muted text-[11px] sm:text-xs font-semibold">
           <MaterialIcon name="calendar_today" className="text-sm opacity-70" />
           <span className="truncate">
             {tanggalDisplay
@@ -209,7 +210,7 @@ export default function ConsultationCard({
         <Button
           variant="ghost"
           onClick={handleMainAction}
-          className={`!p-0 !h-auto !bg-transparent !text-xs sm:!text-sm hover:gap-3 transition-all ${
+          className={`!p-0 !h-auto !bg-transparent !text-xs hover:gap-2 transition-all ${
             isActive || isWaitingPayment
               ? "text-primary-light"
               : "text-muted hover:text-primary-light"
@@ -218,7 +219,7 @@ export default function ConsultationCard({
           <span className="hidden sm:inline">
             {isWaitingPayment ? "Lanjut Pembayaran" : "Lihat Detail"}
           </span>
-          <MaterialIcon name="chevron_right" className="text-xl" />
+          <MaterialIcon name="chevron_right" className="text-lg" />
         </Button>
       </div>
     </div>

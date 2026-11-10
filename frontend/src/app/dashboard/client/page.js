@@ -6,8 +6,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import EmptyConsultationCard from "@/components/dashboard/EmptyConsultationCard";
 import FeaturedServices from "@/components/dashboard/FeaturedServices";
-import BottomNav from "@/components/layout/BottomNav";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -96,18 +95,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
-      <Sidebar />
-      <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
-        <header className="sticky top-0 z-40 w-full">
-          <DashboardHeader
-            userName={user?.nama}
-            foto_profil={user?.foto_profil}
-            isLoading={isLoadingUser}
-          />
-        </header>
+    <AppShell role="client" contentClassName="min-h-screen">
+        <DashboardHeader
+          userName={user?.nama}
+          foto_profil={user?.foto_profil}
+          isLoading={isLoadingUser}
+        />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh]">
+        <main className="relative z-10 w-full max-w-5xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
               <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -116,7 +111,7 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="w-full max-w-full lg:max-w-[1600px] space-y-8 lg:space-y-12 animate-fade-in">
+            <div className="w-full space-y-6 lg:space-y-8 animate-fade-in">
               <div className="w-full">
                 {isError ? (
                   <EmptyState
@@ -167,10 +162,6 @@ export default function DashboardPage() {
           </div>
           )}
         </main>
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

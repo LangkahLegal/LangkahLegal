@@ -29,8 +29,8 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
 
   return (
     /* Container dengan gradient theme-aware agar teks chat di belakangnya menghilang halus */
-    <div className="px-4 sm:px-6 lg:px-8 pb-24 lg:pb-6 pt-2 bg-gradient-to-t from-bg via-bg to-transparent flex flex-col gap-2 shrink-0">
-      <div className="max-w-[1600px] mx-auto w-full">
+    <div className="px-4 sm:px-6 lg:px-8 pb-24 lg:pb-5 pt-2 bg-gradient-to-t from-bg via-bg to-transparent flex flex-col gap-2 shrink-0">
+      <div className="max-w-4xl mx-auto w-full">
         {/* Suggested Actions (Quick Replies) */}
         {suggestedActions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
@@ -50,7 +50,7 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
         <form
           onSubmit={handleSubmit}
           className={`
-            bg-input rounded-3xl border border-surface p-1.5 sm:p-2 
+            bg-input rounded-2xl border border-surface p-1.5 sm:p-2 
             flex items-end gap-2 shadow-soft 
             focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 
             transition-all duration-300
@@ -64,7 +64,7 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
             onKeyDown={handleKeyDown}
             placeholder="Tulis pertanyaan hukum Anda... (Shift+Enter untuk baris baru)"
             data-testid="ai-chat-input"
-            className="flex-1 bg-transparent border-none outline-none text-main text-sm sm:text-base placeholder:text-muted/40 placeholder:truncate py-2.5 px-3 sm:px-4 resize-none min-h-[44px] max-h-[140px] overflow-y-auto"
+            className="flex-1 bg-transparent border-none outline-none text-main text-sm placeholder:text-muted/40 placeholder:truncate py-2 px-3 resize-none min-h-[40px] max-h-[140px] overflow-y-auto"
             rows={1}
           />
 
@@ -74,14 +74,14 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
             variant={input.trim() ? "primary" : "secondary"}
             disabled={!input.trim()}
             className={`
-              !w-10 !h-10 sm:!w-11 sm:!h-11 !rounded-full !p-0 transition-all duration-300 shrink-0
+              !w-9 !h-9 sm:!w-10 sm:!h-10 !rounded-full !p-0 transition-all duration-300 shrink-0
               ${input.trim() ? "shadow-soft scale-100" : "opacity-40 scale-90"}
             `}
           >
             <MaterialIcon
               name="send"
               className={`
-                text-xl sm:text-2xl transition-all duration-300
+                text-lg sm:text-xl transition-all duration-300
                 ${input.trim() ? "rotate-[-45deg] translate-x-0.5" : "rotate-0"}
               `}
             />

@@ -6,7 +6,12 @@ import { MaterialIcon } from "@/components/ui/Icons";
 import { usePathname, useRouter } from "next/navigation";
 import { getStoredRole } from "@/lib/authStorage";
 
-export default function PageHeader({ title, backHref, onSettingsClick }) {
+export default function PageHeader({
+  title,
+  backHref,
+  onSettingsClick,
+  variant = "app",
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -63,23 +68,42 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
   const handleSettingsClick =
     onSettingsClick || (() => router.push("/setting"));
 
+  const isAppHeader = variant !== "plain";
+
   return (
-    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-md border-b border-surface px-6 py-3 lg:px-10 lg:py-4 transition-all duration-300">
+    <header
+      className={`sticky top-0 z-40 w-full min-h-16 flex items-center px-6 py-3 lg:px-8 lg:py-3 transition-all duration-300 ${
+        isAppHeader
+          ? "bg-header text-on-header shadow-soft"
+          : "bg-bg/80 backdrop-blur-md border-b border-surface"
+      }`}
+    >
       <div className="flex justify-between items-center w-full">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3.5">
           <Button
             variant="ghost"
             onClick={handleBackClick}
-            // Menyesuaikan ukuran tombol agar lebih proporsional dengan padding yang baru
-            className="!p-0 !w-9 !h-9 lg:!w-10 lg:!h-10 !rounded-xl group/back border border-transparent hover:border-primary/30 hover:bg-primary/10"
+            className={`!p-0 !w-9 !h-9 !rounded-xl group/back border border-transparent ${
+              isAppHeader
+                ? "text-on-header hover:bg-header-hover! hover:text-on-header!"
+                : "hover:border-primary/30 hover:bg-primary/10!"
+            }`}
           >
             <MaterialIcon
               name="west"
-              className="text-muted group-hover/back:text-primary group-hover/back:-translate-x-1 transition-all text-xl lg:text-2xl"
+              className={`group-hover/back:-translate-x-1 transition-all text-xl ${
+                isAppHeader
+                  ? "text-on-header"
+                  : "text-muted group-hover/back:text-primary"
+              }`}
             />
           </Button>
 
-          <h1 className="text-xl lg:text-2xl font-bold text-main tracking-tight font-headline">
+          <h1
+            className={`text-lg lg:text-xl font-bold tracking-tight font-headline ${
+              isAppHeader ? "text-on-header" : "text-main"
+            }`}
+          >
             {title}
           </h1>
         </div>
@@ -89,16 +113,20 @@ export default function PageHeader({ title, backHref, onSettingsClick }) {
           <Button
             variant="icon"
             onClick={handleSettingsClick}
-            className="group"
+            className={`group ${isAppHeader ? "text-on-header hover:bg-header-hover!" : ""}`}
           >
             <MaterialIcon
               name="settings"
-              className="text-muted group-hover:text-main group-hover:rotate-45 transition-all duration-500 text-xl lg:text-2xl"
+              className={`group-hover:rotate-45 transition-all duration-500 text-xl ${
+                isAppHeader
+                  ? "text-on-header"
+                  : "text-muted group-hover:text-main"
+              }`}
             />
           </Button>
         ) : (
           // Menyamakan ukuran div placeholder dengan tombol Back yang baru
-          <div className="w-9 h-9 lg:w-10 lg:h-10" />
+          <div className="w-9 h-9" />
         )}
       </div>
     </header>

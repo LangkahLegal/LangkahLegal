@@ -123,13 +123,13 @@ export default function EmailVerificationPage() {
 
   return (
     <div className="bg-bg text-main min-h-screen flex flex-col items-center font-primary transition-colors duration-500">
-      <div className="glow-top-left-purple" />
       <div className="glow-bottom-right-secondary" />
 
       <PageHeader
         title="Verifikasi Email"
         backHref="/auth/login"
         onSettingsClick={() => {}}
+        variant="plain"
       />
 
       <main className="flex-1 w-full max-w-md px-6 pt-12 pb-12 flex flex-col items-center">

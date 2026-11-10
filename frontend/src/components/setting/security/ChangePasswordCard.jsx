@@ -26,7 +26,7 @@ export default function ChangePasswordCard() {
   };
 
   return (
-    <div className="bg-[#1f1d35]/50 p-6 rounded-2xl border border-white/5 space-y-6 backdrop-blur-sm">
+    <div className="bg-card p-6 rounded-2xl border border-surface space-y-6 shadow-soft backdrop-blur-sm">
       <h2 className="font-headline font-bold text-lg text-main tracking-tight">
         Ubah Password
       </h2>

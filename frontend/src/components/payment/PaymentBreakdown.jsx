@@ -19,7 +19,7 @@ export default function PaymentBreakdown({
   };
 
   return (
-    <div className="w-full bg-card rounded-[2rem] p-8 border border-surface shadow-2xl transition-all duration-500">
+    <div className="w-full bg-card rounded-[2rem] p-8 border border-surface shadow-soft transition-all duration-500">
       {/* Judul Seksi - REFACTOR: text-white -> text-main */}
       <h3 className="text-main text-lg font-bold mb-6 transition-colors">
         Rincian Biaya
