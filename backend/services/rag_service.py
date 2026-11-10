@@ -13,8 +13,9 @@ from core.config import get_settings
 from helpers import gemini_errors
 from helpers.embedding import get_voyage_client
 from helpers.peraturan_files import get_file_info
+from helpers.pii import Penyamar
 from repositories import legal_document_repository
-from services import chat_policy, konsultan_matching, retrieval_service
+from services import chat_log_service, chat_policy, konsultan_matching, retrieval_service
 from services.chat_policy import Gaya, Mode, ToolMode
 
 logger = logging.getLogger(__name__)
@@ -362,10 +363,14 @@ def _generate_with_first_available_model(client: genai.Client, contents: list, c
     """Coba model satu per satu. Mengembalikan (response, semua_gagal_karena_kuota)."""
     semua_kuota = True
     for model_name in AGENT_MODELS:
+        mulai = time.perf_counter()
         try:
             logger.info(f"[AGENT] Mencoba model: {model_name} (retry={retry})")
-            return client.models.generate_content(model=model_name, contents=contents, config=config), False
+            response = client.models.generate_content(model=model_name, contents=contents, config=config)
+            chat_log_service.catat_gemini("agent", model_name, mulai, response=response)
+            return response, False
         except Exception as e:
+            chat_log_service.catat_gemini("agent", model_name, mulai, error=e)
             if not _is_model_unavailable(e):
                 raise
             semua_kuota = semua_kuota and gemini_errors.is_quota_error(e)
@@ -641,6 +646,16 @@ def _lanjut_dari_form(supabase: Client, history: list[dict], konteks: dict, pref
     }
 
 
+def _respons_log(hasil: dict, penyamar: Penyamar) -> dict:
+    draft = hasil.get("draft_konsultasi") or {}
+    return {
+        "type": hasil.get("type"),
+        "jawaban": penyamar.samarkan(hasil.get("jawaban") or ""),
+        "draft": penyamar.samarkan(draft.get("deskripsi_kasus") or "") or None,
+        "jumlah_konsultan": len(hasil.get("consultants") or []),
+    }
+
+
 def triage(
     query: str,
     supabase: Client,
@@ -650,10 +665,26 @@ def triage(
 ) -> dict:
     """Proses satu pesan klien.
 
-    `preferensi` diisi frontend saat klien mengirim form budget/jadwal yang ditanyakan Kia.
+    `preferensi` diisi frontend saat klien mengirim form budget/jadwal yang ditanyakan Kia. Data pribadi di
+    pesan dan riwayat disamarkan sebelum dikirim ke Gemini/Voyage, lalu dikembalikan di hasil akhir, jadi
+    jawaban, draft konsultasi, dan pesan yang disimpan tetap berisi data asli.
     """
-    logger.info(f"[TRIAGE] Query masuk: {query[:100]}")
-    history = chat_history or []
+    penyamar = Penyamar()
+    query_m, history_m = penyamar.samarkan_percakapan(query, chat_history or [])
+    chat_log_service.catat_request(query=query_m, panjang_riwayat=len(history_m))
+    logger.info(f"[TRIAGE] Query masuk: {query_m[:100]}")
+
+    hasil = _triage(query_m, supabase, kategori, history_m, preferensi)
+    chat_log_service.catat(
+        pii=penyamar.ringkasan(), klasifikasi=hasil.get("klasifikasi"), respons=_respons_log(hasil, penyamar)
+    )
+    return penyamar.pulihkan(hasil)
+
+
+def _triage(
+    query: str, supabase: Client, kategori: Optional[str], history: list[dict], preferensi: Optional[dict]
+) -> dict:
+    """Isi triage(). `query` dan `history` di sini sudah tersamar."""
     current_step = "init"
 
     try:
@@ -691,6 +722,17 @@ def triage(
         if chat_policy.needs_retrieval(mode):
             current_step = "retrieve"
             pasals = cari_pasal(supabase, query, klasifikasi.query_pencarian or query, kategori)
+            chat_log_service.catat(
+                retrieval=[
+                    {
+                        "id_dokumen": p.get("id_dokumen"),
+                        "nama_uu": p.get("nama_uu"),
+                        "pasal": p.get("pasal_bagian"),
+                        "skor": round(p.get("similarity", 0), 4),
+                    }
+                    for p in pasals
+                ]
+            )
 
         current_step = "build_context"
         context = _build_context(pasals) or (TANPA_PASAL if chat_policy.needs_retrieval(mode) else "")
