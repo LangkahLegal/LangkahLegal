@@ -6,6 +6,7 @@ yang kebetulan dipakai saat fallback.
 """
 
 import logging
+import time
 from collections import Counter
 from enum import Enum
 from typing import Optional
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from helpers import gemini_errors
 from helpers import preferensi as pref_helper
+from services import chat_log_service
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,7 @@ class Klasifikasi(BaseModel):
 
 
 CLASSIFIER_PROMPT = """Klasifikasikan PESAN TERBARU klien layanan konsultasi hukum LangkahLegal; riwayat hanya konteks.
+Teks seperti [NAMA_1] atau [TELEPON_1] adalah data pribadi yang disamarkan; biarkan apa adanya.
 
 INTENT (pilih satu):
 - tanya_aturan: tanya bunyi/makna aturan umum. "Apa sanksi pengusaha yang tidak bayar upah?"
@@ -201,6 +204,8 @@ ATURAN UMUM:
 - Jangan sebut "Sumber 1", "Sumber 2", atau "berdasarkan konteks pasal yang diberikan".
 - Jangan menulis nomor pasal yang tidak ada di konteks pasal yang diberikan.
 - Jangan memberi nasihat ilegal.
+- Teks seperti [NAMA_1] atau [TELEPON_1] adalah data pribadi klien yang disamarkan. Tulis ulang persis
+  seperti itu bila perlu (termasuk di ringkasan_kasus), jangan menebak isinya.
 """
 
 MODE_PROMPTS = {
@@ -540,10 +545,12 @@ def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klas
         f"<riwayat>\n{_history_text(chat_history) or '(Tidak ada)'}\n</riwayat>\n\n<pesan>\n{query}\n</pesan>"
     )
     for model_name in CLASSIFIER_MODELS:
+        mulai = time.perf_counter()
         try:
             response = client.models.generate_content(
                 model=model_name, contents=prompt, config=_classifier_config(model_name)
             )
+            chat_log_service.catat_gemini("classify", model_name, mulai, response=response)
             klasifikasi = response.parsed
             if isinstance(klasifikasi, Klasifikasi):
                 logger.info(
@@ -553,6 +560,7 @@ def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klas
                 return klasifikasi
             logger.warning(f"[CLASSIFY] {model_name} tidak mengembalikan klasifikasi yang valid")
         except Exception as e:
+            chat_log_service.catat_gemini("classify", model_name, mulai, error=e)
             logger.warning(f"[CLASSIFY] {model_name} gagal: {gemini_errors.describe(e)}")
     return None
 

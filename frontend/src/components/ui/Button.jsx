@@ -10,12 +10,12 @@ export function Button({
   ...props
 }) {
   const variants = {
-    // Menggunakan var primary & shadow tema
+    // CTA utama memakai aksen honey bronze
     primary:
-      "bg-primary text-white border border-white/10 shadow-soft hover:brightness-110 active:scale-[0.98]",
-    // Menggunakan bg-card & text-muted tema
+      "bg-secondary text-on-secondary border border-transparent shadow-soft hover:bg-secondary-hover active:scale-[0.98]",
+    // Aksi pendukung memakai soft teal
     secondary:
-      "bg-card border border-surface text-muted hover:text-main hover:border-muted/30",
+      "bg-primary-soft text-primary border border-primary/30 hover:bg-primary/20 active:scale-[0.98]",
     // Menggunakan surface tema
     social:
       "bg-surface border border-surface text-main font-semibold hover:bg-surface/80 active:scale-[0.98]",
@@ -27,14 +27,16 @@ export function Button({
   };
 
   const widthClass = fullWidth ? "w-full" : "";
+  const sizeClass =
+    variant === "icon"
+      ? ""
+      : "gap-2.5 lg:gap-2 px-5 py-3 lg:px-4 lg:py-2.5 rounded-xl";
 
   return (
     <button
       className={`
         inline-flex items-center justify-center 
-        gap-3 
-        px-6 py-3.5 
-        rounded-xl 
+        ${sizeClass}
         font-bold
         text-sm
         transition-all duration-300 

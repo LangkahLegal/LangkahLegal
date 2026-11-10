@@ -1,7 +1,7 @@
 import { MaterialIcon } from "@/components/ui/Icons";
 
 const InfoItem = ({ label, value, icon }) => (
-  <div className="bg-card p-5 rounded-[2rem] border border-surface space-y-2 transition-colors duration-500">
+  <div className="bg-card p-5 rounded-[2rem] border border-surface shadow-soft space-y-2 transition-colors duration-500">
     <p className="text-[9px] font-bold text-muted uppercase tracking-[0.15em]">
       {label}
     </p>

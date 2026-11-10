@@ -1,4 +1,4 @@
-import { MaterialIcon } from "@/components/ui/Icons";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AIConsultantCard from "./AIConsultantCard";
@@ -15,23 +15,25 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
       data-testid={isAI ? "ai-message" : "user-message"}
     >
       {isAI && (
-        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-input flex items-center justify-center border border-surface shrink-0 mb-6 shadow-soft">
-          <MaterialIcon
-            name="smart_toy"
-            className="text-primary-light text-sm lg:text-base"
+        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-on-header/95 border border-surface shrink-0 mb-6 shadow-soft">
+          <Image
+            src="/images/statue.png"
+            alt="Kia"
+            fill
+            sizes="32px"
+            className="object-contain pt-0.5 px-0.5"
           />
         </div>
       )}
 
       <div className={`max-w-[92%] sm:max-w-[85%] space-y-1`}>
         <div
-          className={`px-6 py-4 rounded-[2rem] text-sm lg:text-base leading-relaxed shadow-soft transition-all ${
-            !isAI
-              ? 
-                "bg-primary text-white rounded-br-none shadow-primary/10"
-              : 
-                "bg-surface text-main rounded-bl-none font-medium border border-surface"
-          }`}
+          className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-soft transition-all ${!isAI
+            ?
+            "bg-primary text-on-primary rounded-br-none shadow-primary/10"
+            :
+            "bg-surface text-main rounded-bl-none font-medium border border-surface"
+            }`}
         >
           {isAI ? (
             <div className="markdown-content">

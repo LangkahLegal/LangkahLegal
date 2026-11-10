@@ -29,7 +29,7 @@ export function InputField({
         data-testid={dataTestId}
         className={`
           w-full font-headline text-sm 
-          bg-input/50 border border-surface rounded-2xl 
+          bg-input border border-surface rounded-2xl 
           p-4 
           text-main placeholder:text-muted/30
           transition-all duration-300 outline-none 

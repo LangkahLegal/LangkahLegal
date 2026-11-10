@@ -18,7 +18,7 @@ export default function MonthlyCalendar({
   isNextDisabled = false,
 }) {
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full mx-auto">
       <Calendar
         days={days}
         selectedDay={selectedDay}

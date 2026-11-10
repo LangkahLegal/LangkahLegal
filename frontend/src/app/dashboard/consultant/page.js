@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 // Components
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import IncomeCard from "@/components/dashboard/IncomeCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -107,17 +106,14 @@ export default function ConsultantDashboardPage() {
 
   // --- 3. LOGICA HIDE & SHOW DENGAN LOADING STATE ---
   return (
-    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
-      <Sidebar role="konsultan" />
-
-      <div className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-all">
+    <AppShell role="konsultan" contentClassName="min-h-screen">
         <DashboardHeader
           userName={user?.name}
           foto_profil={user?.foto_profil}
           isLoading={!user}
         />
 
-        <main className="w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 min-h-[80vh]">
+        <main className="w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh]">
           {isLoadingScreen ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-5">
               <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -126,16 +122,16 @@ export default function ConsultantDashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-10 animate-fade-in">
+            <div className="space-y-6 lg:space-y-7 animate-fade-in">
               {/* NOTIFICATION: REJECTION ALERT */}
               {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
-                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-4 flex items-start gap-3.5">
                   <MaterialIcon
                     name="error"
-                    className="text-danger text-2xl shrink-0 mt-0.5"
+                    className="text-danger text-xl shrink-0 mt-0.5"
                   />
                   <div>
-                    <h3 className="text-danger font-bold text-base md:text-lg mb-1 leading-tight">
+                    <h3 className="text-danger font-bold text-sm md:text-base mb-0.5 leading-tight">
                       Pengajuan Verifikasi Ditolak
                     </h3>
                     <p className="text-main/80 text-xs md:text-sm leading-relaxed">
@@ -154,11 +150,14 @@ export default function ConsultantDashboardPage() {
                 </div>
               )}
 
-              {/* INCOME SECTION */}
-              <IncomeCard amount={formatCurrency(stats?.income)} />
-
-              {/* STATS GRID */}
-              <section className="grid grid-cols-2 gap-4 lg:gap-8 w-full">
+              {/* KPI SUMMARY GRID: Pendapatan & Statistik */}
+              <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 lg:gap-4 w-full">
+                <div className="col-span-2">
+                  <IncomeCard
+                    amount={formatCurrency(stats?.income)}
+                    className="h-full"
+                  />
+                </div>
                 <StatCard
                   label="Konsultasi Aktif"
                   val={stats?.activeConsultations || 0}
@@ -174,15 +173,15 @@ export default function ConsultantDashboardPage() {
               </section>
 
               {/* JADWAL TERDEKAT */}
-              <section className="space-y-6 w-full">
+              <section className="space-y-3.5 w-full">
                 <div className="flex items-center gap-2 px-1">
-                  <div className="w-1.5 h-6 bg-primary rounded-full shadow-soft" />
-                  <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                  <div className="w-1 h-5 bg-primary rounded-full shadow-soft" />
+                  <h2 className="text-base lg:text-lg font-headline font-bold text-main tracking-tight uppercase">
                     Jadwal Terdekat
                   </h2>
                 </div>
 
-                <div className="w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                   {closestSession ? (
                     <ConsultationCard
                       data={closestSession}
@@ -191,26 +190,28 @@ export default function ConsultantDashboardPage() {
                       onCancel={() => {}}
                     />
                   ) : (
-                    <EmptyState
-                      icon="event_busy"
-                      title="Jadwal Kosong"
-                      description="Tidak ada jadwal mendatang yang tersedia."
-                      className="py-12"
-                    />
+                    <div className="col-span-full">
+                      <EmptyState
+                        icon="event_busy"
+                        title="Jadwal Kosong"
+                        description="Tidak ada jadwal mendatang yang tersedia."
+                        className="py-10"
+                      />
+                    </div>
                   )}
                 </div>
               </section>
 
               {/* PERMINTAAN BARU */}
-              <section className="space-y-6 w-full">
+              <section className="space-y-3.5 w-full">
                 <div className="flex items-center gap-2 px-1">
-                  <div className="w-1.5 h-6 bg-primary-light rounded-full shadow-soft opacity-70" />
-                  <h2 className="text-xl font-headline font-black text-main tracking-tight uppercase">
+                  <div className="w-1 h-5 bg-primary-light rounded-full shadow-soft opacity-70" />
+                  <h2 className="text-base lg:text-lg font-headline font-bold text-main tracking-tight uppercase">
                     Permintaan Baru
                   </h2>
                 </div>
 
-                <div className="space-y-4 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                   {mappedRequests.length > 0 ? (
                     mappedRequests.map((req) => (
                       <ConsultationCard
@@ -222,23 +223,20 @@ export default function ConsultantDashboardPage() {
                       />
                     ))
                   ) : (
-                    <EmptyState
-                      icon="inbox"
-                      title="Kotak Masuk Bersih"
-                      description="Tidak ada permintaan baru untuk waktu mendatang."
-                      className="py-12"
-                    />
+                    <div className="col-span-full">
+                      <EmptyState
+                        icon="inbox"
+                        title="Kotak Masuk Bersih"
+                        description="Tidak ada permintaan baru untuk waktu mendatang."
+                        className="py-10"
+                      />
+                    </div>
                   )}
                 </div>
               </section>
             </div>
           )}
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav role="konsultan" />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

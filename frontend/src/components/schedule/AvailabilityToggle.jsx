@@ -9,9 +9,9 @@ export default function AvailabilityToggle({
   return (
     <section data-testid="availability-toggle-section">
 
-      <div className="bg-card rounded-[2rem] p-6 flex items-center justify-between border border-surface shadow-2xl transition-all duration-500">
+      <div className="bg-card rounded-2xl p-4 sm:p-5 flex items-center justify-between border border-surface shadow-soft transition-all duration-500">
         <div className="flex flex-col">
-          <h3 className="text-lg font-bold text-main transition-colors duration-500">
+          <h3 className="text-base font-bold text-main transition-colors duration-500">
             Status Konsultasi
           </h3>
 
@@ -23,7 +23,7 @@ export default function AvailabilityToggle({
         </div>
 
         {/* Toggle switch */}
-        <div className="scale-110">
+        <div>
           <Toggle enabled={isAvailable ?? false} onChange={onChange} />
         </div>
       </div>

@@ -77,7 +77,7 @@ export default function RolePage() {
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary/10 blur-[120px] rounded-full" />
       </div>
 
-      <PageHeader title="Select Role" backHref={backHref} />
+      <PageHeader title="Select Role" backHref={backHref} variant="plain" />
 
       <main className="relative z-10 flex-grow flex flex-col px-6 pt-8 pb-20 max-w-md mx-auto w-full">
         <div className="mb-10">

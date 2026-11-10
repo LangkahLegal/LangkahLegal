@@ -315,7 +315,7 @@ export default function SchedulePicker({
 
       {/* 3. Pemilihan Durasi & Jam Sesi */}
       {!selectedDate ? (
-        <div className="bg-card/40 border border-dashed border-surface rounded-[2rem] p-6 text-center text-muted text-xs flex flex-col items-center justify-center gap-2">
+        <div className="bg-card border border-dashed border-surface rounded-[2rem] p-6 text-center text-muted text-xs flex flex-col items-center justify-center gap-2 shadow-soft">
           <MaterialIcon name="touch_app" className="text-2xl text-primary/60" />
           <p className="font-medium">
             Pilih salah satu tanggal di atas untuk melihat pilihan durasi dan jam konsultasi.
@@ -324,7 +324,7 @@ export default function SchedulePicker({
       ) : (
         <div className="space-y-5 animate-fade-in">
           {/* Fitur Duration Chips: Pilihan Durasi Konsultasi */}
-          <div className="bg-card/50 border border-surface rounded-[2rem] p-5 sm:p-6 space-y-3">
+          <div className="bg-card border border-surface rounded-[2rem] p-5 sm:p-6 space-y-3 shadow-soft">
             <div className="flex items-center justify-between px-1">
               <label className="text-[10px] sm:text-[11px] font-black text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
                 <MaterialIcon name="timelapse" className="text-sm text-primary" />
@@ -347,7 +347,7 @@ export default function SchedulePicker({
                       py-3 px-3 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1 transition-all duration-300 cursor-pointer
                       ${
                         isDurationActive
-                          ? "bg-primary text-white border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
+                          ? "bg-primary text-on-primary border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
                           : "bg-input/60 border-surface text-main hover:border-primary/50 hover:bg-input font-medium"
                       }
                     `}
@@ -357,7 +357,7 @@ export default function SchedulePicker({
                     </span>
                     <span
                       className={`text-[9px] uppercase tracking-wider font-bold ${
-                        isDurationActive ? "text-white/80" : "text-muted"
+                        isDurationActive ? "text-on-primary/80" : "text-muted"
                       }`}
                     >
                       {opt.sessions} Sesi
@@ -392,7 +392,7 @@ export default function SchedulePicker({
               ))}
             </div>
           ) : dynamicSlotPills.length === 0 ? (
-            <div className="bg-card border border-surface rounded-2xl p-5 text-center text-muted text-xs">
+            <div className="bg-card border border-surface rounded-2xl p-5 text-center text-muted text-xs shadow-soft">
               Tidak ada rentang jam praktik konsultan yang cukup untuk durasi {selectedDuration} menit pada tanggal ini.
             </div>
           ) : (
@@ -417,7 +417,7 @@ export default function SchedulePicker({
                       relative flex flex-col items-center justify-center py-3 px-3 rounded-2xl border text-xs transition-all duration-300
                       ${
                         isSlotSelected
-                          ? "bg-primary text-white border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
+                          ? "bg-primary text-on-primary border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
                           : isBooked
                             ? "bg-danger/5 border-danger/20 text-muted/50 cursor-not-allowed"
                             : isDisabled
@@ -432,10 +432,10 @@ export default function SchedulePicker({
                     <span
                       className={`text-[9px] mt-0.5 uppercase tracking-wider font-bold ${
                         isSlotSelected
-                          ? "text-white/80"
+                          ? "text-on-primary/80"
                           : isBooked
                             ? "text-danger"
-                            : "text-emerald-500"
+                            : "text-success"
                       }`}
                     >
                       {isBooked

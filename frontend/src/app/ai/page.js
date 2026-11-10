@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Sidebar from "@/components/layout/Sidebar";
+import Image from "next/image";
+import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/layout/BottomNav";
 import ChatHeader from "@/components/ai/ChatHeader";
 import ChatMessage from "@/components/ai/ChatMessage";
 import ChatInput from "@/components/ai/ChatInput";
 import ChatSidebar from "@/components/ai/ChatSidebar";
 import SourceDocumentModal from "@/components/ai/SourceDocumentModal";
-import { MaterialIcon } from "@/components/ui/Icons";
 import useChatStore from "@/stores/useChatStore";
 import api from "@/lib/axios";
+import { useSidebarCollapsed } from "@/lib/sidebarState";
 
 const WELCOME_MESSAGE = {
   id: "welcome",
@@ -24,6 +25,7 @@ export default function TanyaAIPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const { isCollapsed } = useSidebarCollapsed();
 
   const {
     activeSessionId,
@@ -204,107 +206,111 @@ export default function TanyaAIPage() {
   };
 
   return (
-    <div
-      className="bg-bg text-main h-screen flex overflow-hidden transition-colors duration-500"
-      data-testid="ai-chat-page"
+    <AppShell
+      role="client"
+      testId="ai-chat-page"
+      className="h-screen overflow-hidden"
+      contentDirection="row"
+      contentClassName="h-full overflow-hidden"
+      hideBottomNav
+      overlay={
+        showSidebar && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setShowSidebar(false)}
+            />
+            <div
+              className={`fixed top-0 h-full w-72 bg-bg z-50 border-r border-surface shadow-2xl left-0 ${isCollapsed ? "lg:left-20" : "lg:left-60"
+                } animate-in slide-in-from-left duration-300`}
+            >
+              <ChatSidebar />
+            </div>
+          </>
+        )
+      }
     >
-      {/* Main navigation sidebar */}
-      <Sidebar />
+      {/* Main chat column */}
+      <div className="flex-1 flex flex-col min-w-0 h-full relative transition-all duration-300">
+        <ChatHeader
+          name="Kia"
+          status="Online"
+          onToggleSidebar={() => setShowSidebar((p) => !p)}
+          showSidebarToggle
+        />
 
-      {/* AI Chat Sidebar — overlay on ALL screen sizes, toggled via button */}
-      {showSidebar && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowSidebar(false)}
-          />
-          <div className="fixed top-0 h-full w-72 bg-bg z-50 border-r border-surface shadow-2xl left-0 lg:left-64 animate-in slide-in-from-left duration-300">
-            <ChatSidebar />
-          </div>
-        </>
-      )}
+        <main
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-5 pb-28 lg:pb-8 scroll-smooth"
+          data-testid="ai-chat-messages"
+        >
+          <div className="max-w-4xl mx-auto w-full space-y-6 animate-fade-in">
+            {/* Loading state when switching sessions */}
+            {isLoadingMessages ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-5">
+                <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
+                  Memuat Riwayat Chat...
+                </p>
+              </div>
+            ) : (
+              displayMessages.map((msg, index) => (
+                <ChatMessage
+                  key={msg.id}
+                  message={msg}
+                  isLatest={!isTyping && index === displayMessages.length - 1}
+                  onSubmitPreferensi={(preferensi, ringkasan) => handleSend(ringkasan, preferensi)}
+                />
+              ))
+            )}
 
-      {/* Main chat area & Side-by-side workspace */}
-      <div className="flex-1 flex relative ml-0 lg:ml-64 h-full overflow-hidden transition-all duration-300">
-        {/* Main chat column */}
-        <div className="flex-1 flex flex-col min-w-0 h-full relative transition-all duration-300">
-          <ChatHeader
-            name="Kia"
-            status="Online"
-            onToggleSidebar={() => setShowSidebar((p) => !p)}
-            showSidebarToggle
-          />
-
-          <main
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 space-y-6 pb-28 lg:pb-10 scroll-smooth"
-            data-testid="ai-chat-messages"
-          >
-            <div className="max-w-[1600px] mx-auto w-full space-y-8 animate-fade-in">
-              {/* Loading state when switching sessions */}
-              {isLoadingMessages ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-5">
-                  <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
-                  <p className="text-muted text-[10px] font-bold tracking-widest uppercase animate-pulse">
-                    Memuat Riwayat Chat...
+            {isTyping && (
+              <div className="flex justify-start items-center gap-3 animate-pulse">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-on-header/95 border border-surface shrink-0 shadow-soft">
+                  <Image
+                    src="/images/statue.png"
+                    alt="Kia"
+                    fill
+                    sizes="32px"
+                    className="object-contain pt-0.5 px-0.5"
+                  />
+                </div>
+                <div className="bg-surface/60 border border-surface px-5 py-3 rounded-[2rem] rounded-bl-none flex gap-3 items-center shadow-soft">
+                  <div className="w-4 h-4 border-2 border-primary-light/30 border-t-primary-light rounded-full animate-spin shrink-0" />
+                  <p className="text-xs lg:text-sm font-medium text-main">
+                    {loadingTexts[loadingStep]}
                   </p>
                 </div>
-              ) : (
-                displayMessages.map((msg, index) => (
-                  <ChatMessage
-                    key={msg.id}
-                    message={msg}
-                    isLatest={!isTyping && index === displayMessages.length - 1}
-                    onSubmitPreferensi={(preferensi, ringkasan) => handleSend(ringkasan, preferensi)}
-                  />
-                ))
-              )}
-
-              {isTyping && (
-                <div className="flex justify-start items-center gap-3 animate-pulse">
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-input flex items-center justify-center border border-surface shrink-0 shadow-soft">
-                    <MaterialIcon
-                      name="smart_toy"
-                      className="text-primary-light text-sm"
-                    />
-                  </div>
-                  <div className="bg-surface/60 border border-surface px-5 py-3 rounded-[2rem] rounded-bl-none flex gap-3 items-center shadow-soft">
-                    <div className="w-4 h-4 border-2 border-primary-light/30 border-t-primary-light rounded-full animate-spin shrink-0" />
-                    <p className="text-xs lg:text-sm font-medium text-main">
-                      {loadingTexts[loadingStep]}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </main>
-
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            onSend={() => handleSend()}
-            suggestedActions={suggestedActions}
-            onActionClick={handleSend}
-          />
-
-          <div className="lg:hidden">
-            <BottomNav role="client" />
+              </div>
+            )}
           </div>
-        </div>
+        </main>
 
-        {/* Side-by-side Document Workspace (Canvas style, docked to the right of chat) */}
-        {activeSourceDocument && (
-          <aside
-            className="w-full absolute md:relative inset-0 md:inset-auto md:w-[360px] lg:w-[380px] xl:w-[440px] 2xl:w-[480px] shrink-0 h-full border-l border-surface bg-bg flex flex-col z-30 transition-all duration-300 animate-in slide-in-from-right"
-            data-testid="ai-source-modal"
-          >
-            <SourceDocumentModal
-              source={activeSourceDocument}
-              onClose={() => setActiveSourceDocument(null)}
-            />
-          </aside>
-        )}
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={() => handleSend()}
+          suggestedActions={suggestedActions}
+          onActionClick={handleSend}
+        />
+
+        <div className="lg:hidden">
+          <BottomNav role="client" />
+        </div>
       </div>
-    </div>
+
+      {/* Side-by-side Document Workspace (Canvas style, docked to the right of chat) */}
+      {activeSourceDocument && (
+        <aside
+          className="w-full absolute md:relative inset-0 md:inset-auto md:w-[360px] lg:w-[380px] xl:w-[440px] 2xl:w-[480px] shrink-0 h-full border-l border-surface bg-bg flex flex-col z-30 transition-all duration-300 animate-in slide-in-from-right"
+          data-testid="ai-source-modal"
+        >
+          <SourceDocumentModal
+            source={activeSourceDocument}
+            onClose={() => setActiveSourceDocument(null)}
+          />
+        </aside>
+      )}
+    </AppShell>
   );
 }

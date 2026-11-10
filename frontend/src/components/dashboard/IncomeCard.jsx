@@ -1,43 +1,43 @@
 import { MaterialIcon } from "@/components/ui";
 
-export default function IncomeCard({ amount = "Rp 0" }) {
+export default function IncomeCard({ amount = "Rp 0", className = "" }) {
   const cardStyles = `
     relative overflow-hidden 
-    bg-surface
+    bg-card
     border border-surface
-    p-8 rounded-[2.5rem] 
+    p-5 lg:p-6 rounded-2xl 
     shadow-soft
     group transition-all duration-500 
     hover:border-primary/30
     flex justify-between items-center 
-    w-full
+    w-full ${className}
   `;
 
   return (
-    <section className="w-full">
+    <section className={`w-full ${className}`}>
       <div className={cardStyles.trim()}>
         {/* Konten Teks Identitas Pendapatan */}
         <div className="relative z-10">
-          <p className="text-muted font-medium mb-2 text-sm lg:text-base tracking-wide">
+          <p className="text-muted font-medium mb-1 text-xs lg:text-sm tracking-wide">
             Jumlah Pendapatan Tersimpan
           </p>
-          <h2 className="text-3xl lg:text-5xl font-bold text-main tracking-tight">
+          <h2 className="text-2xl lg:text-3xl font-bold text-main tracking-tight">
             {amount}
           </h2>
         </div>
 
         {/* Logo Dompet Kanan (Sekarang menggunakan aksen bg-secondary/20) */}
-        <div className="relative z-10 w-14 h-14 lg:w-20 lg:h-20 rounded-[1.5rem] bg-secondary/20 flex items-center justify-center border border-secondary/30 backdrop-blur-sm group-hover:bg-secondary/40 group-hover:scale-110 transition-all duration-500 shadow-inner">
+        <div className="relative z-10 w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center border border-secondary/30 backdrop-blur-sm group-hover:bg-secondary/40 group-hover:scale-105 transition-all duration-500 shadow-inner">
           <MaterialIcon
             name="account_balance_wallet"
-            className="text-3xl lg:text-4xl text-primary-light transition-transform duration-500"
+            className="text-2xl text-primary-light transition-transform duration-500"
           />
         </div>
 
         {/* Watermark Dekoratif (Background) */}
         <MaterialIcon
           name="payments"
-          className="absolute -bottom-6 -right-6 text-[12rem] text-main/5 -rotate-12 group-hover:rotate-0 group-hover:scale-110 transition-all duration-1000 pointer-events-none"
+          className="absolute -bottom-4 -right-4 text-[7rem] lg:text-[8rem] text-main/5 -rotate-12 group-hover:rotate-0 group-hover:scale-105 transition-all duration-1000 pointer-events-none"
         />
       </div>
     </section>

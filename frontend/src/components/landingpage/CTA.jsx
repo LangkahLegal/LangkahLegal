@@ -21,13 +21,13 @@ export default function CTA({ onGetStarted }) {
 
           {/* REFACTOR: Kelas max-w-xl dihapus agar teks memanjang bebas mengikuti kontainer */}
           <p className="text-muted mb-8 text-base md:text-lg leading-relaxed w-full">
-            Bergabunglah dengan ekosistem LangkahLegal. Bersama membangun
-            keadilan yang transparan.
+            Ambil langkah pertama untuk menyelesaikan masalah hukum Anda
+            bersama LangkahLegal.
           </p>
 
           <Button
             onClick={onGetStarted}
-            className="w-full sm:w-auto px-10 py-4 text-sm md:text-base font-bold transition-transform hover:scale-105 shadow-xl shadow-primary/20"
+            className="w-full sm:w-auto px-10 py-4 text-sm md:text-base font-bold transition-transform hover:scale-105 shadow-xl shadow-secondary/25"
           >
             Buat Akun Gratis
           </Button>

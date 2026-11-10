@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/Sidebar";
-import BottomNav from "@/components/layout/BottomNav";
+import AppShell from "@/components/layout/AppShell";
 import PageHeader from "@/components/layout/PageHeader";
 import SearchBar from "@/components/layout/SearchBar";
 import { useRouter } from "next/navigation";
@@ -116,13 +115,10 @@ export default function KonsultasiPage() {
   };
 
   return (
-    <div className="bg-bg text-main min-h-screen flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-500">
-      <Sidebar />
-
-      <div className="flex-1 flex flex-col relative min-h-screen ml-0 lg:ml-64 transition-all duration-300">
+    <AppShell role="client" contentClassName="min-h-screen">
         <PageHeader title="Cari Konsultan" />
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-6 lg:px-10 lg:py-8 space-y-8 pb-32 lg:pb-12 animate-fade-in">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 space-y-6 pb-28 lg:pb-10 animate-fade-in">
           <SearchBar value={search} onChange={setSearch} />
 
           <FilterPanel
@@ -136,7 +132,7 @@ export default function KonsultasiPage() {
             testIdPrefix="explore"
           >
             {/* Rentang tarif per sesi */}
-            <div className="col-span-2 flex items-center gap-2 h-11 px-4 rounded-full border border-surface bg-input/50">
+            <div className="col-span-2 flex items-center gap-2 h-11 px-4 rounded-full border border-surface bg-input">
               <span className="text-[10px] font-bold text-muted uppercase tracking-wide shrink-0">
                 Rp
               </span>
@@ -226,11 +222,6 @@ export default function KonsultasiPage() {
 
           <AIBanner onAction={() => router.push("/ai")} />
         </main>
-
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }

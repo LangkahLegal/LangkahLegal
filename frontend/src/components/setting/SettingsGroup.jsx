@@ -2,9 +2,20 @@
 
 import { useRouter } from "next/navigation";
 
+const ICON_TONE_CLASSES = {
+  primary: "bg-primary-soft text-primary",
+  secondary: "bg-secondary-soft text-secondary-text",
+  success: "bg-success-soft text-success",
+  accent: "bg-accent-tint text-accent",
+  danger: "bg-danger-soft text-danger",
+};
+
 function SettingsItem({ item }) {
   const router = useRouter();
   const isDanger = item.variant === "danger";
+  const iconToneClass = isDanger
+    ? ICON_TONE_CLASSES.danger
+    : ICON_TONE_CLASSES[item.tone] || "bg-surface text-primary";
 
   const handleClick = () => {
     if (item.onClick) return item.onClick();
@@ -19,26 +30,22 @@ function SettingsItem({ item }) {
         rounded-2xl border active:scale-[0.98]
         ${
           isDanger
-            ? "bg-danger/5 border-danger/20 hover:bg-danger/10"
+            ? "bg-danger-soft/50 border-danger/20 hover:bg-danger-soft"
             : "bg-card border-surface hover:border-primary/30 shadow-soft"
         }
       `}
     >
-      <div className="flex items-center justify-between p-4 sm:p-5">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between p-3.5 sm:p-4">
+        <div className="flex items-center gap-3.5">
           {/* ICON BOX - Theme Aware */}
           <div
             className={`
-              w-12 h-12 flex items-center justify-center rounded-xl 
-              transition-all duration-300 group-hover:scale-110
-              ${
-                isDanger
-                  ? "bg-danger/20 text-danger"
-                  : "bg-surface text-primary-light group-hover:bg-primary/10 group-hover:text-primary"
-              }
+              w-10 h-10 flex items-center justify-center rounded-xl 
+              transition-all duration-300 group-hover:scale-105
+              ${iconToneClass}
             `}
           >
-            <span className="material-symbols-outlined text-2xl">
+            <span className="material-symbols-outlined text-xl">
               {item.icon}
             </span>
           </div>
@@ -46,7 +53,7 @@ function SettingsItem({ item }) {
           {/* TEXT CONTENT */}
           <div className="flex flex-col gap-0.5">
             <p
-              className={`font-bold tracking-tight ${isDanger ? "text-danger" : "text-main"}`}
+              className={`font-bold text-sm tracking-tight ${isDanger ? "text-danger" : "text-main"}`}
             >
               {item.label}
             </p>

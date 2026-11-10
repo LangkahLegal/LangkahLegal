@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function LoginFooter() {
   return (
     <footer className="mt-12 text-center">
-      <p className="text-[#aca8c1] font-medium">
+      <p className="text-muted font-medium">
         Belum punya akun?{" "}
 
         <Link

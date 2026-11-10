@@ -11,7 +11,7 @@ const FileIcon = ({ type }) => {
       return (
         <MaterialIcon
           name="picture_as_pdf"
-          className="text-red-500 dark:text-red-400"
+          className="text-danger"
         />
       );
     case "image":

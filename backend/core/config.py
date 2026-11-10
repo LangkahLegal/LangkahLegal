@@ -19,6 +19,8 @@ class Settings:
     supabase_berkas_pendukung_bucket: str
     supabase_knowledge_bucket: str
     supabase_avatar_bucket: str
+    supabase_chat_log_bucket: str
+    chat_log_enabled: bool
     imgbb_api_key: str
     midtrans_server_key: str
     midtrans_client_key: str
@@ -42,6 +44,8 @@ def get_settings() -> Settings:
     )
     knowledge_bucket = os.getenv("SUPABASE_KNOWLEDGE_BUCKET", "knowledge-base").strip() or "knowledge-base"
     avatar_bucket = os.getenv("SUPABASE_AVATAR_BUCKET", "avatar").strip() or "avatar"
+    chat_log_bucket = os.getenv("SUPABASE_CHAT_LOG_BUCKET", "chat-logs").strip() or "chat-logs"
+    chat_log_enabled = os.getenv("CHAT_LOG_ENABLED", "true").strip().lower() != "false"
     midtrans_server_key = os.getenv("MIDTRANS_SERVER_KEY", "").strip()
     midtrans_client_key = os.getenv("MIDTRANS_CLIENT_KEY", "").strip()
     midtrans_is_production = os.getenv("MIDTRANS_IS_PRODUCTION", "false").strip().lower() == "true"
@@ -66,6 +70,8 @@ def get_settings() -> Settings:
         supabase_berkas_pendukung_bucket=berkas_pendukung_bucket,
         supabase_knowledge_bucket=knowledge_bucket,
         supabase_avatar_bucket=avatar_bucket,
+        supabase_chat_log_bucket=chat_log_bucket,
+        chat_log_enabled=chat_log_enabled,
         imgbb_api_key=imgbb_api_key,
         midtrans_server_key=midtrans_server_key,
         midtrans_client_key=midtrans_client_key,

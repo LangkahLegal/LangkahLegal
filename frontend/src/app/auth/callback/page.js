@@ -79,7 +79,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center bg-[#0e0c1e] px-6 overflow-hidden">
+    <div className="relative h-[100dvh] w-full flex flex-col items-center justify-center bg-bg px-6 overflow-hidden">
       <CallbackBackground />
 
       <main className="relative z-10 w-full max-w-[400px] text-center">

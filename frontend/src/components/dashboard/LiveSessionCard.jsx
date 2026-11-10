@@ -3,6 +3,7 @@
 import React from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export default function LiveSessionCard({
   clientName,
@@ -15,7 +16,7 @@ export default function LiveSessionCard({
       {/* Header: Badge LIVE & More Menu */}
       <div className="flex justify-between items-center relative z-10">
         <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <div className="w-2 h-2 rounded-full bg-danger animate-pulse" />
           <span className="text-[10px] font-black text-primary-light tracking-[0.2em] uppercase">
             LIVE
           </span>
@@ -34,13 +35,12 @@ export default function LiveSessionCard({
 
         {/* Detail Client Card: Menggunakan bg-surface agar solid & theme-aware */}
         <div className="bg-surface rounded-2xl p-4 flex items-center gap-4 border border-surface group-hover:bg-primary/5 transition-colors duration-300">
-          <img
-            src={
-              avatar ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName)}&background=random`
-            }
-            className="w-12 h-12 rounded-xl object-cover border border-surface"
+          <UserAvatar
+            src={avatar}
+            name={clientName || "Client"}
             alt="client"
+            size="md"
+            className="w-12 h-12 rounded-xl object-cover border border-surface shrink-0"
           />
           <div className="min-w-0 flex-1">
             <h4 className="font-bold text-main text-sm truncate">

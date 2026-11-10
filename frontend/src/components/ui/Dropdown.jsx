@@ -52,7 +52,7 @@ export function Dropdown({
         className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
           isOpen
             ? "bg-input border-primary ring-2 ring-primary/10"
-            : "bg-input/50 border-surface hover:border-primary/30"
+            : "bg-input border-surface hover:border-primary/30"
         }`}
       >
         <span
@@ -87,7 +87,7 @@ export function Dropdown({
                   }}
                   className={`px-6 py-3 text-sm flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-primary text-white font-bold"
+                      ? "bg-primary text-on-primary font-bold"
                       : "text-main hover:bg-surface"
                   }`}
                 >
@@ -125,7 +125,7 @@ export function SelectDropdown({ label, value, options, isOpen, onToggle, onSele
         className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
           isOpen
             ? "bg-input border-primary ring-2 ring-primary/10"
-            : "bg-input/50 border-surface hover:border-primary/30"
+            : "bg-input border-surface hover:border-primary/30"
         }`}
       >
         <span className="text-sm font-bold text-main">
@@ -150,7 +150,7 @@ export function SelectDropdown({ label, value, options, isOpen, onToggle, onSele
                   onClick={() => onSelect?.(opt.value)}
                   className={`px-6 py-3 text-sm flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-primary text-white font-bold"
+                      ? "bg-primary text-on-primary font-bold"
                       : "text-main hover:bg-surface"
                   }`}
                 >
