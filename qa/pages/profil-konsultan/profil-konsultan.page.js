@@ -5,12 +5,8 @@ export class ProfilKonsultanPage extends BasePage {
     super(page);
     this.verifiedBadge = page.getByText("✅ Verified");
     this.scheduleTitle = page.getByText("Pilih Jadwal Sesi");
-    this.availableDates = page.locator('button[class*="!w-16"]:not([disabled])');
-    this.startTimeTrigger = page
-      .locator("div.space-y-3", { has: page.locator("label", { hasText: "Jam Mulai" }) })
-      .locator("div.cursor-pointer")
-      .first();
-    this.timeOptions = page.locator(".max-h-60 > div");
+    this.availableDates = page.locator('[data-testid="date-slot"]:not([disabled])');
+    this.startTimeTrigger = page.getByTestId("selected-time-display");
     this.descriptionInput = page.getByPlaceholder("Ceritakan detail permasalahan hukum Anda di sini...");
     this.fileInput = page.locator('input[type="file"]');
     this.bookButton = page.getByRole("button", { name: "Booking Konsultasi" });
@@ -29,16 +25,17 @@ export class ProfilKonsultanPage extends BasePage {
   }
 
   timeOption(time) {
-    return this.timeOptions.filter({ hasText: new RegExp(`^${time}`) });
+    return this.page.getByTestId(`time-slot-${time}`);
   }
 
   attachment(fileName) {
     return this.page.getByText(fileName);
   }
 
+  /** Memilih tanggal praktik pertama sehingga kartu jam sesi tampil. */
   async openStartTimes() {
     await this.availableDates.first().click();
-    await this.startTimeTrigger.click();
+    await this.startTimeTrigger.waitFor();
   }
 
   async pickSchedule(startTime) {

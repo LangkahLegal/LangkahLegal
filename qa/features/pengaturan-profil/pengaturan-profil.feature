@@ -50,7 +50,7 @@ Feature: Pengaturan profil
     When pengguna mengunggah foto profil yang terlalu besar
     Then muncul pemberitahuan "File terlalu besar (max 2MB)"
 
-  @PRF-006 @stub @precondition:login-klien
+  @PRF-006 @precondition:login-klien
   Scenario: Foto profil baru tersimpan dan tampil
     Given layanan unggah foto menerima foto profil
     And pengguna berada di halaman pengaturan profil
@@ -63,8 +63,8 @@ Feature: Pengaturan profil
     Given layanan unggah foto menolak foto profil
     And pengguna berada di halaman pengaturan profil
     When pengguna mengunggah foto profil baru
-    Then muncul pemberitahuan "Gagal sinkronisasi foto."
-    And tidak ada permintaan simpan profil yang dikirim ke backend
+    Then muncul pemberitahuan "Gagal mengunggah foto."
+    And foto profil di database tidak berubah
 
   @PRF-008
   Scenario: Konsultan yang ditolak melihat alasan penolakan di profilnya

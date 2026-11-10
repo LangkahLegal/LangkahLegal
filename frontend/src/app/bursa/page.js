@@ -17,7 +17,7 @@ import SuccessView from "@/components/layout/SuccessView";
 import ClaimConfirmModal from "@/components/bursa/ClaimConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JADWAL_OPTIONS, WAKTU_OPTIONS, defaultFilterValues } from "@/lib/filterOptions";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { MAX_SEARCH_LENGTH, useDebouncedValue } from "@/lib/useDebouncedValue";
 
 // Pilihan filter; id-nya dikirim apa adanya ke backend (GET /cases/).
 const FILTER_DROPDOWNS = [
@@ -64,7 +64,7 @@ export default function BursaKasusPage() {
   const [successData, setSuccessData] = useState(null);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim());
+  const debouncedSearch = useDebouncedValue(search.trim().slice(0, MAX_SEARCH_LENGTH));
   const [expandedDesc, setExpandedDesc] = useState({});
 
   // --- Fetch kasus open: filter, pencarian, dan urutan dikerjakan backend ---

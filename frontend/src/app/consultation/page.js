@@ -11,7 +11,7 @@ import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { consultantService } from "@/services/consultant.service";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JADWAL_OPTIONS, WAKTU_OPTIONS, defaultFilterValues } from "@/lib/filterOptions";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { MAX_SEARCH_LENGTH, useDebouncedValue } from "@/lib/useDebouncedValue";
 
 // Pilihan filter; id-nya dikirim apa adanya ke backend (GET /consultants/me/requests/active).
 const FILTER_DROPDOWNS = [
@@ -43,7 +43,7 @@ const DEFAULT_OPTIONS = defaultFilterValues(FILTER_DROPDOWNS);
 export default function ConsultantClientsPage() {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim());
+  const debouncedSearch = useDebouncedValue(search.trim().slice(0, MAX_SEARCH_LENGTH));
 
   // --- 1. Fetch Data: filter, pencarian, dan urutan dikerjakan backend ---
   const filters = { search: debouncedSearch, ...options };

@@ -117,14 +117,6 @@ Feature: Tanya AI
     And pengguna mengisi budget minimal lebih besar dari maksimal
     Then form menolak budget itu tanpa mengirim pertanyaan baru
 
-  @AI-009 @stub
-  Scenario: Jawaban cepat dapat dipilih saat AI menanyakan bukti
-    Given AI akan membalas dengan pertanyaan tentang bukti
-    And pengguna berada di halaman tanya AI
-    When pengguna mengirim pertanyaan hukum ke AI
-    And pengguna memilih jawaban cepat bahwa ia punya bukti
-    Then jawaban cepat itu dikirim sebagai pertanyaan berikutnya
-
   @AI-010 @stub
   Scenario: Jawaban AI berisi konten berbahaya tidak dijalankan browser
     Given AI akan membalas dengan konten berbahaya

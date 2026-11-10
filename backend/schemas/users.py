@@ -17,8 +17,8 @@ class ProfileUpdatePayload(BaseModel):
     pendidikan_terakhir: Optional[str] = Field(None, max_length=MAX_SHORT_TEXT)
     kota_praktik: Optional[str] = Field(None, max_length=MAX_NAME)
     spesialisasi: Optional[str] = Field(None, max_length=MAX_SHORT_TEXT)
-    pengalaman_tahun: Optional[int] = None
-    tarif_per_sesi: Optional[float] = None
+    pengalaman_tahun: Optional[int] = Field(None, ge=0, le=80)
+    tarif_per_sesi: Optional[float] = Field(None, ge=0)
     linkedin: Optional[str] = Field(None, max_length=MAX_URL)
     portofolio: Optional[str] = Field(None, max_length=MAX_URL)
 
@@ -34,8 +34,8 @@ class ProfileForm:
     pendidikan_terakhir: str | None = Form(default=None, max_length=MAX_SHORT_TEXT)
     kota_praktik: str | None = Form(default=None, max_length=MAX_NAME)
     spesialisasi: str | None = Form(default=None, max_length=MAX_SHORT_TEXT)
-    pengalaman_tahun: int | None = Form(default=None)
-    tarif_per_sesi: float | None = Form(default=None)
+    pengalaman_tahun: int | None = Form(default=None, ge=0, le=80)
+    tarif_per_sesi: float | None = Form(default=None, ge=0)
     linkedin: str | None = Form(default=None, max_length=MAX_URL)
     portofolio: str | None = Form(default=None, max_length=MAX_URL)
     portofolio_file: UploadFile | None = File(default=None)

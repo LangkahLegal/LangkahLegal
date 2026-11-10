@@ -31,7 +31,7 @@ export const CREDENTIALS = {
 };
 
 export const PHOTO = {
-  uploadedUrl: "https://i.ibb.co/sit/avatar.png",
+  storedUrl: /\/storage\/v1\/object\/public\/.+\/user_\d+\/[0-9a-f]+\.png$/,
   valid: path.join(FILES_DIR, "chat.png"),
   oversized: { name: "besar.png", mimeType: "image/png", buffer: Buffer.alloc(2.5 * 1024 * 1024) },
 };
@@ -39,7 +39,7 @@ export const PHOTO = {
 export const PROFILE_MESSAGES = {
   saveFailed: "Gagal menyimpan perubahan.",
   photoTooLarge: "File terlalu besar (max 2MB)",
-  photoFailed: "Gagal sinkronisasi foto.",
+  photoFailed: "Gagal mengunggah foto.",
   rejectedTitle: "Pengajuan Verifikasi Ditolak",
 };
 

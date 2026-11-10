@@ -5,18 +5,6 @@ import { ACCOUNTS, account } from "../../test_data/accounts.js";
 import { REJECTION_REASON } from "../../test_data/konsultan.data.js";
 import { CREDENTIALS, PHOTO, PROFILE_EDIT } from "../../test_data/pengaturan.data.js";
 
-const IMGBB = /api\.imgbb\.com/;
-
-const imgbbReplies = (page, status, body) =>
-  page.route(IMGBB, (route) =>
-    route.fulfill({
-      status,
-      contentType: "application/json",
-      headers: { "access-control-allow-origin": "*" },
-      body: JSON.stringify(body),
-    }),
-  );
-
 /** Mengembalikan profil akun uji ke nilai awalnya setelah skenario mengubahnya. */
 const restoreKlien = (world) =>
   world.cleanups.push(() => setUser("klien", { nama: account("klien").name, foto_profil: null }));
@@ -115,24 +103,31 @@ When("pengguna mengunggah foto profil yang terlalu besar", async ({ pengaturanPr
 
 // ── PRF-006 · Foto profil baru tersimpan dan tampil
 
-Given("layanan unggah foto menerima foto profil", async ({ page }) => {
-  await imgbbReplies(page, 200, { success: true, data: { url: PHOTO.uploadedUrl } });
-  // Alamat hasil unggahan juga dilayani, karena avatar kembali ke gambar bawaan bila fotonya gagal dimuat.
-  await page.route(PHOTO.uploadedUrl, (route) => route.fulfill({ path: PHOTO.valid, contentType: "image/png" }));
+/** Foto diunggah backend ke Supabase Storage; foto semula dikembalikan setelah skenario. */
+Given("layanan unggah foto menerima foto profil", async ({ world }) => {
+  const { foto_profil: original } = await findUser("klien");
+  world.originalPhoto = original;
+  world.cleanups.push(() => setUser("klien", { foto_profil: original }));
 });
 
 Then("foto profil baru tampil di halaman", async ({ pengaturanProfilPage }) => {
-  await expect(pengaturanProfilPage.avatar).toHaveAttribute("src", PHOTO.uploadedUrl);
+  await expect(pengaturanProfilPage.avatar).toHaveAttribute("src", PHOTO.storedUrl);
 });
 
-Then("alamat foto baru tersimpan di database", async () => {
-  await expect.poll(async () => (await findUser("klien")).foto_profil).toBe(PHOTO.uploadedUrl);
+Then("alamat foto baru tersimpan di database", async ({ pengaturanProfilPage }) => {
+  const shown = await pengaturanProfilPage.avatar.getAttribute("src");
+  await expect.poll(async () => (await findUser("klien")).foto_profil).toBe(shown);
 });
 
 // ── PRF-007 · Kegagalan mengunggah foto diberitahukan ke pengguna
 
-Given("layanan unggah foto menolak foto profil", async ({ page }) => {
-  await imgbbReplies(page, 400, { success: false });
+Given("layanan unggah foto menolak foto profil", async ({ network, world }) => {
+  world.originalPhoto = (await findUser("klien")).foto_profil;
+  await network.reply("simpan profil", { status: 500, json: { detail: "Gagal upload foto profil" } });
+});
+
+Then("foto profil di database tidak berubah", async ({ world }) => {
+  expect((await findUser("klien")).foto_profil).toBe(world.originalPhoto);
 });
 
 // ── PRF-008 · Konsultan yang ditolak melihat alasan penolakan di profilnya

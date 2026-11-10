@@ -12,7 +12,7 @@ import FilterPanel from "@/components/layout/FilterPanel";
 import AIBanner from "@/components/explore/AIBanner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { defaultFilterValues } from "@/lib/filterOptions";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { MAX_SEARCH_LENGTH, useDebouncedValue } from "@/lib/useDebouncedValue";
 
 // Import Service
 import { consultationService } from "@/services/consultation.service";
@@ -60,7 +60,7 @@ const toPrice = (value) => {
 export default function KonsultasiPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim());
+  const debouncedSearch = useDebouncedValue(search.trim().slice(0, MAX_SEARCH_LENGTH));
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");

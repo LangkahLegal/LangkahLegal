@@ -31,8 +31,8 @@ const loginMethodOf = (accessToken) => {
   }
 };
 
-/** Menanam sesi seperti hasil login: cookie httpOnly berisi token, penanda sesi dan peran di localStorage. */
-export async function seedSessionCookies(page, baseUrl, session, role) {
+/** Cookie sesi httpOnly seperti yang disetel backend lewat Set-Cookie. */
+export async function setSessionCookies(page, baseUrl, session) {
   const url = new URL(baseUrl).origin;
   await page.context().addCookies(
     [
@@ -42,6 +42,11 @@ export async function seedSessionCookies(page, baseUrl, session, role) {
       .filter(([, value]) => value)
       .map(([name, value]) => ({ name, value, url, httpOnly: true, sameSite: "Lax" })),
   );
+}
+
+/** Menanam sesi seperti hasil login: cookie httpOnly berisi token, penanda sesi dan peran di localStorage. */
+export async function seedSessionCookies(page, baseUrl, session, role) {
+  await setSessionCookies(page, baseUrl, session);
   await page.addInitScript(
     ({ role, loginMethod }) => {
       if (window.sessionStorage.getItem("__sit_seeded")) return;

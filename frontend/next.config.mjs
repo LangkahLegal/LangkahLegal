@@ -16,6 +16,8 @@ const backendApiUrl = () => {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  // Sama dengan batas proxy rewrite Vercel; jawaban asisten AI bisa lebih dari 30 detik (bawaan Next.js).
+  experimental: { proxyTimeout: 120_000 },
   serverExternalPackages: ["lightningcss", "@tailwindcss/oxide"],
   images: {
     remotePatterns: [

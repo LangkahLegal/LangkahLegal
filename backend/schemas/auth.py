@@ -62,3 +62,4 @@ class ForgotPasswordPayload(BaseModel):
 class ResetPasswordPayload(BaseModel):
     new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, max_length=72)
     current_password: Optional[str] = None
+    keep_session: bool = False

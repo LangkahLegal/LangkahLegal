@@ -149,5 +149,6 @@ async def reset_password(
     token: str = Depends(get_token_from_request),
 ):
     await auth_service.reset_password(token, payload.new_password, payload.current_password)
-    clear_auth_cookies(response)
+    if not payload.keep_session:
+        clear_auth_cookies(response)
     return {"data": {"updated": True}}

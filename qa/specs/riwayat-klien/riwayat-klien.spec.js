@@ -15,14 +15,15 @@ Then(
 );
 
 Then("jumlah sesi selesai tampil di riwayat", async ({ riwayatKlienPage }) => {
-  await expect(riwayatKlienPage.finishedBadge(HISTORY_EXPECTATION.finishedBadge)).toBeVisible();
+  await riwayatKlienPage.showFinishedOnly();
+  await expect(riwayatKlienPage.cards).toHaveCount(HISTORY_EXPECTATION.finished);
 });
 
 // ── HIS-002 · Klien tanpa konsultasi melihat riwayat kosong
 
 Then("riwayat menampilkan keadaan kosong", async ({ riwayatKlienPage }) => {
   await expect(riwayatKlienPage.emptyState).toBeVisible();
-  await expect(riwayatKlienPage.finishedBadge("0 Selesai")).toBeVisible();
+  await expect(riwayatKlienPage.cards).toHaveCount(0);
 });
 
 // ── HIS-003 · Klien membuka detail konsultasi dari riwayat

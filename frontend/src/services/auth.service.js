@@ -205,13 +205,14 @@ export const authService = {
 
   // Akun yang masuk lewat Google belum punya password; membuatnya memakai endpoint yang sama.
   createPassword: async ({ password }) =>
-    authService.resetPassword({ newPassword: password }),
+    authService.resetPassword({ newPassword: password, keepSession: true }),
 
-  resetPassword: async ({ newPassword, currentPassword }) => {
+  resetPassword: async ({ newPassword, currentPassword, keepSession = false }) => {
     try {
       await api.post("/auth/reset-password", {
         new_password: newPassword,
         current_password: currentPassword || undefined,
+        keep_session: keepSession,
       });
     } catch (error) {
       let message = error?.response?.data?.detail || error?.message;

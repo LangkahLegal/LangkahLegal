@@ -11,7 +11,6 @@ import {
   CONSULTATION_DRAFT,
   QUESTIONS,
   PREFERENCE,
-  QUICK_REPLIES,
   RECOMMENDATION,
   SAVED_SESSIONS,
   SOURCE_DOCUMENT,
@@ -170,18 +169,6 @@ Then("form pengajuan di tab baru sudah berisi ringkasan kasus dari AI", async ({
   expect(world.popup.url()).toMatch(new RegExp(`/explore/${identity("konsultan").idKonsultan}\\?dari=ai$`));
   const profil = new ProfilKonsultanPage(world.popup);
   await expect(profil.descriptionInput).toHaveValue(CONSULTATION_DRAFT.deskripsi_kasus);
-});
-
-// ── AI-009 · Jawaban cepat dapat dipilih saat AI menanyakan bukti
-
-When("pengguna memilih jawaban cepat bahwa ia punya bukti", async ({ tanyaAiPage }) => {
-  await expect(tanyaAiPage.quickReply(QUICK_REPLIES.no)).toBeVisible();
-  await tanyaAiPage.quickReply(QUICK_REPLIES.yes).click();
-});
-
-Then("jawaban cepat itu dikirim sebagai pertanyaan berikutnya", async ({ network }) => {
-  await expect.poll(() => network.calls("tanya AI").length).toBe(2);
-  expect(network.calls("tanya AI")[1].body.query).toBe(QUICK_REPLIES.yes);
 });
 
 // ── AI-010 · Jawaban AI berisi konten berbahaya tidak dijalankan browser

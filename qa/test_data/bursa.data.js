@@ -13,6 +13,7 @@ export const CASE_POST = {
   startStored: "10:00:00",
   endStored: "10:30:00",
   document: path.join(FILES_DIR, "chat.png"),
+  documentName: "chat.png",
 };
 
 /** Konsultasi milik klien yang membuat sebagian jam besok tidak bisa dipilih. */

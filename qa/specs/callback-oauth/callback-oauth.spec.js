@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { Given, Then, When } from "../../hooks/bdd.js";
-import { presetSessionStorage } from "../../support/browser.js";
+import { presetSessionStorage, setSessionCookies } from "../../support/browser.js";
 import { db, eq } from "../../support/database.js";
 import { env } from "../../support/env.js";
 import { sessions } from "../../support/sessions.js";
@@ -15,6 +15,7 @@ const rememberVerifier = (page) => presetSessionStorage(page, { pending_oauth_ve
 Given("Google mengenali pengguna sebagai {akun}", async ({ page, network, world }, akun) => {
   const session = await sessions.fresh(akun);
   await network.reply("tukar kode OAuth", { json: { data: { session } } });
+  await setSessionCookies(page, env.baseUrl, session);
   await rememberVerifier(page);
   if (!account(akun).role) world.cleanups.push(() => removeProfile(account(akun).email));
 });

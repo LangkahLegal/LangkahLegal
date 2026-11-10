@@ -29,4 +29,4 @@ export const REVIEW_MESSAGES = {
 export const HISTORY_STATUSES = ["selesai", "terjadwal", "pending", "dibatalkan", "selesai"];
 
 /** Urutan yang diharapkan di halaman riwayat: sesi aktif lebih dulu. */
-export const HISTORY_EXPECTATION = { total: 5, finishedBadge: "2 Selesai", firstLabels: ["Terjadwal", "Pending"] };
+export const HISTORY_EXPECTATION = { total: 5, finished: 2, firstLabels: ["Terjadwal", "Pending"] };
