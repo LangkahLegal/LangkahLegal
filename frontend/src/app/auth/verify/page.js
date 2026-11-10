@@ -85,7 +85,6 @@ export default function EmailVerificationPage() {
           ? "/dashboard/consultant"
           : "/dashboard/client",
       );
-      router.refresh();
     } catch (err) {
       setErrorMsg(err?.message || "Kode OTP tidak valid.");
     } finally {

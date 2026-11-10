@@ -4,7 +4,7 @@
 # Web framework
 fastapi==0.135.2
 uvicorn==0.42.0
-python-multipart==0.0.6
+python-multipart==0.0.33
 email-validator==2.3.0
 pydantic==2.12.5
 limits==5.8.0

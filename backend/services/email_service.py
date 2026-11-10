@@ -1,3 +1,4 @@
+import html
 import logging
 from email.utils import parseaddr
 
@@ -75,10 +76,10 @@ def send_recovery_email(to_email: str, recovery_link: str) -> None:
         <p>Kami menerima permintaan untuk mereset password akun LangkahLegal Anda. Jika Anda merasa tidak meminta ini, abaikan saja email ini.</p>
         <p>Untuk mereset password Anda, silakan klik tombol di bawah ini:</p>
         <div style="text-align: center; margin: 30px 0;">
-            <a href="{recovery_link}" style="background-color: #1a56db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+            <a href="{html.escape(recovery_link)}" style="background-color: #1a56db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
         </div>
         <p>Atau copy-paste tautan berikut ke browser Anda:</p>
-        <p style="word-break: break-all; color: #666; font-size: 14px;">{recovery_link}</p>
+        <p style="word-break: break-all; color: #666; font-size: 14px;">{html.escape(recovery_link)}</p>
         <br/>
         <p>Terima kasih,<br/>Tim LangkahLegal</p>
       </body>
@@ -89,12 +90,13 @@ def send_recovery_email(to_email: str, recovery_link: str) -> None:
 
 
 def send_notification_email(to_email: str, subject: str, message: str) -> None:
+    safe_message = html.escape(message).replace("\n", "<br/>")
     body_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #1a56db;">Pemberitahuan - LangkahLegal</h2>
         <p>Halo,</p>
-        <p>{message}</p>
+        <p>{safe_message}</p>
         <br/>
         <p>Terima kasih,<br/>Tim LangkahLegal</p>
       </body>

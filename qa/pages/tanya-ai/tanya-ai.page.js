@@ -51,9 +51,6 @@ export class TanyaAiPage extends BasePage {
     if (waktu) await this.preferenceChip(waktu).click();
   }
 
-  quickReply(label) {
-    return this.page.getByRole("button", { name: label });
-  }
 
   savedSession(title) {
     return this.page.locator("div.group", { hasText: title });

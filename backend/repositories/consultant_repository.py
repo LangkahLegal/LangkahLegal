@@ -155,8 +155,15 @@ def get_name(db: Client, id_konsultan: int) -> dict:
     return get_by_id_strict(db, id_konsultan, "nama_lengkap")
 
 
+PUBLIC_COLUMNS = (
+    "id_konsultan, nama_lengkap, spesialisasi, tarif_per_sesi, foto_profil, bio_singkat, deskripsi_lengkap, "
+    "gelar_akademik, pendidikan_terakhir, pengalaman_tahun, kota_praktik, status_verifikasi, is_active, "
+    "users(nama, foto_profil), rating_ulasan(skor_rating)"
+)
+
+
 def get_public_detail(db: Client, id_konsultan: int) -> dict | None:
-    return get_by_id(db, id_konsultan, "*, users(nama, email, foto_profil), rating_ulasan(skor_rating)")
+    return get_by_id(db, id_konsultan, PUBLIC_COLUMNS)
 
 
 def get_admin_detail(db: Client, id_konsultan: int) -> dict | None:

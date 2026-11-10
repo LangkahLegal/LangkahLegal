@@ -13,7 +13,7 @@ export const consultationService = {
     try {
       const params =
         spesialisasi && spesialisasi !== "semua" ? { spesialisasi } : {};
-      const response = await api.get("/consultants/", { params });
+      const response = await api.get("/consultants", { params });
       return response.data.data;
     } catch (error) {
       console.error("Gagal memuat katalog:", error);
@@ -38,7 +38,7 @@ export const consultationService = {
     if (minPrice !== undefined && minPrice !== null) params.min_price = minPrice;
     if (maxPrice !== undefined && maxPrice !== null) params.max_price = maxPrice;
 
-    const response = await api.get("/consultants/", { params });
+    const response = await api.get("/consultants", { params });
     return {
       data: response.data.data || [],
       total: response.data.total ?? (response.data.data || []).length,
@@ -46,13 +46,13 @@ export const consultationService = {
   },
 
   getConsultations: async () => {
-    const response = await api.get("/consultations/");
+    const response = await api.get("/consultations");
     return response.data.data;
   },
 
   // Konsultasi yang masih relevan untuk dashboard klien, terbaru lebih dulu (disaring backend).
   getActiveConsultations: async () => {
-    const response = await api.get("/consultations/", { params: { aktif: true } });
+    const response = await api.get("/consultations", { params: { aktif: true } });
     return response.data.data;
   },
 
@@ -75,7 +75,7 @@ export const consultationService = {
       formData.append("dokumen_pendukung_files", file);
     });
 
-    const { data } = await api.post("/consultations/", formData);
+    const { data } = await api.post("/consultations", formData);
 
     return data;
   },

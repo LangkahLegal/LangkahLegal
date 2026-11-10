@@ -87,7 +87,7 @@ def _get_auth_user(token: str, db: Client):
     try:
         user_res = db.auth.get_user(token)
     except Exception as exc:
-        raise UnauthorizedError(f"Token tidak valid: {str(exc)}")
+        raise UnauthorizedError("Token tidak valid atau kedaluwarsa") from exc
 
     if not user_res.user:
         raise UnauthorizedError("Token tidak valid atau kedaluwarsa")

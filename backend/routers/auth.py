@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from supabase import Client
 
 from core.database import get_supabase_client
+from core.exceptions import AppError
 from docs import auth as docs
 from helpers.cookies import (
     clear_auth_cookies,
@@ -46,14 +48,14 @@ async def resend_signup_otp(payload: ResendOtpPayload):
     return {"data": await auth_service.resend_signup_otp(payload)}
 
 
-@router.post("/verify-otp", **docs.VERIFY_OTP)
+@router.post("/verify-otp", dependencies=[Depends(throttle("10/minute", by="email"))], **docs.VERIFY_OTP)
 async def verify_otp(payload: VerifyOtpPayload, response: Response):
     data = await auth_service.verify_otp(payload)
     set_auth_cookies(response, data["session"])
     return {"data": data}
 
 
-@router.post("/login-password", **docs.LOGIN_WITH_PASSWORD)
+@router.post("/login-password", dependencies=[Depends(throttle("10/minute", by="email"))], **docs.LOGIN_WITH_PASSWORD)
 async def login_with_password(payload: PasswordLoginPayload, response: Response):
     data = await auth_service.login_with_password(payload)
     set_auth_cookies(response, data["session"])
@@ -87,7 +89,12 @@ async def exchange_code(
 async def refresh_session(request: Request, response: Response, payload: RefreshTokenPayload | None = None):
     refresh_token = (payload.refresh_token if payload else None) or request.cookies.get("ll_refresh")
 
-    data = await auth_service.refresh_session(refresh_token)
+    try:
+        data = await auth_service.refresh_session(refresh_token)
+    except AppError as exc:
+        failed = JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        clear_auth_cookies(failed)
+        return failed
 
     set_auth_cookies(response, data["session"])
 
@@ -119,8 +126,13 @@ def update_role(
 
 
 @router.post("/logout", **docs.LOGOUT)
-async def logout(response: Response, token: str = Depends(get_token_from_request)):
-    await auth_service.logout(token)
+async def logout(request: Request, response: Response):
+    token = request.headers.get("authorization", "").removeprefix("Bearer ").strip() or request.cookies.get("ll_token")
+    if token:
+        try:
+            await auth_service.logout(token)
+        except AppError:
+            pass
     clear_auth_cookies(response)
     return {"data": {"logout": True}}
 
@@ -137,5 +149,6 @@ async def reset_password(
     token: str = Depends(get_token_from_request),
 ):
     await auth_service.reset_password(token, payload.new_password, payload.current_password)
-    clear_auth_cookies(response)
+    if not payload.keep_session:
+        clear_auth_cookies(response)
     return {"data": {"updated": True}}

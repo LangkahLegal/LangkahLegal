@@ -10,6 +10,7 @@ from core.database import get_supabase_client
 from core.exceptions import BadRequestError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.embedding import get_voyage_client
+from helpers.listing import clean_search
 from repositories import legal_document_repository
 from schemas.admin_docs import (
     DocumentReplaceForm,
@@ -209,6 +210,7 @@ def list_documents(
     search: Optional[str],
 ) -> PaginatedResponse:
     offset = (page - 1) * page_size
+    search = clean_search(search) or None
     rows, total = legal_document_repository.list_summaries(db, offset, page_size, kategori=kategori, search=search)
 
     return PaginatedResponse(data=rows, total=total, page=page, page_size=page_size)
@@ -222,6 +224,7 @@ def list_chunks(
     page_size: int,
     search: Optional[str],
 ) -> PaginatedResponse:
+    search = clean_search(search) or None
     total = legal_document_repository.count_by_uri(db, frbr_uri, search)
 
     offset = (page - 1) * page_size

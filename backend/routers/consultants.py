@@ -20,7 +20,7 @@ from services import consultant_service
 router = APIRouter()
 
 
-@router.get("/", status_code=status.HTTP_200_OK, **docs.GET_ALL_CONSULTANTS)
+@router.get("", status_code=status.HTTP_200_OK, **docs.GET_ALL_CONSULTANTS)
 def get_all_consultants(
     spesialisasi: Optional[str] = None,
     search: Optional[str] = Query(None, max_length=100, description="Cari nama atau keahlian"),

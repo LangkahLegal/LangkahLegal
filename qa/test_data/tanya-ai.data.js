@@ -148,7 +148,6 @@ export const AI_REPLIES = {
 
 export const STUB_SESSION_ID = "sit-sesi-1";
 
-export const QUICK_REPLIES = { yes: "Ya, saya punya buktinya", no: "Saya tidak punya bukti" };
 
 export const RECOMMENDATION = { title: "Rekomendasi Konsultan:", rating: "4.8", priceLabel: /Rp\s?150\.000/ };
 

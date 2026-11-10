@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../ui";
-import { getStoredAccessToken, getStoredRole } from "@/lib/authStorage";
+import { getStoredRole, hasStoredSession } from "@/lib/authStorage";
 
 const NAV_LINKS = [
   { label: "Home", href: "#hero", sectionId: "hero" },
@@ -22,9 +22,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const checkSession = () => {
-      const token = getStoredAccessToken();
-      const role = getStoredRole();
-      setSession({ isLoggedIn: Boolean(token), role });
+      setSession({ isLoggedIn: hasStoredSession(), role: getStoredRole() });
     };
     checkSession();
   }, []);

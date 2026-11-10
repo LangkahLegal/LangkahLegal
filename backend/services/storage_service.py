@@ -20,6 +20,18 @@ SIGNED_URL_TTL_SECONDS = 3600
 SUPPORTING_DOC_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
 AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 PDF_CONTENT_TYPES = {"application/pdf", "application/x-pdf"}
+IMAGE_SIGNATURES = {
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".gif": (b"GIF87a", b"GIF89a"),
+}
+
+
+def _is_image(file_bytes: bytes, ext: str) -> bool:
+    if ext == ".webp":
+        return file_bytes[:4] == b"RIFF" and file_bytes[8:12] == b"WEBP"
+    return file_bytes.startswith(IMAGE_SIGNATURES.get(ext, ()))
 
 
 async def _read_file_bytes(file: UploadFile, label: str, max_size_mb: int, size_label: str) -> bytes:
@@ -57,7 +69,8 @@ def _put_object(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"{error_prefix}: {str(exc)}")
+        logger.error(f"{error_prefix} ({bucket_name}/{storage_path}): {exc}")
+        raise HTTPException(status_code=500, detail=error_prefix)
 
 
 def _upload_to_bucket(
@@ -180,6 +193,8 @@ async def upload_avatar_to_supabase(
         raise HTTPException(status_code=400, detail="Content-Type file harus image")
 
     file_bytes = await _read_file_bytes(file, "foto profil", MAX_AVATAR_SIZE_MB, "foto profil")
+    if not _is_image(file_bytes, matched_ext):
+        raise HTTPException(status_code=400, detail="File foto profil bukan gambar yang valid")
 
     storage_ext = matched_ext.lstrip(".")
     content_type = file.content_type or f"image/{'jpeg' if storage_ext == 'jpg' else storage_ext}"
@@ -217,6 +232,8 @@ async def upload_supporting_document_to_supabase(
     is_pdf = matched_ext == ".pdf"
     if is_pdf and not file_bytes.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="File PDF dokumen pendukung tidak valid")
+    if not is_pdf and not _is_image(file_bytes, matched_ext):
+        raise HTTPException(status_code=400, detail="File gambar dokumen pendukung tidak valid")
 
     storage_ext = matched_ext.lstrip(".")
     if is_pdf:
@@ -280,9 +297,10 @@ async def upload_supporting_documents(
             )
             uploaded.append(on_uploaded(doc_meta))
         except HTTPException as e:
-            failed.append({"nama": file.filename, "alasan": e.detail if detail_only else str(e)})
+            failed.append({"nama": file.filename, "alasan": e.detail})
         except Exception as e:
-            failed.append({"nama": file.filename, "alasan": str(e)})
+            logger.error(f"Gagal mengunggah dokumen pendukung {file.filename}: {e}")
+            failed.append({"nama": file.filename, "alasan": "Gagal mengunggah berkas"})
 
     return uploaded, failed
 

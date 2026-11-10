@@ -8,15 +8,15 @@ export class JadwalPage extends BasePage {
     this.availabilitySection = page.getByTestId("availability-toggle-section");
     this.availabilityToggle = this.availabilitySection.getByRole("button");
     this.calendar = page.getByTestId("monthly-calendar");
-    this.nextMonthButton = this.calendar.getByRole("button", { name: "chevron_right" });
-    this.previousMonthButton = this.calendar.getByRole("button", { name: "chevron_left" });
+    this.nextMonthButton = this.calendar.getByRole("button", { name: "Bulan Berikutnya" });
+    this.previousMonthButton = this.calendar.getByRole("button", { name: "Bulan Sebelumnya" });
     this.modal = page.getByTestId("add-slot-modal");
     this.saveButton = page.getByTestId("schedule-save-btn");
     this.closeModalButton = this.modal.getByRole("button", { name: "close" });
   }
 
   day(number) {
-    return this.calendar.getByRole("button", { name: String(number), exact: true });
+    return this.calendar.getByTestId("date-slot").filter({ hasText: new RegExp(`^${number}$`) });
   }
 
   modalTitle(title) {

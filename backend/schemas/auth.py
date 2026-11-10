@@ -1,14 +1,16 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from schemas.validation import MAX_NAME, MIN_PASSWORD_LENGTH
 
 AppRole = Literal["client", "konsultan"]
 
 
 class SignUpPayload(BaseModel):
-    email: str
-    password: str
-    name: str
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, max_length=72)
+    name: str = Field(..., min_length=1, max_length=MAX_NAME)
     role: AppRole
     emailRedirectTo: Optional[str] = None
 
@@ -58,5 +60,6 @@ class ForgotPasswordPayload(BaseModel):
 
 
 class ResetPasswordPayload(BaseModel):
-    new_password: str
+    new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, max_length=72)
     current_password: Optional[str] = None
+    keep_session: bool = False

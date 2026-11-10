@@ -7,8 +7,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import RoleCard from "@/components/role/RoleCard";
 import { authService } from "@/services/auth.service";
 import {
-  getStoredAccessToken,
-  getStoredRefreshToken,
+  hasStoredSession,
   getStoredRole,
 } from "@/lib/authStorage";
 
@@ -38,7 +37,7 @@ export default function RolePage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const hasAuth = Boolean(getStoredAccessToken() || getStoredRefreshToken());
+  const hasAuth = hasStoredSession();
   const backHref = hasAuth
     ? storedRole === "konsultan"
       ? "/dashboard/consultant"

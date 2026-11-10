@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Cookie, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
@@ -6,6 +8,8 @@ from core.constants import Role
 from core.database import get_supabase_client
 from core.user import CurrentUser
 from helpers.profile import find_profile
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=False)
 
@@ -70,4 +74,5 @@ def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Otorisasi gagal: {str(e)}")
+        logger.warning(f"Autentikasi gagal: {e}")
+        raise HTTPException(status_code=401, detail="Sesi tidak valid. Silakan login kembali.")

@@ -24,10 +24,10 @@ import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { clearConsultationDraft, readIncomingConsultationDraft, readIncomingSlot } from "@/lib/consultationDraft";
 import { useClientValue } from "@/lib/useClientValue";
-import { getStoredAccessToken, getStoredRole } from "@/lib/authStorage";
+import { getStoredRole, hasStoredSession } from "@/lib/authStorage";
 
 const readIsReady = () => true;
-const readHasSession = () => Boolean(getStoredAccessToken());
+const readHasSession = () => hasStoredSession();
 const readViewerRole = () => getStoredRole()?.toLowerCase() || null;
 
 export default function ConsultantDetailPage() {
