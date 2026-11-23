@@ -210,7 +210,7 @@ export default function ConsultationCard({
         <Button
           variant="ghost"
           onClick={handleMainAction}
-          className={`!p-0 !h-auto !bg-transparent !text-xs hover:gap-2 transition-all ${
+          className={`!px-0 !py-2 -my-2 !h-auto !bg-transparent !text-xs hover:gap-2 transition-all ${
             isActive || isWaitingPayment
               ? "text-primary-light"
               : "text-muted hover:text-primary-light"

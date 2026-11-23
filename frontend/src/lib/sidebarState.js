@@ -7,7 +7,11 @@ const listeners = new Set();
 
 const getStoredCollapsed = () => {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(STORAGE_KEY) === "1";
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return false; // storage diblokir (mode privat): sidebar tetap terbuka
+  }
 };
 
 const notify = () => {
@@ -32,7 +36,11 @@ const subscribe = (listener) => {
 
 export const setSidebarCollapsed = (next) => {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    try {
+      localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      // abaikan: state hanya tidak tersimpan antar sesi
+    }
   }
   notify();
 };

@@ -94,7 +94,7 @@ function KnowledgeDetailContent() {
                         <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
                             toastMsg.type === 'error' 
                                 ? 'bg-danger/10 border-danger/30 text-danger' 
-                                : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
+                                : 'bg-primary/10 border-primary/30 text-primary-text'
                         }`}>
                             <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
                             {toastMsg.text}

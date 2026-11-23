@@ -41,8 +41,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
       {/* REFACTOR 2: Gunakan Gradient Overlay. 
           Atas agak terang (30%), tengah sedang (60%), bawah gelap (80%).
           Ini menjamin tombol di bawah akan SELALU terbaca kontras. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/40 z-0" />
-
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/25 to-black/40 z-0" />
       <div className="glow-bottom-right-secondary z-0 opacity-70" />
 
       <motion.div
@@ -62,11 +61,12 @@ export default function Hero({ onGetStarted, onLearnMore }) {
             <span
               style={{
                 background:
-                  "linear-gradient(to right, var(--primary-light), var(--primary))",
+                  "linear-gradient(to right, #7fc6d6, #3f93a8)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
                 color: "transparent",
+                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))",
               }}
             >
               Dimulai dari Sini.

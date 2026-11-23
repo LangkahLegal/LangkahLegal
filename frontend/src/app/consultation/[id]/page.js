@@ -169,7 +169,7 @@ export default function ConsultationDetail() {
               <div className="pt-4 animate-fade-in-up flex flex-col items-center">
                 <button
                   onClick={() => setIsRatingModalOpen(true)}
-                  className="w-full px-8 py-3 bg-primary hover:bg-primary-hover text-on-primary font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                  className="w-full px-8 py-3 bg-primary hover:bg-primary-light text-on-primary font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                 >
                   Beri Ulasan & Selesaikan
                 </button>

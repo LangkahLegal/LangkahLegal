@@ -37,7 +37,7 @@ export function PasswordField({
             w-full font-headline text-sm 
             bg-input border border-surface rounded-xl 
             p-4 pr-14 
-            text-main placeholder:text-muted/30
+            text-main placeholder:text-muted/60
             transition-all duration-300 outline-none 
             focus:border-primary focus:ring-1 focus:ring-primary/20
           `}

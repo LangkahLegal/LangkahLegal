@@ -90,7 +90,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
               e.stopPropagation();
               onDetail?.(item);
             }}
-            className="!p-0 !h-auto !bg-transparent text-[10px] sm:text-xs transition-all shrink-0 text-primary-light font-bold flex items-center gap-0.5 hover:gap-1"
+            className="!px-0 !py-2 -my-2 !h-auto !bg-transparent text-[10px] sm:text-xs transition-all shrink-0 text-primary-light font-bold flex items-center gap-0.5 hover:gap-1"
           >
             <span className="hidden sm:inline">Lihat Detail</span>
             <MaterialIcon

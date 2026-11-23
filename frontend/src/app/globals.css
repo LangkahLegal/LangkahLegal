@@ -89,7 +89,7 @@
   --bg-dropdown: #ffffff;
 
   --primary: #335c67;
-  --primary-light: #4f7d89;
+  --primary-light: #3d6b77; /* kontras >= 4.5:1 di atas bg, kartu, dan surface */
   --primary-text: #335c67;
   --primary-rgb: 51, 92, 103;
   --primary-light-rgb: 79, 125, 137;

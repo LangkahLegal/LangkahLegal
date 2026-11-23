@@ -34,9 +34,9 @@ export default function AboutPage() {
           onSettingsClick={() => router.push("/setting")}
         />
 
-        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8 pb-32 lg:pb-12 scroll-smooth w-full">
+        <main className="flex-1 overflow-y-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 scroll-smooth w-full">
           {/* Animasi fade-in agar transisi antar halaman terasa lebih premium */}
-          <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in">
+          <div className="max-w-4xl mx-auto w-full space-y-5 animate-fade-in">
             <AboutHero />
             <VisiMisiCards />
             <CoreValues />

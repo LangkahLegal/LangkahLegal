@@ -34,7 +34,7 @@ export default function FilterPanel({
           onClick={onReset}
           disabled={!canReset}
           data-testid={`${testIdPrefix}-reset-filter`}
-          className="flex items-center gap-1 text-xs font-bold text-danger disabled:text-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1 py-2 -my-2 text-xs font-bold text-danger disabled:text-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <MaterialIcon name="restart_alt" className="text-sm" />
           Reset Filter

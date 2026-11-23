@@ -123,7 +123,7 @@ export default function HistoryCard({ item, role = "client" }) {
         {/* Kanan: Tombol Lihat Detail */}
         <Button
           variant="ghost"
-          className={`!p-0 !h-auto !bg-transparent text-sm transition-all shrink-0 ${isActive ? "text-main" : "text-primary-light"
+          className={`!px-0 !py-2 -my-2 !h-auto !bg-transparent text-sm transition-all shrink-0 ${isActive ? "text-main" : "text-primary-light"
             }`}
         >
           {!isActive && (

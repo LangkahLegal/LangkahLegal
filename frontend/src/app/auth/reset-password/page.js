@@ -124,26 +124,26 @@ export default function ResetPasswordPage() {
         ) : verifyError ? (
           <div className="space-y-6 text-center md:text-left">
             <header className="mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-danger-soft border border-danger/20 mb-4">
                 <span className="text-3xl">⚠️</span>
               </div>
               <h1 className="font-headline text-[2rem] md:text-[2.25rem] font-extrabold tracking-tighter text-main leading-tight">
                 Link Tidak Valid
               </h1>
             </header>
-            <div className="p-4 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <div className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl">
               {verifyError}
             </div>
             <div className="flex flex-col gap-3 mt-4">
               <Link
                 href="/auth/forgot-password"
-                className="block text-center w-full py-3 px-4 bg-brand text-white font-semibold rounded-xl hover:bg-brand-light transition-colors"
+                className="block text-center w-full py-3 px-4 bg-secondary text-on-secondary font-bold rounded-xl hover:bg-secondary-hover transition-colors"
               >
                 Minta Link Baru
               </Link>
               <Link
                 href="/auth/login"
-                className="block text-center text-sm font-medium text-muted hover:text-main transition-colors"
+                className="block text-center text-sm py-2 text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4"
               >
                 Kembali ke Login
               </Link>

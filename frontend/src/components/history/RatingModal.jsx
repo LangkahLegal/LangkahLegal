@@ -74,7 +74,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
           <button
             onClick={() => onSubmit(rating, ulasan)}
             disabled={rating === 0 || isSubmitting}
-            className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+            className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-light active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
           >
             {isSubmitting ? (
               <>
