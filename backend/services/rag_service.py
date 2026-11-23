@@ -27,7 +27,8 @@ LLM_MODEL = "gemini-3.1-flash-lite"
 
 
 # Gemini tidak menyimpan percakapan, jadi riwayat dikirim ulang di setiap panggilan dan menjadi bagian token
-# terbesar. Fakta penting dari awal percakapan tetap terbawa lewat draft konsultasi.
+# terbesar. Fakta penting dari awal percakapan tetap terbawa lewat ringkasan kasus di draft konsultasi terakhir,
+# yang ikut dikirim sebagai konteks internal (lihat _ringkasan_terakhir).
 MAX_HISTORY_MESSAGES = 10
 MAX_HISTORY_CHARS = 12_000
 TEMPERATURE = 0.3
@@ -38,7 +39,16 @@ MAX_PASAL_KONTEKS = 3
 MAX_CHARS_PER_PASAL = 2_000
 
 TANPA_PASAL = "(Tidak ditemukan pasal yang relevan di database LangkahLegal.)"
-_KUTIPAN_PASAL = re.compile(r"\bpasal\s+(\d+[a-z]?)\b", re.I)
+_KUTIPAN_PASAL = re.compile(
+    r"\bpasal\s+(\d+[a-z]?)\b"
+    r"((?:\s*(?:,\s*(?:dan|atau)?|dan|atau|s\.d\.?|sampai|hingga|-)\s*(?:pasal\s+)?\d+[a-z]?\b"
+    r"(?!\s*(?:tahun|bulan|hari|minggu|juta|ribu|%)))*)",
+    re.I,
+)
+_NOMOR_PASAL = re.compile(r"\d+[a-z]?", re.I)
+# Nama peraturan setelah nomor pasal ("Pasal 378 KUHP", "Pasal 5 ayat (1) UU No. 13 Tahun 2003") dicari di
+# beberapa karakter berikutnya saja, supaya peraturan dari kalimat lain tidak ikut terbawa.
+JENDELA_PERATURAN = 45
 
 DISCLAIMER = "⚠️ Jawaban ini bukan nasihat hukum resmi. Konsultasikan dengan advokat untuk kepastian hukum."
 
@@ -305,6 +315,7 @@ def _build_contents(
     chat_history: list[dict],
     user_query: str,
     pasal_context: str,
+    ringkasan_kasus: str = "",
 ) -> list[types.Content]:
     contents: list[types.Content] = []
 
@@ -325,6 +336,10 @@ def _build_contents(
             contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
 
     user_parts = [types.Part.from_text(text=user_query)]
+    if ringkasan_kasus:
+        user_parts.append(
+            types.Part.from_text(text=f"\n---\n[Konteks internal: ringkasan kasus klien sejauh ini: {ringkasan_kasus}]")
+        )
     if pasal_context:
         user_parts.append(types.Part.from_text(text=f"\n---\nKONTEKS PASAL HUKUM YANG RELEVAN:\n{pasal_context}"))
     contents.append(types.Content(role="user", parts=user_parts))
@@ -458,9 +473,10 @@ def agentic_generate(
     gaya: Gaya,
     pref: Optional[dict] = None,
     tanya_preferensi: bool = False,
+    ringkasan_kasus: str = "",
 ) -> dict:
     client = _get_gemini_client()
-    contents = _smart_truncate(_build_contents(chat_history, query, context))
+    contents = _smart_truncate(_build_contents(chat_history, query, context, ringkasan_kasus))
     tools = chat_policy.tool_mode(mode)
     max_output_tokens = chat_policy.MAX_OUTPUT_TOKENS[mode]
 
@@ -545,14 +561,56 @@ def _klasifikasi_metadata(klasifikasi: chat_policy.Klasifikasi, gaya: Gaya, mode
     }
 
 
-def _kutipan_tanpa_sumber(jawaban: str, context: str, query: str, chat_history: list[dict]) -> list[str]:
-    """Nomor pasal di jawaban yang tidak muncul di konteks pasal, pertanyaan, maupun riwayat terakhir.
+def _kutipan(teks: str) -> list[tuple[list[str], str]]:
+    """Setiap penyebutan pasal di teks: daftar nomornya dan potongan teks sesudahnya (tempat nama peraturan)."""
+    hasil = []
+    for m in _KUTIPAN_PASAL.finditer(teks or ""):
+        nomor = [m.group(1).upper(), *(n.upper() for n in _NOMOR_PASAL.findall(m.group(2) or ""))]
+        sesudah = re.split(r"\bpasal\b|\n", teks[m.end() : m.end() + JENDELA_PERATURAN], maxsplit=1, flags=re.I)[0]
+        hasil.append((nomor, sesudah))
+    return hasil
 
-    Pasal seperti ini kemungkinan dikarang model atau berasal dari ingatannya, bukan dari database.
+
+def _kutipan_tanpa_sumber(jawaban: str, pasals: list[dict], context: str, pesan_klien: list[str]) -> list[str]:
+    """Pasal di jawaban yang tidak berasal dari pasal hasil pencarian atau dari pesan klien sendiri.
+
+    Jawaban Kia sebelumnya sengaja tidak dihitung sebagai sumber: pasal karangan di giliran lalu tidak boleh
+    jadi "bersumber" di giliran berikutnya. Kalau jawaban menyebut peraturannya ("Pasal 5 UU ITE"), pasal itu
+    harus cocok dengan peraturan yang sama di hasil pencarian, bukan sekadar nomornya.
     """
-    riwayat = [m.get("content") or "" for m in chat_history[-MAX_HISTORY_MESSAGES:]]
-    ada = {n.upper() for n in _KUTIPAN_PASAL.findall(" ".join([context, query, *riwayat]))}
-    return sorted({n.upper() for n in _KUTIPAN_PASAL.findall(jawaban)} - ada)
+    dari_klien = {n for teks in pesan_klien for nomor, _ in _kutipan(teks) for n in nomor}
+    di_konteks = {n for nomor, _ in _kutipan(context) for n in nomor}
+    sumber = [
+        (n, p.get("frbr_uri"), retrieval_service.nomor_uu_normal(p.get("nomor_uu") or ""))
+        for p in pasals
+        for nomor, _ in _kutipan(p.get("pasal_bagian") or "")
+        for n in nomor
+    ]
+
+    salah: list[str] = []
+    for nomor, sesudah in _kutipan(jawaban):
+        frbrs, nomor_uu = retrieval_service.peraturan_disebut(sesudah)
+        for n in nomor:
+            if n in dari_klien:
+                continue
+            if frbrs or nomor_uu:
+                cocok = any(n == sn and (frbr in frbrs or (nomor_uu and nuu == nomor_uu)) for sn, frbr, nuu in sumber)
+                label = n if n not in di_konteks else f"{n} (peraturan berbeda)"
+                if not cocok and label not in salah:
+                    salah.append(label)
+            elif n not in di_konteks and n not in salah:
+                salah.append(n)
+    return salah
+
+
+def _ringkasan_terakhir(history: list[dict]) -> str:
+    """Ringkasan kasus dari draft konsultasi terakhir di riwayat (metadata pesan Kia)."""
+    for msg in reversed(history):
+        meta = msg.get("metadata") or {}
+        draft = meta.get("draft_konsultasi") or (meta.get("konteks_konsultasi") or {}).get("draft") or {}
+        if draft.get("ringkasan_kasus"):
+            return draft["ringkasan_kasus"]
+    return ""
 
 
 def _disclaimer(mode: Mode, kutipan_tanpa_sumber: list[str]) -> str:
@@ -671,10 +729,12 @@ def triage(
     """
     penyamar = Penyamar()
     query_m, history_m = penyamar.samarkan_percakapan(query, chat_history or [])
+    # Metadata riwayat tidak disamarkan, jadi ringkasan dari draft disamarkan sendiri sebelum dikirim ke Gemini.
+    ringkasan_m = penyamar.samarkan(_ringkasan_terakhir(chat_history or []))
     chat_log_service.catat_request(query=query_m, panjang_riwayat=len(history_m))
     logger.info(f"[TRIAGE] Query masuk: {query_m[:100]}")
 
-    hasil = _triage(query_m, supabase, kategori, history_m, preferensi)
+    hasil = _triage(query_m, supabase, kategori, history_m, preferensi, ringkasan_m)
     chat_log_service.catat(
         pii=penyamar.ringkasan(), klasifikasi=hasil.get("klasifikasi"), respons=_respons_log(hasil, penyamar)
     )
@@ -682,9 +742,14 @@ def triage(
 
 
 def _triage(
-    query: str, supabase: Client, kategori: Optional[str], history: list[dict], preferensi: Optional[dict]
+    query: str,
+    supabase: Client,
+    kategori: Optional[str],
+    history: list[dict],
+    preferensi: Optional[dict],
+    ringkasan_kasus: str = "",
 ) -> dict:
-    """Isi triage(). `query` dan `history` di sini sudah tersamar."""
+    """Isi triage(). `query`, `history`, dan `ringkasan_kasus` di sini sudah tersamar."""
     current_step = "init"
 
     try:
@@ -704,6 +769,7 @@ def _triage(
         gaya = chat_policy.gaya_sesi(klasifikasi.gaya, history)
         mode = chat_policy.resolve_mode(klasifikasi)
         meta = _klasifikasi_metadata(klasifikasi, gaya, mode, fallback)
+        judul = None if history else klasifikasi.judul
         logger.info(f"[TRIAGE] Mode: {mode.value} (gaya sesi={gaya.value})")
 
         if mode == Mode.KRISIS:
@@ -716,6 +782,7 @@ def _triage(
                 "sumber_dokumen": [],
                 "disclaimer": "",
                 "klasifikasi": meta,
+                "judul": judul,
             }
 
         pasals = []
@@ -756,10 +823,12 @@ def _triage(
             gaya=gaya,
             pref=pref,
             tanya_preferensi=tanya_preferensi,
+            ringkasan_kasus=ringkasan_kasus,
         )
         logger.info(f"[TRIAGE] Result type: {result['type']}")
 
-        kutipan_tanpa_sumber = _kutipan_tanpa_sumber(result["jawaban"], context, query, history)
+        pesan_klien = [query, *(m.get("content") or "" for m in history if m.get("role") == "user")]
+        kutipan_tanpa_sumber = _kutipan_tanpa_sumber(result["jawaban"], pasals, context, pesan_klien)
         if kutipan_tanpa_sumber:
             logger.warning(f"[TRIAGE] Pasal disebut tanpa sumber: {kutipan_tanpa_sumber}")
         meta["kutipan_tanpa_sumber"] = kutipan_tanpa_sumber
@@ -775,6 +844,7 @@ def _triage(
             "preferensi": pref,
             "form_preferensi": result.get("form_preferensi"),
             "konteks_konsultasi": result.get("konteks_konsultasi"),
+            "judul": judul,
         }
     except Exception as e:
         logger.error(f"[TRIAGE] Error at step '{current_step}': {type(e).__name__}: {e}", exc_info=True)

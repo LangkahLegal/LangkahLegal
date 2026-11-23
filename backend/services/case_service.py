@@ -158,21 +158,27 @@ def claim_case(db: Client, current_user: CurrentUser, id_bursa: int) -> dict:
 
     _ensure_no_schedule_conflict(db, real_id_konsultan, kasus_data)
 
-    case_repository.update(db, id_bursa, {"status_bursa": StatusBursa.CLOSED})
+    # Dua konsultan bisa lolos cek status di atas bersamaan; yang menang adalah yang berhasil menutup kasus.
+    if not case_repository.update_if_status(db, id_bursa, StatusBursa.OPEN, {"status_bursa": StatusBursa.CLOSED}):
+        raise BadRequestError("Kasus ini sudah diklaim oleh konsultan lain")
 
-    created = consultation_repository.insert(
-        db,
-        {
-            "id_user": kasus_data["id_user"],
-            "id_konsultan": real_id_konsultan,
-            "id_bursa": id_bursa,
-            "status_pengajuan": StatusPengajuan.TERJADWAL,
-            "deskripsi_kasus": kasus_data.get("deskripsi_kasus_awam", "Hasil dari Bursa Kasus"),
-            "tanggal_pengajuan": kasus_data.get("tanggal_konsultasi"),
-            "jam_mulai": kasus_data.get("jam_mulai"),
-            "jam_selesai": kasus_data.get("jam_selesai"),
-        },
-    )
+    try:
+        created = consultation_repository.insert(
+            db,
+            {
+                "id_user": kasus_data["id_user"],
+                "id_konsultan": real_id_konsultan,
+                "id_bursa": id_bursa,
+                "status_pengajuan": StatusPengajuan.TERJADWAL,
+                "deskripsi_kasus": kasus_data.get("deskripsi_kasus_awam", "Hasil dari Bursa Kasus"),
+                "tanggal_pengajuan": kasus_data.get("tanggal_konsultasi"),
+                "jam_mulai": kasus_data.get("jam_mulai"),
+                "jam_selesai": kasus_data.get("jam_selesai"),
+            },
+        )
+    except Exception as e:
+        logger.error(f"[BURSA] Gagal membuat konsultasi dari kasus {id_bursa}: {e}", exc_info=True)
+        created = None
 
     if not created:
         case_repository.update(db, id_bursa, {"status_bursa": StatusBursa.OPEN})

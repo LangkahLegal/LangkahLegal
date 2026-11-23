@@ -53,7 +53,7 @@ export default function AIPreferenceForm({ form, active, onSubmit }) {
   if (!active) {
     return (
       <p className="mt-4 text-[11px] sm:text-xs text-muted italic" data-testid="ai-preference-form-done">
-        Preferensi konsultasi sudah dikirim.
+        Pertanyaan budget dan jadwal sudah dijawab.
       </p>
     );
   }

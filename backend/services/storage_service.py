@@ -20,6 +20,15 @@ SIGNED_URL_TTL_SECONDS = 3600
 SUPPORTING_DOC_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
 AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 PDF_CONTENT_TYPES = {"application/pdf", "application/x-pdf"}
+# Content-Type yang disimpan selalu dari ekstensi yang lolos cek, tidak pernah dari header client. Kalau dari client,
+# GIF berisi HTML bisa disimpan sebagai text/html lalu dibuka browser sebagai halaman web.
+IMAGE_CONTENT_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
 
 
 async def _read_file_bytes(file: UploadFile, label: str, max_size_mb: int, size_label: str) -> bytes:
@@ -182,7 +191,7 @@ async def upload_avatar_to_supabase(
     file_bytes = await _read_file_bytes(file, "foto profil", MAX_AVATAR_SIZE_MB, "foto profil")
 
     storage_ext = matched_ext.lstrip(".")
-    content_type = file.content_type or f"image/{'jpeg' if storage_ext == 'jpg' else storage_ext}"
+    content_type = IMAGE_CONTENT_TYPES[matched_ext]
 
     return _upload_to_bucket(
         db_client,
@@ -219,10 +228,7 @@ async def upload_supporting_document_to_supabase(
         raise HTTPException(status_code=400, detail="File PDF dokumen pendukung tidak valid")
 
     storage_ext = matched_ext.lstrip(".")
-    if is_pdf:
-        content_type = "application/pdf"
-    else:
-        content_type = file.content_type or f"image/{storage_ext if storage_ext != 'jpg' else 'jpeg'}"
+    content_type = "application/pdf" if is_pdf else IMAGE_CONTENT_TYPES[matched_ext]
 
     storage_path = _upload_to_bucket_private(
         db_client,

@@ -7,7 +7,8 @@ const MAX_PASAL_CHIPS = 3;
 
 /** Daftar dokumen peraturan yang dipakai Kia, ditampilkan di bawah jawaban. */
 export default function AISourceList({ sources = [] }) {
-  const { activeSourceDocument, setActiveSourceDocument } = useChatStore();
+  const activeSourceDocument = useChatStore((s) => s.activeSourceDocument);
+  const setActiveSourceDocument = useChatStore((s) => s.setActiveSourceDocument);
   if (sources.length === 0) return null;
 
   return (

@@ -29,6 +29,7 @@ from supabase import Client
 
 from helpers import penjelasan
 from repositories import legal_document_repository
+from services import chat_log_service
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +288,18 @@ def _cari_kata_kunci(k: _Korpus, teks_query: str, jumlah: int) -> list[tuple[int
     return sorted(skor.items(), key=lambda x: -x[1])[:jumlah]
 
 
+def nomor_uu_normal(teks: str) -> Optional[str]:
+    """ "UU No. 13 Tahun 2003" atau "UU 13/2003" -> "13/2003"."""
+    m = _NOMOR_UU.search(teks or "")
+    return f"{m.group(1)}/{m.group(2)}" if m else None
+
+
+def peraturan_disebut(teks: str) -> tuple[set[str], Optional[str]]:
+    """Peraturan yang disebut di teks: frbr_uri dari nama populer ("KUHP", "UU ITE") dan nomor UU-nya."""
+    frbrs = {f for pola, daftar in _ALIAS_RE if pola.search(teks) for f in daftar}
+    return frbrs, nomor_uu_normal(teks)
+
+
 def _frbr_disebut(k: _Korpus, pertanyaan: str) -> list[str]:
     frbrs = []
     m = _NOMOR_UU.search(pertanyaan)
@@ -354,15 +367,22 @@ def cari_pasal(
 
     from services.rag_service import embed_query
 
-    vektor = legal_document_repository.match_by_embedding(
-        supabase,
-        {
-            "query_embedding": embed_query(query_pencarian or pertanyaan),
-            "match_threshold": MIN_SIMILARITY_KANDIDAT,
-            "match_count": KANDIDAT_VEKTOR,
-            **({"filter_kategori": kategori} if kategori else {}),
-        },
-    )
+    # Voyage gratis hanya 3 request per menit untuk seluruh aplikasi. Kalau embedding atau pencarian vektor gagal,
+    # jawaban tetap dicari lewat kata kunci (BM25) alih-alih membuat chat error.
+    try:
+        vektor = legal_document_repository.match_by_embedding(
+            supabase,
+            {
+                "query_embedding": embed_query(query_pencarian or pertanyaan),
+                "match_threshold": MIN_SIMILARITY_KANDIDAT,
+                "match_count": KANDIDAT_VEKTOR,
+                **({"filter_kategori": kategori} if kategori else {}),
+            },
+        )
+    except Exception as e:
+        logger.warning(f"[RETRIEVAL] Pencarian vektor gagal, hanya memakai kata kunci: {type(e).__name__}: {e}")
+        chat_log_service.catat(vektor_gagal=f"{type(e).__name__}: {str(e)[:150]}")
+        vektor = []
     for r in vektor:
         r.setdefault("id_dokumen", r.get("id"))
     similarity = {r["id_dokumen"]: r.get("similarity", 0.0) for r in vektor}

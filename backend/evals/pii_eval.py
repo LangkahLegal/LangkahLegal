@@ -49,6 +49,11 @@ UTUH = [
     "Bagaimana kalau Bapak Anda tidak setuju?",
     "saya jalan kaki ke kantor",
     "Kemarin bos saya marah, pak. Saya takut",
+    # "nama saya" yang diikuti kata kerja: inti kasusnya, bukan nama orang
+    "nama saya dicatut di pinjol",
+    "nama saya tercantum sebagai penjamin padahal saya tidak tanda tangan",
+    "nama saya dipakai orang untuk pinjaman online",
+    "nama saya disalahgunakan untuk membuka rekening",
 ]
 
 

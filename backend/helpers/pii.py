@@ -47,8 +47,9 @@ BUKAN_NAMA = set(
 # Kata yang menghentikan pengambilan nama setelah penanda kuat, misalnya "nama saya budi dan saya ...".
 _KATA_HENTI = BUKAN_NAMA | set(
     "di ke dari pada dengan untuk karena sejak tapi tetapi lalu umur usia tinggal bekerja kerja mau ingin minta "
-    "punya adalah selaku sebagai pak bu bapak ibu sdr".split()
+    "punya adalah selaku sebagai pak bu bapak ibu sdr ada muncul masuk kena dipakai dicatut".split()
 )
+_KATA_KERJA_KECIL = re.compile(r"^(?:di|ter)[a-z]{4,}$|[a-z]{3,}(?:kan|nya)$")
 MAKS_KATA_NAMA = 3
 
 # Urutan penting: pola yang lebih spesifik dulu. Rekening dikenali dari kata kuncinya, jadi didahulukan
@@ -79,6 +80,9 @@ def _ambil_nama(teks: str, mulai: int, harus_kapital: bool) -> str:
             harus_kapital = harus_kapital or w[0].isupper()
         # w in JENIS: placeholder yang ditulis model tanpa kurung ("Pak NAMA_1") bukan nama baru.
         if w in JENIS or w.lower() in _KATA_HENTI or (harus_kapital and not w[0].isupper()):
+            break
+        # "nama saya dicatut", "nama saya tercantum": kata kerja, justru inti kasusnya.
+        if not harus_kapital and _KATA_KERJA_KECIL.search(w):
             break
         kata.append(w)
         mulai = m.end()

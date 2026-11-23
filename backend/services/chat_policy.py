@@ -6,6 +6,7 @@ yang kebetulan dipakai saat fallback.
 """
 
 import logging
+import re
 import time
 from collections import Counter
 from enum import Enum
@@ -31,7 +32,24 @@ KATA_KRISIS = (
     "ngamuk", "mengamuk", "dipukul", "dipukuli", "mukulin", "memukul", "dianiaya", "diancam",
     "ngancam", "mengancam", "dikejar", "ngunci diri", "mengunci diri", "sembunyi", "bunuh",
     "mau mati", "ingin mati", "pengen mati", "pisau", "berdarah", "tolong aku", "tolong saya",
+    "bunuh diri", "dibunuh",
 )  # fmt: skip
+# Dicocokkan per kata, bukan substring: "bunuh" tidak boleh cocok dengan "pembunuhan", dan "diancam pidana"
+# adalah istilah pasal, bukan ancaman yang sedang dialami klien.
+_POLA_KRISIS = re.compile(
+    r"\b(?:" + "|".join(re.escape(k) for k in KATA_KRISIS) + r")\b"
+    r"(?!\s+(?:dengan\s+)?(?:pidana|hukuman|sanksi|denda|penjara|kurungan))"
+)
+# Permintaan nasihat yang paling umum, supaya saat classifier gagal Kia tetap mengarahkan ke advokat alih-alih
+# memilihkan jalur hukum di mode informasi.
+_POLA_NASIHAT = re.compile(
+    r"\b(?:lapor|melapor|resign|berhenti|keluar|damai|gugat|menggugat|tuntut|menuntut|cerai|bertahan|somasi)\b"
+    r"[^.?!\n]{0,40}\batau\b"
+    r"|\b(?:harus|sebaiknya|mending|lebih baik)\s+(?:saya\s+|aku\s+|gue\s+)?(?:apa|ngapain|gimana|bagaimana)\b"
+    r"|\bapa yang (?:harus|sebaiknya) (?:saya|aku|gue) lakukan\b"
+    r"|\b(?:bakal|pasti|bisa|akan|kira-kira)\s+menang\b"
+    r"|\bmenang\s+(?:gak|nggak|ga|tidak|enggak)\b"
+)
 GAYA_WINDOW = 3
 
 
@@ -120,6 +138,7 @@ class Klasifikasi(BaseModel):
     budget_max: Optional[int] = Field(None, description="Budget maksimal per sesi dalam rupiah, hanya kalau disebut.")
     hari: Optional[HariPreferensi] = Field(None, description="Hari konsultasi yang diinginkan, hanya kalau disebut.")
     waktu: Optional[WaktuPreferensi] = Field(None, description="Waktu konsultasi yang diinginkan, hanya kalau disebut.")
+    judul: Optional[str] = Field(None, description="Judul sesi 3-5 kata, hanya kalau riwayat percakapan kosong.")
 
     def preferensi(self) -> dict:
         """Preferensi konsultasi yang disebut di pesan ini (kosong kalau tidak ada)."""
@@ -172,6 +191,9 @@ PREFERENSI KONSULTASI: isi HANYA kalau disebut di pesan terbaru, selain itu null
   BUKAN budget.
 - hari: hari_ini, besok, lusa, minggu_ini, minggu_depan, akhir_pekan, hari_kerja, senin...minggu, atau bebas.
 - waktu: pagi, siang, sore, malam, atau bebas ("terserah", "kapan aja").
+
+JUDUL: HANYA kalau riwayat "(Tidak ada)", tulis judul percakapan 3-5 kata, teks biasa tanpa tanda baca
+("Gaji Tidak Dibayar 3 Bulan"). Selain itu null.
 """
 
 BASE_PROMPT = """Kamu adalah "Kia", asisten hukum virtual di LangkahLegal.
@@ -285,6 +307,7 @@ Kalau kamu atau orang lain sedang dalam bahaya, segera hubungi:
 - **112** — layanan darurat
 - **110** — polisi
 - **SAPA 129** — layanan pengaduan kekerasan terhadap perempuan dan anak (KemenPPPA)
+- **119 ext. 8** — layanan kesehatan jiwa dan pencegahan bunuh diri (Kemenkes)
 
 Kalau bisa, pindah ke tempat yang aman atau tetap di ruangan yang terkunci, lalu hubungi orang terdekat
 yang bisa datang membantu.
@@ -296,6 +319,7 @@ Apabila Anda atau orang lain sedang dalam bahaya, segera hubungi:
 - **112** — layanan darurat
 - **110** — polisi
 - **SAPA 129** — layanan pengaduan kekerasan terhadap perempuan dan anak (KemenPPPA)
+- **119 ext. 8** — layanan kesehatan jiwa dan pencegahan bunuh diri (Kemenkes)
 
 Bila memungkinkan, pindahlah ke tempat yang aman atau tetap di ruangan yang terkunci, lalu hubungi
 orang terdekat yang dapat datang membantu.
@@ -517,17 +541,15 @@ def _history_text(chat_history: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _classifier_config(model_name: str) -> types.GenerateContentConfig:
-    config = {
-        "system_instruction": CLASSIFIER_PROMPT,
-        "temperature": 0,
-        "max_output_tokens": 512,
-        "response_mime_type": "application/json",
-        "response_schema": Klasifikasi,
-    }
-    if model_name.startswith("gemini-3.8"):
-        config["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
-    return types.GenerateContentConfig(**config)
+# Tanpa thinking_config: kedua model flash-lite tidak menghasilkan token thinking (thoughts_token_count kosong,
+# dicek di Sprint 5), jadi seluruh 512 token tersedia untuk JSON klasifikasi.
+CLASSIFIER_CONFIG = types.GenerateContentConfig(
+    system_instruction=CLASSIFIER_PROMPT,
+    temperature=0,
+    max_output_tokens=512,
+    response_mime_type="application/json",
+    response_schema=Klasifikasi,
+)
 
 
 def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klasifikasi | None:
@@ -536,9 +558,7 @@ def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klas
     for model_name in CLASSIFIER_MODELS:
         mulai = time.perf_counter()
         try:
-            response = client.models.generate_content(
-                model=model_name, contents=prompt, config=_classifier_config(model_name)
-            )
+            response = client.models.generate_content(model=model_name, contents=prompt, config=CLASSIFIER_CONFIG)
             chat_log_service.catat_gemini("classify", model_name, mulai, response=response)
             klasifikasi = response.parsed
             if isinstance(klasifikasi, Klasifikasi):
@@ -555,13 +575,15 @@ def classify(client: genai.Client, query: str, chat_history: list[dict]) -> Klas
 
 
 def fallback_klasifikasi(query: str, chat_history: list[dict]) -> Klasifikasi:
-    """Dipakai saat classifier gagal: mode informasi dengan gaya sesi sebelumnya (atau formal).
+    """Dipakai saat classifier gagal, dengan gaya sesi sebelumnya (atau formal).
 
     Pesan yang memuat kata bahaya tetap dianggap krisis, supaya template krisis (yang tidak butuh
     Gemini) masih keluar saat kuota Gemini habis. Salah deteksi di sini hanya berarti klien menerima
-    nomor darurat, bukan pesan "server sibuk".
+    nomor darurat, bukan pesan "server sibuk". Permintaan nasihat ("lapor atau damai?") tetap diarahkan
+    ke advokat; selain itu mode informasi.
     """
     gaya = gaya_sesi(Gaya.FORMAL, chat_history)
     teks = query.lower()
-    tekanan = Tekanan.KRISIS if any(kata in teks for kata in KATA_KRISIS) else Tekanan.SEDANG
-    return Klasifikasi(intent=Intent.CERITA_MASALAH, tekanan=tekanan, gaya=gaya, query_pencarian=query)
+    tekanan = Tekanan.KRISIS if _POLA_KRISIS.search(teks) else Tekanan.SEDANG
+    intent = Intent.MINTA_NASIHAT_HUKUM if _POLA_NASIHAT.search(teks) else Intent.CERITA_MASALAH
+    return Klasifikasi(intent=intent, tekanan=tekanan, gaya=gaya, query_pencarian=query)

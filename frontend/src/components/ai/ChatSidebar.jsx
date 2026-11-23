@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/Button";
 import useChatStore from "@/stores/useChatStore";
@@ -19,7 +20,17 @@ export default function ChatSidebar() {
     setActiveSession,
     startNewChat,
     deleteSession,
-  } = useChatStore();
+  } = useChatStore(
+    useShallow((s) => ({
+      sessions: s.sessions,
+      activeSessionId: s.activeSessionId,
+      isLoadingSessions: s.isLoadingSessions,
+      fetchSessions: s.fetchSessions,
+      setActiveSession: s.setActiveSession,
+      startNewChat: s.startNewChat,
+      deleteSession: s.deleteSession,
+    })),
+  );
 
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
@@ -93,41 +104,49 @@ export default function ChatSidebar() {
             return (
               <div
                 key={session.id}
-                onClick={() => setActiveSession(session.id)}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                className={`group flex items-center gap-1 pr-2 rounded-lg transition-all duration-200 ${
                   isActive
                     ? "bg-primary/10 border border-primary/20"
                     : "hover:bg-surface border border-transparent"
                 }`}
               >
-                <MaterialIcon
-                  name={isActive ? "chat" : "chat_bubble_outline"}
-                  className={`text-lg shrink-0 ${
-                    isActive ? "text-primary-light" : "text-muted/50"
-                  }`}
-                  style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
-                />
-
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm truncate ${
-                      isActive ? "text-main font-semibold" : "text-main/80"
+                <button
+                  type="button"
+                  onClick={() => setActiveSession(session.id)}
+                  aria-current={isActive ? "true" : undefined}
+                  className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  <MaterialIcon
+                    name={isActive ? "chat" : "chat_bubble_outline"}
+                    className={`text-lg shrink-0 ${
+                      isActive ? "text-primary-light" : "text-muted/50"
                     }`}
-                  >
-                    {session.title}
-                  </p>
-                  <p className="text-[10px] text-muted/50 truncate">
-                    {formatDate(session.updated_at)}
-                  </p>
-                </div>
+                    style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
+                  />
+
+                  <span className="flex-1 min-w-0">
+                    <span
+                      className={`block text-sm truncate ${
+                        isActive ? "text-main font-semibold" : "text-main/80"
+                      }`}
+                    >
+                      {session.title}
+                    </span>
+                    <span className="block text-[10px] text-muted/50 truncate">
+                      {formatDate(session.updated_at)}
+                    </span>
+                  </span>
+                </button>
 
                 {/* Delete Button */}
                 <button
+                  type="button"
                   onClick={(e) => handleDelete(e, session.id)}
+                  aria-label={isDeleting ? "Klik lagi untuk hapus sesi" : `Hapus sesi ${session.title}`}
                   className={`shrink-0 p-1 rounded-md transition-all duration-200 ${
                     isDeleting
                       ? "bg-danger-soft text-danger"
-                      : "opacity-0 group-hover:opacity-100 text-muted/40 hover:text-danger hover:bg-danger-soft"
+                      : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted/40 hover:text-danger hover:bg-danger-soft"
                   }`}
                   title={isDeleting ? "Klik lagi untuk hapus" : "Hapus sesi"}
                 >

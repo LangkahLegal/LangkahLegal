@@ -1,12 +1,21 @@
+import { memo } from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MaterialIcon } from "@/components/ui/Icons";
 import AIConsultantCard from "./AIConsultantCard";
 import AIConsultationDraftCard from "./AIConsultationDraftCard";
 import AIPreferenceForm from "./AIPreferenceForm";
 import AISourceList from "./AISourceList";
 
-export default function ChatMessage({ message, isLatest = false, onSubmitPreferensi }) {
+/**
+ * Di-memo supaya pesan lama (dan markdown-nya) tidak di-render ulang setiap ada pesan baru. Karena itu
+ * `onSubmitPreferensi` dan `onRetry` dari halaman harus stabil (useCallback).
+ *
+ * `formAktif`: form budget/jadwal bisa diisi kalau belum dijawab. Balasan error tidak dihitung sebagai jawaban,
+ * jadi form tetap bisa dikirim ulang setelah gagal.
+ */
+function ChatMessage({ message, formAktif = false, onSubmitPreferensi, onRetry }) {
   const isAI = message.role === "ai";
 
   return (
@@ -31,9 +40,10 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
           className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-soft transition-all ${!isAI
             ?
             "bg-primary text-on-primary rounded-br-none shadow-primary/10"
-            :
-            "bg-surface text-main rounded-bl-none font-medium border border-surface"
-            }`}
+            : message.isError
+              ? "bg-danger-soft text-main rounded-bl-none font-medium border border-danger/30"
+              : "bg-surface text-main rounded-bl-none font-medium border border-surface"
+            } ${message.failed ? "opacity-60" : ""}`}
         >
           {isAI ? (
             <div className="markdown-content">
@@ -72,7 +82,7 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
                   {message.form_preferensi && (
                     <AIPreferenceForm
                       form={message.form_preferensi}
-                      active={isLatest}
+                      active={formAktif}
                       onSubmit={onSubmitPreferensi}
                     />
                   )}
@@ -91,6 +101,18 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
                     ))}
                   </div>
                 </div>
+              )}
+
+              {message.isError && message.retry && onRetry && (
+                <button
+                  type="button"
+                  onClick={() => onRetry(message)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger/10 transition-colors"
+                  data-testid="ai-retry"
+                >
+                  <MaterialIcon name="refresh" className="text-sm" />
+                  Coba lagi
+                </button>
               )}
             </div>
           ) : (
@@ -117,3 +139,5 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
     </div>
   );
 }
+
+export default memo(ChatMessage);

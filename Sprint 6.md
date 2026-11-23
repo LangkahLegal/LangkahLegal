@@ -142,6 +142,6 @@ Log disimpan di storage, dan teks pesan yang dicatat adalah versi tersamar (pers
 
 ### Catatan
 
-- Bucket `chat-logs` belum dibuat di Supabase. Selama belum dibuat, log tidak tersimpan tetapi chat tetap jalan. Cara membuatnya: `python tools/siapkan_bucket_chat_log.py`.
+- Bucket `chat-logs` sudah dibuat (privat) tanggal 10 November 2026 lewat `python tools/siapkan_bucket_chat_log.py`. Sudah dites: log percobaan berhasil diunggah lewat `simpan()` dan dibaca lagi, akses publik tanpa key ditolak, lalu file percobaannya dihapus. Tidak perlu tabel, migration, atau policy RLS karena backend memakai service role key.
 - Database dan storage lokal sama dengan production, jadi log dari laptop dan dari Vercel masuk ke bucket yang sama.
 - Log hanya dibuat untuk `/chatbot/triage`, belum untuk endpoint lain.

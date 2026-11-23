@@ -1,5 +1,5 @@
 import logging
-import time
+import re
 
 from fastapi import BackgroundTasks, HTTPException
 from supabase import Client
@@ -7,7 +7,6 @@ from supabase import Client
 from core.exceptions import InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.peraturan_files import get_file_info
-from helpers.pii import Penyamar
 from repositories import chat_repository
 from schemas.chatbot import (
     CreateSessionRequest,
@@ -60,33 +59,24 @@ def _save_message(
     chat_repository.insert_message(supabase, row)
 
 
-def _auto_generate_title(supabase: Client, session_id: str, user_query: str) -> None:
-    from google.genai import types
+MAX_JUDUL = 100
+KATA_JUDUL_CADANGAN = 6
 
-    from services.rag_service import LLM_MODEL, _get_gemini_client
 
-    penyamar = Penyamar()
-    mulai = time.perf_counter()
+def _judul_cadangan(user_query: str) -> str:
+    kata = user_query.split()
+    return " ".join(kata[:KATA_JUDUL_CADANGAN]) + ("…" if len(kata) > KATA_JUDUL_CADANGAN else "")
+
+
+def _simpan_judul(supabase: Client, session_id: str, judul: str | None, user_query: str) -> None:
+    """Judul dari classifier (tanpa panggilan Gemini tambahan). Kalau classifier gagal, pakai awal pesan.
+    Isi judul tidak ditulis ke log karena bisa memuat nama klien."""
+    title = re.sub(r"[*#`_\"']", " ", judul or "")
+    title = " ".join(title.split())[:MAX_JUDUL] or _judul_cadangan(user_query)[:MAX_JUDUL]
     try:
-        client = _get_gemini_client()
-        response = client.models.generate_content(
-            model=LLM_MODEL,
-            contents=f'Buat judul singkat maksimal 5 kata dalam Bahasa Indonesia untuk percakapan berikut. HANYA teks biasa, TANPA markdown, TANPA tanda bintang, TANPA tanda pagar.\n\nPesan: "{penyamar.samarkan(user_query)}"\n\nJudul:',
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                max_output_tokens=20,
-            ),
-        )
-        chat_log_service.catat_gemini("judul", LLM_MODEL, mulai, response=response)
-        title = penyamar.pulihkan(response.text.strip().strip('"').strip("'"))
-        title = title.replace("*", "").replace("#", "").replace("`", "").replace("_", " ").strip()
-        title = title[:100]
-        if title:
-            chat_repository.update_session_title(supabase, session_id, title)
-            logger.info(f"[CHATBOT] Auto-generated title for {session_id}: {title}")
+        chat_repository.update_session_title(supabase, session_id, title)
     except Exception as e:
-        chat_log_service.catat_gemini("judul", LLM_MODEL, mulai, error=e)
-        logger.warning(f"[CHATBOT] Failed to auto-generate title: {e}")
+        logger.warning(f"[CHATBOT] Gagal menyimpan judul sesi {session_id}: {e}")
 
 
 def _to_session_response(session: dict) -> SessionResponse:
@@ -208,13 +198,17 @@ def run_triage(
     supabase: Client, current_user: CurrentUser, payload: TriageRequest, background_tasks: BackgroundTasks
 ) -> TriageResponse:
     """Log request (tersamar, plus metadata Gemini) diunggah ke storage lewat BackgroundTask setelah respons
-    terkirim, termasuk saat request gagal."""
+    terkirim. Kalau request gagal, log diunggah langsung: BackgroundTasks hanya ikut ke respons yang dikembalikan
+    endpoint, jadi task yang didaftarkan sebelum exception akan dibuang FastAPI."""
     preferensi = payload.preferensi.model_dump() if payload.preferensi else None
     chat_log_service.mulai(current_user.id_user, payload.session_id, payload.kategori, preferensi)
     try:
-        return _run_triage(supabase, current_user, payload, preferensi)
-    finally:
-        background_tasks.add_task(chat_log_service.simpan, chat_log_service.selesai())
+        response = _run_triage(supabase, current_user, payload, preferensi)
+    except Exception:
+        chat_log_service.simpan(chat_log_service.selesai())
+        raise
+    background_tasks.add_task(chat_log_service.simpan, chat_log_service.selesai())
+    return response
 
 
 def _run_triage(
@@ -255,7 +249,7 @@ def _run_triage(
 
         current_step = "auto_title"
         if is_new_session:
-            _auto_generate_title(supabase, session_id, payload.query)
+            _simpan_judul(supabase, session_id, result.get("judul"), payload.query)
 
         current_step = "build_response"
         return _to_triage_response(session_id, result, response_type)

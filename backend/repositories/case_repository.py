@@ -61,3 +61,9 @@ def insert(db: Client, data: dict) -> list[dict]:
 
 def update(db: Client, id_bursa: int, data: dict) -> list[dict]:
     return db.table(TABLE).update(data).eq("id_bursa", id_bursa).execute().data
+
+
+def update_if_status(db: Client, id_bursa: int, status_sekarang: str, data: dict) -> list[dict]:
+    """Update hanya kalau status_bursa masih `status_sekarang`. Cek dan update terjadi dalam satu query, jadi dua
+    request yang bersamaan tidak bisa sama-sama lolos. Mengembalikan list kosong kalau statusnya sudah berubah."""
+    return db.table(TABLE).update(data).eq("id_bursa", id_bursa).eq("status_bursa", status_sekarang).execute().data

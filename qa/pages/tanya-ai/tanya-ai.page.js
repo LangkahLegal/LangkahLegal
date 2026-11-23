@@ -8,7 +8,7 @@ export class TanyaAiPage extends BasePage {
     this.title = page.getByRole("heading", { name: "Kia" });
     this.onlineStatus = page.getByText("Online");
     this.input = page.getByTestId("ai-chat-input");
-    this.sendButton = page.getByRole("button", { name: "send" });
+    this.sendButton = page.getByRole("button", { name: "Kirim pesan" });
     this.aiMessages = page.getByTestId("ai-message");
     this.userMessages = page.getByTestId("user-message");
     this.typingIndicator = page.getByText("Kia sedang membaca kronologi Anda...");
@@ -63,10 +63,10 @@ export class TanyaAiPage extends BasePage {
   async startDeleting(title) {
     const row = this.savedSession(title);
     await row.hover();
-    await row.getByRole("button").click();
+    await row.getByRole("button", { name: `Hapus sesi ${title}` }).click();
   }
 
   async confirmDeleting(title) {
-    await this.savedSession(title).getByRole("button", { name: "delete_forever" }).click();
+    await this.savedSession(title).getByRole("button", { name: "Klik lagi untuk hapus sesi" }).click();
   }
 }

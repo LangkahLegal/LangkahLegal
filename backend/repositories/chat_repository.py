@@ -38,15 +38,18 @@ def count_messages(db: Client, session_id: str) -> int:
 
 
 def list_history(db: Client, session_id: str, limit: int) -> list[dict]:
-    return (
+    """`limit` pesan TERBARU, diurutkan dari yang terlama. Kalau diambil ascending lalu di-limit, yang terambil
+    justru pesan paling awal dan Kia tidak melihat percakapan terakhir begitu sesi lewat `limit` pesan."""
+    rows = (
         db.table(MESSAGES)
         .select("role, content, metadata")
         .eq("session_id", session_id)
-        .order("created_at", desc=False)
+        .order("created_at", desc=True)
         .limit(limit)
         .execute()
         .data
     )
+    return list(reversed(rows or []))
 
 
 def list_messages(db: Client, session_id: str) -> list[dict]:

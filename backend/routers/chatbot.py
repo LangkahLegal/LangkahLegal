@@ -23,7 +23,7 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     **docs.CREATE_SESSION,
 )
-async def create_session(
+def create_session(
     request: CreateSessionRequest = CreateSessionRequest(),
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -31,7 +31,7 @@ async def create_session(
 
 
 @router.get("/sessions", response_model=SessionListResponse, **docs.LIST_SESSIONS)
-async def list_sessions(
+def list_sessions(
     current_user: CurrentUser = Depends(get_current_user),
     limit: int = 50,
 ):
@@ -43,7 +43,7 @@ async def list_sessions(
     status_code=status.HTTP_204_NO_CONTENT,
     **docs.DELETE_SESSION,
 )
-async def delete_session(
+def delete_session(
     session_id: str,
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -55,7 +55,7 @@ async def delete_session(
     response_model=MessageListResponse,
     **docs.GET_SESSION_MESSAGES,
 )
-async def get_session_messages(
+def get_session_messages(
     session_id: str,
     current_user: CurrentUser = Depends(get_current_user),
 ):
@@ -68,7 +68,7 @@ async def get_session_messages(
     dependencies=[Depends(throttle("3/minute", by="user"))],
     **docs.CHATBOT_TRIAGE,
 )
-async def chatbot_triage(
+def chatbot_triage(
     payload: TriageRequest,
     background_tasks: BackgroundTasks,
     current_user: CurrentUser = Depends(get_current_user),
