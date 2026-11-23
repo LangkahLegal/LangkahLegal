@@ -24,16 +24,16 @@ export function Calendar({
 }) {
   return (
     <section
-      className="w-full bg-card border border-surface rounded-2xl p-5 sm:p-6 shadow-soft transition-colors duration-500"
+      className="w-full bg-card border border-surface rounded-2xl p-4 sm:p-5 shadow-soft transition-colors duration-500"
       data-testid={testId}
     >
       {/* 1. Header Kalender: Navigasi Bulan & Tahun */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3">
         <button
           type="button"
           disabled={isPrevDisabled}
           onClick={onPrev}
-          className="w-9 h-9 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="w-8 h-8 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Sebelumnya"
           aria-label="Bulan Sebelumnya"
         >
@@ -44,13 +44,13 @@ export function Calendar({
         </button>
 
         <div className="flex items-center gap-2.5">
-          <div className="text-primary bg-primary/10 p-2 rounded-xl flex items-center justify-center">
+          <div className="text-primary bg-primary/10 p-1.5 rounded-lg flex items-center justify-center">
             <MaterialIcon
               name="calendar_month"
               className="text-lg sm:text-xl"
             />
           </div>
-          <h2 className="text-base sm:text-lg font-bold text-main tracking-tight font-headline uppercase">
+          <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-main font-headline">
             {monthLabel}
           </h2>
         </div>
@@ -59,7 +59,7 @@ export function Calendar({
           type="button"
           disabled={isNextDisabled}
           onClick={onNext}
-          className="w-9 h-9 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
+          className="w-8 h-8 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Berikutnya"
           aria-label="Bulan Berikutnya"
         >
@@ -71,7 +71,7 @@ export function Calendar({
       </div>
 
       {/* 2. Barisan Nama Hari (Dimulai dari Minggu sesuai standar kalender bulanan) */}
-      <div className="grid grid-cols-7 mb-4 text-center">
+      <div className="grid grid-cols-7 mb-1 text-center">
         {WEEK_LABELS.map((label) => (
           <span
             key={label}
@@ -83,13 +83,13 @@ export function Calendar({
       </div>
 
       {/* 3. Grid Tanggal Bulat (Identik di seluruh halaman) */}
-      <div className="grid grid-cols-7 gap-y-2 sm:gap-y-3">
+      <div className="grid grid-cols-7 gap-y-0.5 sm:gap-y-1">
         {days.map((day, index) => {
           if (!day || day.isPadding || (!day.date && day.date !== 0)) {
             return (
               <div
                 key={day?.key || `empty-${index}`}
-                className="w-10 h-10 sm:w-12 sm:h-12 mx-auto"
+                className="w-9 h-9 mx-auto"
               />
             );
           }
@@ -109,7 +109,7 @@ export function Calendar({
           return (
             <div
               key={day.key || fullDate || `day-${dayNumber}`}
-              className="flex flex-col items-center justify-center py-1"
+              className="flex flex-col items-center justify-center py-0.5"
             >
               <button
                 type="button"
@@ -117,10 +117,10 @@ export function Calendar({
                 disabled={isDisabled}
                 onClick={() => onSelectDay?.(fullDate)}
                 className={`
-                  relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex flex-col items-center justify-center transition-all duration-300 mx-auto
+                  relative w-9 h-9 rounded-full flex flex-col items-center justify-center transition-all duration-300 mx-auto
                   ${
                     isSelected
-                      ? "bg-primary text-on-primary border-2 border-primary shadow-lg shadow-primary/30 scale-110 z-10 font-bold"
+                      ? "bg-primary text-on-primary border-2 border-primary shadow-md shadow-primary/30 z-10 font-bold"
                       : isAvailable && !isDisabled
                         ? "bg-input/60 border border-surface/70 text-main hover:border-primary/50 hover:bg-surface cursor-pointer font-semibold"
                         : "opacity-20 bg-transparent border border-dashed border-surface/40 text-muted cursor-not-allowed"
@@ -138,14 +138,14 @@ export function Calendar({
                 {/* Indikator Titik (Dot) */}
                 {hasDot && !isSelected && (
                   <span
-                    className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(var(--primary-rgb),0.8)]"
+                    className="absolute bottom-1 w-1 h-1 rounded-full bg-primary shadow-[0_0_6px_rgba(var(--primary-rgb),0.8)]"
                     title="Ada jadwal"
                   />
                 )}
 
                 {hasDot && isSelected && (
                   <span
-                    className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-on-primary/80 animate-pulse"
+                    className="absolute bottom-1 w-1 h-1 rounded-full bg-on-primary/80 animate-pulse"
                     title="Jadwal dipilih"
                   />
                 )}
