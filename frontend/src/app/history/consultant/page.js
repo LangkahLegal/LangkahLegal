@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import AppShell from "@/components/layout/AppShell";
@@ -8,20 +8,21 @@ import PageHeader from "@/components/layout/PageHeader";
 import ConsultationCard from "@/components/dashboard/ConsultationCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { consultantService } from "@/services/consultant.service";
-import HistoryFilter, {
-  CONSULTANT_HISTORY_FILTERS,
+import {
+  HistoryFilterBar,
   processHistorySessions,
+  useHistoryFilters,
 } from "@/components/history/HistoryFilter";
 
 export default function ConsultantHistoryPage() {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState("semua");
-  const [search, setSearch] = useState("");
+  const filter = useHistoryFilters("consultant");
 
-  // --- 1. Fetch Riwayat via TanStack Query ---
-  const { data: historyData, isLoading } = useQuery({
-    queryKey: ["history", "consultant"],
-    queryFn: consultantService.getHistory,
+  // --- 1. Fetch Riwayat via TanStack Query; filter dan pencarian dikerjakan backend ---
+  const { data: historyData, isLoading, isFetching } = useQuery({
+    queryKey: ["history", "consultant", filter.filters],
+    queryFn: () => consultantService.getHistory(filter.filters),
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -52,18 +53,10 @@ export default function ConsultantHistoryPage() {
     }));
   }, [historyData]);
 
-  const { upcoming, past, allSorted } = useMemo(() => {
-    return processHistorySessions(
-      formattedRaw,
-      activeFilter,
-      search,
-      "consultant"
-    );
-  }, [formattedRaw, activeFilter, search]);
-
-  const activeFilterLabel =
-    CONSULTANT_HISTORY_FILTERS.find((f) => f.id === activeFilter)?.label ||
-    "Semua";
+  // Tanpa filter: pisahkan sesi mendatang dan riwayat lampau. Dengan filter: tampilkan urutan dari backend.
+  const { upcoming, past } = useMemo(() => {
+    return processHistorySessions(formattedRaw);
+  }, [formattedRaw]);
 
   return (
     <AppShell role="konsultan">
@@ -71,20 +64,14 @@ export default function ConsultantHistoryPage() {
 
         <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
           <div className="w-full space-y-5 animate-fade-in">
-            {/* Search Bar & Tombol Kategorisasi */}
-            {!isLoading && (
-              <HistoryFilter
-                search={search}
-                onSearchChange={setSearch}
-                searchPlaceholder="Cari nama klien..."
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
-                filterOptions={CONSULTANT_HISTORY_FILTERS}
-              />
-            )}
+            <HistoryFilterBar state={filter} searchPlaceholder="Cari nama klien..." />
 
             {/* List Section */}
-            <div className="space-y-6 pt-2">
+            <div
+              className={`space-y-6 pt-2 transition-opacity duration-300 ${
+                isFetching && !isLoading ? "opacity-60" : ""
+              }`}
+            >
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-5">
                   <div className="w-13 h-13 border-[4px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -92,7 +79,7 @@ export default function ConsultantHistoryPage() {
                     Memuat Riwayat...
                   </p>
                 </div>
-              ) : formattedRaw.length === 0 ? (
+              ) : formattedRaw.length === 0 && !filter.hasActiveFilter ? (
                 <EmptyState
                   icon="history"
                   title="Belum Ada Riwayat Sesi"
@@ -102,18 +89,18 @@ export default function ConsultantHistoryPage() {
                   onAction={() => router.push("/schedule/consultant")}
                   className="py-16"
                 />
-              ) : allSorted.length === 0 ? (
+              ) : formattedRaw.length === 0 ? (
+                /* Tidak ada sesi yang cocok dengan pencarian atau filter */
                 <EmptyState
                   icon="search_off"
                   title="Tidak Ada Sesi Ditemukan"
-                  description={
-                    search
-                      ? `Tidak ditemukan sesi dengan klien "${search}".`
-                      : `Belum ada sesi dengan status "${activeFilterLabel}".`
-                  }
+                  description="Tidak ada sesi yang cocok dengan pencarian atau filter yang dipilih."
+                  actionLabel="Reset Filter"
+                  actionIcon="restart_alt"
+                  onAction={filter.reset}
                   className="py-12"
                 />
-              ) : activeFilter === "semua" && !search ? (
+              ) : !filter.hasActiveFilter ? (
                 /* Mode Kategori: Pisahkan Sesi Mendatang vs Seluruh Riwayat */
                 <div className="space-y-6">
                   {/* 1. Sesi Mendatang & Berjalan */}
@@ -173,17 +160,15 @@ export default function ConsultantHistoryPage() {
                 <section className="space-y-3.5">
                   <div className="flex items-center justify-between px-1">
                     <h3 className="text-xs sm:text-sm font-bold text-main uppercase tracking-wider font-headline">
-                      {search
-                        ? `Hasil Pencarian "${search}"`
-                        : `Daftar ${activeFilterLabel}`}
+                      Hasil Filter
                     </h3>
                     <span className="text-[11px] font-bold text-secondary-text bg-secondary-soft px-3 py-1 rounded-full border border-secondary/20">
-                      {allSorted.length} Sesi
+                      {formattedRaw.length} Sesi
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {allSorted.map((item) => (
+                    {formattedRaw.map((item) => (
                       <ConsultationCard
                         key={item.id_pengajuan}
                         data={item}

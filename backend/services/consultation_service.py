@@ -8,6 +8,7 @@ from core.constants import Role, StatusPengajuan
 from core.exceptions import BadRequestError, ConflictError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
 from helpers.access import owns_consultation
+from helpers.filters import history_query_args, order_history
 from helpers.schedule import count_sessions, ensure_not_past, ensure_within_schedule, find_conflict
 from helpers.urls import ensure_https_url, is_https_url
 from repositories import (
@@ -18,6 +19,7 @@ from repositories import (
     supporting_document_repository,
 )
 from schemas.consultations import AssignSchedule, ConsultationForm, RatingCreate
+from schemas.filters import RiwayatFilters, UrutanRiwayat
 from services import notification_service
 from services.storage_service import (
     path_from_ref,
@@ -178,11 +180,20 @@ def list_my_consultations(db: Client, current_user: CurrentUser, aktif: bool = F
     return {"data": rows}
 
 
-def get_client_history(db: Client, current_user: CurrentUser) -> dict:
-    """Riwayat klien: sesi yang masih berjalan lebih dulu, lalu sisanya dari yang terbaru."""
-    rows = consultation_repository.list_with_relations(db, id_user=current_user.id_user) or []
-    rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
-    rows.sort(key=lambda row: HISTORY_PRIORITY.get(row.get("status_pengajuan"), len(HISTORY_PRIORITY)))
+def get_client_history(db: Client, current_user: CurrentUser, filters: RiwayatFilters) -> dict:
+    """Riwayat klien. Urutan bawaan: sesi yang masih berjalan lebih dulu, lalu sisanya dari yang terbaru.
+
+    `total_sesi_selesai` dihitung dari baris yang lolos filter.
+    """
+    rows = (
+        consultation_repository.list_with_relations(db, id_user=current_user.id_user, **history_query_args(filters))
+        or []
+    )
+    if filters.urutkan == UrutanRiwayat.BAWAAN:
+        rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
+        rows.sort(key=lambda row: HISTORY_PRIORITY.get(row.get("status_pengajuan"), len(HISTORY_PRIORITY)))
+    else:
+        rows = order_history(rows, filters.urutkan, "tanggal_pengajuan")
     _sign_documents_in_rows(db, rows)
 
     total_selesai = sum(1 for row in rows if row.get("status_pengajuan") == StatusPengajuan.SELESAI)

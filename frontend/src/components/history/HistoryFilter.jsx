@@ -1,25 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import SearchBar from "@/components/layout/SearchBar";
-
-/**
- * Opsi filter status untuk Klien & Konsultan
- */
-export const CLIENT_HISTORY_FILTERS = [
-  { id: "semua", label: "Semua" },
-  { id: "terjadwal", label: "Terjadwal" },
-  { id: "menunggu_pembayaran", label: "Menunggu Pembayaran" },
-  { id: "selesai", label: "Selesai" },
-  { id: "batal", label: "Batal / Ditolak" },
-];
-
-export const CONSULTANT_HISTORY_FILTERS = [
-  { id: "semua", label: "Semua" },
-  { id: "terjadwal", label: "Terjadwal" },
-  { id: "selesai", label: "Selesai" },
-  { id: "batal", label: "Batal / Ditolak" },
-];
+import FilterPanel from "@/components/layout/FilterPanel";
+import { JADWAL_OPTIONS, WAKTU_OPTIONS, defaultFilterValues } from "@/lib/filterOptions";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 /**
  * Helper: Parse string tanggal & jam menjadi objek Date lokal yang aman
@@ -90,50 +75,15 @@ export function isSessionPast(item, now = new Date()) {
 /**
  * Helper: Memfilter, mengurutkan terdekat now(), dan memisahkan upcoming vs past
  */
-export function processHistorySessions(
-  sessions = [],
-  activeFilter = "semua",
-  searchQuery = "",
-  role = "client",
-  now = new Date()
-) {
-  const query = (searchQuery || "").trim().toLowerCase();
-
-  const filtered = sessions.filter((item) => {
-    if (query) {
-      const targetName = (
-        role === "client"
-          ? item?.jadwal_ketersediaan?.konsultan?.nama_lengkap ||
-            item?.konsultan?.nama_lengkap ||
-            item?.users?.nama
-          : item?.jadwal_ketersediaan?.konsultan?.nama_lengkap ||
-            item?.nama_klien ||
-            item?.users?.nama
-      ) || "";
-
-      if (!targetName.toLowerCase().includes(query)) {
-        return false;
-      }
-    }
-
-    if (activeFilter === "semua") return true;
-
-    const status = item?.status_pengajuan || item?.status;
-    if (activeFilter === "terjadwal") return status === "terjadwal";
-    if (activeFilter === "menunggu_pembayaran") {
-      return status === "menunggu_pembayaran";
-    }
-    if (activeFilter === "selesai") return status === "selesai";
-    if (activeFilter === "batal") {
-      return ["dibatalkan", "ditolak", "kedaluwarsa"].includes(status);
-    }
-    return true;
-  });
-
+/**
+ * Membagi sesi riwayat menjadi yang akan datang/berjalan (terdekat di atas) dan yang sudah lampau (terbaru di atas).
+ * Penyaringan dan pencarian dikerjakan backend, jadi fungsi ini tidak menyaring.
+ */
+export function processHistorySessions(sessions = [], now = new Date()) {
   const upcoming = [];
   const past = [];
 
-  filtered.forEach((item) => {
+  sessions.forEach((item) => {
     const status = item?.status_pengajuan || item?.status;
     const isPastByTime = isSessionPast(item, now);
     const isActiveStatus = ["terjadwal", "menunggu_pembayaran", "pending"].includes(status);
@@ -163,71 +113,114 @@ export function processHistorySessions(
     return timeB - timeA;
   });
 
-  return {
-    upcoming,
-    past,
-    allSorted: [...upcoming, ...past],
-  };
+  return { upcoming, past };
 }
 
-const ACTIVE_FILTER_PILLS = {
-  semua: "bg-primary-soft text-primary-text border-primary/40 shadow-soft",
-  terjadwal: "bg-info-soft text-info-text border-info/40 shadow-soft",
-  menunggu_pembayaran:
-    "bg-secondary-soft text-secondary-text border-secondary/40 shadow-soft",
-  selesai: "bg-success-soft text-success border-success/40 shadow-soft",
-  batal: "bg-danger-soft text-danger border-danger/40 shadow-soft",
+// id tiap opsi dikirim apa adanya ke backend (GET /consultations/history dan /consultants/me/history).
+// Riwayat memuat sesi lampau dan yang akan datang, jadi Jadwal mencakup kedua arah.
+// Label status mengikuti ConsultationCard.
+const STATUS_OPTIONS = [
+  { id: "semua", label: "Semua", triggerLabel: "Status" },
+  { id: "terjadwal", label: "Terjadwal" },
+  { id: "menunggu_pembayaran", label: "Menunggu Bayar" },
+  { id: "pending", label: "Pending" },
+  { id: "selesai", label: "Selesai" },
+  { id: "dibatalkan", label: "Batal" },
+  { id: "ditolak", label: "Ditolak" },
+  { id: "kedaluwarsa", label: "Kedaluwarsa" },
+  { id: "pembayaran_gagal", label: "Pembayaran Gagal", triggerLabel: "Gagal Bayar" },
+];
+
+// Dari pilihan daftar klien diambil yang paling berguna untuk riwayat, ditambah dua rentang ke belakang.
+// Backend tetap menerima rentang lain (besok, 7_hari, 30_hari, 30_hari_terakhir) bila nanti diperlukan.
+const RENTANG_RIWAYAT_OPTIONS = [
+  ...JADWAL_OPTIONS.filter((opt) => ["semua", "akan_datang", "hari_ini", "sudah_lewat"].includes(opt.id)),
+  { id: "7_hari_terakhir", label: "7 Hari Terakhir", triggerLabel: "7 Terakhir" },
+  { id: "bulan_ini", label: "Bulan Ini" },
+];
+
+const SUMBER_OPTIONS = [
+  { id: "semua", label: "Semua", triggerLabel: "Sumber" },
+  { id: "konsultan", label: "Langsung ke Konsultan", triggerLabel: "Langsung" },
+  { id: "bursa", label: "Dari Bursa Kasus", triggerLabel: "Bursa" },
+];
+
+// Sama dengan daftar klien; "terbaru" menjadi nilai awal.
+const URUTAN_OPTIONS = [
+  { id: "terbaru", label: "Terbaru" },
+  { id: "terlama", label: "Terlama" },
+  { id: "jadwal_terdekat", label: "Jadwal Terdekat", triggerLabel: "Terdekat" },
+  { id: "jadwal_terjauh", label: "Jadwal Terjauh", triggerLabel: "Terjauh" },
+];
+
+const dropdownsFor = (statusOptions) => [
+  { key: "status", icon: "pending_actions", options: statusOptions },
+  { key: "jadwal", icon: "event", options: RENTANG_RIWAYAT_OPTIONS },
+  { key: "waktu", icon: "schedule", options: WAKTU_OPTIONS },
+  { key: "sumber", icon: "alt_route", options: SUMBER_OPTIONS },
+  { key: "urutkan", icon: "sort", options: URUTAN_OPTIONS },
+];
+
+// Pengajuan "pending" masih menunggu konfirmasi konsultan dan tampil di permintaan, bukan di riwayat konsultan.
+const DROPDOWNS = {
+  client: dropdownsFor(STATUS_OPTIONS),
+  consultant: dropdownsFor(STATUS_OPTIONS.filter((opt) => opt.id !== "pending")),
+};
+const DEFAULTS = {
+  client: defaultFilterValues(DROPDOWNS.client),
+  consultant: defaultFilterValues(DROPDOWNS.consultant),
 };
 
 /**
- * Komponen Reusable Search & Filter Bar untuk Riwayat Konsultasi (DRY).
- * Search bar di atas, diikuti tombol-tombol kategorisasi pill di bawahnya (seperti di Manajemen Dokumen/Knowledge).
+ * State filter riwayat. `filters` siap dikirim ke service (pencarian sudah di-debounce);
+ * `hasActiveFilter` bernilai true bila ada pencarian atau dropdown yang bukan nilai awal.
+ * @param {"client"|"consultant"} role
  */
-export default function HistoryFilter({
-  search = "",
-  onSearchChange,
-  searchPlaceholder = "Cari nama konsultan...",
-  activeFilter = "semua",
-  onFilterChange,
-  filterOptions = CLIENT_HISTORY_FILTERS,
-  className = "",
-}) {
-  return (
-    <div className={`w-full space-y-4 ${className}`}>
-      {/* 1. Search Bar di atas */}
-      <SearchBar
-        value={search}
-        onChange={onSearchChange}
-        placeholder={searchPlaceholder}
-      />
+export function useHistoryFilters(role) {
+  const dropdowns = DROPDOWNS[role];
+  const defaults = DEFAULTS[role];
+  const [options, setOptions] = useState(defaults);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
 
-      {/* 2. Tombol-tombol Kategorisasi di bawahnya (horizontal scrollable pills, mirip knowledge base) */}
-      <div className="flex items-center gap-2.5 overflow-x-auto pb-2 -mb-2 no-scrollbar scroll-smooth px-1">
-        {filterOptions.map((filter) => {
-          const isActive = filter.id === activeFilter;
-          const activeClass =
-            ACTIVE_FILTER_PILLS[filter.id] || ACTIVE_FILTER_PILLS.semua;
-          return (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={() => onFilterChange?.(filter.id)}
-              className={`
-                px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap transition-all duration-300 cursor-pointer select-none
-                ${
-                  isActive
-                    ? activeClass
-                    : "bg-input text-muted border-surface hover:border-primary/30"
-                }
-              `}
-            >
-              <span className="tracking-wide uppercase text-[10px]">
-                {filter.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+  const hasActiveFilter =
+    search.trim() !== "" || dropdowns.some(({ key }) => options[key] !== defaults[key]);
+
+  return {
+    role,
+    dropdowns,
+    options,
+    search,
+    setSearch,
+    setOption: (key, value) => setOptions((prev) => ({ ...prev, [key]: value })),
+    filters: { search: debouncedSearch, ...options },
+    hasActiveFilter,
+    reset: () => {
+      setSearch("");
+      setOptions(defaults);
+    },
+  };
+}
+
+/** Kolom pencarian dan dropdown filter untuk halaman riwayat. */
+export function HistoryFilterBar({ state, searchPlaceholder }) {
+  return (
+    <>
+      <SearchBar
+        value={state.search}
+        onChange={state.setSearch}
+        placeholder={searchPlaceholder}
+        testId="history-search-input"
+      />
+      <FilterPanel
+        dropdowns={state.dropdowns}
+        values={state.options}
+        onChange={state.setOption}
+        onReset={state.reset}
+        canReset={state.hasActiveFilter}
+        gridClassName="lg:grid-cols-5"
+        testIdPrefix="history"
+      />
+    </>
   );
 }

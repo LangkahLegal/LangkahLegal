@@ -6,6 +6,7 @@ from core.user import CurrentUser
 from docs import consultations as docs
 from middleware import require_client, require_client_or_konsultan, require_konsultan
 from schemas.consultations import AssignSchedule, ConsultationForm, RatingCreate
+from schemas.filters import RiwayatFilters
 from services import consultation_service
 
 router = APIRouter()
@@ -41,10 +42,11 @@ def get_my_consultations(
 
 @router.get("/history", status_code=status.HTTP_200_OK, **docs.GET_CLIENT_HISTORY)
 def get_client_history(
+    filters: RiwayatFilters = Depends(),
     current_user: CurrentUser = Depends(require_client),
     db: Client = Depends(get_supabase_client),
 ):
-    return consultation_service.get_client_history(db, current_user)
+    return consultation_service.get_client_history(db, current_user, filters)
 
 
 @router.get("/{id_pengajuan}", status_code=status.HTTP_200_OK, **docs.GET_DETAIL_PENGAJUAN)

@@ -56,9 +56,12 @@ export const consultationService = {
     return response.data.data;
   },
 
-  // Riwayat klien yang sudah diurutkan backend, beserta jumlah sesi selesai.
-  getClientHistory: async () => {
-    const response = await api.get("/consultations/history");
+  // Riwayat klien; filter, pencarian, dan urutan dikerjakan backend (nilai "semua" tidak dikirim).
+  getClientHistory: async (filters = {}) => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value && value !== "semua"),
+    );
+    const response = await api.get("/consultations/history", { params });
     return response.data;
   },
 
