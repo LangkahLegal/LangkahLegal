@@ -158,7 +158,7 @@ export default function KnowledgeBasePage() {
             <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
               <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${toastMsg.type === 'error'
                   ? 'bg-danger/10 border-danger/30 text-danger'
-                  : 'bg-primary/10 border-primary/30 text-primary-dark dark:text-primary-light'
+                  : 'bg-primary/10 border-primary/30 text-primary-text'
                 }`}>
                 <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
                 {toastMsg.text}

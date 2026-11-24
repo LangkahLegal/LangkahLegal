@@ -57,9 +57,13 @@ export const consultantService = {
     }
   },
 
-  getHistory: async () => {
+  // Riwayat konsultan; filter, pencarian, dan urutan dikerjakan backend (nilai "semua" tidak dikirim).
+  getHistory: async (filters = {}) => {
     try {
-      const response = await api.get("/consultants/me/history");
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value && value !== "semua"),
+      );
+      const response = await api.get("/consultants/me/history", { params });
       return response.data;
     } catch (error) {
       console.error("Gagal load riwayat konsultan:", error);

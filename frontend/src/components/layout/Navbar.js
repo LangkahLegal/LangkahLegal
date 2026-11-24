@@ -135,7 +135,7 @@ export default function Navbar() {
                     }
                   }
                 }}
-                className={`font-headline transition-colors duration-300 ${
+                className={`font-headline py-2 transition-colors duration-300 ${
                   isActive
                     ? "text-primary font-bold"
                     : "text-muted hover:text-primary-light"

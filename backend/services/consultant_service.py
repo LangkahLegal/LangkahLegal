@@ -7,7 +7,7 @@ from supabase import Client
 from core.constants import StatusPembayaran, StatusPengajuan
 from core.exceptions import BadRequestError, ForbiddenError, InternalError, NotFoundError
 from core.user import CurrentUser
-from helpers.filters import date_range, time_range
+from helpers.filters import date_range, history_query_args, order_history, sort_by_schedule, time_range
 from helpers.listing import clean_search, page_window, with_pagination
 from helpers.rating import summarize_ratings
 from helpers.schedule import ensure_valid_slot, generate_available_slots, is_past, now_wib
@@ -21,6 +21,7 @@ from schemas.consultants import (
     StatusKlien,
     UrutanKlien,
 )
+from schemas.filters import RiwayatFilters, UrutanRiwayat
 
 logger = logging.getLogger(__name__)
 
@@ -319,6 +320,7 @@ def _format_history_item(req: dict) -> dict:
     return {
         "id_pengajuan": req["id_pengajuan"],
         "id_bursa": req.get("id_bursa"),
+        "created_at": req.get("created_at"),
         "nama_klien": req.get("users", {}).get("nama"),
         "foto_profil": req.get("users", {}).get("foto_profil"),
         "rentang_waktu": f"{jm} - {js}" if jm and js else "",
@@ -359,13 +361,19 @@ def get_next_session(db: Client, current_user: CurrentUser) -> dict:
     return {"data": upcoming[0] if upcoming else None}
 
 
-def get_history(db: Client, current_user: CurrentUser) -> dict:
+def get_history(db: Client, current_user: CurrentUser, filters: RiwayatFilters) -> dict:
+    """Riwayat konsultan, bawaan dari jadwal terbaru. `total_sesi_selesai` dihitung dari baris yang lolos filter."""
     id_kons = current_user.id_konsultan
 
-    rows = consultation_repository.list_history_for_konsultan(db, id_kons, StatusPengajuan.PENDING)
+    rows = consultation_repository.list_history_for_konsultan(
+        db, id_kons, StatusPengajuan.PENDING, **history_query_args(filters)
+    )
 
     formatted_data = [_format_history_item(req) for req in rows]
-    formatted_data.sort(key=lambda x: (x["tanggal_konsultasi"] or "", x["jam_mulai"] or ""), reverse=True)
+    if filters.urutkan == UrutanRiwayat.BAWAAN:
+        formatted_data = sort_by_schedule(formatted_data, "tanggal_konsultasi", newest_first=True)
+    else:
+        formatted_data = order_history(formatted_data, filters.urutkan, "tanggal_konsultasi")
 
     total_selesai = sum(1 for item in formatted_data if item["status"] == StatusPengajuan.SELESAI)
 

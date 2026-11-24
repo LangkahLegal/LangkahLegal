@@ -28,30 +28,26 @@ export default function Hero({ onGetStarted, onLearnMore }) {
   return (
     <section
       id="hero"
-      className="relative w-full h-screen min-h-[600px] overflow-hidden px-4 sm:px-6 pt-20 pb-8 flex flex-col justify-center items-center text-center"
+      className="relative flex h-screen min-h-[600px] w-full items-center overflow-hidden px-4 pb-8 pt-20 sm:px-6"
     >
       <Image
         src="/images/background.jpg"
         alt="LangkahLegal Background"
         fill
         priority
-        className="object-cover object-center z-0"
+        className="z-0 object-cover object-right"
       />
 
-      {/* REFACTOR 2: Gunakan Gradient Overlay. 
-          Atas agak terang (30%), tengah sedang (60%), bawah gelap (80%).
-          Ini menjamin tombol di bawah akan SELALU terbaca kontras. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/40 z-0" />
-
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/95 via-black/75 to-black/10" />
       <div className="glow-bottom-right-secondary z-0 opacity-70" />
 
       <motion.div
-        className="relative z-10 w-full max-w-7xl mx-auto flex flex-col items-center mt-6 md:mt-10"
+        className="relative z-10 mx-auto mt-6 flex w-full max-w-7xl flex-col items-center md:mt-10 md:items-start"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <div className="space-y-6 md:space-y-8 max-w-4xl flex flex-col items-center">
+        <div className="flex max-w-3xl flex-col items-center space-y-6 text-center md:items-start md:space-y-8 md:text-left">
           <motion.h1
             variants={itemVariants}
             className="text-4xl md:text-7xl font-headline font-extrabold text-white leading-[1.15] tracking-tight drop-shadow-lg"
@@ -59,33 +55,21 @@ export default function Hero({ onGetStarted, onLearnMore }) {
             Akses Keadilan <br className="hidden sm:block" />
             untuk Semua
             <br />
-            <span
-              style={{
-                background:
-                  "linear-gradient(to right, var(--primary-light), var(--primary))",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
+            <span className="text-secondary drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">
               Dimulai dari Sini.
             </span>
           </motion.h1>
 
           <motion.p
             variants={itemVariants}
-            className="text-base md:text-lg text-white max-w-3xl mx-auto leading-relaxed px-2 md:px-0 drop-shadow-[0_2px_7px_rgba(0,0,0,0.95)]"
+            className="max-w-2xl px-2 text-base leading-relaxed text-white drop-shadow-[0_2px_7px_rgba(0,0,0,0.95)] md:mx-0 md:px-0 md:text-lg"
           >
-            Jangan biarkan istilah hukum yang rumit menghentikan langkah Anda.
-            Ceritakan masalah Anda pada Asisten AI kami untuk mendapatkan
-            &quot;P3K Hukum&quot;, temukan konsultan yang tepat, dan selesaikan
-            masalah hukum Anda dengan aman dan transparan.
+            Masalah hukum terasa rumit? Mulai dari sini. Ceritakan masalah Anda, temukan solusi dan konsultan hukum yang tepat.
           </motion.p>
 
           <motion.div
             variants={itemVariants}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 md:pt-4 w-full max-w-sm sm:max-w-none mx-auto"
+            className="mx-auto flex w-full max-w-sm flex-col items-center justify-center gap-4 pt-2 sm:max-w-none sm:flex-row md:mx-0 md:justify-start md:pt-4"
           >
             <Button
               onClick={onGetStarted}

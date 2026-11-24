@@ -42,7 +42,6 @@ export default function ProfileCard({ user }) {
         <div className="flex items-center gap-4 relative z-10">
           {/* Avatar Area */}
           <div className="relative flex-shrink-0">
-            {/* bg-[#2c2945] -> bg-input | border manual -> border-surface */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-input border-2 border-surface shadow-inner">
               <UserAvatar
                 src={foto_profil}
@@ -56,11 +55,9 @@ export default function ProfileCard({ user }) {
 
           {/* Info Area */}
           <div className="flex flex-col gap-0.5">
-            {/* text-[#e8e2fc] -> text-main */}
             <h2 className="font-headline font-bold text-base sm:text-lg text-main">
               {name}
             </h2>
-            {/* text-[#aca8c1] -> text-muted */}
             <p className="text-muted text-xs sm:text-sm font-medium">{email}</p>
 
             {/* Role & Status Badge */}

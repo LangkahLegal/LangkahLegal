@@ -45,7 +45,7 @@ const FILTER_DROPDOWNS = [
 const DEFAULT_OPTIONS = defaultFilterValues(FILTER_DROPDOWNS);
 
 const PRICE_INPUT_CLASS =
-  "flex-1 min-w-0 bg-transparent text-[11px] font-bold text-main placeholder:text-muted/40 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  "flex-1 min-w-0 h-full bg-transparent text-[11px] font-bold text-main placeholder:text-muted/70 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 const PAGE_SIZE = 12;
 

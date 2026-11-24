@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Calendar } from "@/components/ui/Calendar";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { consultantService } from "@/services/consultant.service";
 
 // Helper: Format tanggal lokal YYYY-MM-DD
@@ -282,7 +283,7 @@ export default function SchedulePicker({
   };
 
   return (
-    <section className="space-y-6 w-full">
+    <section className="space-y-4 w-full">
       {/* 1. Header Judul & Legenda Ketersediaan */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
@@ -298,6 +299,8 @@ export default function SchedulePicker({
       </div>
 
       {/* 2. Date Picker Kalender Bersama (Gaya Visual Bulat Identik dengan Jadwal Konsultan) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+      <div className="flex flex-col gap-4">
       <Calendar
         days={calendarCells}
         selectedDay={selectedDate}
@@ -313,90 +316,67 @@ export default function SchedulePicker({
         testId="monthly-calendar"
       />
 
+      {selectedDate && (
+        <div className="bg-card border border-surface rounded-2xl p-4 space-y-3 shadow-soft animate-fade-in">
+          <div className="flex items-center gap-2 px-1">
+            <MaterialIcon name="timelapse" className="text-primary text-base" />
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-main font-headline">
+              Pilih Durasi Konsultasi
+            </h3>
+          </div>
+          <Dropdown
+            compact
+            value={selectedDuration}
+            options={DURATION_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: `${opt.label} · ${opt.sessions} Sesi`,
+            }))}
+            onChange={handleDurationSelect}
+          />
+        </div>
+      )}
+      </div>
+
       {/* 3. Pemilihan Durasi & Jam Sesi */}
       {!selectedDate ? (
-        <div className="bg-card border border-dashed border-surface rounded-[2rem] p-6 text-center text-muted text-xs flex flex-col items-center justify-center gap-2 shadow-soft">
+        <div className="bg-card border border-dashed border-surface rounded-2xl p-4 text-center text-muted text-xs flex flex-col items-center justify-center gap-2 shadow-soft">
           <MaterialIcon name="touch_app" className="text-2xl text-primary/60" />
           <p className="font-medium">
             Pilih salah satu tanggal di atas untuk melihat pilihan durasi dan jam konsultasi.
           </p>
         </div>
       ) : (
-        <div className="space-y-5 animate-fade-in">
-          {/* Fitur Duration Chips: Pilihan Durasi Konsultasi */}
-          <div className="bg-card border border-surface rounded-[2rem] p-5 sm:p-6 space-y-3 shadow-soft">
-            <div className="flex items-center justify-between px-1">
-              <label className="text-[10px] sm:text-[11px] font-black text-muted uppercase tracking-[0.15em] flex items-center gap-1.5">
-                <MaterialIcon name="timelapse" className="text-sm text-primary" />
-                <span>Pilih Durasi Konsultasi</span>
-              </label>
-              <span className="text-[11px] text-primary font-bold">
-                {selectedDuration} Menit ({selectedDuration / 30} Sesi)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-              {DURATION_OPTIONS.map((opt) => {
-                const isDurationActive = selectedDuration === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleDurationSelect(opt.value)}
-                    className={`
-                      py-3 px-3 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1 transition-all duration-300 cursor-pointer
-                      ${
-                        isDurationActive
-                          ? "bg-primary text-on-primary border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
-                          : "bg-input/60 border-surface text-main hover:border-primary/50 hover:bg-input font-medium"
-                      }
-                    `}
-                  >
-                    <span className="font-headline tracking-wide text-xs sm:text-sm">
-                      {opt.label}
-                    </span>
-                    <span
-                      className={`text-[9px] uppercase tracking-wider font-bold ${
-                        isDurationActive ? "text-on-primary/80" : "text-muted"
-                      }`}
-                    >
-                      {opt.sessions} Sesi
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Header Slot Pills */}
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <MaterialIcon name="schedule" className="text-primary text-base" />
+          <div className="bg-card border border-surface rounded-2xl p-4 flex flex-col gap-3 shadow-soft animate-fade-in">
+          <div className="flex items-start gap-2 px-1">
+            <MaterialIcon name="schedule" className="text-primary text-base mt-0.5" />
+            <div>
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-main font-headline">
-                Pilih Jam Sesi ({formattedSelectedDate})
+                Pilih Jam Sesi
               </h3>
+              <p className="text-[11px] sm:text-xs text-muted font-medium mt-0.5">
+                {formattedSelectedDate}
+              </p>
             </div>
-            <span className="text-[10px] sm:text-xs text-muted font-medium">
-              Durasi {selectedDuration} menit
-            </span>
           </div>
 
-          {/* Deretan Slot Pills Dinamis */}
+          {/* Daftar slot: di layar sedang ke atas mengisi sisa tinggi kartu dan bisa digulir */}
+          <div className="md:relative md:flex-1 md:min-h-[12rem]">
+          <div className="md:absolute md:inset-0 md:overflow-y-auto md:pr-1">
           {isSlotsFetching ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-[4.5rem] rounded-2xl bg-input/40 border border-surface animate-pulse"
+                  className="h-14 rounded-xl bg-input/40 border border-surface animate-pulse"
                 />
               ))}
             </div>
           ) : dynamicSlotPills.length === 0 ? (
-            <div className="bg-card border border-surface rounded-2xl p-5 text-center text-muted text-xs shadow-soft">
+            <div className="text-center text-muted text-xs py-4">
               Tidak ada rentang jam praktik konsultan yang cukup untuk durasi {selectedDuration} menit pada tanggal ini.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2">
               {dynamicSlotPills.map((slot) => {
                 const isSlotSelected =
                   startTime === slot.start && endTime === slot.end;
@@ -414,7 +394,7 @@ export default function SchedulePicker({
                       onEndTimeChange?.(slot.end);
                     }}
                     className={`
-                      relative flex flex-col items-center justify-center py-3 px-3 rounded-2xl border text-xs transition-all duration-300
+                      relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl border text-xs transition-all duration-300
                       ${
                         isSlotSelected
                           ? "bg-primary text-on-primary border-primary shadow-lg shadow-primary/25 font-bold scale-[1.02]"
@@ -449,24 +429,27 @@ export default function SchedulePicker({
               })}
             </div>
           )}
+          </div>
+          </div>
+          </div>
+      )}
+      </div>
 
-          {/* Rangkuman Jam Konsultasi Terpilih (Bersih & Rapi tanpa dropdown bertingkat) */}
-          <div className="bg-card border border-surface rounded-2xl px-5 py-4 flex items-center justify-between shadow-soft">
-            <div className="flex items-center gap-2">
-              <MaterialIcon name="schedule" className="text-primary text-base" />
-              <span className="text-xs text-muted font-bold uppercase tracking-wider">
-                Jam Konsultasi Terpilih:
-              </span>
-            </div>
-            <span
-              data-testid="selected-time-display"
-              className="text-xs sm:text-sm font-extrabold text-main font-headline tracking-wide"
-            >
-              {startTime && endTime
-                ? `${startTime} - ${endTime} (${selectedDuration} Menit)`
-                : "--:--"}
+      {/* Ringkasan jadwal terpilih: tanggal dan jam, di bawah selebar penuh */}
+      {selectedDate && (
+        <div className="bg-card border border-surface rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 shadow-soft">
+          <div className="flex items-center gap-2">
+            <MaterialIcon name="event_available" className="text-primary text-base" />
+            <span className="text-xs text-muted font-bold uppercase tracking-wider">
+              Jadwal Konsultasi Terpilih:
             </span>
           </div>
+          <span
+            data-testid="selected-time-display"
+            className="text-xs sm:text-sm font-extrabold text-main font-headline tracking-wide"
+          >
+            {formattedSelectedDate} · {startTime && endTime ? `${startTime} - ${endTime}` : "--:--"}
+          </span>
         </div>
       )}
     </section>

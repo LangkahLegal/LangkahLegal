@@ -83,19 +83,13 @@ def get_detail(
     return rows[0] if rows else None
 
 
-def list_with_relations(
-    db: Client,
-    id_user: Optional[int] = None,
-    id_konsultan: Optional[int] = None,
-    statuses: Optional[list[str]] = None,
-    newest_first: bool = False,
-) -> list[dict]:
-    query = db.table(TABLE).select("""
+# {konsultan} menjadi "konsultan!inner" saat mencari nama konsultan, agar pengajuannya ikut tersaring.
+RELATION_COLUMNS = """
         *,
         dokumen_pendukung (
             id_dokumen, nama_dokumen, file_url, tipe_file, ukuran_kb, created_at, updated_at
         ),
-        konsultan (
+        {konsultan} (
             nama_lengkap, spesialisasi, foto_profil
         ),
         jadwal_ketersediaan (
@@ -104,14 +98,63 @@ def list_with_relations(
                 nama_lengkap, spesialisasi, foto_profil
             )
         )
-    """)
+    """
+
+
+def _filter_history(
+    query,
+    statuses: list[str] | None,
+    tanggal_dari: str | None,
+    tanggal_sebelum: str | None,
+    jam_dari: str | None,
+    jam_sebelum: str | None,
+    dari_bursa: bool | None,
+):
+    """Filter riwayat yang sama untuk klien dan konsultan; `dari_bursa` None berarti semua sumber."""
+    if statuses:
+        query = query.in_("status_pengajuan", statuses)
+    if tanggal_dari:
+        query = query.gte("tanggal_pengajuan", tanggal_dari)
+    if tanggal_sebelum:
+        query = query.lt("tanggal_pengajuan", tanggal_sebelum)
+    if jam_dari:
+        query = query.gte("jam_mulai", jam_dari)
+    if jam_sebelum:
+        query = query.lt("jam_mulai", jam_sebelum)
+    if dari_bursa is True:
+        query = query.not_.is_("id_bursa", "null")
+    elif dari_bursa is False:
+        query = query.is_("id_bursa", "null")
+    return query
+
+
+def list_with_relations(
+    db: Client,
+    id_user: Optional[int] = None,
+    id_konsultan: Optional[int] = None,
+    statuses: Optional[list[str]] = None,
+    newest_first: bool = False,
+    search: Optional[str] = None,
+    tanggal_dari: Optional[str] = None,
+    tanggal_sebelum: Optional[str] = None,
+    jam_dari: Optional[str] = None,
+    jam_sebelum: Optional[str] = None,
+    dari_bursa: Optional[bool] = None,
+) -> list[dict]:
+    """Parameter dari `search` ke bawah opsional (dipakai riwayat klien); tanpa itu hasilnya sama seperti sebelumnya.
+
+    `search` mencocokkan nama konsultan.
+    """
+    columns = RELATION_COLUMNS.format(konsultan="konsultan!inner" if search else "konsultan")
+    query = db.table(TABLE).select(columns)
 
     if id_user is not None:
         query = query.eq("id_user", id_user)
     if id_konsultan is not None:
         query = query.eq("id_konsultan", id_konsultan)
-    if statuses:
-        query = query.in_("status_pengajuan", statuses)
+    if search:
+        query = query.ilike("konsultan.nama_lengkap", f"%{search}%")
+    query = _filter_history(query, statuses, tanggal_dari, tanggal_sebelum, jam_dari, jam_sebelum, dari_bursa)
     if newest_first:
         query = query.order("created_at", desc=True)
 
@@ -190,15 +233,30 @@ def list_requests_for_konsultan(
     return query.execute().data
 
 
-def list_history_for_konsultan(db: Client, id_konsultan: int, excluded_status: str) -> list[dict]:
-    return (
+def list_history_for_konsultan(
+    db: Client,
+    id_konsultan: int,
+    excluded_status: str,
+    statuses: list[str] | None = None,
+    search: str | None = None,
+    tanggal_dari: str | None = None,
+    tanggal_sebelum: str | None = None,
+    jam_dari: str | None = None,
+    jam_sebelum: str | None = None,
+    dari_bursa: bool | None = None,
+) -> list[dict]:
+    """`search` mencocokkan nama klien; tanpa filter, hasilnya sama seperti sebelumnya."""
+    users = "users!inner(nama, foto_profil)" if search else "users(nama, foto_profil)"
+    query = (
         db.table(TABLE)
-        .select("*, users(nama, foto_profil), jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
+        .select(f"*, {users}, jadwal_ketersediaan(tanggal), transaksi(nominal_konsultan)")
         .eq("id_konsultan", id_konsultan)
         .neq("status_pengajuan", excluded_status)
-        .execute()
-        .data
     )
+    if search:
+        query = query.ilike("users.nama", f"%{search}%")
+    query = _filter_history(query, statuses, tanggal_dari, tanggal_sebelum, jam_dari, jam_sebelum, dari_bursa)
+    return query.execute().data
 
 
 def insert(db: Client, data: dict) -> list[dict]:

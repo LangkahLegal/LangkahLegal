@@ -64,7 +64,7 @@ export default function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-muted hover:text-main transition-colors"
+                    className="inline-block py-1.5 -my-1.5 text-muted hover:text-main transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -83,7 +83,7 @@ export default function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-muted hover:text-main transition-colors"
+                    className="inline-block py-1.5 -my-1.5 text-muted hover:text-main transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -102,7 +102,7 @@ export default function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="text-muted hover:text-main transition-colors"
+                    className="inline-block py-1.5 -my-1.5 text-muted hover:text-main transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -122,7 +122,7 @@ export default function Footer() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted hover:text-primary-text transition-colors"
+                className="inline-block py-2 -my-2 text-muted hover:text-primary-text transition-colors"
               >
                 {item.name}
               </a>

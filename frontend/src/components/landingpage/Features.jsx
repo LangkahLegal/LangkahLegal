@@ -171,7 +171,7 @@ export default function Features() {
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted">
               Tidak perlu memahami istilah hukum lebih dulu. Ceritakan masalah
-              Anda dengan bahasa sehari-hari kepada Asisten AI.
+              Anda dengan Asisten AI kami.
             </p>
 
             <div className="my-7">

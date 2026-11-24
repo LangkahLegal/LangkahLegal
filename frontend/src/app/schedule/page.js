@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppShell from "@/components/layout/AppShell";
 import MonthlyCalendar from "@/components/schedule/MonthlyCalendar";
 import AvailabilityToggle from "@/components/schedule/AvailabilityToggle";
-import AddSlotModal from "@/components/schedule/AddSlotModal";
+import SlotCard from "@/components/schedule/SlotCard";
 import PageHeader from "@/components/layout/PageHeader";
+import { MaterialIcon } from "@/components/ui/Icons";
 
 import { scheduleService } from "@/services/schedule.service";
 import { consultantService } from "@/services/consultant.service";
@@ -24,7 +25,7 @@ const formatDate = (date) => {
 export default function SchedulePage() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hasPicked, setHasPicked] = useState(false);
 
   // --- 1. DATA FETCHING ---
   const { data: scheduleData = [], isLoading: isLoadingSchedules } = useQuery({
@@ -45,7 +46,6 @@ export default function SchedulePage() {
     mutationFn: (data) => scheduleService.addSchedule(data),
     onSuccess: () => {
       invalidate();
-      setIsModalOpen(false);
       alert("Jadwal baru berhasil ditambahkan!");
     },
     onError: () =>
@@ -56,7 +56,6 @@ export default function SchedulePage() {
     mutationFn: ({ id, data }) => scheduleService.updateSchedule(id, data),
     onSuccess: () => {
       invalidate();
-      setIsModalOpen(false);
       alert("Jadwal berhasil diperbarui!");
     },
     onError: () =>
@@ -102,6 +101,14 @@ export default function SchedulePage() {
     return slots && slots.length > 0 ? slots[0] : null;
   }, [allSlotsGrouped, activeDateString]);
 
+  const dateLabel = selectedDate.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const isPastDate = activeDateString < formatDate(new Date());
+
   const calendarDays = useMemo(() => {
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth();
@@ -144,21 +151,10 @@ export default function SchedulePage() {
     <AppShell
       role="konsultan"
       contentClassName="w-full"
-      overlay={
-        <AddSlotModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSave}
-          initialStart={currentActiveSlot?.jam_mulai.substring(0, 5) || "00:00"}
-          initialEnd={currentActiveSlot?.jam_selesai.substring(0, 5) || "00:00"}
-          isNewData={!currentActiveSlot}
-          isBooked={!!currentActiveSlot?.nama_klien}
-        />
-      }
     >
         <PageHeader title="Kelola Jadwal" backHref="/dashboard/consultant" />
 
-        <main className="relative z-10 w-full max-w-xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
+        <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-5 lg:px-8 lg:py-6 pb-28 lg:pb-10 min-h-[80vh] scroll-smooth">
           <div className="w-full space-y-6 animate-fade-in">
             {isLoadingSchedules || isLoadingStats ? (
               <div className="flex flex-col items-center justify-center py-20 gap-5">
@@ -174,22 +170,40 @@ export default function SchedulePage() {
                   onChange={(isActive) => activeMutation.mutate(isActive)}
                 />
 
-                <MonthlyCalendar
-                  days={calendarDays}
-                  selectedDay={activeDateString}
-                  onSelectDay={(date) => {
-                    setSelectedDate(new Date(date));
-                    // Tanggal yang sudah lewat hanya bisa dibuka bila sudah punya jadwal untuk dilihat.
-                    const isPastDate = date < formatDate(new Date());
-                    setIsModalOpen(!isPastDate || Boolean(allSlotsGrouped[date]));
-                  }}
-                  monthLabel={selectedDate.toLocaleDateString("id-ID", {
-                    month: "long",
-                    year: "numeric",
-                  })}
-                  onPrev={() => setSelectedDate(firstDayOfMonth(selectedDate, -1))}
-                  onNext={() => setSelectedDate(firstDayOfMonth(selectedDate, 1))}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                  <MonthlyCalendar
+                    days={calendarDays}
+                    selectedDay={hasPicked ? activeDateString : ""}
+                    onSelectDay={(date) => {
+                      setSelectedDate(new Date(date));
+                      setHasPicked(true);
+                    }}
+                    monthLabel={selectedDate.toLocaleDateString("id-ID", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    onPrev={() => setSelectedDate(firstDayOfMonth(selectedDate, -1))}
+                    onNext={() => setSelectedDate(firstDayOfMonth(selectedDate, 1))}
+                  />
+
+                  {hasPicked ? (
+                    <SlotCard
+                      dateLabel={dateLabel}
+                      slot={currentActiveSlot}
+                      isBooked={!!currentActiveSlot?.nama_klien}
+                      isPastEmpty={isPastDate && !currentActiveSlot}
+                      onSave={handleSave}
+                      isSaving={createMutation.isPending || updateMutation.isPending}
+                    />
+                  ) : (
+                    <div className="bg-card border border-dashed border-surface rounded-2xl p-4 text-center text-muted text-xs flex flex-col items-center justify-center gap-2 shadow-soft">
+                      <MaterialIcon name="touch_app" className="text-2xl text-primary/60" />
+                      <p className="font-medium">
+                        Pilih salah satu tanggal untuk menambah atau mengubah jadwal.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

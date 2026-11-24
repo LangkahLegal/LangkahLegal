@@ -7,14 +7,14 @@ export default function CallbackError({ error, onRetry }) {
 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-main">Terjadi Kesalahan</h1>
-        <div className="p-4 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <div className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl">
           {error}
         </div>
       </div>
 
       <button
         onClick={onRetry}
-        className="text-primary-light font-semibold hover:text-main transition-colors"
+        className="py-2 text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4"
       >
         Kembali ke Login
       </button>

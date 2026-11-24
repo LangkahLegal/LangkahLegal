@@ -11,6 +11,7 @@ export function Dropdown({
   placeholder = "Pilih...",
   className = "",
   renderItem,
+  compact = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -49,7 +50,7 @@ export function Dropdown({
       {/* Trigger */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
+        className={`w-full border rounded-2xl ${compact ? "px-4 py-2.5" : "p-4"} flex justify-between items-center transition-all duration-300 cursor-pointer ${
           isOpen
             ? "bg-input border-primary ring-2 ring-primary/10"
             : "bg-input border-surface hover:border-primary/30"

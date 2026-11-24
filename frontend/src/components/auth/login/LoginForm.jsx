@@ -41,7 +41,7 @@ export default function LoginForm({ onSubmit, isLoading, errorMsg }) {
           data-testid="login-password-input"
         />
         <div className="flex justify-end">
-          <Link href="/auth/forgot-password" className="text-xs font-medium text-muted hover:text-main transition-colors">
+          <Link href="/auth/forgot-password" className="inline-block py-2 -my-2 text-xs text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4">
             Lupa Password?
           </Link>
         </div>

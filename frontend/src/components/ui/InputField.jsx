@@ -31,7 +31,7 @@ export function InputField({
           w-full font-headline text-sm 
           bg-input border border-surface rounded-2xl 
           p-4 
-          text-main placeholder:text-muted/30
+          text-main placeholder:text-muted/60
           transition-all duration-300 outline-none 
           hover:border-primary/30
           focus:bg-input focus:border-primary focus:ring-2 focus:ring-primary/10

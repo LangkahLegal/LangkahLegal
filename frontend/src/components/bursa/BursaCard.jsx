@@ -156,7 +156,7 @@ export default function BursaCard({
               href={kasus.dokumen_bukti}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-primary-light hover:text-primary transition-colors w-fit"
+              className="flex items-center gap-1.5 py-2 -my-2 text-[10px] sm:text-xs font-medium text-primary-light hover:text-primary transition-colors w-fit"
             >
               <MaterialIcon name="attach_file" className="text-sm" />
               <span className="underline truncate">Lihat Dokumen</span>

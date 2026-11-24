@@ -15,6 +15,7 @@ from schemas.consultants import (
     ScheduleToggle,
     ScheduleUpdate,
 )
+from schemas.filters import RiwayatFilters
 from services import consultant_service
 
 router = APIRouter()
@@ -167,7 +168,8 @@ def get_daftar_klien(
 
 @router.get("/me/history", **docs.GET_RIWAYAT_KONSULTAN)
 def get_riwayat_konsultan(
+    filters: RiwayatFilters = Depends(),
     current_user: CurrentUser = Depends(require_konsultan),
     db: Client = Depends(get_supabase_client),
 ):
-    return consultant_service.get_history(db, current_user)
+    return consultant_service.get_history(db, current_user, filters)

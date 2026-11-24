@@ -19,7 +19,7 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
             Silakan periksa kotak masuk email Anda ({email}) untuk menemukan tautan reset password.
           </p>
         </div>
-        <Link href="/auth/login" className="block text-center w-full mt-4 text-sm font-medium text-primary hover:text-primary-light transition-colors">
+        <Link href="/auth/login" className="block text-center w-full mt-4 py-2 text-sm text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4">
           Kembali ke halaman Login
         </Link>
       </div>
@@ -48,11 +48,12 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
         {isLoading ? "Mengirim..." : "Kirim Link Reset"}
       </Button>
 
-      <div className="text-center mt-6">
-        <Link href="/auth/login" className="text-sm font-medium text-muted hover:text-main transition-colors">
-          Ingat password Anda? Masuk
+      <p className="text-center mt-6 text-sm font-medium text-muted">
+        Ingat password Anda?{" "}
+        <Link href="/auth/login" className="inline-block py-2 -my-2 ml-1 text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4">
+          Masuk
         </Link>
-      </div>
+      </p>
     </form>
   );
 }
