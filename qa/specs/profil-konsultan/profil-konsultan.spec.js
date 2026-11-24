@@ -82,7 +82,7 @@ Then("jam yang sudah dipesan ditandai terisi dan tidak bisa dipilih", async ({ p
 
 Then("hanya jam di dalam jam praktik yang bisa dipilih", async ({ profilKonsultanPage }) => {
   for (const time of TIME_OPTIONS.outsideHours) {
-    await expect(profilKonsultanPage.timeOption(time)).toHaveClass(DISABLED);
+    await expect(profilKonsultanPage.timeOption(time)).toHaveCount(0);
   }
   for (const time of TIME_OPTIONS.insideHours) {
     await expect(profilKonsultanPage.timeOption(time)).not.toHaveClass(DISABLED);

@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import { Given, Then, When } from "../../hooks/bdd.js";
 import {
+  documentsOfCase,
   latestCaseOfKlien,
   resetConsultationData,
   seedConsultation,
@@ -53,7 +54,9 @@ Then("kasus tersimpan terbuka di bursa sesuai isian klien", async () => {
     status_bursa: "open",
   });
   expect(saved.tanggal_konsultasi).toContain(wibDate(CASE_POST.dayOffset));
-  expect(saved.dokumen_bukti).toBeTruthy();
+  const [document] = await documentsOfCase(saved.id_bursa);
+  expect(document?.nama_dokumen).toBe(CASE_POST.documentName);
+  expect(document.file_path).toBeTruthy();
 });
 
 When("pengguna kembali ke dashboard dari konfirmasi posting", async ({ postingKasusPage }) => {

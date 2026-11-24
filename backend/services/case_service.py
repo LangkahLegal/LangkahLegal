@@ -22,6 +22,8 @@ ACTIVE_STATUSES = [
     StatusPengajuan.TERJADWAL,
 ]
 
+KATEGORI_HUKUM = {"pidana", "perdata", "umum"}
+
 DOKUMEN_ADA = {DokumenBursa.ADA: True, DokumenBursa.TIDAK: False}
 
 URUTAN_KOLOM = {
@@ -32,6 +34,9 @@ URUTAN_KOLOM = {
 
 
 async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> dict:
+    kategori = form.kategori_hukum.lower().strip()
+    if kategori not in KATEGORI_HUKUM:
+        raise BadRequestError("Kategori hukum harus pidana, perdata, atau umum")
     valid_files = select_valid_files(form.dokumen_pendukung_files, "Maksimal 10 file dokumen pendukung")
     dokumen_bukti = (
         ensure_https_url(form.dokumen_bukti, "Dokumen bukti harus berupa tautan https") if form.dokumen_bukti else None
@@ -43,7 +48,7 @@ async def post_case(db: Client, current_user: CurrentUser, form: CaseForm) -> di
         db,
         {
             "id_user": current_user.id_user,
-            "kategori_hukum": form.kategori_hukum.lower().strip(),
+            "kategori_hukum": kategori,
             "deskripsi_kasus_awam": form.deskripsi_kasus_awam,
             "dokumen_bukti": dokumen_bukti,
             "tanggal_konsultasi": form.tanggal_konsultasi,
@@ -116,6 +121,7 @@ def list_open_cases(
 
     for row in rows:
         row["dokumen_bukti"] = _https_only(row.get("dokumen_bukti"))
+        row.pop("id_user", None)
 
     payload = {"message": "Berhasil mengambil data bursa kasus", "data": rows}
     return with_pagination(payload, total if total is not None else len(rows), page, page_size)

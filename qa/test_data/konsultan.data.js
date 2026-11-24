@@ -71,7 +71,7 @@ export const CONSULTANT_HISTORY = {
   statuses: ["selesai", "pending", "dibatalkan"],
   shownLabels: ["Selesai", "Batal"],
   hiddenLabel: "Pending",
-  finishedBadge: "1 Selesai",
+  finished: 1,
 };
 
 /** Tanggal 31 Januari, untuk memeriksa perpindahan bulan di kalender. */

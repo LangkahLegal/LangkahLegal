@@ -47,7 +47,6 @@ export default function CreatePasswordPage() {
       } else {
         router.replace("/dashboard/client");
       }
-      router.refresh();
     } catch (err) {
       setErrorMsg(err?.message || "Gagal membuat password. Coba lagi.");
     } finally {

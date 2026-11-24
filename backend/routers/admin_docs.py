@@ -46,7 +46,7 @@ def get_job_status(
     return admin_doc_service.get_job_status(user, job_id)
 
 
-@router.get("/", response_model=PaginatedResponse, **docs.LIST_DOCUMENTS)
+@router.get("", response_model=PaginatedResponse, **docs.LIST_DOCUMENTS)
 def list_documents(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

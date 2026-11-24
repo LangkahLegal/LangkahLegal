@@ -13,7 +13,7 @@ from services import case_service
 router = APIRouter()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, **docs.POSTING_KASUS_ANONIM)
+@router.post("", status_code=status.HTTP_201_CREATED, **docs.POSTING_KASUS_ANONIM)
 async def posting_kasus_anonim(
     form: CaseForm = Depends(),
     current_user: CurrentUser = Depends(require_client),
@@ -22,7 +22,7 @@ async def posting_kasus_anonim(
     return await case_service.post_case(db, current_user, form)
 
 
-@router.get("/", **docs.LIHAT_BURSA_KASUS)
+@router.get("", **docs.LIHAT_BURSA_KASUS)
 def lihat_bursa_kasus(
     filters: CaseListFilters = Depends(),
     page: Optional[int] = Query(None, ge=1, description="Kosongkan untuk mengambil semua"),

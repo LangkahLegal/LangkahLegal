@@ -26,6 +26,7 @@ export function clearContinueState() {
 export async function saveContinueState(page, world, scenario) {
   const storage = await page.evaluate(readStorage).catch(() => null);
   if (!storage) return clearContinueState();
+  storage.cookies = await page.context().cookies().catch(() => []);
 
   fs.mkdirSync(STATE_DIR, { recursive: true });
   const state = { scenario, ...storage, accountKey: world.account?.key ?? null, shared: world.shared };
@@ -37,4 +38,7 @@ export function loadContinueState() {
   return JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
 }
 
-export const restoreStorage = (page, state) => page.addInitScript(writeStorage, state);
+export async function restoreStorage(page, state) {
+  if (state.cookies?.length) await page.context().addCookies(state.cookies);
+  await page.addInitScript(writeStorage, { localStorage: state.localStorage, sessionStorage: state.sessionStorage });
+}

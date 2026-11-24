@@ -4,24 +4,14 @@ import { account } from "../test_data/accounts.js";
 import { Dialogs } from "../support/dialogs.js";
 import { Network } from "../support/network.js";
 import { sessions } from "../support/sessions.js";
+import { seedSessionCookies } from "../support/browser.js";
+import { env } from "../support/env.js";
 
 const pageObjectFixtures = Object.fromEntries(
   Object.entries(PAGE_OBJECTS).map(([name, PageObject]) => [name, async ({ page }, use) => use(new PageObject(page))]),
 );
 
-/** Menaruh sesi di localStorage sebelum aplikasi dimuat, sekali per tab. */
-async function seedSession(page, session, role) {
-  await page.addInitScript(
-    ({ access, refresh, role }) => {
-      if (window.sessionStorage.getItem("__sit_seeded")) return;
-      ["ll_token", "token"].forEach((key) => localStorage.setItem(key, access));
-      ["ll_refresh", "refresh_token"].forEach((key) => localStorage.setItem(key, refresh));
-      if (role) ["ll_role", "role"].forEach((key) => localStorage.setItem(key, role));
-      window.sessionStorage.setItem("__sit_seeded", "1");
-    },
-    { access: session.access_token, refresh: session.refresh_token, role },
-  );
-}
+const seedSession = (page, session, role) => seedSessionCookies(page, env.baseUrl, session, role);
 
 export const test = base.extend({
   ...pageObjectFixtures,

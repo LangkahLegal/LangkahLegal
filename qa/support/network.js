@@ -1,7 +1,5 @@
 import { ENDPOINTS } from "./endpoints.js";
-import { API_PREFIX, env } from "./env.js";
-
-const API_PORT = new URL(env.apiUrl).port;
+import { API_PREFIX } from "./env.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -11,7 +9,7 @@ function endpoint(name) {
   return found;
 }
 
-const apiPath = (url) => (url.port === API_PORT && url.pathname.startsWith(API_PREFIX) ? url.pathname.slice(API_PREFIX.length) : null);
+const apiPath = (url) => (url.pathname.startsWith(API_PREFIX) ? url.pathname.slice(API_PREFIX.length) : null);
 
 const matchesPath = (pattern, path) => (pattern instanceof RegExp ? pattern.test(path) : pattern === path);
 
@@ -43,6 +41,7 @@ export class Network {
         path,
         query: Object.fromEntries(url.searchParams),
         headers: request.headers(),
+        allHeaders: () => request.allHeaders(),
         body: readBody(request),
         status: null,
       };

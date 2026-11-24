@@ -6,4 +6,7 @@
 /reports/
 /test-results/
 
+# keluaran audit keamanan
+/security/reports/
+
 .env.sit

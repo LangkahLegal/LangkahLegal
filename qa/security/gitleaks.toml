@@ -1,0 +1,27 @@
+title = "LangkahLegal"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Identitas akun uji SIT: UUID auth, bukan rahasia"
+paths = ['''qa/\.sit-state/identities\.json''']
+
+[[allowlists]]
+description = "Token palsu yang sengaja tidak valid untuk skenario uji"
+regexes = ['''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJzaXQifQ\.kedaluwarsa''']
+
+[[allowlists]]
+description = "Ekspresi GitHub Actions, bukan nilai rahasia"
+regexTarget = "line"
+regexes = ['''\$\{\{\s*(secrets|vars)\.[A-Za-z0-9_]+''']
+
+[[allowlists]]
+description = "Contoh respons di dokumentasi dengan token terpotong"
+regexes = ['''eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9\.\.\.''']
+
+[[allowlists]]
+description = "Token sesi akun uji di commit 96a4b79; seluruh sesi akun sit.* dicabut (logout global) pada 10 Nov 2026"
+commits = ["96a4b798d1fd05481d4ebc886bae1822f8d04ae0"]
+paths = ['''qa/\.sit-state/continue\.json''']
+condition = "AND"

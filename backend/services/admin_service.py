@@ -3,6 +3,7 @@ from datetime import datetime
 
 from supabase import Client
 
+from core.config import get_settings
 from core.constants import Role, StatusPembayaran, StatusPengajuan, StatusVerifikasi
 from core.exceptions import BadRequestError, NotFoundError
 from core.user import CurrentUser
@@ -15,6 +16,7 @@ from repositories import (
     user_repository,
 )
 from schemas.admin import VerifyConsultantPayload
+from services.storage_service import sign_stored_ref
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,9 @@ def get_consultant_detail(db: Client, user: CurrentUser, id_konsultan: int) -> d
         raise NotFoundError("Konsultan tidak ditemukan.")
 
     konsultan["rating"], konsultan["total_reviews"] = summarize_ratings(konsultan.get("rating_ulasan", []))
+    konsultan["portofolio"] = sign_stored_ref(
+        db, get_settings().supabase_portofolio_bucket, konsultan.get("portofolio")
+    )
 
     all_pengajuan = consultation_repository.list_statuses(db, id_konsultan) or []
     konsultan["total_consultations"] = len(all_pengajuan)

@@ -57,7 +57,7 @@ def siapkan_query() -> int:
 
 
 def _kunci(teks: str) -> str:
-    return hashlib.sha1(teks.encode("utf-8")).hexdigest()
+    return hashlib.sha1(teks.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def _pasang_cache_embedding(queries: list[str]) -> None:

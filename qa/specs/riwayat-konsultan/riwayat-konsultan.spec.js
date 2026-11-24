@@ -20,7 +20,8 @@ Then(
       await expect(riwayatKonsultanPage.cards.filter({ hasText: label })).toHaveCount(1);
     }
     await expect(riwayatKonsultanPage.cards.filter({ hasText: CONSULTANT_HISTORY.hiddenLabel })).toHaveCount(0);
-    await expect(riwayatKonsultanPage.finishedBadge(CONSULTANT_HISTORY.finishedBadge)).toBeVisible();
+    await riwayatKonsultanPage.showFinishedOnly();
+    await expect(riwayatKonsultanPage.cards).toHaveCount(CONSULTANT_HISTORY.finished);
   },
 );
 
@@ -28,5 +29,5 @@ Then(
 
 Then("riwayat konsultan menampilkan keadaan kosong", async ({ riwayatKonsultanPage }) => {
   await expect(riwayatKonsultanPage.emptyState).toBeVisible();
-  await expect(riwayatKonsultanPage.finishedBadge("0 Selesai")).toBeVisible();
+  await expect(riwayatKonsultanPage.cards).toHaveCount(0);
 });

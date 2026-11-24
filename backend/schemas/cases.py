@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import File, Form, Query, UploadFile
 
 from schemas.filters import RENTANG_JADWAL_DESC, WAKTU_SESI_DESC, RentangJadwal, WaktuSesi
+from schemas.validation import DATE_PATTERN, MAX_LONG_TEXT, MAX_URL, TIME_PATTERN
 
 
 class DokumenBursa(str, Enum):
@@ -31,10 +32,10 @@ class CaseListFilters:
 
 @dataclass
 class CaseForm:
-    kategori_hukum: str = Form(...)
-    deskripsi_kasus_awam: str = Form(...)
-    tanggal_konsultasi: str = Form(...)
-    jam_mulai: str = Form(...)
-    jam_selesai: str = Form(...)
-    dokumen_bukti: Optional[str] = Form(default=None)
+    kategori_hukum: str = Form(..., max_length=50)
+    deskripsi_kasus_awam: str = Form(..., max_length=MAX_LONG_TEXT)
+    tanggal_konsultasi: str = Form(..., pattern=DATE_PATTERN)
+    jam_mulai: str = Form(..., pattern=TIME_PATTERN)
+    jam_selesai: str = Form(..., pattern=TIME_PATTERN)
+    dokumen_bukti: Optional[str] = Form(default=None, max_length=MAX_URL)
     dokumen_pendukung_files: list[UploadFile] | None = File(default=None)

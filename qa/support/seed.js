@@ -27,6 +27,8 @@ async function removeConsultations(filters) {
 export async function resetConsultationData() {
   await removeConsultations({ id_user: eq(identity("klien").idUser) });
   await removeConsultations({ id_konsultan: inList(konsultanIds()) });
+  const caseIds = idsOf(await db.select("bursa_kasus", { id_user: eq(identity("klien").idUser) }, "id_bursa"), "id_bursa");
+  if (caseIds.length) await db.remove("dokumen_bursa", { id_bursa: inList(caseIds) });
   await db.remove("bursa_kasus", { id_user: eq(identity("klien").idUser) });
   await db.remove("jadwal_ketersediaan", { id_konsultan: inList(konsultanIds()) });
 }
@@ -109,6 +111,8 @@ export const seedCase = (values) =>
   db.insert("bursa_kasus", { id_user: identity("klien").idUser, status_bursa: "open", ...values });
 
 export const findCase = (idBursa) => db.first("bursa_kasus", { id_bursa: eq(idBursa) });
+
+export const documentsOfCase = (idBursa) => db.select("dokumen_bursa", { id_bursa: eq(idBursa) });
 
 export const closeCase = (idBursa) => db.update("bursa_kasus", { id_bursa: eq(idBursa) }, { status_bursa: "closed" });
 

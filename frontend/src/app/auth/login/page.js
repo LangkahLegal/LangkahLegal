@@ -49,7 +49,6 @@ export default function LoginPage() {
       } else {
         router.push("/dashboard/client");
       }
-      router.refresh();
     } catch (err) {
       setErrorMsg(err?.message || "Gagal login. Coba lagi.");
     } finally {

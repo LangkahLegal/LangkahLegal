@@ -15,7 +15,7 @@ export const caseService = {
       formData.append("dokumen_pendukung_files", file);
     });
 
-    const { data } = await api.post("/cases/", formData);
+    const { data } = await api.post("/cases", formData);
     return data;
   },
 
@@ -25,7 +25,7 @@ export const caseService = {
     const params = Object.fromEntries(
       Object.entries(filters).filter(([, value]) => value && value !== "semua"),
     );
-    const response = await api.get("/cases/", { params });
+    const response = await api.get("/cases", { params });
     return { data: response.data.data, total: response.data.total };
   },
 

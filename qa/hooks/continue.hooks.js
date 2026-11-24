@@ -16,7 +16,8 @@ Before({ tags: "@continue", name: "lanjutkan state skenario sebelumnya" }, async
   world.shared = state.shared;
   world.continuedFrom = state.scenario;
   if (state.accountKey) world.account = account(state.accountKey);
-  if (state.localStorage.ll_token) world.session = { access_token: state.localStorage.ll_token };
+  const accessToken = state.cookies?.find((cookie) => cookie.name === "ll_token")?.value;
+  if (accessToken) world.session = { access_token: accessToken };
 });
 
 After({ name: "simpan state untuk @continue" }, async ({ $testInfo, page, world }) => {
