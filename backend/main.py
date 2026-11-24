@@ -34,6 +34,7 @@ app = FastAPI(
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
+app.middleware("http")(pasang_request_id)
 
 
 @app.middleware("http")
