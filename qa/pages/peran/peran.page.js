@@ -15,7 +15,7 @@ export class PeranPage extends BasePage {
   }
 
   radio(role) {
-    return this.card(role).locator("input");
+    return this.card(role).getByTestId("role-radio-input");
   }
 
   async choose(role) {

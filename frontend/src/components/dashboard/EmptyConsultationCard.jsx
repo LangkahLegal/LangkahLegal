@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function EmptyConsultationCard() {
   return (
-    <section className="bg-card border border-surface shadow-soft p-5 lg:p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-5 lg:gap-8 relative overflow-hidden group">
+    <section className="bg-card border border-surface shadow-soft p-5 lg:p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-5 lg:gap-8 relative overflow-hidden group" data-testid="consultation-empty">
       {/* Glow Effect Samping (Opsional untuk estetika) */}
       <div className="absolute -left-10 -top-10 w-32 h-32 bg-primary/10 blur-[50px] pointer-events-none" />
 
@@ -31,6 +31,7 @@ export default function EmptyConsultationCard() {
       {/* Search Button - Lebar penuh di mobile, Otomatis di desktop */}
       <Link
         href="/explore"
+        data-testid="consultation-empty-find-btn"
         className="w-full md:w-auto md:min-w-[160px] bg-primary-light hover:bg-primary text-bg py-3 px-5 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all shadow-lg shadow-primary-light/20 active:scale-95"
       >
         <MaterialIcon name="search" className="text-lg" />

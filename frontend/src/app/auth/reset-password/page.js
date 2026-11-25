@@ -7,6 +7,7 @@ import Link from "next/link";
 
 import ResetPasswordHeader from "@/components/auth/reset-password/ResetPasswordHeader";
 import ResetPasswordForm from "@/components/auth/reset-password/ResetPasswordForm";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +16,7 @@ export default function ResetPasswordPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function ResetPasswordPage() {
 
       // Karena backend memutus sesi (logout) demi keamanan setelah reset password,
       // kita arahkan pengguna ke halaman login.
-      alert("Password berhasil diubah! Silakan login dengan password baru Anda.");
+      toast.success("Password berhasil diubah! Silakan login dengan password baru Anda.");
       router.replace("/auth/login");
     } catch (err) {
       setErrorMsg(err?.message || "Gagal mengatur ulang password. Sesi mungkin kadaluarsa.");
@@ -127,16 +129,17 @@ export default function ResetPasswordPage() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-danger-soft border border-danger/20 mb-4">
                 <span className="text-3xl">⚠️</span>
               </div>
-              <h1 className="font-headline text-[2rem] md:text-[2.25rem] font-extrabold tracking-tighter text-main leading-tight">
+              <h1 className="font-headline text-[2rem] md:text-[2.25rem] font-extrabold tracking-tighter text-main leading-tight" data-testid="reset-password-invalid-title">
                 Link Tidak Valid
               </h1>
             </header>
-            <div className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl">
+            <div className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl" data-testid="reset-password-verify-error">
               {verifyError}
             </div>
             <div className="flex flex-col gap-3 mt-4">
               <Link
                 href="/auth/forgot-password"
+                data-testid="reset-password-request-link"
                 className="block text-center w-full py-3 px-4 bg-secondary text-on-secondary font-bold rounded-xl hover:bg-secondary-hover transition-colors"
               >
                 Minta Link Baru

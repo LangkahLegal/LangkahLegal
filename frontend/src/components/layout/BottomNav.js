@@ -35,6 +35,7 @@ export default function BottomNav({ role = "client", className = "" }) {
   return (
     <footer
       className={`fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50 lg:hidden transition-colors duration-500 ${className}`}
+      data-testid="bottom-nav"
     >
       <div className="max-w-md mx-auto flex items-stretch justify-around w-full px-3 py-1.5 gap-1">
         {navItems.map((item, idx) => {
@@ -44,6 +45,8 @@ export default function BottomNav({ role = "client", className = "" }) {
             <Link
               key={idx}
               href={item.path}
+              data-testid="bottom-nav-link"
+              data-value={item.path}
               className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 group flex-1 max-w-[84px] py-1.5 px-2 rounded-b-xl border-t-2 ${
                 isActive
                   ? "bg-sidebar-active text-sidebar-active-text border-secondary"

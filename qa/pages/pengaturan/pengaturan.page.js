@@ -6,19 +6,19 @@ export class PengaturanPage extends BasePage {
   constructor(page) {
     super(page);
     this.html = page.locator("html");
-    this.verifiedBadge = page.getByText("Terverifikasi", { exact: true });
+    this.verifiedBadge = page.getByTestId("settings-verification-badge").filter({ hasText: /^Terverifikasi$/ });
   }
 
   heading(name) {
-    return this.page.getByRole("heading", { name });
+    return this.page.getByTestId("settings-profile-name").filter({ hasText: name });
   }
 
   menuLabel(label) {
-    return this.page.getByText(label, { exact: true });
+    return this.page.getByTestId("settings-menu-label").filter({ hasText: label });
   }
 
   menu(label) {
-    return this.page.locator("div.cursor-pointer", { hasText: label });
+    return this.page.getByTestId("settings-menu-item").filter({ hasText: label });
   }
 
   async clickEmptyArea() {

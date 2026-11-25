@@ -82,7 +82,7 @@ Given("layanan pembayaran Midtrans tidak dapat dimuat", async ({ page }) => {
 });
 
 Then("pengguna diberi tahu bahwa pembayaran tidak dapat diproses", async ({ dialogs }) => {
-  await expect.poll(() => dialogs.messages.length, { timeout: 4_000 }).toBeGreaterThan(0);
+  await expect.poll(() => dialogs.messages.filter(({ type }) => type === "toast:error").length, { timeout: 4_000 }).toBeGreaterThan(0);
 });
 
 // ── PAY-008 · Pembayaran untuk konsultasi yang tidak ada menampilkan gagal memuat

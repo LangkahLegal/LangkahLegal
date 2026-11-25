@@ -49,6 +49,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
       >
         <div className="flex max-w-3xl flex-col items-center space-y-6 text-center md:items-start md:space-y-8 md:text-left">
           <motion.h1
+            data-testid="landing-hero-title"
             variants={itemVariants}
             className="text-4xl md:text-7xl font-headline font-extrabold text-white leading-[1.15] tracking-tight drop-shadow-lg"
           >
@@ -73,6 +74,7 @@ export default function Hero({ onGetStarted, onLearnMore }) {
           >
             <Button
               onClick={onGetStarted}
+              data-testid="landing-start-btn"
               className="w-full! sm:w-auto px-10 py-4 text-base md:text-lg font-semibold shadow-xl shadow-secondary/25 hover:scale-105 transition-transform"
             >
               Mulai Sekarang

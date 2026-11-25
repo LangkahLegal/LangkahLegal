@@ -44,6 +44,7 @@ export default function Pagination({
           onBlur={handlePageSubmit}
           onKeyDown={handleKeyDown}
           disabled={isFetching}
+          data-testid="pagination-page-input"
           className="w-10 h-8 text-center text-[11px] font-bold bg-card border border-surface rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-main transition-colors"
         />
         <span className="text-[11px] font-bold text-muted uppercase tracking-widest px-2">
@@ -69,6 +70,7 @@ export default function Pagination({
           disabled={page >= totalPages || isFetching}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           title="Selanjutnya"
+          data-testid="pagination-next-btn"
         >
           <MaterialIcon name="chevron_right" className="text-xl" />
         </Button>

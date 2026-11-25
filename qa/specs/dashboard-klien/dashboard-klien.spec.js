@@ -43,15 +43,14 @@ When("pengguna memilih cari konsultan", async ({ dashboardKlienPage }) => {
 
 When("pengguna membatalkan konsultasi itu", async ({ dashboardKlienPage, dialogs }) => {
   await dashboardKlienPage.cancelConsultation();
-  await dialogs.waitFor(MESSAGES.cancelConfirm);
+  await dialogs.accept(MESSAGES.cancelConfirm);
 });
 
 // ── CLI-005 · Klien mengurungkan pembatalan
 
 When("pengguna mengurungkan pembatalan konsultasi itu", async ({ dashboardKlienPage, dialogs }) => {
-  dialogs.acceptConfirm = false;
   await dashboardKlienPage.cancelConsultation();
-  await dialogs.waitFor(MESSAGES.cancelConfirm);
+  await dialogs.dismiss(MESSAGES.cancelConfirm);
 });
 
 // ── CLI-006 · Klien melanjutkan ke pembayaran dari dashboard

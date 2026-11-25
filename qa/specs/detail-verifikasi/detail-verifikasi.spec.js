@@ -60,8 +60,8 @@ Then("halaman verifikasi menampilkan pesan data tidak ditemukan", async ({ detai
 
 // ── VER-008 · Kegagalan menyimpan keputusan diberitahukan ke admin
 
-Then("admin diberi tahu bahwa keputusan gagal disimpan", async ({ page, dialogs }) => {
+Then("admin diberi tahu bahwa keputusan gagal disimpan", async ({ dialogs }) => {
   await expect
-    .poll(async () => dialogs.messages.length + (await page.getByText(/gagal/i).count()), { timeout: 4_000 })
+    .poll(() => dialogs.messages.filter(({ type }) => type === "toast:error").length, { timeout: 4_000 })
     .toBeGreaterThan(0);
 });

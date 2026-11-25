@@ -81,6 +81,7 @@ export default function KnowledgeTable({
               documents.map((doc) => (
                 <tr 
                   key={doc.frbr_uri} 
+                  data-testid="knowledge-row"
                   className="hover:bg-surface/10 transition-colors group cursor-pointer"
                   onClick={() => handleDetailClick(doc)}
                 >
@@ -122,10 +123,10 @@ export default function KnowledgeTable({
                   {/* 6. KOLOM AKSI */}
                   <td className="px-4 py-3 align-middle whitespace-nowrap">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" className="!p-1 text-muted hover:bg-warning/10 hover:text-warning transition-colors" onClick={(e) => { e.stopPropagation(); handleReplaceClick(doc); }}>
+                      <Button variant="ghost" data-testid="knowledge-row-replace-btn" className="!p-1 text-muted hover:bg-warning/10 hover:text-warning transition-colors" onClick={(e) => { e.stopPropagation(); handleReplaceClick(doc); }}>
                         <MaterialIcon name="sync" className="text-[14px]" />
                       </Button>
-                      <Button variant="ghost" className="!p-1 text-muted hover:bg-danger/10 hover:text-danger transition-colors" onClick={(e) => { e.stopPropagation(); handleDeleteClick(doc); }}>
+                      <Button variant="ghost" data-testid="knowledge-row-delete-btn" className="!p-1 text-muted hover:bg-danger/10 hover:text-danger transition-colors" onClick={(e) => { e.stopPropagation(); handleDeleteClick(doc); }}>
                         <MaterialIcon name="delete" className="text-[14px]" />
                       </Button>
                       <Button variant="ghost" className="!p-1 text-muted hover:bg-primary/10 hover:text-primary-light transition-colors" onClick={(e) => { e.stopPropagation(); handleDetailClick(doc); }}>

@@ -61,6 +61,7 @@ export default function ChatSidebar() {
       <div className="p-4 border-b border-surface">
         <button
           onClick={startNewChat}
+          data-testid="ai-new-chat-btn"
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary-light transition-all duration-300 group"
         >
           <MaterialIcon
@@ -93,6 +94,7 @@ export default function ChatSidebar() {
             return (
               <div
                 key={session.id}
+                data-testid="ai-session-item"
                 onClick={() => setActiveSession(session.id)}
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
                   isActive
@@ -124,6 +126,7 @@ export default function ChatSidebar() {
                 {/* Delete Button */}
                 <button
                   onClick={(e) => handleDelete(e, session.id)}
+                  data-testid={isDeleting ? "ai-session-delete-confirm-btn" : "ai-session-delete-btn"}
                   className={`shrink-0 p-1 rounded-md transition-all duration-200 ${
                     isDeleting
                       ? "bg-danger-soft text-danger"

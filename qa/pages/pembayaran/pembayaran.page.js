@@ -6,12 +6,12 @@ export class PembayaranPage extends BasePage {
     this.container = page.getByTestId("payment-page");
     this.payButton = page.getByTestId("payment-pay-btn");
     this.notPayableNotice = page.getByTestId("payment-not-payable");
-    this.costBreakdownTitle = page.getByText("Rincian Biaya");
-    this.pricePerSessionLabel = page.getByText("Harga Per Sesi (30 Menit)");
-    this.successTitle = page.getByText("Pembayaran Berhasil!");
-    this.backToDashboardButton = page.getByRole("button", { name: "Kembali ke Dashboard" });
-    this.loadFailedTitle = page.getByText("Gagal Memuat Pembayaran");
-    this.retryButton = page.getByRole("button", { name: "Coba Lagi" });
+    this.costBreakdownTitle = page.getByTestId("payment-breakdown-title");
+    this.pricePerSessionLabel = page.getByTestId("payment-price-per-session").filter({ hasText: "Harga Per Sesi (30 Menit)" });
+    this.successTitle = page.getByTestId("success-title").filter({ hasText: "Pembayaran Berhasil!" });
+    this.backToDashboardButton = page.getByTestId("success-action-btn");
+    this.loadFailedTitle = page.getByTestId("payment-load-error");
+    this.retryButton = page.getByTestId("payment-retry-btn");
   }
 
   async pay() {

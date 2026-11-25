@@ -118,6 +118,7 @@ export default function AIConsultantCard({ consultant, draft = null }) {
           variant="secondary"
           className="w-full sm:w-auto !py-1.5 !px-4 text-[10px] sm:text-xs font-semibold shrink-0"
           onClick={() => buka()}
+          data-testid="ai-consultant-schedule-btn"
         >
           Jadwalkan
         </Button>

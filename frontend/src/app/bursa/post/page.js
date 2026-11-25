@@ -15,6 +15,7 @@ import AttachedDocuments from "@/components/documents/AttachedDocuments";
 import CategoryList from "@/components/dashboard/CategoryList";
 import ConsultationForm from "@/components/explore/pengajuan/ConsultationForm";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { useToast } from "@/providers/FeedbackProvider";
 
 const KATEGORI_OPTIONS = [
   { id: "umum", label: "Umum" },
@@ -24,6 +25,7 @@ const KATEGORI_OPTIONS = [
 
 export default function PostCasePage() {
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
 
   const [kategori, setKategori] = useState(KATEGORI_OPTIONS[0].id);
@@ -59,7 +61,7 @@ export default function PostCasePage() {
   }, [files]);
 
   const handleFileChange = (newFile) => {
-    if (files.length >= 10) return alert("Maksimal 10 file");
+    if (files.length >= 10) return toast.error("Maksimal 10 file");
     setFiles((prev) => [...prev, newFile]);
   };
 
@@ -75,13 +77,13 @@ export default function PostCasePage() {
       setIsSubmitted(true);
     },
     onError: (err) => {
-      alert(err?.response?.data?.detail || "Gagal memposting kasus.");
+      toast.error(err?.response?.data?.detail || "Gagal memposting kasus.");
     },
   });
 
   const handleSubmit = () => {
     if (!deskripsi.trim() || !tanggal || !jamMulai || !jamSelesai) {
-      return alert(
+      return toast.error(
         "Mohon lengkapi semua data pengajuan (deskripsi, tanggal, dan jam).",
       );
     }
@@ -126,7 +128,7 @@ export default function PostCasePage() {
                   />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-main tracking-tight font-headline">
+                  <h2 className="text-2xl font-bold text-main tracking-tight font-headline" data-testid="bursa-post-title">
                     Ajukan Kasus ke Ruang Publik
                   </h2>
                   <p className="text-muted text-sm leading-relaxed">
@@ -145,6 +147,7 @@ export default function PostCasePage() {
               activeCategory={kategori}
               onCategoryChange={setKategori}
               useStyledTitle={true}
+              testId="bursa-post-category-btn"
             />
 
             {/* Description */}
@@ -180,6 +183,7 @@ export default function PostCasePage() {
                 onChange={handleFileChange}
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
                 maxSizeMB={10}
+                testId="bursa-post-file-input"
               />
             </div>
 
@@ -189,7 +193,7 @@ export default function PostCasePage() {
                 name="shield"
                 className="text-primary-light text-xl mt-0.5 shrink-0"
               />
-              <p className="text-xs text-muted leading-relaxed">
+              <p className="text-xs text-muted leading-relaxed" data-testid="bursa-post-anonymous-note">
                 Kasus Anda akan diposting{" "}
                 <strong className="text-main">secara anonim</strong>. Konsultan
                 hanya akan melihat kategori, deskripsi, dan jadwal — bukan

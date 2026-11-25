@@ -5,9 +5,9 @@ export class LupaKataSandiPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.emailInput = page.getByLabel("Email");
-    this.submitButton = page.getByRole("button", { name: "Kirim Link Reset" });
-    this.sentTitle = page.getByText("Tautan Terkirim!");
+    this.emailInput = page.getByTestId("forgot-password-email-input");
+    this.submitButton = page.getByTestId("forgot-password-submit-btn");
+    this.sentTitle = page.getByTestId("forgot-password-sent-message");
   }
 
   async requestLink(email) {

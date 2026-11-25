@@ -6,21 +6,21 @@ export class PostingKasusPage extends BasePage {
   constructor(page) {
     super(page);
     this.container = page.getByTestId("bursa-post-page");
-    this.title = page.getByText("Ajukan Kasus ke Ruang Publik");
-    this.anonymousNote = page.getByText("secara anonim");
+    this.title = page.getByTestId("bursa-post-title");
+    this.anonymousNote = page.getByTestId("bursa-post-anonymous-note");
     this.descriptionInput = page.getByTestId("bursa-description-input");
     this.submitButton = page.getByTestId("bursa-post-submit-btn");
-    this.fileInput = page.locator('input[type="file"]');
+    this.fileInput = page.getByTestId("bursa-post-file-input");
     this.calendar = page.getByTestId("monthly-calendar");
     this.dateButtons = this.calendar.getByTestId("date-slot");
-    this.nextMonthButton = this.calendar.getByRole("button", { name: "Bulan Berikutnya" });
+    this.nextMonthButton = this.calendar.getByTestId("calendar-next-btn");
     this.selectedTime = page.getByTestId("selected-time-display");
-    this.successTitle = page.getByText("Kasus Berhasil Diposting ke Ruang Publik!");
-    this.backToDashboardButton = page.getByRole("button", { name: "Kembali ke Dashboard" });
+    this.successTitle = page.getByTestId("success-title").filter({ hasText: "Kasus Berhasil Diposting ke Ruang Publik!" });
+    this.backToDashboardButton = page.getByTestId("success-action-btn");
   }
 
   categoryButton(name) {
-    return this.page.getByRole("button", { name, exact: true });
+    return this.page.getByTestId("bursa-post-category-btn").filter({ hasText: new RegExp(`^${name}$`) });
   }
 
   timeOption(time) {
@@ -28,7 +28,7 @@ export class PostingKasusPage extends BasePage {
   }
 
   attachment(fileName) {
-    return this.page.getByText(fileName);
+    return this.page.getByTestId("file-item").filter({ hasText: fileName });
   }
 
   /** @param {string} date tanggal YYYY-MM-DD; kalender dipindah ke bulan berikutnya bila berbeda dari bulan ini */

@@ -3,29 +3,29 @@ import { BasePage } from "../base.page.js";
 export class DetailKonsultasiPage extends BasePage {
   constructor(page) {
     super(page);
-    this.zoomSectionTitle = page.getByText("Link Zoom Meetings");
-    this.joinButton = page.getByRole("button", { name: "Gabung Sesi Konsultasi" });
-    this.startSessionButton = page.getByRole("button", { name: "Mulai Sesi Konsultasi" });
-    this.copyLinkButton = page.getByRole("button", { name: "content_copy" });
-    this.copiedIndicator = page.getByRole("button", { name: "check" });
-    this.addLinkButton = page.getByRole("button", { name: "add_link" });
-    this.zoomLinkInput = page.getByPlaceholder("https://zoom.us/j/123456789");
-    this.saveLinkButton = page.getByRole("button", { name: "Simpan" });
-    this.cancelEditButton = page.getByRole("button", { name: "Batal" });
-    this.noLinkMessage = page.getByText("Link belum tersedia");
+    this.zoomSectionTitle = page.getByTestId("zoom-link-title");
+    this.joinButton = page.getByTestId("zoom-join-session-btn");
+    this.startSessionButton = page.getByTestId("zoom-start-session-btn");
+    this.copyLinkButton = page.getByTestId("zoom-copy-btn");
+    this.copiedIndicator = page.getByTestId("zoom-copied-btn");
+    this.addLinkButton = page.getByTestId("zoom-add-link-btn");
+    this.zoomLinkInput = page.getByTestId("zoom-link-input");
+    this.saveLinkButton = page.getByTestId("zoom-save-btn");
+    this.cancelEditButton = page.getByTestId("zoom-cancel-btn");
+    this.noLinkMessage = page.getByTestId("zoom-link-empty");
 
-    this.reviewButton = page.getByRole("button", { name: "Beri Ulasan & Selesaikan" });
-    this.reviewModalTitle = page.getByText("Sesi Selesai");
-    this.stars = page.getByRole("button", { name: /^star/ });
-    this.reviewInput = page.getByPlaceholder("Bagikan pengalaman konsultasi Anda di sini...");
-    this.sendReviewButton = page.getByRole("button", { name: "Kirim Ulasan" });
+    this.reviewButton = page.getByTestId("consultation-review-btn");
+    this.reviewModalTitle = page.getByTestId("rating-modal-title");
+    this.stars = page.getByTestId("rating-star-btn");
+    this.reviewInput = page.getByTestId("rating-review-input");
+    this.sendReviewButton = page.getByTestId("rating-submit-btn");
 
-    this.loadFailedMessage = page.getByText("Gagal memuat detail konsultasi.");
-    this.retryButton = page.getByRole("button", { name: "Coba Lagi" });
+    this.loadFailedMessage = page.getByTestId("consultation-load-error");
+    this.retryButton = page.getByTestId("consultation-retry-btn");
   }
 
   statusBadge(status) {
-    return this.page.getByText(status, { exact: true });
+    return this.page.getByTestId("consultation-status-badge").filter({ hasText: new RegExp(`^${status}$`) });
   }
 
   async openReviewForm() {

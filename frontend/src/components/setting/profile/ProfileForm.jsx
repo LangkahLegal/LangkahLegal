@@ -37,6 +37,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
         placeholder="John Doe"
         value={data.name || data.nama_lengkap}
         onChange={(e) => onChange("name", e.target.value)}
+        data-testid="profile-name-input"
       />
       <InputField
         label="Email"
@@ -46,13 +47,14 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
         readOnly
         disabled
         title="Email tidak dapat diubah dari halaman ini"
+        data-testid="profile-email-input"
       />
 
       {/* KHUSUS KONSULTAN */}
       {isConsultant && (
         <>
           <div className="pt-4 border-t border-surface">
-            <h3 className="text-primary-light text-lg font-bold tracking-widest uppercase mb-6">
+            <h3 className="text-primary-light text-lg font-bold tracking-widest uppercase mb-6" data-testid="profile-credentials-title">
               Kredensial Profesional
             </h3>
           </div>
@@ -87,6 +89,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
             type="text"
             value={data.kota_praktik || ""}
             onChange={(e) => onChange("kota_praktik", e.target.value)}
+            data-testid="profile-city-input"
           />
 
           <InputField
@@ -103,6 +106,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
             options={SPESIALISASI_OPTIONS}
             onChange={(val) => onChange("spesialisasi", val)}
             className="w-full"
+            testId="profile-specialization-dropdown"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -112,6 +116,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
               placeholder="Contoh: 5"
               value={data.pengalaman_tahun || ""}
               onChange={(e) => onChange("pengalaman_tahun", e.target.value)}
+              data-testid="profile-experience-input"
             />
             <InputField
               label="Tarif Konsultasi (Rp)"
@@ -121,6 +126,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
               placeholder="Rp 150.000"
               value={data.tarif_per_sesi || ""}
               onChange={(e) => onChange("tarif_per_sesi", e.target.value)}
+              data-testid="profile-fee-input"
             />
           </div>
 
@@ -174,6 +180,7 @@ export default function ProfileForm({ data, onChange, role, portofolioFile }) {
               accept=".pdf"
               maxSizeMB={5}
               helperText="PDF (Maks. 5MB)"
+              testId="profile-portfolio-input"
             />
           </div>
 

@@ -12,6 +12,7 @@ export function Dropdown({
   className = "",
   renderItem,
   compact = false,
+  testId,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -49,6 +50,7 @@ export function Dropdown({
 
       {/* Trigger */}
       <div
+        data-testid={testId}
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full border rounded-2xl ${compact ? "px-4 py-2.5" : "p-4"} flex justify-between items-center transition-all duration-300 cursor-pointer ${
           isOpen
@@ -82,6 +84,8 @@ export function Dropdown({
               return (
                 <div
                   key={optValue}
+                  data-testid={testId ? `${testId}-option` : undefined}
+                  data-value={optValue}
                   onClick={() => {
                     onChange(optValue);
                     setIsOpen(false);
@@ -108,7 +112,7 @@ export function Dropdown({
   );
 }
 
-export function SelectDropdown({ label, value, options, isOpen, onToggle, onSelect, className = "" }) {
+export function SelectDropdown({ label, value, options, isOpen, onToggle, onSelect, className = "", testId }) {
   const selected = options.find((o) => o.value === value);
 
   return (
@@ -122,6 +126,7 @@ export function SelectDropdown({ label, value, options, isOpen, onToggle, onSele
       )}
 
       <div
+        data-testid={testId}
         onClick={onToggle}
         className={`w-full border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 cursor-pointer ${
           isOpen
@@ -148,6 +153,8 @@ export function SelectDropdown({ label, value, options, isOpen, onToggle, onSele
               return (
                 <div
                   key={opt.value}
+                  data-testid={testId ? `${testId}-option` : undefined}
+                  data-value={opt.value}
                   onClick={() => onSelect?.(opt.value)}
                   className={`px-6 py-3 text-sm flex items-center justify-between transition-all cursor-pointer ${
                     isSelected

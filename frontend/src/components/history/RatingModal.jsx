@@ -16,7 +16,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <MaterialIcon name="star_rate" className="text-3xl text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-main mb-2">Sesi Selesai</h2>
+          <h2 className="text-xl font-bold text-main mb-2" data-testid="rating-modal-title">Sesi Selesai</h2>
           <p className="text-sm text-muted">
             Bagaimana pengalaman Anda berkonsultasi? Berikan rating dan ulasan untuk membantu konsultan menjadi lebih baik.
           </p>
@@ -28,6 +28,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
             <button
               key={star}
               type="button"
+              data-testid="rating-star-btn"
               className="transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
@@ -54,6 +55,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
             value={ulasan}
             onChange={(e) => setUlasan(e.target.value)}
             placeholder="Bagikan pengalaman konsultasi Anda di sini..."
+            data-testid="rating-review-input"
             className="w-full h-32 bg-input border border-surface rounded-xl p-4 text-sm text-main focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all resize-none placeholder:text-muted/50"
             maxLength={500}
           ></textarea>
@@ -73,6 +75,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, isSubmitting })
           </button>
           <button
             onClick={() => onSubmit(rating, ulasan)}
+            data-testid="rating-submit-btn"
             disabled={rating === 0 || isSubmitting}
             className="flex-1 px-4 py-3 rounded-xl bg-primary text-on-primary font-bold hover:bg-primary-light active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
           >

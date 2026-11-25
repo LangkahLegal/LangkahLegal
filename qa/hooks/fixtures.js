@@ -25,7 +25,7 @@ export const test = base.extend({
     { auto: true },
   ],
 
-  dialogs: [async ({ page }, use) => use(new Dialogs(page)), { auto: true }],
+  dialogs: [async ({ page }, use) => use(await Dialogs.attach(page)), { auto: true }],
 
   pageErrors: [
     async ({ page }, use) => {

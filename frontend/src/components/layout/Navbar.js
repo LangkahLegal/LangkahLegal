@@ -86,7 +86,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav ref={navbarRef} className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-xl border-b border-surface transition-colors duration-500">
+    <nav ref={navbarRef} data-testid="navbar" className="fixed top-0 left-0 w-full z-50 bg-bg/80 backdrop-blur-xl border-b border-surface transition-colors duration-500">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 max-w-7xl mx-auto w-full">
         <div className="flex-1 flex justify-start">
           <Link
@@ -115,6 +115,7 @@ export default function Navbar() {
             return (
               <a
                 key={link.label}
+                data-testid={`navbar-link-${link.sectionId}`}
                 href={pathname === "/" ? link.href : `/${link.href}`}
                 onClick={(e) => {
                   if (pathname === "/") {
@@ -151,6 +152,7 @@ export default function Navbar() {
           <Button
             variant="secondary"
             onClick={handleCtaClick}
+            data-testid="navbar-cta-btn"
             className="!rounded-lg md:!rounded-xl !w-auto !py-2 !px-4 md:!py-2.5 md:!px-6 text-sm md:text-base font-bold whitespace-nowrap shadow-md hover:scale-105 transition-transform"
           >
             {session.isLoggedIn ? "Dashboard" : "Mulai"}

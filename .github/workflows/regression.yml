@@ -1,0 +1,91 @@
+name: SIT Regression
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "regression (@critical) atau sit (semua skenario)"
+        type: choice
+        options: [regression, sit]
+        default: regression
+
+# Semua run memakai akun uji dan database dev yang sama, jadi tidak boleh berjalan bersamaan.
+concurrency:
+  group: sit-shared-database
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sit:
+    name: SIT ${{ inputs.suite || 'regression' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SIT_ACCOUNT_PASSWORD: ${{ secrets.SIT_ACCOUNT_PASSWORD }}
+      MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
+      MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
+      NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+      FRONTEND_URL: http://localhost:3000
+      SIT_BASE_URL: http://localhost:3000
+      SIT_API_URL: http://127.0.0.1:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Periksa secret
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SIT_ACCOUNT_PASSWORD" ]; then
+            echo "Secret SIT belum diisi (lihat qa/README.md bagian CI); SIT dilewati." >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            qa/package-lock.json
+      - uses: actions/setup-python@v5
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Pasang dependensi
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          pip install -r backend/requirements.txt
+          npm ci --prefix frontend
+          npm ci --prefix qa
+          npx --prefix qa playwright install --with-deps chromium
+      - name: Build frontend
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm run build --prefix frontend
+      - name: Jalankan SIT
+        if: steps.secrets.outputs.ready == 'true'
+        working-directory: qa
+        run: npm run ${{ inputs.suite || 'regression' }}
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.secrets.outputs.ready == 'true'
+        with:
+          name: sit-report
+          path: |
+            qa/reports/html
+            qa/reports/artifacts
+          retention-days: 14

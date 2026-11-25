@@ -6,12 +6,12 @@ export class VerifikasiKonsultanPage extends BasePage {
   constructor(page) {
     super(page);
     this.searchInput = page.getByTestId("explore-search-input");
-    this.names = page.locator("h3");
-    this.emptyState = page.getByText("Tidak Ditemukan");
+    this.names = page.getByTestId("verification-card-name");
+    this.emptyState = page.getByTestId("verification-empty");
   }
 
   tab(label) {
-    return this.page.getByRole("button", { name: label });
+    return this.page.getByTestId("verification-status-tab").filter({ hasText: label });
   }
 
   name(text) {

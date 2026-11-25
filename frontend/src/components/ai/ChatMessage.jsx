@@ -36,7 +36,7 @@ export default function ChatMessage({ message, isLatest = false, onSubmitPrefere
             }`}
         >
           {isAI ? (
-            <div className="markdown-content">
+            <div className="markdown-content" data-testid="ai-message-content">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{

@@ -20,6 +20,7 @@ import InfoGrid from "@/components/request/InfoGrid";
 // Services
 import { paymentService } from "@/services/payment.service";
 import { consultationService } from "@/services/consultation.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 const PAYABLE_STATUSES = ["menunggu_pembayaran", "pembayaran_gagal", "kedaluwarsa", "dibatalkan"];
 
@@ -36,6 +37,7 @@ const unpayableMessage = (status) => {
 export default function PaymentPage() {
   const { id } = useParams();
   const router = useRouter();
+  const toast = useToast();
   const [isPaid, setIsPaid] = useState(false);
 
   const midtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
@@ -81,14 +83,14 @@ export default function PaymentPage() {
           setIsPaid(true);
         },
         onPending: () => {
-          alert("Pembayaran tertunda. Silakan selesaikan di aplikasi Anda.");
+          toast.info("Pembayaran tertunda. Silakan selesaikan di aplikasi Anda.");
           router.push("/dashboard/client");
         },
-        onError: () => alert("Pembayaran gagal. Silakan coba lagi."),
+        onError: () => toast.error("Pembayaran gagal. Silakan coba lagi."),
       });
     },
     onError: (err) => {
-      alert(
+      toast.error(
         err.response?.data?.detail || err.message || "Gagal memulai transaksi",
       );
     },
@@ -219,7 +221,7 @@ const ErrorState = () => (
         <MaterialIcon name="error_outline" className="text-4xl" />
       </div>
       <div>
-        <h3 className="text-xl font-bold mb-2">Gagal Memuat Pembayaran</h3>
+        <h3 className="text-xl font-bold mb-2" data-testid="payment-load-error">Gagal Memuat Pembayaran</h3>
         <p className="text-muted text-sm max-w-xs mx-auto mb-8">
           Terjadi kesalahan saat mengambil rincian tagihan Anda. Silakan coba
           kembali.
@@ -228,6 +230,7 @@ const ErrorState = () => (
           variant="secondary"
           onClick={() => window.location.reload()}
           className="rounded-full px-10"
+          data-testid="payment-retry-btn"
         >
           Coba Lagi
         </Button>

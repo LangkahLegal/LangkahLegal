@@ -3,13 +3,13 @@ import { BasePage } from "../base.page.js";
 export class DetailVerifikasiPage extends BasePage {
   constructor(page) {
     super(page);
-    this.approveButton = page.getByRole("button", { name: /Terima/ });
-    this.rejectButton = page.getByRole("button", { name: /Tolak/ }).first();
-    this.approveConfirmTitle = page.getByText("Verifikasi Konsultan?");
-    this.confirmApproveButton = page.getByRole("button", { name: "Ya, Verifikasi" });
-    this.confirmRejectButton = page.getByRole("button", { name: "Ya, Tolak" });
-    this.reasonInput = page.getByPlaceholder("Masukkan alasan penolakan agar konsultan mengetahuinya...");
-    this.notFoundMessage = page.getByText("Data Konsultan Tidak Ditemukan");
+    this.approveButton = page.getByTestId("request-accept-btn");
+    this.rejectButton = page.getByTestId("request-reject-btn");
+    this.approveConfirmTitle = page.getByTestId("verification-approve-modal");
+    this.confirmApproveButton = this.approveConfirmTitle.getByTestId("verification-confirm-btn");
+    this.confirmRejectButton = page.getByTestId("verification-reject-modal").getByTestId("verification-confirm-btn");
+    this.reasonInput = page.getByTestId("verification-reason-input");
+    this.notFoundMessage = page.getByTestId("verification-not-found");
   }
 
   async approve() {

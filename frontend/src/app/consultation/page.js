@@ -93,7 +93,7 @@ export default function ConsultantClientsPage() {
               <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">
                 Klien Aktif
               </p>
-              <h2 className="text-2xl font-black text-main tracking-tight">
+              <h2 className="text-2xl font-black text-main tracking-tight" data-testid="client-count">
                 {isLoading ? "..." : clients.length}{" "}
                 <span className="text-primary-light">Klien</span>
               </h2>
@@ -127,7 +127,7 @@ export default function ConsultantClientsPage() {
                   <LoadingState />
                 </div>
               ) : isError ? (
-                <div className="col-span-full text-center py-20 text-danger text-sm font-bold">
+                <div className="col-span-full text-center py-20 text-danger text-sm font-bold" data-testid="client-list-load-error">
                   Gagal memuat data klien.
                 </div>
               ) : clients.length > 0 ? (
@@ -155,6 +155,7 @@ export default function ConsultantClientsPage() {
                     actionIcon="restart_alt"
                     onAction={hasActiveFilter ? resetFilters : undefined}
                     className="py-12"
+                    testId="client-list-empty"
                   />
                 </div>
               )}

@@ -130,8 +130,11 @@ When("pengguna menyaring dengan tarif minimum di atas tarif maksimum", async ({ 
 // ── EXP-009 · Foto profil dengan alamat berbahaya tidak dipakai
 
 Then("foto konsultan itu diganti gambar bawaan", async ({ katalogKonsultanPage, world }) => {
-  const photo = katalogKonsultanPage.card(world.stubbedCatalog.name).locator("img");
-  await expect(photo).toHaveAttribute("src", /ui-avatars\.com/);
+  // Alamat non-http ditolak getSafeAvatarUrl; avatar inisial (div role="img") tampil sebagai gantinya.
+  const avatar = katalogKonsultanPage.avatar(world.stubbedCatalog.name);
+  await expect(avatar).toBeVisible();
+  await expect(avatar).toHaveAttribute("role", "img");
+  await expect(avatar).not.toHaveAttribute("src", /.+/);
 });
 
 // ── EXP-010 · Konsultan tanpa nama tidak merusak katalog

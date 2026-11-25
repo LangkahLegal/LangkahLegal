@@ -31,7 +31,7 @@ export default function FileItem({
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="file-item">
       <div
         onClick={onClick}
         className={`
@@ -64,6 +64,7 @@ export default function FileItem({
               setShowMenu(!showMenu);
             }}
             className={`!p-2 ${showMenu ? "text-primary bg-surface" : "text-muted"}`}
+            data-testid="file-item-menu-btn"
           >
             <MaterialIcon name="more_vert" />
           </Button>
@@ -88,6 +89,7 @@ export default function FileItem({
                 setShowMenu(false);
               }}
               className="!justify-start !py-2.5 !px-3 !text-xs !rounded-xl"
+              data-testid="file-item-delete-btn"
             >
               <MaterialIcon name="delete" className="text-lg" />
               <span>Hapus Berkas</span>

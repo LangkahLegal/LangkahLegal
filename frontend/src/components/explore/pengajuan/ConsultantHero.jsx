@@ -51,11 +51,11 @@ export default function ConsultantHero({
 
       {/* Name - REFACTOR: text-main */}
       <div className="flex flex-col items-center gap-2 mb-2">
-        <h1 className="text-xl sm:text-2xl font-extrabold text-main leading-tight tracking-tight px-2 transition-colors duration-500 flex items-center justify-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-main leading-tight tracking-tight px-2 transition-colors duration-500 flex items-center justify-center gap-2" data-testid="consultant-profile-name">
           {safeName}
         </h1>
         {status_verifikasi === "terverifikasi" ? (
-          <span className="text-[10px] bg-success-soft text-success border border-success/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+          <span className="text-[10px] bg-success-soft text-success border border-success/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider" data-testid="consultant-verified-badge">
             ✅ Verified
           </span>
         ) : (

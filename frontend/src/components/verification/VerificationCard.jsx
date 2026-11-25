@@ -23,6 +23,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
 
   return (
     <div
+      data-testid="verification-card"
       className="group p-4 rounded-2xl border border-surface bg-card shadow-soft hover:border-primary/20 transition-all duration-300 overflow-hidden flex flex-col justify-between h-full"
     >
       {/* HEADER SECTION */}
@@ -46,7 +47,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
 
           {/* Content Section */}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <h3 className="font-bold text-sm lg:text-[15px] text-main group-hover:text-primary-light transition-colors truncate leading-tight">
+            <h3 data-testid="verification-card-name" className="font-bold text-sm lg:text-[15px] text-main group-hover:text-primary-light transition-colors truncate leading-tight">
               {item.nama_lengkap}
             </h3>
 
@@ -86,6 +87,7 @@ export default function VerificationCard({ item, onDetail, onReject }) {
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
+            data-testid="verification-card-detail-btn"
             onClick={(e) => {
               e.stopPropagation();
               onDetail?.(item);

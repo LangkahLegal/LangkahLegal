@@ -15,7 +15,7 @@ export default function ResetPasswordForm({ onSubmit, isLoading, errorMsg }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {errorMsg && (
-        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <div className="p-3 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl" data-testid="reset-password-error-msg">
           {errorMsg}
         </div>
       )}
@@ -26,6 +26,7 @@ export default function ResetPasswordForm({ onSubmit, isLoading, errorMsg }) {
         placeholder="••••••••"
         value={formData.newPassword}
         onChange={handleChange}
+        data-testid="reset-password-new-input"
       />
 
       <PasswordField
@@ -34,9 +35,11 @@ export default function ResetPasswordForm({ onSubmit, isLoading, errorMsg }) {
         placeholder="••••••••"
         value={formData.confirmPassword}
         onChange={handleChange}
+        data-testid="reset-password-confirm-input"
+        labelTestId="reset-password-confirm-label"
       />
 
-      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+      <Button type="submit" className="mt-2 w-full" disabled={isLoading} data-testid="reset-password-submit-btn">
         {isLoading ? "Menyimpan..." : "Simpan Password Baru"}
       </Button>
     </form>

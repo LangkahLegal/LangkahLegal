@@ -64,7 +64,7 @@ function Header({ dateLabel, title }) {
     <div className="flex items-start gap-2 px-1">
       <MaterialIcon name="edit_calendar" className="text-primary text-base mt-0.5" />
       <div>
-        <h3 className={TITLE}>{title}</h3>
+        <h3 className={TITLE} data-testid="schedule-slot-title">{title}</h3>
         <p className="text-[11px] sm:text-xs text-muted font-medium mt-0.5">
           {dateLabel}
         </p>
@@ -88,7 +88,7 @@ function SlotForm({ dateLabel, slot, isBooked, onSave, isSaving }) {
     <div className={CARD} data-testid="schedule-slot-card">
       <Header dateLabel={dateLabel} title={title} />
 
-      <div className={isBooked ? "opacity-60 pointer-events-none space-y-3" : "space-y-3"}>
+      <div className={isBooked ? "opacity-60 pointer-events-none space-y-3" : "space-y-3"} data-testid="schedule-slot-form">
         <div className="grid grid-cols-2 gap-3">
           <Dropdown
             compact
@@ -96,6 +96,7 @@ function SlotForm({ dateLabel, slot, isBooked, onSave, isSaving }) {
             value={form.start}
             options={TIME_OPTIONS}
             onChange={set("start")}
+            testId="schedule-start-dropdown"
           />
           <Dropdown
             compact
@@ -103,6 +104,7 @@ function SlotForm({ dateLabel, slot, isBooked, onSave, isSaving }) {
             value={form.end}
             options={TIME_OPTIONS}
             onChange={set("end")}
+            testId="schedule-end-dropdown"
           />
         </div>
 
@@ -112,6 +114,7 @@ function SlotForm({ dateLabel, slot, isBooked, onSave, isSaving }) {
           value={form.status}
           options={STATUS_OPTIONS}
           onChange={set("status")}
+          testId="schedule-status-dropdown"
           renderItem={(opt) => (
             <div className="flex items-center gap-3">
               <MaterialIcon

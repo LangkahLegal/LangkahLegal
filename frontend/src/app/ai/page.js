@@ -265,7 +265,7 @@ export default function TanyaAIPage() {
             )}
 
             {isTyping && (
-              <div className="flex justify-start items-center gap-3 animate-pulse">
+              <div data-testid="ai-typing-indicator" className="flex justify-start items-center gap-3 animate-pulse">
                 <div className="relative w-8 h-8 rounded-full overflow-hidden bg-on-header/95 border border-surface shrink-0 shadow-soft">
                   <Image
                     src="/images/statue.png"

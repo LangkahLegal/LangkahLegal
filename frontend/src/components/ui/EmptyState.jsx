@@ -11,6 +11,7 @@ export function EmptyState({
   actionIcon = "add",
   className = "py-16", // Default padding, can be overriden
   variant = "transparent", // 'transparent' | 'card'
+  testId,
 }) {
   const baseClasses = "flex flex-col items-center justify-center text-center w-full animate-fade-in";
   const variantClasses = variant === "card" 
@@ -18,7 +19,7 @@ export function EmptyState({
     : "";
 
   return (
-    <div className={`${baseClasses} ${variantClasses} ${className}`}>
+    <div className={`${baseClasses} ${variantClasses} ${className}`} data-testid={testId}>
       <div className="mb-3">
         <MaterialIcon
           name={icon}

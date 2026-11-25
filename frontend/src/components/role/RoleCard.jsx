@@ -12,6 +12,7 @@ export default function RoleCard({ role, isActive, onSelect }) {
         checked={isActive}
         onChange={() => onSelect(role.value)}
         className="hidden"
+        data-testid="role-radio-input"
       />
 
       <div

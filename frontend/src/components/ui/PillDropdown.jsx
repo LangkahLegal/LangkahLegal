@@ -75,6 +75,8 @@ export default function PillDropdown({
               return (
                 <div
                   key={opt.id}
+                  data-testid={testId ? `${testId}-option` : undefined}
+                  data-value={opt.id}
                   onClick={() => {
                     onChange(opt.id);
                     setIsOpen(false);

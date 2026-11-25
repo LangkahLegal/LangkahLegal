@@ -7,31 +7,31 @@ export class DashboardKlienPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.emptyCard = page.getByText("Belum Ada Konsultasi Aktif");
-    this.findConsultantLink = page.getByRole("link", { name: /Cari Konsultan/ });
-    this.cardMenuButton = page.getByRole("button", { name: "more_vert" });
-    this.cancelOption = page.getByRole("button", { name: /BATALKAN/ });
-    this.hideOption = page.getByRole("button", { name: /HAPUS/ });
-    this.payButton = page.getByRole("button", { name: /Lanjut Pembayaran/ });
-    this.settingsButton = page.getByRole("button", { name: "Settings" });
-    this.loadErrorMessage = page.getByText(/gagal|error|coba lagi/i).first();
-    this.bottomNav = page.locator("footer").filter({ hasText: "Riwayat" });
+    this.emptyCard = page.getByTestId("consultation-empty");
+    this.findConsultantLink = page.getByTestId("consultation-empty-find-btn");
+    this.cardMenuButton = page.getByTestId("consultation-card-menu-btn");
+    this.cancelOption = page.getByTestId("consultation-card-cancel-btn");
+    this.hideOption = page.getByTestId("consultation-card-hide-btn");
+    this.payButton = page.getByTestId("consultation-card-action-btn").filter({ hasText: /Lanjut Pembayaran/ });
+    this.settingsButton = page.getByTestId("dashboard-settings-btn");
+    this.loadErrorMessage = page.getByTestId("dashboard-load-error");
+    this.bottomNav = page.getByTestId("bottom-nav");
   }
 
   greeting(name) {
-    return this.page.getByRole("heading", { name });
+    return this.page.getByTestId("dashboard-greeting").filter({ hasText: name });
   }
 
   service(name) {
-    return this.page.getByText(name);
+    return this.page.getByTestId("featured-service-card").filter({ hasText: name });
   }
 
   statusLabel(label) {
-    return this.page.getByText(label, { exact: true });
+    return this.page.getByTestId("consultation-card-status").filter({ hasText: new RegExp(`^${label}$`) });
   }
 
   bottomNavLink(name) {
-    return this.bottomNav.getByRole("link", { name: new RegExp(name) });
+    return this.bottomNav.getByTestId("bottom-nav-link").filter({ hasText: new RegExp(name) });
   }
 
   async cancelConsultation() {

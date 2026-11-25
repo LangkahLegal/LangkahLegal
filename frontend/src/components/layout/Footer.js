@@ -114,7 +114,7 @@ export default function Footer() {
 
         {/* Bawah: Copyright & Sosmed */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
-          <p>© {currentYear} LangkahLegal. All rights reserved.</p>
+          <p data-testid="footer-copyright">© {currentYear} LangkahLegal. All rights reserved.</p>
           <div className="flex items-center gap-5">
             {SOCIAL_LINKS.map((item) => (
               <a

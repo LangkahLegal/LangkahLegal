@@ -10,6 +10,7 @@ export function PasswordField({
   name = "password",
   className = "",
   "data-testid": dataTestId,
+  labelTestId,
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +22,7 @@ export function PasswordField({
       {label && (
         <label
           htmlFor={id}
+          data-testid={labelTestId}
           className="block font-headline text-[11px] font-bold uppercase tracking-[0.12em] text-muted ml-1"
         >
           {label}
@@ -50,6 +52,7 @@ export function PasswordField({
             variant="icon"
             onClick={() => setShowPassword((prev) => !prev)}
             className="text-muted/50 hover:text-primary !p-2"
+            data-testid={showPassword ? "password-hide-btn" : "password-show-btn"}
             aria-label={
               showPassword ? "Sembunyikan password" : "Tampilkan password"
             }

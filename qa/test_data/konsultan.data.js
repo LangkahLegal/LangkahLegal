@@ -41,7 +41,6 @@ export const SLOTS = {
   booked: { day: 12, start: "08:00:00", end: "10:00:00" },
   reversed: { day: 16, start: "12:00", end: "09:00" },
   conflicting: { day: 20, start: "09:00", end: "10:00" },
-  untouched: { day: 18 },
 };
 
 /** Jadwal yang ditawarkan saat konsultan menjadwalkan kasus dari bursa. */

@@ -1,32 +1,34 @@
 import { BasePage } from "../base.page.js";
 
+const exactText = (text) => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+
 export class TanyaAiPage extends BasePage {
   path = "/ai";
 
   constructor(page) {
     super(page);
-    this.title = page.getByRole("heading", { name: "Kia" });
-    this.onlineStatus = page.getByText("Online");
+    this.title = page.getByTestId("ai-chat-title");
+    this.onlineStatus = page.getByTestId("ai-chat-status").filter({ hasText: "Online" });
     this.input = page.getByTestId("ai-chat-input");
-    this.sendButton = page.getByRole("button", { name: "send" });
+    this.sendButton = page.getByTestId("ai-chat-send-btn");
     this.aiMessages = page.getByTestId("ai-message");
     this.userMessages = page.getByTestId("user-message");
-    this.typingIndicator = page.getByText("Kia sedang membaca kronologi Anda...");
-    this.loginRequiredMessage = page.getByText(/Silakan login terlebih dahulu/);
-    this.historyToggle = page.getByRole("button", { name: "Toggle riwayat chat" });
-    this.newConsultationButton = page.getByRole("button", { name: /Konsultasi Baru/ });
-    this.scheduleButton = page.getByRole("button", { name: "Jadwalkan" });
+    this.typingIndicator = page.getByTestId("ai-typing-indicator");
+    this.loginRequiredMessage = this.aiMessages.filter({ hasText: /Silakan login terlebih dahulu/ });
+    this.historyToggle = page.getByTestId("ai-history-toggle-btn");
+    this.newConsultationButton = page.getByTestId("ai-new-chat-btn");
+    this.scheduleButton = page.getByTestId("ai-consultant-schedule-btn");
     this.consultationDraft = page.getByTestId("ai-consultation-draft");
     this.sources = page.getByTestId("ai-source-item");
     this.sourceModal = page.getByTestId("ai-source-modal");
-    this.officialTextTab = page.getByRole("button", { name: "Naskah resmi" });
-    this.openPdfLink = page.getByRole("link", { name: /Buka PDF/ });
-    this.bpkLink = page.getByRole("link", { name: /Lihat di JDIH BPK/ });
+    this.officialTextTab = page.getByTestId("ai-source-tab-naskah");
+    this.openPdfLink = page.getByTestId("ai-source-pdf-link");
+    this.bpkLink = page.getByTestId("ai-source-bpk-link");
     this.preferenceForm = page.getByTestId("ai-preference-form");
     this.budgetMin = page.getByTestId("preferensi-budget-min");
     this.budgetMax = page.getByTestId("preferensi-budget-max");
-    this.searchConsultantButton = page.getByRole("button", { name: "Cari konsultan" });
-    this.skipPreferenceButton = page.getByRole("button", { name: /Lewati, tampilkan semua/ });
+    this.searchConsultantButton = page.getByTestId("ai-preference-submit-btn");
+    this.skipPreferenceButton = page.getByTestId("ai-preference-skip-btn");
     this.consultantSlots = page.getByTestId("ai-consultant-slot");
     this.consultantSchedule = page.getByTestId("ai-consultant-schedule");
   }
@@ -35,13 +37,17 @@ export class TanyaAiPage extends BasePage {
     return this.aiMessages.last();
   }
 
+  get lastAiMessageContent() {
+    return this.lastAiMessage.getByTestId("ai-message-content");
+  }
+
   async ask(question) {
     await this.input.fill(question);
     await this.input.press("Enter");
   }
 
   preferenceChip(label) {
-    return this.preferenceForm.getByRole("button", { name: label, exact: true });
+    return this.preferenceForm.getByTestId("ai-preference-chip").filter({ hasText: exactText(label) });
   }
 
   async fillPreference({ budgetMin, budgetMax, hari, waktu }) {
@@ -53,17 +59,17 @@ export class TanyaAiPage extends BasePage {
 
 
   savedSession(title) {
-    return this.page.locator("div.group", { hasText: title });
+    return this.page.getByTestId("ai-session-item").filter({ hasText: title });
   }
 
   /** Menghapus sesi butuh dua kali klik: tombol hapus, lalu konfirmasinya. */
   async startDeleting(title) {
     const row = this.savedSession(title);
     await row.hover();
-    await row.getByRole("button").click();
+    await row.getByTestId("ai-session-delete-btn").click();
   }
 
   async confirmDeleting(title) {
-    await this.savedSession(title).getByRole("button", { name: "delete_forever" }).click();
+    await this.savedSession(title).getByTestId("ai-session-delete-confirm-btn").click();
   }
 }
