@@ -69,6 +69,6 @@ Pemindai tidak mengenal aturan bisnis aplikasi, jadi kategori berikut diperiksa 
 | Pembatas laju | Endpoint auth atau yang mahal tanpa `throttle(...)` | `grep -n "@router.post\|throttle" backend/routers/auth.py` |
 | Rahasia di frontend | `NEXT_PUBLIC_*` yang bukan kunci publik | `grep -rhoE "NEXT_PUBLIC_[A-Z_]+" frontend/src \| sort -u` dan `frontend/.env.example` |
 
-## Menambahkan ke CI
+## CI
 
-Jalankan `npm run audit:security` di workflow GitHub Actions setelah `npm ci` di `qa/` dan `pip install pip-audit bandit semgrep`; gitleaks tersedia sebagai action `gitleaks/gitleaks-action`. Kode keluar 1 akan menggagalkan job bila ada temuan critical/high yang belum ditangani.
+`.github/workflows/security.yml` menjalankan `audit.mjs` pada setiap PR ke `main`/`dev`, push ke `main`, dan tiap Senin pukul 09.00 WIB (CVE baru bisa muncul tanpa ada perubahan kode). Gitleaks dipasang dari rilis biner karena `gitleaks/gitleaks-action` butuh lisensi untuk repositori organisasi. Job gagal bila ada temuan critical/high; ringkasan tampil di halaman run dan laporan lengkap diunggah sebagai artifact `security-report`.

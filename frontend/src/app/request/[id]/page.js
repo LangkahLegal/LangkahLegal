@@ -21,10 +21,12 @@ import { MaterialIcon } from "@/components/ui/Icons";
 // Import service
 import { consultationService } from "@/services/consultation.service";
 import { consultantService } from "@/services/consultant.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function RequestDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
 
   const [isProcessed, setIsProcessed] = useState(false);
@@ -84,7 +86,7 @@ export default function RequestDetailPage() {
       setIsProcessed(true);
     },
     onError: () => {
-      alert("Gagal memproses permintaan.");
+      toast.error("Gagal memproses permintaan.");
     },
   });
 
@@ -99,7 +101,7 @@ export default function RequestDetailPage() {
       setIsProcessed(true);
     },
     onError: (err) => {
-      alert(err?.response?.data?.detail || "Gagal mengatur jadwal.");
+      toast.error(err?.response?.data?.detail || "Gagal mengatur jadwal.");
     },
   });
 
@@ -112,7 +114,7 @@ export default function RequestDetailPage() {
     // Untuk bursa claims → gunakan assign-schedule
     if (requestData?.isBursaClaim) {
       if (!selectedJadwal || !jamMulai || !jamSelesai) {
-        alert("Silakan pilih jadwal dan atur jam terlebih dahulu.");
+        toast.error("Silakan pilih jadwal dan atur jam terlebih dahulu.");
         return;
       }
       assignMutation.mutate({
@@ -162,7 +164,7 @@ export default function RequestDetailPage() {
   // --- RENDER NOT FOUND ---
   if (!requestData)
     return (
-      <div className="text-main text-center mt-20 font-bold uppercase tracking-widest opacity-40 transition-colors duration-500">
+      <div className="text-main text-center mt-20 font-bold uppercase tracking-widest opacity-40 transition-colors duration-500" data-testid="request-not-found-message">
         Data tidak ditemukan.
       </div>
     );
@@ -182,7 +184,7 @@ export default function RequestDetailPage() {
 
             {/* Bursa Badge */}
             {requestData.isBursaClaim && (
-              <div className="bg-secondary-soft border border-secondary/25 rounded-2xl p-4 flex items-start gap-3">
+              <div className="bg-secondary-soft border border-secondary/25 rounded-2xl p-4 flex items-start gap-3" data-testid="request-bursa-badge">
                 <MaterialIcon
                   name="storefront"
                   className="text-secondary-text text-xl mt-0.5 shrink-0"
@@ -218,6 +220,7 @@ export default function RequestDetailPage() {
                       return (
                         <button
                           key={jadwal.id_jadwal}
+                          data-testid="request-slot-item"
                           onClick={() => {
                             setSelectedJadwal(jadwal);
                             setJamMulai("");
@@ -270,7 +273,7 @@ export default function RequestDetailPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-card border border-dashed border-surface rounded-2xl p-6 text-center">
+                  <div className="bg-card border border-dashed border-surface rounded-2xl p-6 text-center" data-testid="request-slot-empty">
                     <MaterialIcon
                       name="event_busy"
                       className="text-3xl text-muted/30 mb-2"
@@ -280,6 +283,7 @@ export default function RequestDetailPage() {
                       halaman{" "}
                       <span
                         className="text-primary-light cursor-pointer underline"
+                        data-testid="request-schedule-link"
                         onClick={() => router.push("/schedule")}
                       >
                         Jadwal
@@ -299,6 +303,7 @@ export default function RequestDetailPage() {
                       </label>
                       <select
                         id="jam-mulai-select"
+                        data-testid="request-start-select"
                         value={jamMulai}
                         onChange={(e) => {
                           setJamMulai(e.target.value);
@@ -322,6 +327,7 @@ export default function RequestDetailPage() {
                       </label>
                       <select
                         id="jam-selesai-select"
+                        data-testid="request-end-select"
                         value={jamSelesai}
                         onChange={(e) => setJamSelesai(e.target.value)}
                         disabled={!jamMulai}
@@ -396,6 +402,7 @@ export default function RequestDetailPage() {
                   variant="danger"
                   onClick={() => handleAction("tolak")}
                   fullWidth
+                  data-testid="request-reject-btn"
                   className="!h-14 !rounded-2xl"
                   isLoading={statusMutation.isPending}
                 >
@@ -407,6 +414,7 @@ export default function RequestDetailPage() {
                   onClick={() => handleAction("terima")}
                   fullWidth
                   disabled={!selectedJadwal || !jamMulai || !jamSelesai}
+                  data-testid="request-schedule-accept-btn"
                   className="!h-14 !rounded-2xl shadow-soft"
                   isLoading={assignMutation.isPending}
                 >

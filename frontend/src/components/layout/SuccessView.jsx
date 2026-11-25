@@ -110,6 +110,7 @@ export default function SuccessView({
         <motion.h2
           variants={itemVariants}
           className="text-2xl sm:text-3xl font-bold text-main leading-tight mb-4 transition-colors duration-500"
+          data-testid="success-title"
         >
           {title}
         </motion.h2>
@@ -128,6 +129,7 @@ export default function SuccessView({
             onClick={onAction}
             fullWidth
             className="py-5 !rounded-full font-bold transition-all shadow-lg"
+            data-testid="success-action-btn"
           >
             {actionLabel}
           </Button>
@@ -138,6 +140,7 @@ export default function SuccessView({
               variant="secondary"
               fullWidth
               className="py-5 !rounded-full bg-card hover:bg-input border border-surface text-main font-bold transition-all shadow-lg"
+              data-testid="success-secondary-action-btn"
             >
               {secondaryActionLabel}
             </Button>

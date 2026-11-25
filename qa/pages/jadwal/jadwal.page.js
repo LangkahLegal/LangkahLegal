@@ -1,18 +1,19 @@
 import { BasePage } from "../base.page.js";
 
+const DROPDOWN = { Mulai: "schedule-start-dropdown", Selesai: "schedule-end-dropdown", "Status Slot": "schedule-status-dropdown" };
+
 export class JadwalPage extends BasePage {
   path = "/schedule";
 
   constructor(page) {
     super(page);
     this.availabilitySection = page.getByTestId("availability-toggle-section");
-    this.availabilityToggle = this.availabilitySection.getByRole("button");
+    this.availabilityToggle = this.availabilitySection.getByTestId("availability-toggle-btn");
     this.calendar = page.getByTestId("monthly-calendar");
-    this.nextMonthButton = this.calendar.getByRole("button", { name: "Bulan Berikutnya" });
-    this.previousMonthButton = this.calendar.getByRole("button", { name: "Bulan Sebelumnya" });
-    this.modal = page.getByTestId("add-slot-modal");
+    this.nextMonthButton = this.calendar.getByTestId("calendar-next-btn");
+    this.previousMonthButton = this.calendar.getByTestId("calendar-prev-btn");
+    this.modal = page.getByTestId("schedule-slot-form");
     this.saveButton = page.getByTestId("schedule-save-btn");
-    this.closeModalButton = this.modal.getByRole("button", { name: "close" });
   }
 
   day(number) {
@@ -20,14 +21,11 @@ export class JadwalPage extends BasePage {
   }
 
   modalTitle(title) {
-    return this.page.getByText(title);
+    return this.page.getByTestId("schedule-slot-title").filter({ hasText: title });
   }
 
   modalDropdown(label) {
-    return this.modal
-      .locator("div.space-y-3", { has: this.page.locator("label", { hasText: new RegExp(`^${label}$`) }) })
-      .locator("div.cursor-pointer")
-      .first();
+    return this.modal.getByTestId(DROPDOWN[label]);
   }
 
   async openDayNextMonth(number) {
@@ -37,7 +35,7 @@ export class JadwalPage extends BasePage {
 
   async choose(label, option) {
     await this.modalDropdown(label).click();
-    await this.modal.locator(".max-h-60 > div").filter({ hasText: new RegExp(`^${option}$`) }).click();
+    await this.modal.getByTestId(`${DROPDOWN[label]}-option`).filter({ hasText: option }).click();
   }
 
   async fillSlot({ start, end }) {

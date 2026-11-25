@@ -5,18 +5,18 @@ export class DaftarKlienPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.cards = page.locator("div.group", { has: page.locator("h3") });
+    this.cards = page.getByTestId("consultation-card");
     this.sortDropdown = page.getByTestId("client-filter-urutkan");
-    this.emptyState = page.getByText("Klien Kosong");
-    this.loadFailedMessage = page.getByText("Gagal memuat data klien.");
+    this.emptyState = page.getByTestId("client-list-empty");
+    this.loadFailedMessage = page.getByTestId("client-list-load-error");
   }
 
   countHeading(total) {
-    return this.page.getByRole("heading", { name: new RegExp(`${total}\\s*Klien`) });
+    return this.page.getByTestId("client-count").filter({ hasText: new RegExp(`${total}\\s*Klien`) });
   }
 
   async sortBy(label) {
     await this.sortDropdown.click();
-    await this.page.locator("div.cursor-pointer", { hasText: new RegExp(`^${label}$`) }).click();
+    await this.page.getByTestId("client-filter-urutkan-option").filter({ hasText: new RegExp(`^${label}$`) }).click();
   }
 }

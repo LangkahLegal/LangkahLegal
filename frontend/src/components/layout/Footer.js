@@ -105,8 +105,22 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-6 text-xs text-muted">
-          <p>© {currentYear} LangkahLegal. Prototipe akademik.</p>
+        {/* Bawah: Copyright & Sosmed */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
+          <p data-testid="footer-copyright">© {currentYear} LangkahLegal. All rights reserved.</p>
+          <div className="flex items-center gap-5">
+            {SOCIAL_LINKS.map((item) => (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block py-2 -my-2 text-muted hover:text-primary-text transition-colors"
+              >
+                {item.name}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

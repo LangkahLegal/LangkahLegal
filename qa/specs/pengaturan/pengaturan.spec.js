@@ -14,7 +14,7 @@ import {
 
 When("pengguna keluar dari aplikasi", async ({ pengaturanPage, dialogs }) => {
   await pengaturanPage.menu("Keluar").click();
-  await dialogs.waitFor(LOGOUT_CONFIRM);
+  await dialogs.accept(LOGOUT_CONFIRM);
 });
 
 Then("aplikasi memakai tema gelap", async ({ pengaturanPage, page }) => {
@@ -59,9 +59,8 @@ When("pengguna mengganti tema aplikasi", async ({ pengaturanPage }) => {
 // ── SET-005 · Pengguna mengurungkan keluar dari aplikasi
 
 When("pengguna mengurungkan keluar dari aplikasi", async ({ pengaturanPage, dialogs }) => {
-  dialogs.acceptConfirm = false;
   await pengaturanPage.menu("Keluar").click();
-  await dialogs.waitFor(LOGOUT_CONFIRM);
+  await dialogs.dismiss(LOGOUT_CONFIRM);
 });
 
 // ── SET-005 · Sesi tetap dibersihkan walau layanan logout bermasalah

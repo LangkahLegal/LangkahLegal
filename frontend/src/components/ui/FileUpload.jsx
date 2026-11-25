@@ -3,14 +3,17 @@
 import { useRef } from "react";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export function FileUpload({
   file,
   onChange,
   accept = ".pdf,.doc,.docx,.jpg,.png",
   maxSizeMB = 10,
+  testId,
 }) {
   const inputRef = useRef(null);
+  const toast = useToast();
   
   const formattedAcceptText = accept
     .split(",")
@@ -36,11 +39,11 @@ export function FileUpload({
   const validateAndProcess = (selectedFile) => {
     const fileName = selectedFile.name.toLowerCase();
     if (!allowedExtensions.some((ext) => fileName.endsWith(ext))) {
-      alert(`Tipe file tidak didukung. Gunakan ${formattedAcceptText}.`);
+      toast.error(`Tipe file tidak didukung. Gunakan ${formattedAcceptText}.`);
       return;
     }
     if (selectedFile.size > maxSizeMB * 1024 * 1024) {
-      alert(`File terlalu besar! Maksimal ${maxSizeMB}MB`);
+      toast.error(`File terlalu besar! Maksimal ${maxSizeMB}MB`);
       return;
     }
     onChange(selectedFile);
@@ -111,6 +114,7 @@ export function FileUpload({
           type="file"
           accept={accept}
           className="hidden"
+          data-testid={testId}
           onChange={handleFileChange}
         />
       </div>

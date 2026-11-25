@@ -50,13 +50,13 @@ export default function StatCard({
     : "text-2xl font-headline font-bold text-main";
 
   return (
-    <div className={containerClass}>
+    <div className={containerClass} data-testid="stat-card">
       <div className={iconContainerClass}>
         <MaterialIcon name={icon} />
       </div>
       <div className={contentClass}>
         <h3 className={valueClass}>{val}</h3>
-        <p className="text-xs text-muted">{label}</p>
+        <p className="text-xs text-muted" data-testid="stat-card-label">{label}</p>
       </div>
     </div>
   );

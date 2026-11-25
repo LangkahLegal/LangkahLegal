@@ -2,102 +2,124 @@ name: CI
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11"
 
 jobs:
-  build-test:
+  changes:
+    name: Deteksi perubahan
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      qa: ${{ steps.filter.outputs.qa }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js (cached)
-        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/package-lock.json','frontend/npm-shrinkwrap.json','frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') != '' }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
         with:
-          node-version: "20"
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            qa:
+              - 'qa/**'
+              - '.github/workflows/ci.yml'
+
+  frontend:
+    name: Frontend · lint & build
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            npm-shrinkwrap.json
-            yarn.lock
-            frontend/package-lock.json
-            frontend/npm-shrinkwrap.json
-            frontend/yarn.lock
-            backend/package-lock.json
-            backend/npm-shrinkwrap.json
-            backend/yarn.lock
-
-      - name: Set up Node.js
-        if: ${{ hashFiles('package-lock.json','npm-shrinkwrap.json','yarn.lock','frontend/package-lock.json','frontend/npm-shrinkwrap.json','frontend/yarn.lock','backend/package-lock.json','backend/npm-shrinkwrap.json','backend/yarn.lock') == '' && hashFiles('**/package.json') != '' }}
-        uses: actions/setup-node@v4
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (termasuk larangan alert/confirm)
+        run: npm run lint
+      - uses: actions/cache@v4
         with:
-          node-version: "20"
+          path: frontend/.next/cache
+          key: next-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/src/**', 'frontend/next.config.mjs') }}
+          restore-keys: next-${{ hashFiles('frontend/package-lock.json') }}-
+      - name: Build produksi
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
 
-      - name: Install deps (root)
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Lint/Test/Build (root)
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          npm run lint --if-present
-          npm run test --if-present
-          npm run build --if-present
-
-      - name: Install deps (frontend)
-        if: ${{ hashFiles('frontend/package.json') != '' }}
-        working-directory: frontend/
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Lint/Test/Build (frontend)
-        if: ${{ hashFiles('frontend/package.json') != '' }}
-        working-directory: frontend/
-        run: |
-          npm run lint --if-present
-          npm run test --if-present
-          npm run build --if-present
-
-      - name: Install deps (backend)
-        if: ${{ hashFiles('backend/package.json') != '' }}
+  backend:
+    name: Backend · lint & smoke
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
         working-directory: backend
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Lint/Test/Build (backend)
-        if: ${{ hashFiles('backend/package.json') != '' }}
-        working-directory: backend
-        run: |
-          npm run lint --if-present
-          npm run test --if-present
-          npm run build --if-present
-
-      - name: Set up Python
-        if: ${{ hashFiles('backend/requirements.txt') != '' || hashFiles('backend/pyproject.toml') != '' }}
-        uses: actions/setup-python@v5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install ruff==0.17.0
+      - name: Ruff check
+        run: python -m ruff check .
+      - name: Ruff format
+        run: python -m ruff format --check .
+      - run: pip install -r requirements.txt
+      - name: Aplikasi bisa dimuat dan skema OpenAPI valid
+        env:
+          SUPABASE_URL: https://ci-placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+          SUPABASE_JWT_SECRET: ci-placeholder
+        run: python -c "import main; schema = main.app.openapi(); print(len(schema['paths']), 'path API')"
 
-      - name: Install Python deps
-        if: ${{ hashFiles('backend/requirements.txt') != '' }}
-        run: pip install -r backend/requirements.txt
-
-      - name: Run backend unit tests
-        if: ${{ hashFiles('backend/requirements.txt') != '' }}
-        run: python -m unittest discover -s backend/tests -p "test_*.py"
+  qa:
+    name: SIT · validasi statis
+    needs: changes
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: qa/package-lock.json
+      - run: npm ci
+      - name: Setiap langkah Gherkin punya definisi
+        run: npx bddgen
+      - name: Page object hanya memakai data-testid
+        run: npm run lint:selectors

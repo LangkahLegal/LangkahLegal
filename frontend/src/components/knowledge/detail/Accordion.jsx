@@ -25,7 +25,7 @@ const KATEGORI_HUKUM = [
     { value: "lainnya", label: "Lainnya" }
 ];
 
-function Textarea({ label, value, onChange, placeholder, disabled, rows = 6 }) {
+function Textarea({ label, value, onChange, placeholder, disabled, rows = 6, testId }) {
     return (
         <div className="space-y-2">
             <label className="text-xs font-bold text-muted uppercase tracking-widest">{label}</label>
@@ -36,6 +36,7 @@ function Textarea({ label, value, onChange, placeholder, disabled, rows = 6 }) {
                 placeholder={placeholder}
                 disabled={disabled}
                 rows={rows}
+                data-testid={testId}
             />
         </div>
     );
@@ -108,6 +109,7 @@ export default function Accordion({ title, badge, chunk, onSaveEdit, isSaving, i
                                     onChange={(val) => setForm({ ...form, isi_teks: val })}
                                     rows={8}
                                     disabled={isSaving}
+                                    testId="knowledge-article-input"
                                 />
                                 <div className="bg-primary/10 border border-primary/20 p-3 rounded-xl flex gap-2 text-primary-light mt-2">
                                     <MaterialIcon name="info" className="text-base shrink-0" />
@@ -119,7 +121,7 @@ export default function Accordion({ title, badge, chunk, onSaveEdit, isSaving, i
                                     <Button variant="secondary" className="!py-1.5 !px-3 !text-xs" onClick={handleCancel} disabled={isSaving}>
                                         Batal
                                     </Button>
-                                    <Button variant="primary" className="!py-1.5 !px-3 !text-xs" onClick={handleSave} isLoading={isSaving}>
+                                    <Button variant="primary" className="!py-1.5 !px-3 !text-xs" onClick={handleSave} isLoading={isSaving} data-testid="knowledge-article-save-btn">
                                         Simpan
                                     </Button>
                                 </div>
@@ -135,7 +137,7 @@ export default function Accordion({ title, badge, chunk, onSaveEdit, isSaving, i
                                     </div>
                                 </div>
                                 <div className="flex justify-end">
-                                    <Button variant="outline" className="!py-1.5 !px-3 !text-xs text-primary-light border-primary/20 hover:bg-primary/10" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
+                                    <Button variant="outline" data-testid="knowledge-article-edit-btn" className="!py-1.5 !px-3 !text-xs text-primary-light border-primary/20 hover:bg-primary/10" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
                                         <MaterialIcon name="edit" className="text-[14px]" />
                                         Edit Pasal
                                     </Button>

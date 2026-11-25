@@ -6,20 +6,20 @@ export class BursaKasusPage extends BasePage {
   constructor(page) {
     super(page);
     this.cards = page.getByTestId("bursa-card");
-    this.listTitle = page.getByText("Bursa Kasus Tersedia");
-    this.countBadge = page.getByText(/^\d+ Kasus$/);
+    this.listTitle = page.getByTestId("bursa-list-title");
+    this.countBadge = page.getByTestId("bursa-count-badge");
     this.claimModal = page.getByTestId("bursa-claim-modal");
     this.confirmClaimButton = page.getByTestId("bursa-claim-confirm-btn");
     this.cancelClaimButton = page.getByTestId("bursa-claim-cancel-btn");
-    this.claimedTitle = page.getByText("Kasus Berhasil Diklaim!");
-    this.viewConsultationButton = page.getByRole("button", { name: "Lihat Detail Konsultasi" });
-    this.backToBursaButton = page.getByRole("button", { name: "Kembali ke Bursa" });
-    this.loadFailedMessage = page.getByText(/Gagal memuat data bursa/);
-    this.emptyState = page.getByText("Bursa Kosong");
+    this.claimedTitle = page.getByTestId("success-title").filter({ hasText: "Kasus Berhasil Diklaim!" });
+    this.viewConsultationButton = page.getByTestId("success-action-btn");
+    this.backToBursaButton = page.getByTestId("success-secondary-action-btn");
+    this.loadFailedMessage = page.getByTestId("bursa-load-error");
+    this.emptyState = page.getByTestId("bursa-empty");
   }
 
   card(idBursa) {
-    return this.page.locator(`[data-case-id="${idBursa}"]`);
+    return this.cards.filter({ has: this.page.getByTestId(`bursa-case-${idBursa}`) });
   }
 
   description(idBursa) {
@@ -28,7 +28,7 @@ export class BursaKasusPage extends BasePage {
 
   async chooseCategory(label) {
     await this.page.getByTestId("bursa-filter-kategori").click();
-    await this.page.locator("div.cursor-pointer", { hasText: new RegExp(`^${label}$`) }).click();
+    await this.page.getByTestId("bursa-filter-kategori-option").filter({ hasText: new RegExp(`^${label}$`) }).click();
   }
 
   async startClaim(idBursa) {

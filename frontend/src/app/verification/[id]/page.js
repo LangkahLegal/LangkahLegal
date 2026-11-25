@@ -17,10 +17,12 @@ import {
   getConsultantDetail,
   verifyConsultant,
 } from "@/services/admin.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function VerificationDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const toast = useToast();
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [actionType, setActionType] = useState(null);
@@ -39,7 +41,7 @@ export default function VerificationDetailPage() {
       router.push("/verification");
     },
     onError: (err) => {
-      alert(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
+      toast.error(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
     },
   });
 
@@ -60,7 +62,7 @@ export default function VerificationDetailPage() {
 
   if (!consultant) {
     return (
-      <div className="bg-bg min-h-screen flex items-center justify-center text-main transition-colors duration-500">
+      <div data-testid="verification-not-found" className="bg-bg min-h-screen flex items-center justify-center text-main transition-colors duration-500">
         Data Konsultan Tidak Ditemukan
       </div>
     );
@@ -104,7 +106,7 @@ export default function VerificationDetailPage() {
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {
             if (actionType === "ditolak" && !reason.trim()) {
-              alert("Alasan wajib diisi!");
+              toast.error("Alasan wajib diisi!");
               return;
             }
 

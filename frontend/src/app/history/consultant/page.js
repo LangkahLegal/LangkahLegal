@@ -88,6 +88,7 @@ export default function ConsultantHistoryPage() {
                   actionIcon="calendar_today"
                   onAction={() => router.push("/schedule/consultant")}
                   className="py-16"
+                  testId="history-empty"
                 />
               ) : formattedRaw.length === 0 ? (
                 /* Tidak ada sesi yang cocok dengan pencarian atau filter */

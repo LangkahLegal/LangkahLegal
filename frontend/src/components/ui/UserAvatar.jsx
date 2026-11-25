@@ -22,6 +22,7 @@ export function UserAvatar({
   size = "md",
   className = "w-full h-full object-cover",
   textClassName = "",
+  testId,
 }) {
   const [failedSrc, setFailedSrc] = useState(null);
 
@@ -34,6 +35,7 @@ export function UserAvatar({
       <img
         src={safeSrc}
         alt={accessibleName}
+        data-testid={testId}
         className={className}
         onError={() => setFailedSrc(safeSrc)}
       />
@@ -48,6 +50,7 @@ export function UserAvatar({
     <div
       role="img"
       aria-label={accessibleName}
+      data-testid={testId}
       className={`flex items-center justify-center font-headline font-bold select-none uppercase ${toneClass} ${sizeText} ${textClassName} ${className}`}
     >
       {initials}

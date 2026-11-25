@@ -6,14 +6,15 @@ export default function CallbackError({ error, onRetry }) {
       </div>
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-main">Terjadi Kesalahan</h1>
-        <div className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl">
+        <h1 data-testid="oauth-callback-error-title" className="text-2xl font-bold text-main">Terjadi Kesalahan</h1>
+        <div data-testid="oauth-callback-error-message" className="p-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-xl">
           {error}
         </div>
       </div>
 
       <button
         onClick={onRetry}
+        data-testid="oauth-callback-back-to-login-btn"
         className="py-2 text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4"
       >
         Kembali ke Login

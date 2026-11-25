@@ -125,7 +125,7 @@ export default function ConsultantDashboardPage() {
             <div className="space-y-6 lg:space-y-7 animate-fade-in">
               {/* NOTIFICATION: REJECTION ALERT */}
               {user?.status_verifikasi === "ditolak" && user?.alasan_penolakan && (
-                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-4 flex items-start gap-3.5">
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-4 flex items-start gap-3.5" data-testid="consultant-dashboard-rejection-message">
                   <MaterialIcon
                     name="error"
                     className="text-danger text-xl shrink-0 mt-0.5"
@@ -139,6 +139,7 @@ export default function ConsultantDashboardPage() {
                       <strong>&quot;{user.alasan_penolakan}&quot;</strong>. Silakan
                       lengkapi atau perbaiki profil Anda di menu{" "}
                       <span
+                        data-testid="consultant-dashboard-profile-link"
                         className="font-semibold cursor-pointer underline hover:text-primary transition-colors"
                         onClick={() => router.push("/setting/profile")}
                       >
@@ -173,7 +174,7 @@ export default function ConsultantDashboardPage() {
               </section>
 
               {/* JADWAL TERDEKAT */}
-              <section className="space-y-3.5 w-full">
+              <section className="space-y-3.5 w-full" data-testid="consultant-dashboard-next-session-section">
                 <div className="flex items-center gap-2 px-1">
                   <div className="w-1 h-5 bg-primary rounded-full shadow-soft" />
                   <h2 className="text-base lg:text-lg font-headline font-bold text-main tracking-tight uppercase">
@@ -203,7 +204,7 @@ export default function ConsultantDashboardPage() {
               </section>
 
               {/* PERMINTAAN BARU */}
-              <section className="space-y-3.5 w-full">
+              <section className="space-y-3.5 w-full" data-testid="consultant-dashboard-new-requests-section">
                 <div className="flex items-center gap-2 px-1">
                   <div className="w-1 h-5 bg-primary-light rounded-full shadow-soft opacity-70" />
                   <h2 className="text-base lg:text-lg font-headline font-bold text-main tracking-tight uppercase">

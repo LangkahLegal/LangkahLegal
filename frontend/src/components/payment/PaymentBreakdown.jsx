@@ -21,14 +21,14 @@ export default function PaymentBreakdown({
   return (
     <div className="w-full bg-card rounded-[2rem] p-8 border border-surface shadow-soft transition-all duration-500">
       {/* Judul Seksi - REFACTOR: text-white -> text-main */}
-      <h3 className="text-main text-lg font-bold mb-6 transition-colors">
+      <h3 className="text-main text-lg font-bold mb-6 transition-colors" data-testid="payment-breakdown-title">
         Rincian Biaya
       </h3>
 
       {/* Baris Rincian */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex flex-col gap-1">
-          <span className="text-muted text-sm sm:text-base font-medium transition-colors">
+          <span className="text-muted text-sm sm:text-base font-medium transition-colors" data-testid="payment-price-per-session">
             Harga Per Sesi ({sessionDuration} Menit)
           </span>
         </div>

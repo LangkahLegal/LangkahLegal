@@ -17,6 +17,7 @@ import ClaimConfirmModal from "@/components/bursa/ClaimConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JADWAL_OPTIONS, WAKTU_OPTIONS, defaultFilterValues } from "@/lib/filterOptions";
 import { MAX_SEARCH_LENGTH, useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useToast } from "@/providers/FeedbackProvider";
 
 // Pilihan filter; id-nya dikirim apa adanya ke backend (GET /cases/).
 const FILTER_DROPDOWNS = [
@@ -57,6 +58,7 @@ const DEFAULT_OPTIONS = defaultFilterValues(FILTER_DROPDOWNS);
 
 export default function BursaKasusPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const router = useRouter();
 
   const [claimingId, setClaimingId] = useState(null);
@@ -97,7 +99,7 @@ export default function BursaKasusPage() {
       queryClient.invalidateQueries({ queryKey: ["bursaKasus"] });
     },
     onError: (err) => {
-      alert(err?.response?.data?.detail || "Gagal mengklaim kasus.");
+      toast.error(err?.response?.data?.detail || "Gagal mengklaim kasus.");
       setClaimingId(null);
     },
   });
@@ -168,7 +170,7 @@ export default function BursaKasusPage() {
               <div className="flex items-center justify-between px-1">
                 {/* Kiri: Judul & Sub-judul Refresh */}
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold font-headline text-main">
+                  <h2 className="text-base sm:text-lg font-bold font-headline text-main" data-testid="bursa-list-title">
                     Bursa Kasus Tersedia
                   </h2>
                   <p className="text-muted/60 text-[10px] font-medium mt-0.5">
@@ -178,7 +180,7 @@ export default function BursaKasusPage() {
 
                 {/* Kanan: Badge "X KASUS" */}
                 <div className="px-3 py-1 bg-surface/60 border border-surface rounded-full flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-main">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-main" data-testid="bursa-count-badge">
                     {total} Kasus
                   </span>
                 </div>
@@ -221,7 +223,7 @@ export default function BursaKasusPage() {
                   name="error_outline"
                   className="text-danger text-4xl opacity-80"
                 />
-                <p className="text-sm text-danger font-medium max-w-xs">
+                <p className="text-sm text-danger font-medium max-w-xs" data-testid="bursa-load-error">
                   Gagal memuat data bursa. Pastikan Anda login sebagai
                   konsultan.
                 </p>
@@ -241,6 +243,7 @@ export default function BursaKasusPage() {
                 actionLabel={hasActiveFilter ? "Reset Filter" : undefined}
                 actionIcon="restart_alt"
                 onAction={hasActiveFilter ? resetFilters : undefined}
+                testId="bursa-empty"
               />
             )}
 

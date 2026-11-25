@@ -15,6 +15,7 @@ import AppShell from "@/components/layout/AppShell";
 import SearchBar from "@/components/layout/SearchBar";
 
 import { getDocumentChunks, updateChunk } from "@/services/admin.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 function KnowledgeDetailContent() {
     const router = useRouter();
@@ -22,7 +23,7 @@ function KnowledgeDetailContent() {
     const uri = searchParams.get("uri");
 
     const queryClient = useQueryClient();
-    const [toastMsg, setToastMsg] = useState(null);
+    const toast = useToast();
     const [searchChunk, setSearchChunk] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [allExpanded, setAllExpanded] = useState(false);
@@ -42,10 +43,7 @@ function KnowledgeDetailContent() {
         return () => clearTimeout(timer);
     }, [searchChunk]);
 
-    const showToast = (msg, type = "success") => {
-        setToastMsg({ text: msg, type });
-        setTimeout(() => setToastMsg(null), 3000);
-    };
+    const showToast = (msg, type = "success") => toast[type](msg);
 
     const { data: chunksData, isLoading, isFetching } = useQuery({
         queryKey: ["chunks", uri, page, 50, debouncedSearch],
@@ -88,20 +86,6 @@ function KnowledgeDetailContent() {
             role="admin"
             className="relative"
             contentClassName="w-full"
-            overlay={
-                toastMsg && (
-                    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
-                        <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${
-                            toastMsg.type === 'error' 
-                                ? 'bg-danger/10 border-danger/30 text-danger' 
-                                : 'bg-primary/10 border-primary/30 text-primary-text'
-                        }`}>
-                            <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
-                            {toastMsg.text}
-                        </div>
-                    </div>
-                )
-            }
         >
                 <PageHeader title="Detail Dokumen" backHref="/knowledge" />
 
@@ -121,6 +105,7 @@ function KnowledgeDetailContent() {
                                 title="Tidak Ada Data"
                                 description="Dokumen tidak ditemukan atau belum ada pasal."
                                 className="py-20"
+                                testId="knowledge-detail-empty"
                             />
                         ) : (
                             <>
@@ -128,7 +113,7 @@ function KnowledgeDetailContent() {
 
                                 {/* Chunks Header */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                                    <h3 className="text-2xl font-bold text-main tracking-tight px-2">Daftar Pasal</h3>
+                                    <h3 data-testid="knowledge-article-list-title" className="text-2xl font-bold text-main tracking-tight px-2">Daftar Pasal</h3>
                                     <div className="flex items-center gap-2">
                                         <div className="w-full sm:w-64">
                                             <SearchBar
@@ -138,7 +123,7 @@ function KnowledgeDetailContent() {
                                                 inputClassName="!h-[42px] !py-0 text-xs !rounded-xl !pl-12 !pr-4 flex items-center"
                                             />
                                         </div>
-                                        <Button variant="outline" className="!h-[42px] !py-0 !px-4 !text-xs whitespace-nowrap bg-card shadow-soft flex items-center gap-1" onClick={() => setAllExpanded(!allExpanded)}>
+                                        <Button variant="outline" data-testid="knowledge-toggle-all-btn" className="!h-[42px] !py-0 !px-4 !text-xs whitespace-nowrap bg-card shadow-soft flex items-center gap-1" onClick={() => setAllExpanded(!allExpanded)}>
                                             <MaterialIcon name={allExpanded ? "expand_less" : "expand_more"} className="text-[18px]" />
                                             {allExpanded ? "Tutup Semua" : "Buka Semua"}
                                         </Button>

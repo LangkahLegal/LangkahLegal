@@ -5,9 +5,9 @@ export class VerifikasiOtpPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.boxes = page.locator('input[inputmode="numeric"]');
-    this.verifyButton = page.getByRole("button", { name: "Verifikasi" });
-    this.resendButton = page.getByRole("button", { name: "Kirim Ulang" });
+    this.boxes = page.getByTestId("otp-digit-input");
+    this.verifyButton = page.getByTestId("otp-verify-btn");
+    this.resendButton = page.getByTestId("otp-resend-btn");
   }
 
   box(position) {

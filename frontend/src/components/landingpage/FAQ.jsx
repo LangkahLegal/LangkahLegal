@@ -37,7 +37,7 @@ export default function FAQ() {
     <section id="faq" className="relative w-full px-6 py-16 lg:py-24 z-10 bg-bg">
       <div className="max-w-3xl mx-auto flex flex-col">
         <div className="text-center mb-12 md:mb-14">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-headline font-bold text-main leading-tight mb-4">
+          <h2 data-testid="landing-faq-title" className="text-3xl md:text-4xl lg:text-5xl font-headline font-bold text-main leading-tight mb-4">
             Tanya jawab (FAQ) LangkahLegal
           </h2>
           <p className="text-sm md:text-base text-muted leading-relaxed">
@@ -58,6 +58,7 @@ export default function FAQ() {
               >
                 <button
                   type="button"
+                  data-testid="landing-faq-question-btn"
                   onClick={() => toggleFAQ(index)}
                   className="w-full px-6 py-5 md:py-6 flex justify-between items-center text-left group gap-4 focus:outline-none"
                 >
@@ -87,7 +88,7 @@ export default function FAQ() {
                       transition={{ duration: 0.25, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <p className="px-6 pb-6 text-sm md:text-base text-muted leading-relaxed m-0">
+                      <p data-testid="landing-faq-answer" className="px-6 pb-6 text-sm md:text-base text-muted leading-relaxed m-0">
                         {faq.answer}
                       </p>
                     </motion.div>

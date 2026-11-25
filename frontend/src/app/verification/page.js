@@ -14,9 +14,11 @@ import ConfirmActionModal from "@/components/verification/ConfirmActionModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import { getConsultants, verifyConsultant } from "@/services/admin.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function VerificationListPage() {
   const [search, setSearch] = useState("");
+  const toast = useToast();
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedItem, setSelectedItem] = useState(null);
   const [actionType, setActionType] = useState(null);
@@ -48,7 +50,7 @@ export default function VerificationListPage() {
       setReason("");
     },
     onError: (err) => {
-      alert(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
+      toast.error(err.response?.data?.detail || "Gagal menyimpan keputusan verifikasi.");
     },
   });
 
@@ -106,7 +108,7 @@ export default function VerificationListPage() {
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {
             if (actionType === "ditolak" && !reason.trim()) {
-              alert("Alasan wajib diisi!");
+              toast.error("Alasan wajib diisi!");
               return;
             }
             mutation.mutate({ id: selectedItem.id, action: actionType, reason });
@@ -123,6 +125,7 @@ export default function VerificationListPage() {
 
               <CategoryList
                 title="Status Verifikasi"
+                testId="verification-status-tab"
                 categories={statusCategories}
                 activeCategory={activeCategory}
                 onCategoryChange={setActiveCategory}
@@ -140,6 +143,7 @@ export default function VerificationListPage() {
                   icon="search_off"
                   title="Tidak Ditemukan"
                   description="Tidak ada data verifikasi yang sesuai."
+                  testId="verification-empty"
                   className="py-12"
                 />
               ) : (

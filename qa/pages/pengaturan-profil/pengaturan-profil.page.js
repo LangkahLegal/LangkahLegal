@@ -5,26 +5,24 @@ export class PengaturanProfilPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.nameInput = page.getByPlaceholder("John Doe");
-    this.emailInput = page.getByPlaceholder("example@langkahlegal.id");
-    this.credentialsTitle = page.getByText("Kredensial Profesional");
-    this.feeInput = page.getByPlaceholder("Rp 150.000");
-    this.experienceInput = page.getByPlaceholder("Contoh: 5");
-    this.cityInput = page.locator("label", { hasText: /^Kota Praktik$/ }).locator("xpath=following-sibling::input");
-    this.specializationDropdown = page
-      .locator("div.space-y-3", { has: page.locator("label", { hasText: /^Spesialisasi$/ }) })
-      .locator("div.cursor-pointer")
-      .first();
-    this.portfolioInput = page.locator('input[type="file"][accept=".pdf"]');
-    this.photoInput = page.locator('input[type="file"][accept="image/*"]');
-    this.avatar = page.getByAltText("Profile");
-    this.saveButton = page.getByRole("button", { name: "Simpan Perubahan" });
-    this.rejectionNotice = page.getByText("Pengajuan Verifikasi Ditolak");
+    this.nameInput = page.getByTestId("profile-name-input");
+    this.emailInput = page.getByTestId("profile-email-input");
+    this.credentialsTitle = page.getByTestId("profile-credentials-title");
+    this.feeInput = page.getByTestId("profile-fee-input");
+    this.experienceInput = page.getByTestId("profile-experience-input");
+    this.cityInput = page.getByTestId("profile-city-input");
+    this.specializationDropdown = page.getByTestId("profile-specialization-dropdown");
+    this.specializationOptions = page.getByTestId("profile-specialization-dropdown-option");
+    this.portfolioInput = page.getByTestId("profile-portfolio-input");
+    this.photoInput = page.getByTestId("profile-photo-input");
+    this.avatar = page.getByTestId("profile-avatar");
+    this.saveButton = page.getByTestId("profile-save-btn");
+    this.rejectionNotice = page.getByTestId("profile-rejection-message");
   }
 
   async chooseSpecialization(name) {
     await this.specializationDropdown.click();
-    await this.page.locator(".max-h-60 > div").filter({ hasText: new RegExp(`^${name}$`) }).click();
+    await this.specializationOptions.filter({ hasText: new RegExp(`^${name}$`) }).click();
   }
 
   async fillCredentials({ fee, experience, specialization, city, portfolio }) {

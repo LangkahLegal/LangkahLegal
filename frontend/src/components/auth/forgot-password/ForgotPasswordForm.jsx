@@ -14,7 +14,7 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
     return (
       <div className="space-y-6 text-center md:text-left">
         <div className="p-4 bg-success-soft border border-success/25 rounded-xl">
-          <h3 className="text-success font-semibold mb-2">Tautan Terkirim!</h3>
+          <h3 className="text-success font-semibold mb-2" data-testid="forgot-password-sent-message">Tautan Terkirim!</h3>
           <p className="text-sm text-success/90">
             Silakan periksa kotak masuk email Anda ({email}) untuk menemukan tautan reset password.
           </p>
@@ -42,9 +42,10 @@ export default function ForgotPasswordForm({ onSubmit, isLoading, errorMsg, isSu
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
+        data-testid="forgot-password-email-input"
       />
 
-      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+      <Button type="submit" className="mt-2 w-full" disabled={isLoading} data-testid="forgot-password-submit-btn">
         {isLoading ? "Mengirim..." : "Kirim Link Reset"}
       </Button>
 

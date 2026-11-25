@@ -7,10 +7,11 @@ import { HISTORY_EXPECTATION } from "../../test_data/detail-konsultasi.data.js";
 Then(
   "riwayat menampilkan semua konsultasi dengan sesi aktif di urutan teratas",
   async ({ riwayatKlienPage }) => {
-    await expect(riwayatKlienPage.cards).toHaveCount(HISTORY_EXPECTATION.total);
-    for (const [index, label] of HISTORY_EXPECTATION.firstLabels.entries()) {
-      await expect(riwayatKlienPage.cards.nth(index)).toContainText(label);
-    }
+    const { total, activeLabels } = HISTORY_EXPECTATION;
+    await expect(riwayatKlienPage.cards).toHaveCount(total);
+    // Sesi aktif dengan jam mulai yang sama boleh tampil dalam urutan apa pun.
+    const topStatuses = (await riwayatKlienPage.statuses.allTextContents()).slice(0, activeLabels.length);
+    expect(topStatuses.map((s) => s.trim()).sort()).toEqual([...activeLabels].sort());
   },
 );
 

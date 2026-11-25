@@ -17,6 +17,7 @@ import { getAdminDocuments, getJobStatus } from "@/services/admin.service";
 import UploadDocumentModal from "@/components/knowledge/modals/UploadDocumentModal";
 import ReplaceDocumentModal from "@/components/knowledge/modals/ReplaceDocumentModal";
 import DeleteDocumentModal from "@/components/knowledge/modals/DeleteDocumentModal";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function KnowledgeBasePage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function KnowledgeBasePage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const [page, setPage] = useState(1);
-  const [toastMsg, setToastMsg] = useState(null);
+  const toast = useToast();
 
   // Background Job State — initialised directly from localStorage (lazy initializer avoids an effect just for reading)
   const [activeJobId, setActiveJobId] = useState(() =>
@@ -61,10 +62,7 @@ export default function KnowledgeBasePage() {
   }, [searchInput]);
 
   // Show Toast Logic
-  const showToast = (msg, type = "success") => {
-    setToastMsg({ text: msg, type });
-    setTimeout(() => setToastMsg(null), 3000);
-  };
+  const showToast = (msg, type = "success") => toast[type](msg);
 
   // Queries
   const { data: docsData, isLoading: loadingDocs } = useQuery({
@@ -96,19 +94,19 @@ export default function KnowledgeBasePage() {
     const timer = setTimeout(() => {
       if (jobStatusData?.status === "completed") {
         setActiveJobId(null);
-        showToast(jobStatusData.message || "Proses dokumen selesai!");
+        toast.success(jobStatusData.message || "Proses dokumen selesai!");
         queryClient.invalidateQueries({ queryKey: ["documents"] });
       } else if (jobStatusData?.status === "failed") {
         setActiveJobId(null);
-        showToast(`Gagal memproses dokumen: ${jobStatusData.error}`, "error");
+        toast.error(`Gagal memproses dokumen: ${jobStatusData.error}`);
       } else if (jobStatusError) {
         setActiveJobId(null);
-        showToast("Gagal mengecek status proses dari server.", "error");
+        toast.error("Gagal mengecek status proses dari server.");
       }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [jobStatusData, jobStatusError, queryClient]);
+  }, [jobStatusData, jobStatusError, queryClient, toast]);
 
   // Handlers
   const handleDeleteClick = (doc) => {
@@ -154,18 +152,6 @@ export default function KnowledgeBasePage() {
       contentClassName="w-full"
       overlay={
         <>
-          {toastMsg && (
-            <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in shadow-xl">
-              <div className={`px-6 py-3 rounded-2xl border font-bold text-sm flex items-center gap-2 transition-colors duration-300 ${toastMsg.type === 'error'
-                  ? 'bg-danger/10 border-danger/30 text-danger'
-                  : 'bg-primary/10 border-primary/30 text-primary-text'
-                }`}>
-                <MaterialIcon name={toastMsg.type === 'error' ? 'error' : 'check_circle'} className="text-xl" />
-                {toastMsg.text}
-              </div>
-            </div>
-          )}
-
           <UploadDocumentModal
             open={uploadModalOpen}
             onClose={() => setUploadModalOpen(false)}
@@ -196,7 +182,7 @@ export default function KnowledgeBasePage() {
         <PageHeader title="Manajemen Dokumen" backHref="/dashboard/admin" />
 
         {activeJobId && (
-          <div className="bg-primary/10 border-b border-primary/20 px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
+          <div data-testid="knowledge-processing-banner" className="bg-primary/10 border-b border-primary/20 px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
             <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
             <p className="text-sm font-bold text-primary-light">Sistem sedang memproses ekstraksi dan embedding PDF di latar belakang...</p>
           </div>
@@ -211,7 +197,7 @@ export default function KnowledgeBasePage() {
                 <p className="text-muted text-xs lg:text-sm mt-0.5">Kelola dokumen hukum dan data referensi untuk AI.</p>
               </div>
               <div className="flex gap-3">
-                <Button variant="primary" onClick={() => setUploadModalOpen(true)}>
+                <Button variant="primary" onClick={() => setUploadModalOpen(true)} data-testid="knowledge-add-btn">
                   <MaterialIcon name="add" className="text-lg" />
                   Tambah Dokumen
                 </Button>
@@ -225,11 +211,13 @@ export default function KnowledgeBasePage() {
                   value={searchInput}
                   onChange={setSearchInput}
                   placeholder="Cari nama undang-undang atau dokumen..."
+                  testId="knowledge-search-input"
                 />
                 <CategoryList
                   title=" "
                   categories={categories}
                   activeCategory={activeCategory}
+                  testId="knowledge-category-btn"
                   onCategoryChange={(newCategory) => {
                     setActiveCategory(newCategory);
                     setPage(1);

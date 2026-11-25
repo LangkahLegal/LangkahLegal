@@ -144,7 +144,7 @@ Then("kegagalan proses dokumen diberitahukan beserta penyebabnya", async ({ basi
 // ── KNW-006 · Admin menghapus dokumen beserta seluruh pasalnya
 
 When("pengguna menghapus dokumen uji itu", async ({ basisPengetahuanPage }) => {
-  await basisPengetahuanPage.row(LEGAL_DOCUMENT.nama_uu).getByRole("button", { name: "delete" }).click();
+  await basisPengetahuanPage.deleteButton(LEGAL_DOCUMENT.nama_uu).click();
   await basisPengetahuanPage.deleteConfirmTitle.waitFor();
   await basisPengetahuanPage.confirmDeleteButton.click();
 });
@@ -164,7 +164,7 @@ Given("penggantian dokumen akan diproses sampai selesai", async ({ network }) =>
 });
 
 When("pengguna mengganti berkas dokumen uji itu", async ({ basisPengetahuanPage, world }) => {
-  await basisPengetahuanPage.row(LEGAL_DOCUMENT.nama_uu).getByRole("button", { name: "sync" }).click();
+  await basisPengetahuanPage.replaceButtonFor(LEGAL_DOCUMENT.nama_uu).click();
   await basisPengetahuanPage.replaceTitle.waitFor();
   world.prefilledName = await basisPengetahuanPage.nameInput.inputValue();
   await basisPengetahuanPage.fileInput.setInputFiles(DOCUMENT_UPLOAD.file);

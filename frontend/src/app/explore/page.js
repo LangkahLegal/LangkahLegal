@@ -142,6 +142,7 @@ export default function KonsultasiPage() {
                 value={priceMin}
                 onChange={(e) => setPriceMin(e.target.value)}
                 placeholder="Min"
+                data-testid="explore-price-min-input"
                 className={PRICE_INPUT_CLASS}
               />
               <span className="text-muted/50 text-[10px] shrink-0">—</span>
@@ -151,6 +152,7 @@ export default function KonsultasiPage() {
                 value={priceMax}
                 onChange={(e) => setPriceMax(e.target.value)}
                 placeholder="Max"
+                data-testid="explore-price-max-input"
                 className={PRICE_INPUT_CLASS}
               />
             </div>
@@ -181,6 +183,7 @@ export default function KonsultasiPage() {
                       actionIcon="refresh"
                       onAction={() => refetch()}
                       className="py-12"
+                      testId="explore-load-error"
                     />
                   </div>
                 ) : filteredConsultants.length > 0 ? (
@@ -194,6 +197,7 @@ export default function KonsultasiPage() {
                       title="Tidak Ditemukan"
                       description="Tidak ada konsultan yang cocok dengan filter pencarian."
                       className="py-12"
+                      testId="explore-empty"
                     />
                   </div>
                 )}

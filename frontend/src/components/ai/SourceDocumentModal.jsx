@@ -93,6 +93,7 @@ export default function SourceDocumentModal({ source, onClose }) {
             <button
               key={key}
               type="button"
+              data-testid={`ai-source-tab-${key}`}
               onClick={() => setTab(key)}
               className={`px-3 py-3 text-xs sm:text-sm font-semibold border-b-2 -mb-px transition-colors ${
                 activeTab === key
@@ -137,6 +138,7 @@ export default function SourceDocumentModal({ source, onClose }) {
         {file_url && (
           <a
             href={file_url}
+            data-testid="ai-source-pdf-link"
             target="_blank"
             rel="noopener noreferrer"
             className={`${linkClass} bg-primary text-on-primary hover:bg-primary/90 shadow-sm`}
@@ -148,6 +150,7 @@ export default function SourceDocumentModal({ source, onClose }) {
         {sumber_url && (
           <a
             href={sumber_url}
+            data-testid="ai-source-bpk-link"
             target="_blank"
             rel="noopener noreferrer"
             className={`${linkClass} bg-surface text-main hover:bg-surface/70 border border-surface`}

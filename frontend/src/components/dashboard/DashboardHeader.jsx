@@ -53,7 +53,7 @@ export default function DashboardHeader({
           {isLoading ? (
             <Skeleton className="h-5 w-32 lg:w-40 !bg-header-hover" />
           ) : (
-            <h2 className="text-base lg:text-lg font-headline font-bold text-on-header tracking-tight leading-tight transition-colors duration-500">
+            <h2 className="text-base lg:text-lg font-headline font-bold text-on-header tracking-tight leading-tight transition-colors duration-500" data-testid="dashboard-greeting">
               {safeName}
             </h2>
           )}
@@ -67,6 +67,7 @@ export default function DashboardHeader({
           onClick={handleSettingsClick}
           className="group text-on-header hover:bg-header-hover! transition-all"
           aria-label="Settings"
+          data-testid="dashboard-settings-btn"
         >
           <MaterialIcon
             name="settings"

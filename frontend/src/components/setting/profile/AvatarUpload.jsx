@@ -5,6 +5,7 @@ import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui/Button";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function AvatarUpload({
   foto_profil,
@@ -14,11 +15,12 @@ export default function AvatarUpload({
   isUploading,
 }) {
   const inputRef = useRef(null);
+  const toast = useToast();
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file || file.size > 2 * 1024 * 1024) {
-      return file && alert("File terlalu besar (max 2MB)");
+      return file && toast.error("File terlalu besar (max 2MB)");
     }
 
     if (onUploadStart) onUploadStart();
@@ -30,7 +32,7 @@ export default function AvatarUpload({
 
       onChange(freshData.foto_profil);
     } catch (err) {
-      alert("Gagal mengunggah foto.");
+      toast.error("Gagal mengunggah foto.");
       onChange(foto_profil);
     }
   };
@@ -50,6 +52,7 @@ export default function AvatarUpload({
             src={foto_profil}
             name={name || "User"}
             alt="Profile"
+            testId="profile-avatar"
             size="xl"
             textClassName="text-4xl"
             className="w-full h-full object-cover"
@@ -81,6 +84,7 @@ export default function AvatarUpload({
           type="file"
           accept="image/*"
           className="hidden"
+          data-testid="profile-photo-input"
           onChange={handleFileChange}
         />
       </div>

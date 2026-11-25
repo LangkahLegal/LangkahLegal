@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 import { userService } from "@/services/user.service";
 import { consultationService } from "@/services/consultation.service";
+import { useToast, useConfirm } from "@/providers/FeedbackProvider";
 
 /** Daftar kartu yang disembunyikan pengguna; data yang rusak dianggap kosong dan dibuang. */
 const readHiddenRejectedIds = () => {
@@ -26,6 +27,8 @@ const readHiddenRejectedIds = () => {
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const askConfirm = useConfirm();
   const [tempHiddenIds, setTempHiddenIds] = useState([]);
 
   // --- 1. Fetch Profile ---
@@ -54,9 +57,9 @@ export default function DashboardPage() {
     mutationFn: (id) => consultationService.updateStatus(id, "dibatalkan"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consultations"] });
-      alert("Konsultasi berhasil dibatalkan.");
+      toast.success("Konsultasi berhasil dibatalkan.");
     },
-    onError: () => alert("Gagal membatalkan konsultasi."),
+    onError: () => toast.error("Gagal membatalkan konsultasi."),
   });
 
   // --- 4. Logika Filtering Kartu Aktif ---
@@ -89,8 +92,14 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCancelConsultation = () => {
-    if (!confirm("Apakah Anda yakin ingin membatalkan konsultasi ini?")) return;
+  const handleCancelConsultation = async () => {
+    const yakin = await askConfirm({
+      title: "Batalkan konsultasi?",
+      message: "Apakah Anda yakin ingin membatalkan konsultasi ini?",
+      confirmLabel: "Ya, batalkan",
+      danger: true,
+    });
+    if (!yakin) return;
     cancelMutation.mutate(activeConsultation.id_pengajuan);
   };
 
@@ -123,6 +132,7 @@ export default function DashboardPage() {
                     onAction={() => refetch()}
                     variant="card"
                     className="py-12"
+                    testId="dashboard-load-error"
                   />
                 ) : activeConsultation ? (
                   <ConsultationCard

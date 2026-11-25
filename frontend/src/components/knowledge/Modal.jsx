@@ -13,6 +13,7 @@ export default function Modal({
   children,
   maxWidth = "max-w-md",
   description = "",
+  testId,
 }) {
   const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
@@ -36,6 +37,7 @@ export default function Modal({
       }}
     >
       <div
+        data-testid={testId}
         className={`bg-card w-full ${maxWidth} rounded-2xl border border-surface shadow-xl max-h-[90vh] flex flex-col overflow-hidden`}
       >
         <div className="flex justify-between items-center p-6 border-b border-surface">

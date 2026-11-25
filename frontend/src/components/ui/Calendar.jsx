@@ -36,6 +36,7 @@ export function Calendar({
           className="w-8 h-8 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Sebelumnya"
           aria-label="Bulan Sebelumnya"
+          data-testid="calendar-prev-btn"
         >
           <MaterialIcon
             name="chevron_left"
@@ -62,6 +63,7 @@ export function Calendar({
           className="w-8 h-8 rounded-full bg-input/70 border border-surface flex items-center justify-center text-muted hover:text-main hover:border-primary/50 hover:bg-surface active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer"
           title="Bulan Berikutnya"
           aria-label="Bulan Berikutnya"
+          data-testid="calendar-next-btn"
         >
           <MaterialIcon
             name="chevron_right"
@@ -110,6 +112,7 @@ export function Calendar({
             <div
               key={day.key || fullDate || `day-${dayNumber}`}
               className="flex flex-col items-center justify-center py-0.5"
+              data-testid={isDisabled ? undefined : "date-slot-available"}
             >
               <button
                 type="button"

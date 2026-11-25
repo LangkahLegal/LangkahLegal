@@ -5,12 +5,12 @@ export class DetailDokumenPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.articleListTitle = page.getByText("Daftar Pasal");
-    this.openAllButton = page.getByRole("button", { name: /Buka Semua/ });
-    this.editButtons = page.getByRole("button", { name: /Edit Pasal/ });
-    this.editor = page.locator("textarea");
-    this.saveButton = page.getByRole("button", { name: "Simpan", exact: true });
-    this.noDataState = page.getByText("Tidak Ada Data");
+    this.articleListTitle = page.getByTestId("knowledge-article-list-title");
+    this.openAllButton = page.getByTestId("knowledge-toggle-all-btn");
+    this.editButtons = page.getByTestId("knowledge-article-edit-btn");
+    this.editor = page.getByTestId("knowledge-article-input");
+    this.saveButton = page.getByTestId("knowledge-article-save-btn");
+    this.noDataState = page.getByTestId("knowledge-detail-empty");
   }
 
   async openFor(frbrUri) {

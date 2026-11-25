@@ -25,6 +25,8 @@ function SettingsItem({ item }) {
   return (
     <div
       onClick={handleClick}
+      data-testid="settings-menu-item"
+      data-value={item.id}
       className={`
         relative group cursor-pointer transition-all duration-300
         rounded-2xl border active:scale-[0.98]
@@ -53,6 +55,7 @@ function SettingsItem({ item }) {
           {/* TEXT CONTENT */}
           <div className="flex flex-col gap-0.5">
             <p
+              data-testid="settings-menu-label"
               className={`font-bold text-sm tracking-tight ${isDanger ? "text-danger" : "text-main"}`}
             >
               {item.label}

@@ -16,6 +16,7 @@ export default function OtpInputGroup({
           maxLength={1}
           value={digit}
           placeholder="-"
+          data-testid="otp-digit-input"
           onChange={(e) => onChange(index, e.target.value)}
           onKeyDown={(e) => onKeyDown(index, e)}
           className="w-full aspect-square text-center bg-input border-2 border-surface rounded-xl text-2xl font-extrabold text-main outline-none transition-all duration-200 focus:border-primary-light focus:ring-1 focus:ring-primary-light/20 placeholder:text-muted/20"

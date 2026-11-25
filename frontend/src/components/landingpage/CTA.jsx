@@ -27,6 +27,7 @@ export default function CTA({ onGetStarted }) {
 
           <Button
             onClick={onGetStarted}
+            data-testid="landing-signup-cta-btn"
             className="w-full sm:w-auto px-10 py-4 text-sm md:text-base font-bold transition-transform hover:scale-105 shadow-xl shadow-secondary/25"
           >
             Buat Akun Gratis

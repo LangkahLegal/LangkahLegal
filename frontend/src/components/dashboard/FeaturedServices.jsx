@@ -17,7 +17,7 @@ export default function FeaturedServices({ services }) {
       </div>
 
       {/* AI Card (Featured) - Horizontal Compact Layout */}
-      <div className="bg-card border border-surface p-5 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 group relative overflow-hidden shadow-soft transition-all duration-500 hover:border-primary/20">
+      <div className="bg-card border border-surface p-5 lg:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 group relative overflow-hidden shadow-soft transition-all duration-500 hover:border-primary/20" data-testid="featured-service-card">
         <div className="flex items-start md:items-center gap-4 z-10 relative">
           <div className="w-11 h-11 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 transition-transform group-hover:scale-105">
             <MaterialIcon
@@ -61,6 +61,7 @@ export default function FeaturedServices({ services }) {
           <Link
             key={idx}
             href={service.href || "#"}
+            data-testid="featured-service-card"
             className="bg-input border border-surface p-4 rounded-2xl flex items-center gap-3.5 hover:border-primary/30 hover:bg-surface transition-all duration-300 group/small"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0 border border-surface transition-colors group-hover/small:bg-primary/10">

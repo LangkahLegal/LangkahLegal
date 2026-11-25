@@ -6,12 +6,12 @@ export class DashboardAdminPage extends BasePage {
   constructor(page) {
     super(page);
     this.container = page.getByTestId("admin-dashboard");
-    this.allDoneState = page.getByText("Selesai!");
-    this.detailButton = page.getByRole("button", { name: /Lihat Detail|chevron_right/ }).first();
+    this.allDoneState = page.getByTestId("admin-dashboard-verification-empty");
+    this.detailButton = page.getByTestId("verification-card-detail-btn").first();
   }
 
   /** Kartu statistik berisi label dan angkanya dalam satu blok. */
   statCard(label) {
-    return this.page.locator("div", { has: this.page.getByText(label, { exact: true }) }).last();
+    return this.page.getByTestId("stat-card").filter({ hasText: label });
   }
 }
