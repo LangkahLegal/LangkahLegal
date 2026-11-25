@@ -64,6 +64,7 @@ export default function HistoryPage() {
                   actionIcon="search"
                   onAction={() => router.push("/explore")}
                   className="py-16"
+                  testId="history-empty"
                 />
               ) : rawHistory.length === 0 ? (
                 /* Tidak ada sesi yang cocok dengan pencarian atau filter */

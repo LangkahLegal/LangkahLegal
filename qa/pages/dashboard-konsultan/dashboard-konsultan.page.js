@@ -1,30 +1,35 @@
 import { BasePage } from "../base.page.js";
 
+const SECTION = {
+  "Jadwal Terdekat": "consultant-dashboard-next-session-section",
+  "Permintaan Baru": "consultant-dashboard-new-requests-section",
+};
+
 export class DashboardKonsultanPage extends BasePage {
   path = "/dashboard/consultant";
 
   constructor(page) {
     super(page);
-    this.activeConsultationsLabel = page.getByText("Konsultasi Aktif");
+    this.activeConsultationsLabel = page.getByTestId("stat-card-label").filter({ hasText: "Konsultasi Aktif" });
     this.nextSessionSection = this.section("Jadwal Terdekat");
     this.newRequestsSection = this.section("Permintaan Baru");
-    this.rejectionNotice = page.getByText("Pengajuan Verifikasi Ditolak");
-    this.profileSettingsLink = page.getByText("Pengaturan Profil");
+    this.rejectionNotice = page.getByTestId("consultant-dashboard-rejection-message");
+    this.profileSettingsLink = page.getByTestId("consultant-dashboard-profile-link");
   }
 
   section(title) {
-    return this.page.locator("section", { has: this.page.getByRole("heading", { name: title }) });
+    return this.page.getByTestId(SECTION[title]);
   }
 
   greeting(name) {
-    return this.page.getByRole("heading", { name });
+    return this.page.getByTestId("dashboard-greeting").filter({ hasText: name });
   }
 
   cardsIn(section) {
-    return section.locator("div.group", { has: this.page.locator("h3") });
+    return section.getByTestId("consultation-card");
   }
 
   detailButtonIn(section) {
-    return section.getByRole("button", { name: /Lihat Detail/ });
+    return section.getByTestId("consultation-card-action-btn");
   }
 }

@@ -25,6 +25,7 @@ export default function ChatHeader({
             onClick={onToggleSidebar}
             className="!p-0 !w-9 !h-9 !rounded-xl border border-transparent text-on-header hover:bg-header-hover! hover:text-on-header! transition-all mr-3"
             aria-label="Toggle riwayat chat"
+            data-testid="ai-history-toggle-btn"
           >
             <MaterialIcon name="menu" className="text-xl text-on-header" />
           </Button>
@@ -43,11 +44,12 @@ export default function ChatHeader({
           </div>
 
           <div>
-            <h1 className="text-on-header font-headline font-bold text-base lg:text-lg leading-tight">
+            <h1 data-testid="ai-chat-title" className="text-on-header font-headline font-bold text-base lg:text-lg leading-tight">
               {name}
             </h1>
             {isOnline ? (
               <p
+                data-testid="ai-chat-status"
                 className="inline-flex items-center w-fit rounded-full bg-header-online text-success text-[10px] font-black tracking-[0.15em] uppercase transition-colors mt-0.5"
                 style={{
                   paddingInline: "var(--header-online-px)",
@@ -57,7 +59,7 @@ export default function ChatHeader({
                 {status}
               </p>
             ) : (
-              <p className="text-[10px] font-black tracking-[0.15em] uppercase transition-colors text-header-muted">
+              <p data-testid="ai-chat-status" className="text-[10px] font-black tracking-[0.15em] uppercase transition-colors text-header-muted">
                 {status}
               </p>
             )}

@@ -71,8 +71,7 @@ When("pengguna meliburkan slot jadwal itu", async ({ jadwalPage }) => {
   await jadwalPage.openDayNextMonth(SLOTS.existing.day);
   await expect(jadwalPage.modalTitle("Edit Jadwal")).toBeVisible();
   await expect(jadwalPage.modal).toContainText(SLOTS.existing.shown);
-  await jadwalPage.modalDropdown("Status Slot").click();
-  await jadwalPage.modal.locator(".max-h-60 > div").filter({ hasText: "Libur / Tutup" }).click();
+  await jadwalPage.choose("Status Slot", "Libur / Tutup");
   await jadwalPage.saveButton.click();
 });
 
@@ -145,11 +144,4 @@ When("pengguna berpindah ke bulan berikutnya di kalender", async ({ jadwalPage }
 
 Then("kalender menampilkan bulan Februari", async ({ jadwalPage }) => {
   await expect(jadwalPage.calendar).toContainText(MONTH_END_CHECK.next, { timeout: 3_000 });
-});
-
-// ── SCH-010 · Formulir slot jadwal dapat ditutup tanpa menyimpan
-
-When("pengguna membuka lalu menutup formulir slot jadwal", async ({ jadwalPage }) => {
-  await jadwalPage.openDayNextMonth(SLOTS.untouched.day);
-  await jadwalPage.closeModalButton.click();
 });

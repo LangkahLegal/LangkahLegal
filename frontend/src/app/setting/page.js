@@ -14,9 +14,11 @@ import PageHeader from "@/components/layout/PageHeader";
 import ProfileCard from "@/components/setting/ProfileCard";
 import SettingsGroup from "@/components/setting/SettingsGroup";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useConfirm } from "@/providers/FeedbackProvider";
 
 export default function SettingPage() {
   const router = useRouter();
+  const askConfirm = useConfirm();
   const queryClient = useQueryClient();
 
   // Ambil state tema dari Provider
@@ -110,10 +112,14 @@ const logoutMutation = useMutation({
       label: "Keluar",
       description: "Hapus sesi dari perangkat ini",
       variant: "danger",
-      onClick: () => {
-        if (confirm("Apakah Anda yakin ingin keluar?")) {
-          logoutMutation.mutate();
-        }
+      onClick: async () => {
+        const yakin = await askConfirm({
+          title: "Keluar dari akun?",
+          message: "Apakah Anda yakin ingin keluar?",
+          confirmLabel: "Ya, keluar",
+          danger: true,
+        });
+        if (yakin) logoutMutation.mutate();
       },
     },
   ];

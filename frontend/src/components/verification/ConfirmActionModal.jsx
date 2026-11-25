@@ -17,7 +17,10 @@ export default function ConfirmActionModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-      <div className="bg-card w-full max-w-md rounded-2xl p-6 space-y-4 border border-surface">
+      <div
+        data-testid={isReject ? "verification-reject-modal" : "verification-approve-modal"}
+        className="bg-card w-full max-w-md rounded-2xl p-6 space-y-4 border border-surface"
+      >
 
         <h3 className="text-main font-bold text-lg">
           {isReject ? "Tolak Konsultan?" : "Verifikasi Konsultan?"}
@@ -37,6 +40,7 @@ export default function ConfirmActionModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Masukkan alasan penolakan agar konsultan mengetahuinya..."
+            data-testid="verification-reason-input"
             className="w-full bg-input border border-surface rounded-xl p-3 text-sm text-main"
           />
         )}
@@ -52,6 +56,7 @@ export default function ConfirmActionModal({
 
           <Button
             onClick={onConfirm}
+            data-testid="verification-confirm-btn"
             disabled={isLoading || (isReject && !reason.trim())}
             isLoading={isLoading}
             variant={isReject ? "danger" : "primary"}

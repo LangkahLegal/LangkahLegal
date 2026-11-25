@@ -78,7 +78,7 @@ export default function BursaCard({
       exit={{ opacity: 0, transition: { duration: 0.15 } }}
       className="group p-4 rounded-2xl border transition-all duration-300 bg-card border-surface shadow-soft flex flex-col justify-between h-full hover:border-primary/30"
     >
-      <div>
+      <div data-testid={`bursa-case-${kasus.id_bursa}`}>
         {/* BAGIAN ATAS: Avatar (Ikon Kategori), Info, & Status */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">

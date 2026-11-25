@@ -10,6 +10,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import { userService } from "@/services/user.service";
 import { Button } from "@/components/ui";
 import { MaterialIcon } from "@/components/ui/Icons";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function EditProfilePage() {
   const { data: profile, isLoading: isQueryLoading } = useQuery({
@@ -42,6 +43,7 @@ export default function EditProfilePage() {
 
 function EditProfileContent({ profile, initialFormData }) {
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
 
   // --- 1. State Lokal untuk Form ---
@@ -59,7 +61,7 @@ function EditProfileContent({ profile, initialFormData }) {
     },
     onError: (error) => {
       console.error("Gagal update profil:", error);
-      alert("Gagal menyimpan perubahan.");
+      toast.error("Gagal menyimpan perubahan.");
     },
   });
 
@@ -125,7 +127,7 @@ function EditProfileContent({ profile, initialFormData }) {
             {/* NOTIFICATION: REJECTION ALERT */}
             {profile?.status_verifikasi === "ditolak" &&
               profile?.alasan_penolakan && (
-                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4">
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-5 flex items-start gap-4" data-testid="profile-rejection-message">
                   <MaterialIcon
                     name="error"
                     className="text-danger text-2xl shrink-0 mt-0.5"
@@ -170,6 +172,7 @@ function EditProfileContent({ profile, initialFormData }) {
                 isLoading={isUploading || updateMutation.isPending}
                 disabled={isUploading || updateMutation.isPending}
                 fullWidth
+                data-testid="profile-save-btn"
               >
                 {isUploading
                   ? "Uploading Photo..."

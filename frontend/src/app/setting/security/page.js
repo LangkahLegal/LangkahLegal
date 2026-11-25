@@ -10,9 +10,11 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { clearAuthSession, isPasswordSession } from "@/lib/authStorage";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordRules";
 import { useClientValue } from "@/lib/useClientValue";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -28,12 +30,12 @@ export default function ChangePasswordPage() {
     e.preventDefault();
 
     if (formData.newPassword.length < MIN_PASSWORD_LENGTH) {
-      alert(`Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter.`);
+      toast.error(`Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter.`);
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      alert("Konfirmasi password baru tidak cocok.");
+      toast.error("Konfirmasi password baru tidak cocok.");
       return;
     }
 
@@ -43,11 +45,11 @@ export default function ChangePasswordPage() {
         newPassword: formData.newPassword,
         currentPassword: needsCurrentPassword ? formData.currentPassword : undefined,
       });
-      alert("Kata sandi berhasil diperbarui! Silakan login kembali dengan sandi baru Anda.");
+      toast.success("Kata sandi berhasil diperbarui! Silakan login kembali dengan sandi baru Anda.");
       clearAuthSession();
       router.replace("/auth/login");
     } catch (err) {
-      alert(err?.message || "Gagal memperbarui kata sandi.");
+      toast.error(err?.message || "Gagal memperbarui kata sandi.");
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +88,7 @@ export default function ChangePasswordPage() {
                     value={formData.currentPassword}
                     onChange={handleInputChange}
                     placeholder="Masukkan kata sandi saat ini"
+                    data-testid="security-current-password-input"
                     required
                   />
                 )}
@@ -99,6 +102,7 @@ export default function ChangePasswordPage() {
                   placeholder={`Min. ${MIN_PASSWORD_LENGTH} karakter`}
                   required
                   minLength={MIN_PASSWORD_LENGTH}
+                  data-testid="security-new-password-input"
                 />
 
                 <PasswordField
@@ -108,6 +112,7 @@ export default function ChangePasswordPage() {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="Ulangi kata sandi baru"
+                  data-testid="security-confirm-password-input"
                   required
                 />
               </div>
@@ -119,6 +124,7 @@ export default function ChangePasswordPage() {
                   type="submit"
                   isLoading={isLoading}
                   className="py-6 rounded-2xl shadow-lg shadow-secondary/25 font-bold"
+                  data-testid="security-save-btn"
                 >
                   Simpan Kata Sandi
                 </Button>

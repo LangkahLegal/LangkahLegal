@@ -5,14 +5,15 @@ export class ResetKataSandiPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.newPasswordInput = page.locator('input[name="newPassword"]');
-    this.confirmPasswordInput = page.locator('input[name="confirmPassword"]');
-    this.confirmPasswordLabel = page.getByText("Konfirmasi Password Baru");
-    this.submitButton = page.getByRole("button", { name: "Simpan Password Baru" });
-    this.invalidLinkTitle = page.getByRole("heading", { name: "Link Tidak Valid" });
-    this.requestNewLink = page.getByRole("link", { name: "Minta Link Baru" });
-    this.expiredMessage = page.getByText(/sudah kadaluarsa/);
-    this.inputs = page.locator("input");
+    this.newPasswordInput = page.getByTestId("reset-password-new-input");
+    this.confirmPasswordInput = page.getByTestId("reset-password-confirm-input");
+    this.confirmPasswordLabel = page.getByTestId("reset-password-confirm-label");
+    this.submitButton = page.getByTestId("reset-password-submit-btn");
+    this.errorMessage = page.getByTestId("reset-password-error-msg");
+    this.invalidLinkTitle = page.getByTestId("reset-password-invalid-title");
+    this.requestNewLink = page.getByTestId("reset-password-request-link");
+    this.expiredMessage = page.getByTestId("reset-password-verify-error").filter({ hasText: /sudah kadaluarsa/ });
+    this.inputs = page.getByTestId(/^reset-password-(new|confirm)-input$/);
   }
 
   async openWithToken({ token, email }) {
@@ -27,8 +28,8 @@ export class ResetKataSandiPage extends BasePage {
 
   /** Menunggu sebuah pesan tampil; mengembalikan false bila tidak pernah tampil. */
   showsMessage(text) {
-    return this.page
-      .getByText(text)
+    return this.errorMessage
+      .filter({ hasText: text })
       .waitFor({ state: "visible", timeout: 5_000 })
       .then(() => true)
       .catch(() => false);

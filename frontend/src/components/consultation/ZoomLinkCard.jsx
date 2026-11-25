@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MaterialIcon } from "@/components/ui/Icons";
 import { Button } from "@/components/ui";
 import { consultationService } from "@/services/consultation.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 const isHttpsUrl = (value) => {
   try {
@@ -24,6 +25,7 @@ export default function ZoomLinkCard({
   const [isEditing, setIsEditing] = useState(false);
   const [zoomInput, setZoomInput] = useState(link || "");
   const queryClient = useQueryClient();
+  const toast = useToast();
   const zoomMutation = useMutation({
     mutationFn: (newLink) =>
       consultationService.updateZoomLink(consultationId, newLink),
@@ -34,7 +36,7 @@ export default function ZoomLinkCard({
       setIsEditing(false);
     },
     onError: (err) => {
-      alert(err?.response?.data?.detail || "Gagal menyimpan link Zoom");
+      toast.error(err?.response?.data?.detail || "Gagal menyimpan link Zoom");
     },
   });
 
@@ -62,7 +64,7 @@ export default function ZoomLinkCard({
     const link = zoomInput.trim();
     if (!link) return;
     if (!isHttpsUrl(link)) {
-      alert("Link tidak valid. Gunakan alamat lengkap yang diawali https://");
+      toast.error("Link tidak valid. Gunakan alamat lengkap yang diawali https://");
       return;
     }
     zoomMutation.mutate(link);
@@ -76,7 +78,7 @@ export default function ZoomLinkCard({
   return (
     <section className="space-y-4">
       {/* Label Title */}
-      <h3 className="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2">
+      <h3 className="text-xs font-bold text-muted uppercase tracking-[0.2em] ml-2" data-testid="zoom-link-title">
         Link Zoom Meetings
       </h3>
 
@@ -94,6 +96,7 @@ export default function ZoomLinkCard({
             value={zoomInput}
             onChange={(e) => setZoomInput(e.target.value)}
             placeholder="https://zoom.us/j/123456789"
+            data-testid="zoom-link-input"
             className="w-full bg-input border border-surface rounded-xl px-4 py-2.5 text-main text-sm placeholder:text-muted/50 focus:border-primary/30 focus:ring-2 focus:ring-primary/10 transition-all"
           />
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -104,6 +107,7 @@ export default function ZoomLinkCard({
                 setZoomInput(link || "");
               }}
               className="!rounded-lg !py-2 !px-4 text-xs font-semibold"
+              data-testid="zoom-cancel-btn"
             >
               Batal
             </Button>
@@ -113,6 +117,7 @@ export default function ZoomLinkCard({
               isLoading={zoomMutation.isPending}
               disabled={!zoomInput.trim()}
               className="!rounded-lg !py-2 !px-4 text-xs font-semibold"
+              data-testid="zoom-save-btn"
             >
               Simpan
             </Button>
@@ -136,6 +141,7 @@ export default function ZoomLinkCard({
 
             {/* URL Text */}
             <span
+              data-testid={link ? "zoom-link-text" : "zoom-link-empty"}
               className={`text-sm truncate flex-1 transition-colors duration-300 ${
                 link ? "text-main font-medium" : "text-muted/40 italic"
               }`}
@@ -148,6 +154,7 @@ export default function ZoomLinkCard({
               <div className="relative group">
                 <button
                   onClick={handleCopyLink}
+                  data-testid={copied ? "zoom-copied-btn" : "zoom-copy-btn"}
                   className="p-2 text-muted hover:text-main hover:bg-surface rounded-xl transition-all flex items-center justify-center"
                 >
                   <MaterialIcon
@@ -171,6 +178,7 @@ export default function ZoomLinkCard({
                   setZoomInput(link || "");
                   setIsEditing(true);
                 }}
+                data-testid={link ? "zoom-edit-link-btn" : "zoom-add-link-btn"}
                 className="p-2 text-muted hover:text-primary-light hover:bg-primary/10 rounded-xl transition-all flex items-center justify-center"
               >
                 <MaterialIcon
@@ -191,6 +199,7 @@ export default function ZoomLinkCard({
           onClick={() => link && window.open(link, "_blank")}
           disabled={!link}
           className={!link ? "opacity-50 cursor-not-allowed" : ""}
+          data-testid={isKonsultan ? "zoom-start-session-btn" : "zoom-join-session-btn"}
         >
           {buttonLabel}
         </Button>

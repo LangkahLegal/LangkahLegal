@@ -55,7 +55,7 @@ export default function ProfileCard({ user }) {
 
           {/* Info Area */}
           <div className="flex flex-col gap-0.5">
-            <h2 className="font-headline font-bold text-base sm:text-lg text-main">
+            <h2 className="font-headline font-bold text-base sm:text-lg text-main" data-testid="settings-profile-name">
               {name}
             </h2>
             <p className="text-muted text-xs sm:text-sm font-medium">{email}</p>
@@ -63,6 +63,8 @@ export default function ProfileCard({ user }) {
             {/* Role & Status Badge */}
             {role === "konsultan" && (
               <div
+                data-testid="settings-verification-badge"
+                data-value={status_verifikasi}
                 className={`inline-flex w-fit items-center justify-center px-3 py-1 mt-1.5 rounded-full border backdrop-blur-sm ${getStatusStyles(
                   status_verifikasi,
                 )}`}

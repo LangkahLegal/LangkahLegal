@@ -3,12 +3,13 @@
 import React from "react";
 import { Button } from "./Button";
 
-export function Toggle({ enabled, onChange, className = "" }) {
+export function Toggle({ enabled, onChange, className = "", testId }) {
   return (
     <Button
       variant="ghost"
       type="button"
       onClick={() => onChange(!enabled)}
+      data-testid={testId}
 
       className={`
         !p-1 !h-7 !w-14 !min-w-[56px] rounded-full transition-all duration-500 border

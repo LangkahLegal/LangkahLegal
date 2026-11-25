@@ -288,7 +288,7 @@ export default function SchedulePicker({
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]" />
-          <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline">
+          <h2 className="text-base sm:text-lg font-black text-main uppercase tracking-tight font-headline" data-testid="schedule-picker-title">
             Pilih Jadwal Sesi
           </h2>
         </div>

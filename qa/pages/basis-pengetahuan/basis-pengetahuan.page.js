@@ -5,37 +5,45 @@ export class BasisPengetahuanPage extends BasePage {
 
   constructor(page) {
     super(page);
-    this.rows = page.locator("tbody tr");
-    this.searchInput = page.getByPlaceholder("Cari nama undang-undang atau dokumen...");
-    this.nextPageButton = page.getByTitle("Selanjutnya");
-    this.pageInput = page.locator("input.w-10");
-    this.addButton = page.getByRole("button", { name: /Tambah Dokumen/ });
-    this.processingBanner = page.getByText(/Sistem sedang memproses ekstraksi/);
+    this.rows = page.getByTestId("knowledge-row");
+    this.searchInput = page.getByTestId("knowledge-search-input");
+    this.nextPageButton = page.getByTestId("pagination-next-btn");
+    this.pageInput = page.getByTestId("pagination-page-input");
+    this.addButton = page.getByTestId("knowledge-add-btn");
+    this.processingBanner = page.getByTestId("knowledge-processing-banner");
 
-    this.nameInput = page.getByPlaceholder("Contoh: Undang-Undang Perlindungan Data Pribadi");
-    this.numberInput = page.getByPlaceholder("Contoh: 27");
-    this.yearInput = page.getByPlaceholder("Contoh: 2022");
-    this.categoryDropdown = page.getByText("Pilih Kategori");
-    this.legalStatusDropdown = page.getByText("Pilih Status Hukum");
-    this.fileInput = page.locator('input[type="file"][accept=".pdf"]');
-    this.uploadButton = page.getByRole("button", { name: "Unggah", exact: true });
-    this.replaceTitle = page.getByText("Ganti Dokumen");
-    this.replaceButton = page.getByRole("button", { name: "Ganti", exact: true });
+    this.nameInput = page.getByTestId("knowledge-name-input");
+    this.numberInput = page.getByTestId("knowledge-number-input");
+    this.yearInput = page.getByTestId("knowledge-year-input");
+    this.categoryDropdown = page.getByTestId("knowledge-category-dropdown");
+    this.legalStatusDropdown = page.getByTestId("knowledge-legal-status-dropdown");
+    this.fileInput = page.getByTestId("knowledge-file-input");
+    this.uploadButton = page.getByTestId("knowledge-upload-btn");
+    this.replaceTitle = page.getByTestId("knowledge-replace-modal");
+    this.replaceButton = page.getByTestId("knowledge-replace-btn");
 
-    this.deleteConfirmTitle = page.getByText("Hapus Dokumen?");
-    this.confirmDeleteButton = page.getByRole("button", { name: "Ya, Hapus" });
+    this.deleteConfirmTitle = page.getByTestId("knowledge-delete-modal");
+    this.confirmDeleteButton = page.getByTestId("knowledge-delete-confirm-btn");
   }
 
   row(text) {
     return this.rows.filter({ hasText: text });
   }
 
-  categoryFilter(label) {
-    return this.page.getByRole("button", { name: label, exact: true });
+  deleteButton(text) {
+    return this.row(text).getByTestId("knowledge-row-delete-btn");
   }
 
-  option(label) {
-    return this.page.locator(".max-h-60 > div").filter({ hasText: new RegExp(`^${label}$`) });
+  replaceButtonFor(text) {
+    return this.row(text).getByTestId("knowledge-row-replace-btn");
+  }
+
+  categoryFilter(label) {
+    return this.page.getByTestId("knowledge-category-btn").filter({ hasText: new RegExp(`^${label}$`) });
+  }
+
+  option(dropdownTestId, label) {
+    return this.page.getByTestId(`${dropdownTestId}-option`).filter({ hasText: new RegExp(`^${label}$`) });
   }
 
   async search(keyword) {
@@ -47,9 +55,9 @@ export class BasisPengetahuanPage extends BasePage {
     await this.numberInput.fill(number);
     await this.yearInput.fill(year);
     await this.categoryDropdown.click();
-    await this.option(category).click();
+    await this.option("knowledge-category-dropdown", category).click();
     await this.legalStatusDropdown.click();
-    await this.option(legalStatus).click();
+    await this.option("knowledge-legal-status-dropdown", legalStatus).click();
     await this.fileInput.setInputFiles(file);
   }
 

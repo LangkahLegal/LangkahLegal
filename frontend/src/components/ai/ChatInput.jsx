@@ -71,6 +71,7 @@ export default function ChatInput({ input, setInput, onSend, suggestedActions = 
           {/* Tombol Kirim */}
           <Button
             type="submit"
+            data-testid="ai-chat-send-btn"
             variant={input.trim() ? "primary" : "secondary"}
             disabled={!input.trim()}
             className={`

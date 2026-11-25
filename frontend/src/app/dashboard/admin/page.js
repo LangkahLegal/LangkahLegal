@@ -105,6 +105,7 @@ export default function AdminDashboardPage() {
                       icon="fact_check"
                       title="Selesai!"
                       description="Tidak ada pengajuan verifikasi yang tertunda."
+                      testId="admin-dashboard-verification-empty"
                       className="py-10"
                     />
                   )}

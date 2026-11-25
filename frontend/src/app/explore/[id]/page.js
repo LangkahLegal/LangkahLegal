@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { clearConsultationDraft, readIncomingConsultationDraft, readIncomingSlot } from "@/lib/consultationDraft";
 import { useClientValue } from "@/lib/useClientValue";
 import { getStoredRole, hasStoredSession } from "@/lib/authStorage";
+import { useToast } from "@/providers/FeedbackProvider";
 
 const readIsReady = () => true;
 const readHasSession = () => hasStoredSession();
@@ -33,6 +34,7 @@ const readViewerRole = () => getStoredRole()?.toLowerCase() || null;
 export default function ConsultantDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const toast = useToast();
   const queryClient = useQueryClient();
 
   // --- STATE ---
@@ -103,13 +105,13 @@ export default function ConsultantDetailPage() {
     onError: (error) => {
       const errorMessage =
         error?.response?.data?.detail || "Gagal mengirim pengajuan";
-      alert(errorMessage);
+      toast.error(errorMessage);
     },
   });
 
   // --- HANDLERS ---
   const handleFileChange = (newFile) => {
-    if (files.length >= 10) return alert("Maksimal 10 file");
+    if (files.length >= 10) return toast.error("Maksimal 10 file");
     setFiles((prev) => [...prev, newFile]);
   };
 
@@ -119,7 +121,7 @@ export default function ConsultantDetailPage() {
 
   const handleBooking = () => {
     if (!selectedDate || !startTime || !endTime || !description?.trim()) {
-      return alert("Mohon lengkapi semua data pengajuan.");
+      return toast.error("Mohon lengkapi semua data pengajuan.");
     }
 
     // Satu tanggal bisa punya beberapa blok jadwal (misalnya pagi dan siang); pilih blok yang memuat jam ini.
@@ -130,7 +132,7 @@ export default function ConsultantDetailPage() {
         endTime <= s.jam_selesai?.substring(0, 5),
     );
 
-    if (!currentSchedule) return alert("Jadwal tidak tersedia.");
+    if (!currentSchedule) return toast.error("Jadwal tidak tersedia.");
 
     const payload = {
       id_jadwal: currentSchedule.id_jadwal,
@@ -169,6 +171,7 @@ export default function ConsultantDetailPage() {
           actionLabel="Kembali ke Katalog"
           actionIcon="arrow_back"
           onAction={() => router.push("/explore")}
+          testId="consultant-profile-error"
         />
       </div>
     );
@@ -230,6 +233,7 @@ export default function ConsultantDetailPage() {
               <ConsultationForm
                 description={description}
                 onDescriptionChange={setDescription}
+                descriptionTestId="booking-description-input"
               />
 
               <div className="space-y-4">
@@ -245,6 +249,7 @@ export default function ConsultantDetailPage() {
                   onChange={handleFileChange}
                   accept=".pdf,.jpg,.jpeg,.png"
                   maxSizeMB={10}
+                  testId="booking-file-input"
                 />
               </div>
 
@@ -254,6 +259,7 @@ export default function ConsultantDetailPage() {
                   isLoading={bookingMutation.isPending}
                   onClick={handleBooking}
                   className="py-5 rounded-xl shadow-lg shadow-secondary/25"
+                  data-testid="booking-submit-btn"
                 >
                   Booking Konsultasi
                 </Button>

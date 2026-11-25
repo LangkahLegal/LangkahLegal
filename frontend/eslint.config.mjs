@@ -13,6 +13,12 @@ const eslintConfig = defineConfig([
     // Playwright E2E tests (not React — `use()` is a Playwright fixture, not a React hook)
     "tests/e2e/**",
   ]),
+  {
+    rules: {
+      // Notifikasi lewat useToast/useConfirm (providers/FeedbackProvider), bukan dialog bawaan browser.
+      "no-alert": "error",
+    },
+  },
 ]);
 
 export default eslintConfig;

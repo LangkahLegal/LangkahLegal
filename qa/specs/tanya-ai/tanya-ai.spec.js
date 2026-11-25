@@ -177,7 +177,7 @@ Then("konten berbahaya dalam jawaban AI dinetralkan", async ({ tanyaAiPage }) =>
   const link = tanyaAiPage.lastAiMessage.getByRole("link", { name: "klik" });
   await expect(link).toBeVisible();
   expect(await link.getAttribute("href")).not.toMatch(/^javascript:/i);
-  await expect(tanyaAiPage.lastAiMessage.locator("img, script")).toHaveCount(0);
+  await expect(tanyaAiPage.lastAiMessageContent.locator("img, script")).toHaveCount(0);
   await link.click().catch(() => {});
 });
 

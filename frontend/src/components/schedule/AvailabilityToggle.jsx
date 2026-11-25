@@ -24,7 +24,7 @@ export default function AvailabilityToggle({
 
         {/* Toggle switch */}
         <div>
-          <Toggle enabled={isAvailable ?? false} onChange={onChange} />
+          <Toggle enabled={isAvailable ?? false} onChange={onChange} testId="availability-toggle-btn" />
         </div>
       </div>
     </section>

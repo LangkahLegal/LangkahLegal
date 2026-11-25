@@ -61,6 +61,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
       open={open}
       onClose={onClose}
       maxWidth="max-w-2xl"
+      testId="knowledge-replace-modal"
       title="Ganti Dokumen"
       description={`Unggah PDF baru untuk menggantikan ${docToReplace?.nama_uu}`}
     >
@@ -69,6 +70,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
           <InputField
             label="Nama Lengkap Dokumen/UU"
             placeholder="Contoh: Undang-Undang Perlindungan Data Pribadi"
+            data-testid="knowledge-name-input"
             value={formData.nama_uu}
             onChange={(e) => setFormData({ ...formData, nama_uu: e.target.value })}
           />
@@ -77,6 +79,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
             <InputField
               label="Nomor Dokumen/UU"
               placeholder="Contoh: 27"
+              data-testid="knowledge-number-input"
               value={formData.nomor_uu}
               onChange={(e) => setFormData({ ...formData, nomor_uu: e.target.value })}
             />
@@ -84,6 +87,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
               label="Tahun"
               type="number"
               placeholder="Contoh: 2022"
+              data-testid="knowledge-year-input"
               value={formData.tahun_uu}
               min={1945}
               max={new Date().getFullYear()}
@@ -95,6 +99,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
             <Dropdown
               label="Kategori Hukum"
               placeholder="Pilih Kategori"
+              testId="knowledge-category-dropdown"
               value={formData.kategori}
               onChange={(val) => setFormData({ ...formData, kategori: val })}
               options={[
@@ -122,6 +127,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
               label="Status Hukum"
               value={formData.status_hukum}
               placeholder="Pilih Status Hukum"
+              testId="knowledge-legal-status-dropdown"
               onChange={(val) => setFormData({ ...formData, status_hukum: val })}
               options={[
                 { value: "Berlaku", label: "Berlaku" },
@@ -137,6 +143,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
             onChange={(file) => setFileToReplace(file)}
             accept=".pdf"
             maxSizeMB={50}
+            testId="knowledge-file-input"
             className="!py-5 !px-4 h-full"
           />
           <div className="text-[11px] text-muted flex flex-col justify-center h-full pl-2">
@@ -161,6 +168,7 @@ export default function ReplaceDocumentModal({ open, onClose, docToReplace, setA
             onClick={handleReplaceFile}
             disabled={!isFormValid || replacing}
             isLoading={replacing}
+            data-testid="knowledge-replace-btn"
           >
             Ganti
           </Button>

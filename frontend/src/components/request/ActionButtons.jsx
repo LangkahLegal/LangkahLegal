@@ -11,6 +11,7 @@ export default function ActionButtons({ onReject, onAccept, isLoading = false })
       <Button
         variant="danger"
         onClick={onReject}
+        data-testid="request-reject-btn"
         disabled={isLoading}
         fullWidth
         className="!h-14 !rounded-2xl" // Mengunci spesifikasi ukuran kamu
@@ -23,6 +24,7 @@ export default function ActionButtons({ onReject, onAccept, isLoading = false })
       <Button
         variant="primary"
         onClick={onAccept}
+        data-testid="request-accept-btn"
         isLoading={isLoading}
         fullWidth
         className="!h-14 !rounded-2xl shadow-soft"

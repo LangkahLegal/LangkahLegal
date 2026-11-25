@@ -13,6 +13,7 @@ export default function CategoryList({
   activeCategory,
   onCategoryChange,
   useStyledTitle = false,
+  testId,
 }) {
   return (
     <section className="w-full space-y-6">
@@ -37,6 +38,8 @@ export default function CategoryList({
           return (
             <Button
               key={category.id}
+              data-testid={testId}
+              data-value={testId ? category.id : undefined}
               variant={isActive ? "primary" : "secondary"}
               onClick={() => onCategoryChange?.(category.id)}
               className={`

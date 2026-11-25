@@ -106,6 +106,7 @@ export default function ConsultationCard({
   return (
     <div
       className="group p-4 rounded-2xl border border-surface bg-card shadow-soft hover:border-primary/20 transition-all duration-500 relative overflow-visible flex flex-col justify-between h-full"
+      data-testid="consultation-card"
     >
       <div className="flex items-start gap-3">
         {/* Avatar Section */}
@@ -138,6 +139,7 @@ export default function ConsultationCard({
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`inline-block text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${currentStatus.color}`}
+                  data-testid="consultation-card-status"
                 >
                   {currentStatus.label}
                 </span>
@@ -150,6 +152,7 @@ export default function ConsultationCard({
                 variant="icon"
                 onClick={() => setShowMenu(!showMenu)}
                 className="!p-1 !bg-transparent hover:!bg-surface"
+                data-testid="consultation-card-menu-btn"
               >
                 <MaterialIcon
                   name="more_vert"
@@ -171,6 +174,7 @@ export default function ConsultationCard({
                           setShowMenu(false);
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left text-xs font-bold text-danger hover:bg-danger/10 border-b border-surface"
+                        data-testid="consultation-card-cancel-btn"
                       >
                         <MaterialIcon name="cancel" className="text-lg" />
                         BATALKAN
@@ -182,6 +186,7 @@ export default function ConsultationCard({
                         setShowMenu(false);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-xs font-bold text-muted hover:bg-surface"
+                      data-testid="consultation-card-hide-btn"
                     >
                       <MaterialIcon name="visibility_off" className="text-lg" />
                       HAPUS
@@ -210,6 +215,7 @@ export default function ConsultationCard({
         <Button
           variant="ghost"
           onClick={handleMainAction}
+          data-testid="consultation-card-action-btn"
           className={`!px-0 !py-2 -my-2 !h-auto !bg-transparent !text-xs hover:gap-2 transition-all ${
             isActive || isWaitingPayment
               ? "text-primary-light"

@@ -58,6 +58,7 @@ export default function Features() {
   return (
     <section
       id="features"
+      data-testid="landing-features-section"
       aria-labelledby="features-title"
       className="relative z-10 w-full scroll-mt-0 overflow-hidden bg-bg pb-16 lg:pb-0"
     >

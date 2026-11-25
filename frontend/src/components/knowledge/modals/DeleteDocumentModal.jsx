@@ -27,7 +27,7 @@ export default function DeleteDocumentModal({ open, onClose, docToDelete, showTo
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Hapus Dokumen?">
+    <Modal open={open} onClose={onClose} title="Hapus Dokumen?" testId="knowledge-delete-modal">
       <div className="space-y-6">
         <p className="text-sm text-muted">
           Yakin ingin menghapus dokumen <span className="font-bold text-main">{docToDelete?.nama_uu}</span>?
@@ -43,6 +43,7 @@ export default function DeleteDocumentModal({ open, onClose, docToDelete, showTo
             className="flex-1 font-bold !bg-danger !text-white !border-danger hover:!brightness-110"
             onClick={confirmDelete}
             isLoading={deleteMutation.isPending}
+            data-testid="knowledge-delete-confirm-btn"
           >
             Ya, Hapus
           </Button>

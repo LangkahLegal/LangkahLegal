@@ -17,10 +17,12 @@ import RatingModal from "@/components/history/RatingModal";
 // Services
 import { consultationService } from "@/services/consultation.service";
 import { authService } from "@/services/auth.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 export default function ConsultationDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   const submitRatingMutation = useMutation({
@@ -30,7 +32,7 @@ export default function ConsultationDetail() {
       setIsRatingModalOpen(false);
     },
     onError: (err) => {
-      alert("Gagal menyimpan ulasan: " + (err?.response?.data?.detail || err.message));
+      toast.error("Gagal menyimpan ulasan: " + (err?.response?.data?.detail || err.message));
     }
   });
 
@@ -94,11 +96,12 @@ export default function ConsultationDetail() {
     return (
       <div className="bg-bg min-h-screen flex items-center justify-center text-main p-6 text-center transition-colors duration-500">
         <div>
-          <p className="text-danger font-bold mb-4">
+          <p className="text-danger font-bold mb-4" data-testid="consultation-load-error">
             Gagal memuat detail konsultasi.
           </p>
           <button
             onClick={() => window.location.reload()}
+            data-testid="consultation-retry-btn"
             className="text-xs bg-surface px-4 py-2 rounded-lg hover:opacity-80 transition-all border border-surface"
           >
             Coba Lagi
@@ -125,7 +128,7 @@ export default function ConsultationDetail() {
               <div className="space-y-8 animate-fade-in">
                 {/* Status Badge */}
             <div className="flex justify-start">
-              <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
+              <div data-testid="consultation-status-badge" className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${
                 requestData.status === "selesai" ? "bg-success-soft text-success" :
                 requestData.status === "terjadwal" ? "bg-info-soft text-info-text" :
                 requestData.status === "menunggu_pembayaran" ? "bg-secondary-soft text-secondary-text" :
@@ -169,6 +172,7 @@ export default function ConsultationDetail() {
               <div className="pt-4 animate-fade-in-up flex flex-col items-center">
                 <button
                   onClick={() => setIsRatingModalOpen(true)}
+                  data-testid="consultation-review-btn"
                   className="w-full px-8 py-3 bg-primary hover:bg-primary-light text-on-primary font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                 >
                   Beri Ulasan & Selesaikan

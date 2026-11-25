@@ -10,10 +10,10 @@ export class LoginPage extends BasePage {
     this.submitButton = page.getByTestId("login-submit-btn");
     this.errorMessage = page.getByTestId("login-error-msg");
     this.googleButton = page.getByTestId("google-login-btn");
-    this.showPasswordButton = page.getByRole("button", { name: "Tampilkan password" });
-    this.hidePasswordButton = page.getByRole("button", { name: "Sembunyikan password" });
-    this.forgotPasswordLink = page.getByRole("link", { name: "Lupa Password?" });
-    this.signUpLink = page.getByRole("link", { name: "Daftar" });
+    this.showPasswordButton = page.getByTestId("password-show-btn");
+    this.hidePasswordButton = page.getByTestId("password-hide-btn");
+    this.forgotPasswordLink = page.getByTestId("login-forgot-password-link");
+    this.signUpLink = page.getByTestId("login-signup-link");
   }
 
   async fill({ email, password }) {

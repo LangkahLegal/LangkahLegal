@@ -11,6 +11,7 @@ import { MaterialIcon } from "@/components/ui/Icons";
 
 import { scheduleService } from "@/services/schedule.service";
 import { consultantService } from "@/services/consultant.service";
+import { useToast } from "@/providers/FeedbackProvider";
 
 // Helper format tanggal YYYY-MM-DD
 /** Tanggal 1 pada bulan sebelum/sesudahnya, agar tanggal 29-31 tidak melompati bulan. */
@@ -24,6 +25,7 @@ const formatDate = (date) => {
 
 export default function SchedulePage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [hasPicked, setHasPicked] = useState(false);
 
@@ -46,20 +48,20 @@ export default function SchedulePage() {
     mutationFn: (data) => scheduleService.addSchedule(data),
     onSuccess: () => {
       invalidate();
-      alert("Jadwal baru berhasil ditambahkan!");
+      toast.success("Jadwal baru berhasil ditambahkan!");
     },
     onError: () =>
-      alert("Gagal menambah jadwal. Pastikan jam tidak bertabrakan."),
+      toast.error("Gagal menambah jadwal. Pastikan jam tidak bertabrakan."),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => scheduleService.updateSchedule(id, data),
     onSuccess: () => {
       invalidate();
-      alert("Jadwal berhasil diperbarui!");
+      toast.success("Jadwal berhasil diperbarui!");
     },
     onError: () =>
-      alert("Gagal memperbarui jadwal. Slot mungkin sudah dipesan klien."),
+      toast.error("Gagal memperbarui jadwal. Slot mungkin sudah dipesan klien."),
   });
 
   // Status aktif langsung berubah di layar, lalu dikembalikan bila server menolak.
@@ -75,7 +77,7 @@ export default function SchedulePage() {
     },
     onError: (_error, _isActive, context) => {
       queryClient.setQueryData(["consultantStats"], context?.previous);
-      alert("Gagal menyimpan status konsultasi.");
+      toast.error("Gagal menyimpan status konsultasi.");
     },
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ["consultantStats"] }),
@@ -127,7 +129,7 @@ export default function SchedulePage() {
   const handleSave = (formData) => {
     const [start, end] = formData.time.split(" - ");
     if (end <= start) {
-      alert("Jam selesai harus setelah jam mulai.");
+      toast.error("Jam selesai harus setelah jam mulai.");
       return;
     }
     const payload = {

@@ -8,6 +8,7 @@ export default function LoginFooter() {
 
         <Link
           href="/auth/role"
+          data-testid="login-signup-link"
           className="text-primary-light font-bold transition-colors duration-200 hover:underline underline-offset-4 ml-1"
         >
           Daftar

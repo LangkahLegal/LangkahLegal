@@ -100,6 +100,7 @@ export default function PageHeader({
           </Button>
 
           <h1
+            data-testid="page-header-title"
             className={`text-lg lg:text-xl font-bold tracking-tight font-headline ${
               isAppHeader ? "text-on-header" : "text-main"
             }`}

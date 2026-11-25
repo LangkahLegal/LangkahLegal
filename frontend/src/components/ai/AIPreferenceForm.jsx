@@ -19,6 +19,7 @@ function Chip({ active, onClick, children, disabled }) {
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      data-testid="ai-preference-chip"
       className={`px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-medium transition-colors disabled:opacity-50 ${active
         ? "bg-primary text-on-primary border-primary"
         : "bg-bg border-surface text-muted hover:text-main hover:border-muted/40"
@@ -160,10 +161,10 @@ export default function AIPreferenceForm({ form, active, onSubmit }) {
       )}
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button variant="primary" className="!py-2 !px-4 text-xs font-semibold" onClick={kirim}>
+        <Button variant="primary" className="!py-2 !px-4 text-xs font-semibold" onClick={kirim} data-testid="ai-preference-submit-btn">
           Cari konsultan
         </Button>
-        <Button variant="outline" className="!py-2 !px-4 text-xs font-semibold" onClick={lewati}>
+        <Button variant="outline" className="!py-2 !px-4 text-xs font-semibold" onClick={lewati} data-testid="ai-preference-skip-btn">
           Lewati, tampilkan semua
         </Button>
       </div>

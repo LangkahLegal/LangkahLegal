@@ -21,6 +21,7 @@ export default function ConsultantCard({ consultant }) {
           alt={name || "Konsultan"}
           size="xl"
           textClassName="text-3xl lg:text-4xl"
+          testId="consultant-card-avatar"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
@@ -75,6 +76,7 @@ export default function ConsultantCard({ consultant }) {
 
         <Link
           href={detailHref}
+          data-testid="consultant-card-detail-btn"
           className="mt-auto pt-2 block"
         >
           <span className="block w-full text-center py-2 text-xs font-bold rounded-xl bg-surface border border-surface text-main group-hover:border-primary/40 hover:bg-primary! hover:text-on-primary! transition-all active:scale-95">

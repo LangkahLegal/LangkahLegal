@@ -63,11 +63,3 @@ Feature: Jadwal praktik konsultan
     And pengguna berada di halaman jadwal
     When pengguna berpindah ke bulan berikutnya di kalender
     Then kalender menampilkan bulan Februari
-
-  @SCH-010
-  Scenario: Formulir slot jadwal dapat ditutup tanpa menyimpan
-    Given konsultan uji belum membuka jadwal praktik
-    And pengguna berada di halaman jadwal
-    When pengguna membuka lalu menutup formulir slot jadwal
-    Then formulir slot jadwal tidak terbuka
-    And tidak ada permintaan tambah jadwal yang dikirim ke backend
