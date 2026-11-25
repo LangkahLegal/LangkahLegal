@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
           type: "recovery",
         });
 
-        if (data?.session) {
+        if (data?.authenticated) {
           setIsVerified(true);
         } else {
           setVerifyError(

@@ -3,7 +3,7 @@ import hashlib
 import json
 import secrets
 from typing import Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 import httpx
 from supabase import Client
@@ -68,6 +68,23 @@ def _generate_pkce_pair() -> tuple[str, str]:
     return code_verifier, code_challenge
 
 
+def _safe_redirect_url(candidate: Optional[str]) -> Optional[str]:
+    if not candidate:
+        return None
+
+    allowed = urlparse(get_settings().frontend_url)
+    requested = urlparse(candidate)
+    if allowed.scheme not in {"http", "https"} or not allowed.netloc:
+        raise RuntimeError("FRONTEND_URL wajib berupa URL absolut.")
+    if (requested.scheme, requested.netloc) != (allowed.scheme, allowed.netloc):
+        raise BadRequestError("Redirect URL tidak diizinkan.")
+    return candidate
+
+
+def public_auth_result(data: dict) -> dict:
+    return {"authenticated": bool(data.get("session")), "user": data.get("user")}
+
+
 async def _post_auth(path: str, payload: Optional[dict] = None, params: Optional[dict] = None) -> dict:
     settings = get_settings()
     url = f"{settings.supabase_url}{path}"
@@ -95,15 +112,15 @@ def _get_auth_user(token: str, db: Client):
     return user_res.user
 
 
-async def sign_up(payload: SignUpPayload) -> dict:
+async def sign_up(db: Client, payload: SignUpPayload) -> dict:
     options = {
         "data": {
             "full_name": payload.name,
             "role": payload.role,
         }
     }
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
+    if _safe_redirect_url(payload.emailRedirectTo):
+        options["email_redirect_to"] = _safe_redirect_url(payload.emailRedirectTo)
 
     data = await _post_auth(
         "/auth/v1/signup",
@@ -114,9 +131,33 @@ async def sign_up(payload: SignUpPayload) -> dict:
         },
     )
 
+    user = data.get("user") or {}
+    auth_user_id = user.get("id")
+    if not auth_user_id:
+        raise InternalError("Akun auth tidak berhasil dibuat.")
+
+    try:
+        profiles = user_repository.list_by_auth_user_id(db, auth_user_id, "id_user")
+        if not profiles:
+            user_repository.insert(
+                db,
+                {
+                    "auth_user_id": auth_user_id,
+                    "email": payload.email,
+                    "nama": payload.name,
+                    "role": payload.role,
+                },
+            )
+    except Exception as exc:
+        try:
+            db.auth.admin.delete_user(auth_user_id)
+        except Exception:
+            pass
+        raise InternalError("Gagal membuat profil akun. Silakan daftar ulang.") from exc
+
     return {
         "session": data.get("session"),
-        "user": data.get("user"),
+        "user": user,
     }
 
 
@@ -124,8 +165,8 @@ async def send_otp_login(payload: OtpLoginPayload) -> dict:
     options = {
         "should_create_user": False,
     }
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
+    if _safe_redirect_url(payload.emailRedirectTo):
+        options["email_redirect_to"] = _safe_redirect_url(payload.emailRedirectTo)
 
     await _post_auth(
         "/auth/v1/otp",
@@ -140,8 +181,8 @@ async def send_otp_login(payload: OtpLoginPayload) -> dict:
 
 async def resend_signup_otp(payload: ResendOtpPayload) -> dict:
     options = {}
-    if payload.emailRedirectTo:
-        options["email_redirect_to"] = payload.emailRedirectTo
+    if _safe_redirect_url(payload.emailRedirectTo):
+        options["email_redirect_to"] = _safe_redirect_url(payload.emailRedirectTo)
 
     await _post_auth(
         "/auth/v1/resend",
@@ -193,7 +234,7 @@ def build_google_oauth_url(payload: OAuthPayload) -> dict:
     code_verifier, code_challenge = _generate_pkce_pair()
     params = {
         "provider": payload.provider or "google",
-        "redirect_to": payload.redirectTo,
+        "redirect_to": _safe_redirect_url(payload.redirectTo),
         "code_challenge": code_challenge,
         "code_challenge_method": "s256",
     }
@@ -274,9 +315,10 @@ def update_role(db: Client, token: str, payload: RolePayload) -> dict:
     existing = user_repository.list_by_auth_user_id(db, user.id, "id_user")
 
     if existing:
-        profile = existing[0]
-        user_repository.update(db, profile["id_user"], payload_data)
-        return {**payload_data, "id_user": profile["id_user"]}
+        profile = user_repository.get_by_id_strict(db, existing[0]["id_user"], "id_user, auth_user_id, email, nama, role")
+        if profile.get("role") != payload.role:
+            raise BadRequestError("Role akun yang sudah dibuat tidak dapat diubah.")
+        return profile
 
     created = user_repository.insert(db, payload_data)
 
@@ -297,13 +339,17 @@ async def logout(token: str) -> None:
         _raise_auth_error(res)
 
 
-async def forgot_password(payload: ForgotPasswordPayload) -> dict:
+async def forgot_password(db: Client, payload: ForgotPasswordPayload) -> dict:
+    # Respons tetap generik agar endpoint tidak membocorkan email yang terdaftar.
+    if not user_repository.list_by_email(db, payload.email, "id_user"):
+        return {"sent": True}
+
     body = {"email": payload.email}
 
     params = {}
-    if payload.emailRedirectTo:
-        separator = "&" if "?" in payload.emailRedirectTo else "?"
-        params["redirect_to"] = f"{payload.emailRedirectTo}{separator}email={quote(payload.email)}"
+    if _safe_redirect_url(payload.emailRedirectTo):
+        separator = "&" if "?" in _safe_redirect_url(payload.emailRedirectTo) else "?"
+        params["redirect_to"] = f"{_safe_redirect_url(payload.emailRedirectTo)}{separator}email={quote(payload.email)}"
 
     await _post_auth(
         "/auth/v1/recover",

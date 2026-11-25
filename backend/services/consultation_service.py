@@ -504,11 +504,12 @@ def delete_document(db: Client, current_user: CurrentUser, id_pengajuan: int, id
     bucket_name = get_settings().supabase_berkas_pendukung_bucket
     storage_path = path_from_ref(bucket_name, doc_data.get("file_url", ""))
 
-    try:
-        if storage_path:
+    if storage_path:
+        try:
             remove_file_from_supabase(db, bucket_name, storage_path)
-    except Exception as e:
-        logger.warning(f"Gagal hapus file dari storage: {e}")
+        except Exception as exc:
+            logger.exception("Gagal hapus file dari storage; metadata dipertahankan untuk retry")
+            raise InternalError("Gagal menghapus file. Silakan coba lagi.") from exc
 
     supporting_document_repository.delete(db, id_dokumen)
 

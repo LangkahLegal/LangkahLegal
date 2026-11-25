@@ -1,0 +1,8 @@
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+**/__pycache__
+**/.pytest_cache
+**/node_modules

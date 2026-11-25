@@ -18,7 +18,7 @@ export const viewport = {
 
 export const metadata = {
   title: "LangkahLegal",
-  description: "Solusi Konsultasi Hukum Terpercaya",
+  description: "Prototipe akademik simulasi konsultasi hukum",
 };
 
 export default function RootLayout({ children }) {

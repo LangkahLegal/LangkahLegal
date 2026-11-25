@@ -22,12 +22,6 @@ const LEGAL_LINKS = [
   { label: "Kepatuhan Regulasi", href: "/compliance" },
 ];
 
-const SOCIAL_LINKS = [
-  { name: "LinkedIn", href: "https://linkedin.com" },
-  { name: "Instagram", href: "https://instagram.com" },
-  { name: "Twitter/X", href: "https://twitter.com" },
-];
-
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
@@ -39,9 +33,8 @@ export default function Footer() {
           <div className="lg:col-span-2 space-y-4">
             <BrandLogo iconSize="w-8 h-8" textSize="text-xl" />
             <p className="text-muted text-sm leading-relaxed max-w-sm">
-              Platform legal-tech yang mendigitalisasi akses keadilan di
-              Indonesia. Menghubungkan masyarakat dengan praktisi hukum
-              terpercaya.
+              Prototipe akademik legal-tech untuk simulasi konsultasi hukum.
+              Bukan layanan hukum dan tidak untuk data, dokumen, atau transaksi nyata.
             </p>
             <p className="text-xs text-muted/80">
               Jakarta, Indonesia •{" "}
