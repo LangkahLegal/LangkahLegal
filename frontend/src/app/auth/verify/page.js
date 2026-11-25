@@ -73,12 +73,10 @@ export default function EmailVerificationPage() {
       });
 
       sessionStorage.removeItem("pending_auth");
-      const profile = flow === "signup" ? null : await authService.getProfile();
-      const resolvedRole = role || profile?.role || "client";
+      const profile = await authService.getProfile();
+      const resolvedRole = profile?.role || role || "client";
 
-      if (flow === "signup" || !profile?.role) {
-        await authService.updateRole(resolvedRole);
-      }
+      if (!profile?.role) await authService.updateRole(resolvedRole);
 
       router.push(
         resolvedRole === "konsultan"

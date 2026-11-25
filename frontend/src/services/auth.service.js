@@ -196,6 +196,7 @@ export const authService = {
         current_password: currentPassword || undefined,
         keep_session: keepSession,
       });
+      if (!keepSession) clearAuthSession();
     } catch (error) {
       let message = error?.response?.data?.detail || error?.message;
       // Handle array of errors from FastAPI 422 Unprocessable Entity

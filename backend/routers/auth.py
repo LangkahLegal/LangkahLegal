@@ -31,8 +31,12 @@ router = APIRouter()
 
 
 @router.post("/signup", **docs.SIGN_UP)
-async def sign_up(payload: SignUpPayload, response: Response):
-    data = await auth_service.sign_up(payload)
+async def sign_up(
+    payload: SignUpPayload,
+    response: Response,
+    db: Client = Depends(get_supabase_client),
+):
+    data = await auth_service.sign_up(db, payload)
     set_auth_cookies(response, data["session"])
     return {"data": auth_service.public_auth_result(data)}
 
@@ -81,7 +85,7 @@ async def exchange_code(
     set_auth_cookies(response, data["session"])
     clear_oauth_verifier_cookie(response)
 
-    return {"data": data}
+    return {"data": auth_service.public_auth_result(data)}
 
 
 @router.post("/refresh", **docs.REFRESH_SESSION)
@@ -137,8 +141,11 @@ async def logout(request: Request, response: Response):
 
 
 @router.post("/forgot-password", dependencies=[Depends(throttle("3/minute", by="email"))], **docs.FORGOT_PASSWORD)
-async def forgot_password(payload: ForgotPasswordPayload):
-    return {"data": await auth_service.forgot_password(payload)}
+async def forgot_password(
+    payload: ForgotPasswordPayload,
+    db: Client = Depends(get_supabase_client),
+):
+    return {"data": await auth_service.forgot_password(db, payload)}
 
 
 @router.post("/reset-password", **docs.RESET_PASSWORD)
