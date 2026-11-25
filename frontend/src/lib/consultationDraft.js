@@ -23,7 +23,10 @@ export const readIncomingConsultationDraft = () => {
   try {
     if (new URLSearchParams(window.location.search).get("dari") !== "ai") return null;
     const draft = JSON.parse(window.localStorage.getItem(DRAFT_KEY));
-    if (!draft?.deskripsi_kasus || Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) return null;
+    if (!draft?.deskripsi_kasus || Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
+      window.localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
     return draft.deskripsi_kasus;
   } catch {
     return null;

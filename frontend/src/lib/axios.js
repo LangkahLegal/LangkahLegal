@@ -24,9 +24,9 @@ const refreshSession = async () => {
   refreshPromise = (async () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {});
-      const session = response?.data?.data?.session || null;
-      if (session) setAuthSession(session);
-      return true;
+      const sessionState = response?.data?.data || null;
+      if (sessionState?.authenticated) setAuthSession(sessionState);
+      return Boolean(sessionState?.authenticated);
     } catch (error) {
       const status = error?.response?.status;
       // Hanya bersihkan sesi jika server secara eksplisit menolak refresh token (400 atau 401).

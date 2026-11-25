@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { MaterialIcon, Button, LegalCard } from "@/components/ui";
+import { LegalCard } from "@/components/ui";
 
 const TERMS_CONTENT = [
   {
@@ -25,7 +24,7 @@ const TERMS_CONTENT = [
   {
     title: "Pembayaran & Refund",
     icon: "payments",
-    content: "Pembayaran dilakukan via sistem resmi LangkahLegal. Refund hanya berlaku jika dibatalkan sebelum jadwal konsultasi dimulai."
+    content: "Pembayaran diproses melalui Midtrans. Pengajuan yang dibatalkan tidak dapat dibayar kembali. Kelayakan, nilai, metode, dan waktu refund untuk pembayaran yang sudah selesai memerlukan pemeriksaan kasus serta kebijakan refund yang ditetapkan; hubungi dukungan sebelum pembatalan."
   },
   {
     title: "Batasan Tanggung Jawab",
@@ -35,8 +34,6 @@ const TERMS_CONTENT = [
 ];
 
 export default function TermsPage() {
-  const router = useRouter();
-  
   return (
     <div className="relative selection:bg-primary/30 bg-bg min-h-screen transition-colors duration-500 font-primary">
       <Navbar />

@@ -44,6 +44,18 @@ async def force_https_scheme(request: Request, call_next) -> Response:
     return await call_next(request)
 
 
+@app.middleware("http")
+async def validate_browser_origin(request: Request, call_next) -> Response:
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.url.path != "/api/v1/payments/notification":
+        origin = request.headers.get("origin")
+        allowed = set(ALLOWED_ORIGINS)
+        if get_settings().frontend_url:
+            allowed.add(get_settings().frontend_url.rstrip("/"))
+        if origin and origin.rstrip("/") not in allowed:
+            return Response(status_code=403, content="Origin tidak diizinkan")
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

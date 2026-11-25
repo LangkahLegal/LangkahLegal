@@ -23,7 +23,6 @@ PAYABLE_STATUSES = [
     StatusPengajuan.MENUNGGU_PEMBAYARAN,
     StatusPengajuan.PEMBAYARAN_GAGAL,
     StatusPengajuan.KEDALUWARSA,
-    StatusPengajuan.DIBATALKAN,
 ]
 FINAL_STATUSES = (StatusPembayaran.SETTLEMENT, StatusPembayaran.CANCEL, StatusPembayaran.REFUND)
 

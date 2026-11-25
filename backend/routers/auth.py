@@ -19,7 +19,6 @@ from schemas.auth import (
     OAuthPayload,
     OtpLoginPayload,
     PasswordLoginPayload,
-    RefreshTokenPayload,
     ResendOtpPayload,
     ResetPasswordPayload,
     RolePayload,
@@ -35,7 +34,7 @@ router = APIRouter()
 async def sign_up(payload: SignUpPayload, response: Response):
     data = await auth_service.sign_up(payload)
     set_auth_cookies(response, data["session"])
-    return {"data": data}
+    return {"data": auth_service.public_auth_result(data)}
 
 
 @router.post("/login-otp", dependencies=[Depends(throttle("3/minute", by="email"))], **docs.SEND_OTP_LOGIN)
@@ -52,21 +51,21 @@ async def resend_signup_otp(payload: ResendOtpPayload):
 async def verify_otp(payload: VerifyOtpPayload, response: Response):
     data = await auth_service.verify_otp(payload)
     set_auth_cookies(response, data["session"])
-    return {"data": data}
+    return {"data": auth_service.public_auth_result(data)}
 
 
 @router.post("/login-password", dependencies=[Depends(throttle("10/minute", by="email"))], **docs.LOGIN_WITH_PASSWORD)
 async def login_with_password(payload: PasswordLoginPayload, response: Response):
     data = await auth_service.login_with_password(payload)
     set_auth_cookies(response, data["session"])
-    return {"data": data}
+    return {"data": auth_service.public_auth_result(data)}
 
 
 @router.post("/oauth/google", **docs.SIGN_IN_WITH_GOOGLE)
 async def sign_in_with_google(payload: OAuthPayload, response: Response):
     data = auth_service.build_google_oauth_url(payload)
     set_oauth_verifier_cookie(response, data["code_verifier"])
-    return {"data": data}
+    return {"data": {"url": data["url"]}}
 
 
 @router.post("/exchange-code", **docs.EXCHANGE_CODE)
@@ -75,7 +74,7 @@ async def exchange_code(
     response: Response,
     payload: ExchangeCodePayload,
 ):
-    code_verifier = payload.code_verifier or request.cookies.get("ll_oauth_verifier")
+    code_verifier = request.cookies.get("ll_oauth_verifier")
 
     data = await auth_service.exchange_code(payload.code, code_verifier)
 
@@ -86,8 +85,8 @@ async def exchange_code(
 
 
 @router.post("/refresh", **docs.REFRESH_SESSION)
-async def refresh_session(request: Request, response: Response, payload: RefreshTokenPayload | None = None):
-    refresh_token = (payload.refresh_token if payload else None) or request.cookies.get("ll_refresh")
+async def refresh_session(request: Request, response: Response):
+    refresh_token = request.cookies.get("ll_refresh")
 
     try:
         data = await auth_service.refresh_session(refresh_token)
@@ -98,7 +97,7 @@ async def refresh_session(request: Request, response: Response, payload: Refresh
 
     set_auth_cookies(response, data["session"])
 
-    return {"data": data}
+    return {"data": auth_service.public_auth_result(data)}
 
 
 @router.get("/profile", **docs.GET_PROFILE)

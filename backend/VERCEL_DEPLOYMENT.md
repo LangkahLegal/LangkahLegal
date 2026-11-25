@@ -40,7 +40,8 @@ COOKIE_DOMAIN=.yourdomain.vercel.app
 # Payment (Midtrans)
 MIDTRANS_SERVER_KEY=<your-midtrans-server-key>
 MIDTRANS_CLIENT_KEY=<your-midtrans-client-key>
-MIDTRANS_IS_PRODUCTION=true
+# Prototipe akademik hanya memakai sandbox; backend menolak nilai true.
+MIDTRANS_IS_PRODUCTION=false
 
 # Email Service (Brevo)
 BREVO_API_KEY=<your-brevo-api-key>

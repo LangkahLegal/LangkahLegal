@@ -49,6 +49,8 @@ def get_settings() -> Settings:
     midtrans_server_key = os.getenv("MIDTRANS_SERVER_KEY", "").strip()
     midtrans_client_key = os.getenv("MIDTRANS_CLIENT_KEY", "").strip()
     midtrans_is_production = os.getenv("MIDTRANS_IS_PRODUCTION", "false").strip().lower() == "true"
+    if midtrans_is_production:
+        raise RuntimeError("Prototipe akademik hanya boleh menggunakan Midtrans sandbox.")
     voyage_api_key = os.getenv("VOYAGE_API_KEY", "").strip()
     google_api_key = os.getenv("GOOGLE_API_KEY", "").strip()
     brevo_api_key = os.getenv("BREVO_API_KEY", "").strip()

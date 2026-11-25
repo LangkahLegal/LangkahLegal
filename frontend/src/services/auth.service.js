@@ -1,9 +1,7 @@
 import api from "@/lib/axios";
 import {
   clearAuthSession,
-  getStoredOAuthVerifier,
   setAuthSession,
-  setStoredOAuthVerifier,
   setStoredRole,
 } from "@/lib/authStorage";
 
@@ -25,9 +23,7 @@ export const authService = {
       });
 
       const data = response?.data?.data;
-      if (data?.session) {
-        setAuthSession(data.session);
-      }
+      if (data?.authenticated) setAuthSession(data);
 
       return data;
     } catch (error) {
@@ -69,9 +65,7 @@ export const authService = {
       });
 
       const data = response?.data?.data;
-      if (data?.session) {
-        setAuthSession(data.session);
-      }
+      if (data?.authenticated) setAuthSession(data);
 
       return data;
     } catch (error) {
@@ -87,12 +81,12 @@ export const authService = {
         password,
       });
 
-      const session = response?.data?.data?.session || null;
-      if (session) {
-        setAuthSession(session);
+      const sessionState = response?.data?.data || null;
+      if (sessionState?.authenticated) {
+        setAuthSession(sessionState);
       }
 
-      return session;
+      return sessionState;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal login.");
@@ -108,9 +102,6 @@ export const authService = {
       if (!data?.url) {
         throw new Error("Gagal menyiapkan login Google.");
       }
-      if (data?.code_verifier) {
-        setStoredOAuthVerifier(data.code_verifier);
-      }
       if (typeof window !== "undefined") {
         window.location.href = data.url;
       }
@@ -122,17 +113,10 @@ export const authService = {
 
   exchangeCode: async (code) => {
     try {
-      const code_verifier = getStoredOAuthVerifier();
-      const response = await api.post("/auth/exchange-code", {
-        code,
-        code_verifier,
-      });
-      const session = response?.data?.data?.session || null;
-      if (session) {
-        setAuthSession(session);
-        setStoredOAuthVerifier(null);
-      }
-      return session;
+      const response = await api.post("/auth/exchange-code", { code });
+      const sessionState = response?.data?.data || null;
+      if (sessionState?.authenticated) setAuthSession(sessionState);
+      return sessionState;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memverifikasi login.");
@@ -156,11 +140,9 @@ export const authService = {
   refreshSession: async () => {
     try {
       const response = await api.post("/auth/refresh", {});
-      const session = response?.data?.data?.session || null;
-      if (session) {
-        setAuthSession(session);
-      }
-      return session;
+      const sessionState = response?.data?.data || null;
+      if (sessionState?.authenticated) setAuthSession(sessionState);
+      return sessionState;
     } catch (error) {
       const message = error?.response?.data?.detail || error?.message;
       throw new Error(message || "Gagal memperbarui sesi.");
